@@ -1,5 +1,4 @@
 ---
-name: grepr-model
 description: Core Grepr concepts - log events, jobs, job graphs, execution modes, processing types. Use this to understand Grepr fundamentals without needing docs:search.
 trigger_keywords:
   - what is grepr

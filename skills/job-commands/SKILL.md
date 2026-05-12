@@ -1,5 +1,4 @@
 ---
-name: job-commands
 description: Manage Grepr jobs and pipelines. List, view, create, update, and delete jobs/pipelines.
 allowed-tools: Bash(grepr job:*), Read(job-list.md), Read(job-get.md), Read(job-create.md), Read(job-update.md), Read(job-delete.md)
 trigger-keywords: ["list pipelines", "create pipeline", "update job", "delete job", "view job configuration", "manage grepr jobs"]

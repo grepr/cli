@@ -1,5 +1,4 @@
 ---
-name: integration-commands
 description: List and view Grepr integrations. Integrations connect Grepr to external systems for data ingestion or export.
 allowed-tools: Bash(grepr integration:*), Read(integration-*.md)
 trigger-keywords: list integrations, view integration, datadog integration, splunk integration, s3 integration

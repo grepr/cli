@@ -1,5 +1,4 @@
 ---
-name: build-pipeline
 description: Step-by-step guide to build a new Grepr pipeline from scratch. Use this when creating new pipelines or significantly modifying existing ones.
 allowed-tools: Bash(grepr *), grepr:job-commands, grepr:dataset-commands, grepr:integration-commands, grepr:job-graph-patterns, grepr:operations-reference, grepr:grepr-model
 trigger_keywords:

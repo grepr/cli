@@ -1,5 +1,4 @@
 ---
-name: query-logs
 description: Query logs from Grepr datasets using filters and time ranges.
 allowed-tools: Bash(grepr query), grepr:dataset-commands
 ---

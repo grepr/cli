@@ -1,5 +1,4 @@
 ---
-name: docs-commands
 description: Search and retrieve Grepr documentation. Use semantic search to find relevant docs, API specs, and schema details.
 allowed-tools: Bash(grepr docs:*), Read(docs-*.md)
 trigger-keywords: ["search docs", "documentation", "schema", "api docs", "find docs", "learn about grepr"]

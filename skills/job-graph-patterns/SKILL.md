@@ -1,5 +1,4 @@
 ---
-name: job-graph-patterns
 description: Common job graph patterns and examples for building Grepr pipelines. Use this when you need to create or modify job configurations.
 trigger_keywords:
   - pipeline example

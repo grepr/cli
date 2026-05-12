@@ -1,5 +1,4 @@
 ---
-name: debug-pipeline
 description: Troubleshoot failing or misbehaving Grepr pipelines. Use this when pipelines aren't working as expected or the data results are not what's expected.
 allowed-tools: Bash(grepr *), grepr:job-commands, grepr:query-logs, grepr:build-grok, grepr:grepr-model
 trigger_keywords:

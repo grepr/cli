@@ -1,5 +1,4 @@
 ---
-name: operations-reference
 description: Reference for available Grepr operations - sources, transforms, and sinks. Use this when you need to know what operations are available for job graphs.
 trigger_keywords:
   - available operations

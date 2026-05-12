@@ -1,5 +1,4 @@
 ---
-name: dataset-commands
 description: Manage Grepr datasets in the data lake. List, view, create, update, and delete datasets.
 allowed-tools: Bash(grepr dataset:*), Read(dataset-*.md)
 ---

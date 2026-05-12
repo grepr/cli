@@ -1,5 +1,4 @@
 ---
-name: build-grok
 description: Learn about grok:parse Grepr CLI command. Create, test, and add Grok patterns to Grepr pipelines to parse log messages into structured data to enable more effective and easier queries on log data.
 allowed-tools: Bash(grepr grok:parse), grepr:job-commands, grepr:query-logs, grepr:docs-commands, Read(grok-parse.md)
 ---

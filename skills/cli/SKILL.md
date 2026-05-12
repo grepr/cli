@@ -1,5 +1,4 @@
 ---
-name: cli
 description: Router for Grepr CLI commands. Directs to specialized command skills based on the task.
 trigger_keywords:
   - grepr cli
