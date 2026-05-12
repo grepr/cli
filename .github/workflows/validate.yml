@@ -1,0 +1,67 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate plugin.json
+        run: |
+          jq -e '.name | type == "string"' .claude-plugin/plugin.json
+          jq -e '.version | type == "string"' .claude-plugin/plugin.json
+          jq -e '.description | type == "string"' .claude-plugin/plugin.json
+          jq -e '.license == "Apache-2.0"' .claude-plugin/plugin.json
+
+      - name: Validate marketplace.json
+        run: |
+          jq -e '.name | type == "string"' .claude-plugin/marketplace.json
+          jq -e '(.plugins | length) > 0' .claude-plugin/marketplace.json
+
+      - name: Verify plugin and marketplace names and versions match
+        run: |
+          plugin_name=$(jq -r '.name' .claude-plugin/plugin.json)
+          marketplace_plugin_name=$(jq -r '.plugins[0].name' .claude-plugin/marketplace.json)
+          if [ "$plugin_name" != "$marketplace_plugin_name" ]; then
+            echo "name mismatch: plugin.json=$plugin_name marketplace.json=$marketplace_plugin_name"
+            exit 1
+          fi
+          plugin_version=$(jq -r '.version' .claude-plugin/plugin.json)
+          marketplace_version=$(jq -r '.plugins[0].version' .claude-plugin/marketplace.json)
+          if [ "$plugin_version" != "$marketplace_version" ]; then
+            echo "version mismatch: plugin.json=$plugin_version marketplace.json=$marketplace_version"
+            exit 1
+          fi
+
+      - name: Validate SKILL.md frontmatter
+        run: |
+          fail=0
+          for f in skills/*/SKILL.md; do
+            if ! head -1 "$f" | grep -q '^---$'; then
+              echo "$f: missing opening ---"
+              fail=1
+              continue
+            fi
+            closing_line=$(awk '/^---$/{c++; if(c==2){print NR; exit}}' "$f")
+            if [ -z "$closing_line" ]; then
+              echo "$f: missing closing ---"
+              fail=1
+              continue
+            fi
+            frontmatter=$(sed -n "1,${closing_line}p" "$f")
+            if ! echo "$frontmatter" | grep -q '^description: '; then
+              echo "$f: missing 'description:' in frontmatter"
+              fail=1
+            fi
+            if echo "$frontmatter" | grep -q '^name: '; then
+              echo "$f: has 'name:' in frontmatter — this breaks plugin namespacing (see anthropics/claude-code#43695)"
+              fail=1
+            fi
+          done
+          if [ $fail -eq 1 ]; then exit 1; fi
+          echo "All skills validated."
