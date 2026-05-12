@@ -183,19 +183,19 @@ Once you've identified the issue:
 ### 1. Test the fix with sample data
 
 ```bash
-grepr job:create -f fixed-test.json
+grepr job:create fixed-test.json
 ```
 
 ### 2. Test with live data (sync streaming)
 
 ```bash
-grepr job:create -f fixed-test-live.json
+grepr job:create fixed-test-live.json
 ```
 
 ### 3. Update production pipeline
 
 ```bash
-grepr job:update <job-id> -f fixed-production.json
+grepr job:update <job-id> fixed-production.json
 ```
 
 ### 4. Verify the fix

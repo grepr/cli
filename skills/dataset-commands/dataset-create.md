@@ -11,7 +11,15 @@ Create a new dataset (Iceberg table) for storing processed logs. Datasets are ta
 
 ## Examples
 
+`dataset:create` takes a JSON file as a positional argument; it has no inline `--name` or `--description` flags. Required fields in the JSON: `name` and `integrationId` (the storage integration id). See `schema://DatasetCreate` via `grepr docs:get` for the full shape.
+
 ```bash
-# Create with inline name
-grepr dataset:create --name "Production Logs Dataset"
+cat > dataset.json <<'EOF'
+{
+  "name": "production-logs",
+  "integrationId": "<storage-integration-id>",
+  "teamIds": []
+}
+EOF
+grepr dataset:create dataset.json
 ```

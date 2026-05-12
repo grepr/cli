@@ -78,12 +78,12 @@ a copy of the data at each step. This way you can inspect the output at each sta
 ## Examples
 
 ```bash
-# Create job from file
-grepr job:create -f pipeline.json
-
-# Create job with custom name
-grepr job:create -f pipeline.json --name "Production Log Pipeline"
+# Create job from a JSON file (positional argument, not -f)
+grepr job:create pipeline.json
 ```
+
+The job name lives in the JSON file (`name` field). To change it, edit the file
+before submitting — there's no `--name` flag on `job:create`.
 
 ## Configuration Format
 See existing jobs via `grepr job:get <id>` for example configurations.
