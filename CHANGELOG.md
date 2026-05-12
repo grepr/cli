@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Quick-reference and workflow examples in `job-commands`, `dataset-commands`, `debug-pipeline`, and `build-pipeline` skills documented `grepr job:create -f <file>` / `grepr dataset:create --name "..."` etc. These flags don't exist on the CLI — `-f`/`--format` controls output format and `--name`/`--description` aren't options on the create commands at all. The actual syntax takes a JSON file as a positional argument (e.g. `grepr job:create pipeline.json`). Updated all skill examples to match.
+- `dataset-commands/SKILL.md` referenced a `dataset:list --job-id <id>` filter that doesn't exist. Replaced with the supported workaround (inspect `job:get`'s vertices for `datasetId`).
+- `dataset-commands/dataset-create.md` documented an inline `--name "..."` example that the CLI rejects. Replaced with a JSON-file example matching the actual `DatasetCreate` schema.
+
 ## [0.1.0] — 2026-05-12
 
 ### Added

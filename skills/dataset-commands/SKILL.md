@@ -22,8 +22,8 @@ If this fails, ask the user to provide `--org-name` or `--conf` options.
 |---------|---------|-----------|
 | `grepr dataset:list` | List available datasets | [dataset-list.md](dataset-list.md) |
 | `grepr dataset:get <id>` | Get dataset details | [dataset-get.md](dataset-get.md) |
-| `grepr dataset:create` | Create a new dataset | [dataset-create.md](dataset-create.md) |
-| `grepr dataset:update <id>` | Update existing dataset | [dataset-update.md](dataset-update.md) |
+| `grepr dataset:create <file>` | Create a new dataset from a JSON file | [dataset-create.md](dataset-create.md) |
+| `grepr dataset:update <id> <file>` | Update existing dataset from a JSON file | [dataset-update.md](dataset-update.md) |
 | `grepr dataset:delete <id>` | Delete a dataset | [dataset-delete.md](dataset-delete.md) |
 
 ## General Usage Notes
@@ -41,9 +41,10 @@ If this fails, ask the user to provide `--org-name` or `--conf` options.
 grepr dataset:list --format table
 ```
 
-### Find datasets for a specific job
+### Find datasets a job writes to
+`dataset:list` doesn't take a `--job-id` filter; inspect the job's vertices instead.
 ```bash
-grepr dataset:list --job-id <job-id>
+grepr job:get <job-id> --format raw | jq -r '.jobGraph.vertices[] | select(.datasetId) | .datasetId' | sort -u
 ```
 
 ### Get dataset details
@@ -52,8 +53,15 @@ grepr dataset:get <dataset-id> --format raw
 ```
 
 ### Create a new dataset
+Pass a JSON file with `name` and `integrationId` (the storage integration id).
 ```bash
-grepr dataset:create --name "processed-logs" --description "Logs after parsing and reduction"
+cat > dataset.json <<'EOF'
+{
+  "name": "processed-logs",
+  "integrationId": "<storage-integration-id>"
+}
+EOF
+grepr dataset:create dataset.json
 ```
 
 ### Delete a dataset and its files

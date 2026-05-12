@@ -23,8 +23,8 @@ If this fails, ask the user to provide `--org-name` or `--conf` options.
 |---------|---------|-----------|
 | `grepr job:list` | List jobs with optional filters | [job-list.md](job-list.md) |
 | `grepr job:get <id>` | Get job configuration | [job-get.md](job-get.md) |
-| `grepr job:create -f <file>` | Create a new job | [job-create.md](job-create.md) |
-| `grepr job:update <id> -f <file>` | Update existing job | [job-update.md](job-update.md) |
+| `grepr job:create <file>` | Create a new job from a JSON file | [job-create.md](job-create.md) |
+| `grepr job:update <id> <file>` | Update existing job from a JSON file | [job-update.md](job-update.md) |
 | `grepr job:delete <id>` | Delete a job | [job-delete.md](job-delete.md) |
 
 ## General Usage Notes
@@ -47,13 +47,17 @@ grepr job:get <job-id> --format raw
 ```
 
 ### Create a new pipeline
+The job definition (name, jobGraph, etc.) lives in the JSON file; it's passed as a positional argument.
 ```bash
-grepr job:create -f pipeline-config.json
+grepr job:create pipeline-config.json
 ```
 
 ### Update a pipeline
+Get the current config first to capture `version` for `fromVersion`, edit the file, then push it back.
 ```bash
-grepr job:update <job-id> -f updated-config.json
+grepr job:get <job-id> --quiet -o updated-config.json
+# ... edit updated-config.json ...
+grepr job:update <job-id> updated-config.json
 ```
 
 ### Delete a pipeline

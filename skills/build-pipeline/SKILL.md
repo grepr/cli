@@ -160,8 +160,8 @@ Before using live data, test with inline samples using `logs-values-source`:
 ```
 
 ```bash
-# Create and run the test job
-grepr job:create -f test-pipeline-samples.json
+# Create and run the test job (job file is a positional arg)
+grepr job:create test-pipeline-samples.json
 ```
 
 **Validate:**
@@ -211,7 +211,7 @@ Once sample data works, test with live streaming data (rate-limited):
 
 ```bash
 # Run live test (will stream results until cancelled)
-grepr job:create -f test-pipeline-live.json
+grepr job:create test-pipeline-live.json
 # Press Ctrl+C to stop
 ```
 
@@ -251,7 +251,7 @@ Convert to production configuration:
 
 ```bash
 # Create the production pipeline
-grepr job:create -f production-pipeline.json
+grepr job:create production-pipeline.json
 
 # Verify it started
 grepr job:list --state RUNNING --format table
