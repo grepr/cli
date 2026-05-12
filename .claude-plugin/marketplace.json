@@ -1,0 +1,25 @@
+{
+  "name": "grepr-cli",
+  "owner": {
+    "name": "Grepr",
+    "email": "support@grepr.ai"
+  },
+  "metadata": {
+    "description": "Claude Code skills for building, debugging, and managing Grepr observability pipelines"
+  },
+  "plugins": [
+    {
+      "name": "grepr",
+      "source": "./",
+      "description": "Skills for managing Grepr jobs and pipelines, building grok parsers, querying log data, and debugging log reduction. Requires the Grepr CLI (npm install -g @grepr/cli).",
+      "version": "0.1.0",
+      "author": {
+        "name": "Grepr",
+        "email": "support@grepr.ai"
+      },
+      "license": "Apache-2.0",
+      "keywords": ["grepr", "observability", "logs", "datadog", "log-reduction", "grok", "flink"],
+      "category": "observability"
+    }
+  ]
+}
