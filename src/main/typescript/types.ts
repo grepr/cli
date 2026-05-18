@@ -9,10 +9,15 @@ import {
   PathsV1JobsGetParametersQueryState,
   GreprRawLogsSourceType,
   LogsIcebergTableSourceType,
-  GreprRawLogsSourceSortOrder,
+  // openapi-typescript dedupes identical SortOrder enums under one canonical
+  // name; GreprLlmPromptResultsSourceSortOrder is the surviving member of
+  // the dedupe equivalence class. The runtime values are the canonical
+  // ASCENDING / DESCENDING / UNSORTED.
+  GreprLlmPromptResultsSourceSortOrder,
   DatadogQueryPredicateType,
   NewRelicQueryPredicateType,
-  SplQueryPredicateType, SchemaReadDatadog, SchemaReadDataWarehouse, SchemaReadS3DataWarehouse,
+  NrqlQueryPredicateType,
+  SchemaReadDatadog, SchemaReadDataWarehouse, SchemaReadS3DataWarehouse,
   SchemaReadNewRelic, SchemaReadOtlp, SchemaReadSplunk, SchemaReadSumo, SchemaOperation,
 } from './openapi/openApiTypes.js';
 
@@ -62,13 +67,18 @@ export interface FormattableCommandOptions extends CliOptions {
 export interface QueryCommandOptions extends FormattableCommandOptions {
   datasetId?: string;
   datasetName?: string;
-  sortOrder?: GreprRawLogsSourceSortOrder;
+  sortOrder?: GreprLlmPromptResultsSourceSortOrder;
   queryEngine?: GreprRawLogsSourceType.grepr_raw_log_source | LogsIcebergTableSourceType.logs_iceberg_table_source;
-  queryType?: DatadogQueryPredicateType.datadog_query | NewRelicQueryPredicateType.newrelic_query | SplQueryPredicateType.spl_query;
+  queryType?: DatadogQueryPredicateType.datadog_query | NewRelicQueryPredicateType.newrelic_query | NrqlQueryPredicateType.nrql_query;
   query?: string;
   start?: string;
   end?: string;
   limit?: number;
+  // Optional message-length bounds. When set, the language predicate is
+  // wrapped in an AndEventPredicate with a MessageLengthPredicate child.
+  // Either bound may be set independently.
+  messageLengthMin?: number;
+  messageLengthMax?: number;
 }
 
 export interface ApiClientConfig {

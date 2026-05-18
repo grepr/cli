@@ -158,7 +158,7 @@ export abstract class ListCommand<T extends ListCommandOptions> implements IComm
       }
       const formattedData = this.formatter.formatObjects(data);
       const fs = await import('fs-extra');
-      await fs.writeFile(options.output, formattedData);
+      await fs.default.writeFile(options.output, formattedData);
 
       if (!options.quiet) {
         console.log(`✓ Output written to ${options.output}`);

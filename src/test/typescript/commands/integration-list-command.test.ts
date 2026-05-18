@@ -15,6 +15,13 @@ vi.mock('../../../../src/main/typescript/lib/api-client-factory.js', () => ({
   }))
 }));
 
+// Mock fs-extra for file writing tests
+vi.mock('fs-extra', () => ({
+  default: {
+    writeFile: vi.fn(),
+  },
+}));
+
 // Mock console methods
 const consoleSpy = {
   log: vi.spyOn(console, 'log').mockImplementation(() => {}),
@@ -441,6 +448,369 @@ describe('IntegrationListCommand', () => {
       expect(transformedIntegration.status).toBe('active');
       expect(transformedIntegration.endpoint).toBe('https://example.com');
       expect(transformedIntegration.type).toBe('otlp');
+    });
+  });
+
+  describe('File Output', () => {
+    const mockOptions = {
+      quiet: false,
+      format: 'table' as const,
+      apiBaseUrl: 'https://api.test.com',
+      authMethod: 'oauth' as const,
+      headerName: 'X-Test-Token',
+      headerValue: 'test-token',
+      orgName: 'test-org',
+      authCache: true,
+      browser: true
+    };
+
+    it('test_executeList_withOutputOption_shouldPassOutputPathToFormatAndOutput', async () => {
+      const mockIntegrations = [
+        {
+          type: 'datadog',
+          items: [
+            { id: '1', name: 'datadog-prod', status: 'active' },
+            { id: '2', name: 'datadog-dev', status: 'inactive' }
+          ]
+        }
+      ];
+
+      mockApiClient.getAllIntegrations.mockResolvedValue(mockIntegrations);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/integrations-output.json'
+      };
+
+      await command.executeList(optionsWithOutput);
+
+      const expectedFlattenedList = [
+        { id: '1', name: 'datadog-prod', status: 'active', type: 'datadog' },
+        { id: '2', name: 'datadog-dev', status: 'inactive', type: 'datadog' }
+      ];
+
+      expect((command as any).formatAndOutput).toHaveBeenCalledWith(
+        expectedFlattenedList,
+        optionsWithOutput,
+        'integrations'
+      );
+
+      // Verify output option is passed through
+      const [[, options]] = vi.mocked((command as any).formatAndOutput).mock.calls;
+      expect(options.output).toBe('/tmp/integrations-output.json');
+    });
+
+    it('test_executeList_withOutputOptionAndQuiet_shouldNotShowConsoleMessages', async () => {
+      const mockIntegrations = [
+        {
+          type: 'newrelic',
+          items: [
+            { id: '1', name: 'newrelic-main', status: 'active' }
+          ]
+        }
+      ];
+
+      mockApiClient.getAllIntegrations.mockResolvedValue(mockIntegrations);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/integrations-output.csv',
+        quiet: true
+      };
+
+      await command.executeList(optionsWithOutput);
+
+      const expectedFlattenedList = [
+        { id: '1', name: 'newrelic-main', status: 'active', type: 'newrelic' }
+      ];
+
+      expect((command as any).formatAndOutput).toHaveBeenCalledWith(
+        expectedFlattenedList,
+        optionsWithOutput,
+        'integrations'
+      );
+      // showQuerySummary is called but internally checks quiet flag
+      expect((command as any).showQuerySummary).toHaveBeenCalledWith(optionsWithOutput, 1);
+      // Verify the quiet option is set to true
+      const [[options]] = vi.mocked((command as any).showQuerySummary).mock.calls;
+      expect(options.quiet).toBe(true);
+    });
+
+    it('test_executeList_withOutputOptionAndDifferentFormats_shouldPassCorrectFormat', async () => {
+      const mockIntegrations = [
+        {
+          type: 'splunk',
+          items: [
+            { id: '1', name: 'splunk-logs', status: 'active' }
+          ]
+        }
+      ];
+
+      const formats = ['csv', 'pretty', 'raw', 'compact'] as const;
+
+      for (const format of formats) {
+        vi.clearAllMocks();
+        mockApiClient.getAllIntegrations.mockResolvedValue(mockIntegrations);
+
+        const optionsWithOutput = {
+          ...mockOptions,
+          output: `/tmp/integrations-output.${format}`,
+          format
+        };
+
+        await command.executeList(optionsWithOutput);
+
+        const expectedFlattenedList = [
+          { id: '1', name: 'splunk-logs', status: 'active', type: 'splunk' }
+        ];
+
+        expect((command as any).formatAndOutput).toHaveBeenCalledWith(
+          expectedFlattenedList,
+          optionsWithOutput,
+          'integrations'
+        );
+
+        const [[, options]] = vi.mocked((command as any).formatAndOutput).mock.calls;
+        expect(options.format).toBe(format);
+        expect(options.output).toBe(`/tmp/integrations-output.${format}`);
+      }
+    });
+
+    it('test_executeList_withOutputOptionAndEmptyIntegrations_shouldStillPassOutputOption', async () => {
+      mockApiClient.getAllIntegrations.mockResolvedValue([]);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/empty-integrations.json'
+      };
+
+      await command.executeList(optionsWithOutput);
+
+      expect((command as any).formatAndOutput).toHaveBeenCalledWith(
+        [],
+        optionsWithOutput,
+        'integrations'
+      );
+
+      const [[, options]] = vi.mocked((command as any).formatAndOutput).mock.calls;
+      expect(options.output).toBe('/tmp/empty-integrations.json');
+    });
+
+    it('test_executeList_withOutputOptionAndRelativePath_shouldPassRelativePathUnmodified', async () => {
+      const mockIntegrations = [
+        {
+          type: 'otlp',
+          items: [
+            { id: '1', name: 'otlp-collector', status: 'active' }
+          ]
+        }
+      ];
+
+      mockApiClient.getAllIntegrations.mockResolvedValue(mockIntegrations);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: './output/integrations.json'
+      };
+
+      await command.executeList(optionsWithOutput);
+
+      const [[, options]] = vi.mocked((command as any).formatAndOutput).mock.calls;
+      expect(options.output).toBe('./output/integrations.json');
+    });
+
+    it('test_executeList_withOutputOptionAndComplexIntegrations_shouldPassAllDataToFormatAndOutput', async () => {
+      const mockIntegrations = [
+        {
+          type: 'datadog',
+          items: [
+            {
+              id: 'dd-1',
+              name: 'Complex Datadog Integration',
+              config: {
+                site: 'datadoghq.com',
+                apiKey: 'encrypted',
+                tags: ['env:prod', 'team:platform']
+              },
+              metadata: {
+                createdAt: '2024-01-01T00:00:00Z',
+                createdBy: 'admin@example.com'
+              }
+            }
+          ]
+        },
+        {
+          type: 's3-data-warehouse',
+          items: [
+            {
+              id: 's3dw-1',
+              name: 'Complex S3 Warehouse',
+              config: {
+                bucket: 'my-warehouse-bucket',
+                region: 'us-west-2',
+                prefix: 'data/'
+              },
+              metadata: {
+                createdAt: '2024-01-02T00:00:00Z',
+                createdBy: 'system'
+              }
+            }
+          ]
+        }
+      ];
+
+      mockApiClient.getAllIntegrations.mockResolvedValue(mockIntegrations);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/complex-integrations.json'
+      };
+
+      await command.executeList(optionsWithOutput);
+
+      const [[integrations]] = vi.mocked((command as any).formatAndOutput).mock.calls;
+      expect(integrations).toHaveLength(2);
+      expect(integrations[0].type).toBe('datadog');
+      expect(integrations[0].config).toBeDefined();
+      expect(integrations[0].metadata).toBeDefined();
+      expect(integrations[1].type).toBe('s3-data-warehouse');
+      expect(integrations[1].config).toBeDefined();
+      expect(integrations[1].metadata).toBeDefined();
+    });
+
+    it('test_executeList_withOutputOptionAndMultipleTypes_shouldFlattenAndPassAllTypesCorrectly', async () => {
+      const mockIntegrations = [
+        {
+          type: 'datadog',
+          items: [
+            { id: 'dd1', name: 'Datadog Main' }
+          ]
+        },
+        {
+          type: 'newrelic',
+          items: [
+            { id: 'nr1', name: 'NewRelic Prod' },
+            { id: 'nr2', name: 'NewRelic Dev' }
+          ]
+        },
+        {
+          type: 'splunk',
+          items: [
+            { id: 'sp1', name: 'Splunk Logs' }
+          ]
+        }
+      ];
+
+      mockApiClient.getAllIntegrations.mockResolvedValue(mockIntegrations);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/multi-type-integrations.json'
+      };
+
+      await command.executeList(optionsWithOutput);
+
+      const [[integrations]] = vi.mocked((command as any).formatAndOutput).mock.calls;
+      expect(integrations).toHaveLength(4);
+
+      const types = integrations.map((i: any) => i.type);
+      expect(types).toContain('datadog');
+      expect(types).toContain('newrelic');
+      expect(types).toContain('splunk');
+      expect(types.filter((t: string) => t === 'newrelic')).toHaveLength(2);
+    });
+  });
+
+  describe('formatAndOutput Implementation Tests', () => {
+    let commandWithRealFormatAndOutput: IntegrationListCommand;
+    let mockFs: any;
+
+    beforeEach(async () => {
+      vi.clearAllMocks();
+      commandWithRealFormatAndOutput = new IntegrationListCommand();
+
+      // Mock the createApiClient but NOT formatAndOutput
+      (commandWithRealFormatAndOutput as any).createApiClient = vi.fn(() => mockApiClient);
+      (commandWithRealFormatAndOutput as any).showQuerySummary = vi.fn();
+
+      // Get the mocked fs-extra module
+      const fs = await import('fs-extra');
+      mockFs = vi.mocked(fs.default);
+      mockFs.writeFile.mockResolvedValue(undefined);
+    });
+
+    const mockOptions = {
+      quiet: false,
+      format: 'table' as const,
+      apiBaseUrl: 'https://api.test.com',
+      authMethod: 'oauth' as const,
+      headerName: 'X-Test-Token',
+      headerValue: 'test-token',
+      orgName: 'test-org',
+      authCache: true,
+      browser: true
+    };
+
+    it('test_formatAndOutput_withFileOutput_shouldCallFsWriteFileCorrectly', async () => {
+      const mockIntegrations = [
+        {
+          type: 'datadog',
+          items: [
+            { id: '1', name: 'datadog-prod', status: 'active' }
+          ]
+        }
+      ];
+
+      mockApiClient.getAllIntegrations.mockResolvedValue(mockIntegrations);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/test-integrations.json',
+        format: 'pretty' as const
+      };
+
+      await commandWithRealFormatAndOutput.executeList(optionsWithOutput);
+
+      // Verify fs.default.writeFile was called
+      expect(mockFs.writeFile).toHaveBeenCalledTimes(1);
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
+        '/tmp/test-integrations.json',
+        expect.any(String)
+      );
+
+      // Verify success message was logged
+      expect(consoleSpy.log).toHaveBeenCalledWith('✓ Output written to /tmp/test-integrations.json');
+    });
+
+    it('test_formatAndOutput_fsWriteFileFails_shouldThrowError', async () => {
+      const mockIntegrations = [
+        {
+          type: 'splunk',
+          items: [
+            { id: '1', name: 'splunk-logs', status: 'active' }
+          ]
+        }
+      ];
+
+      mockApiClient.getAllIntegrations.mockResolvedValue(mockIntegrations);
+
+      // Mock fs.writeFile to fail
+      const writeError = new Error('Disk full');
+      mockFs.writeFile.mockRejectedValue(writeError);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/test-integrations.json'
+      };
+
+      await expect(async () => {
+        await commandWithRealFormatAndOutput.executeList(optionsWithOutput);
+      }).rejects.toThrow('process.exit called');
+
+      expect(consoleSpy.error).toHaveBeenCalledWith(
+        'Error listing integrations:',
+        'Disk full'
+      );
     });
   });
 });

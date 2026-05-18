@@ -25,10 +25,10 @@ jobs:
       version: ${{ steps.extract.outputs.version }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
@@ -67,17 +67,20 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
-      packages: write
+      id-token: write
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm for Trusted Publishing (>= 11.5.1)
+        run: npm install -g npm@11
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
@@ -104,12 +107,10 @@ jobs:
           ls -la build/customer-distributions/
 
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           VERSION="${{ needs.check-version.outputs.version }}"
           echo "Publishing @grepr/cli@$VERSION to npm..."
-          npm publish --access public
+          npm publish --access public --provenance
           echo "✅ Successfully published @grepr/cli@$VERSION"
 
       - name: Create GitHub Release

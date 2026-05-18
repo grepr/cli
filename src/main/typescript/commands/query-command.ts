@@ -9,13 +9,17 @@ import {
   QueryCommandOptions
 } from '../types.js'
 import {
+  AndEventPredicateType,
   DatadogQueryPredicateType,
-  GreprRawLogsSourceSortOrder,
+  GreprLlmPromptResultsSourceSortOrder,
   GreprRawLogsSourceType,
   LogsSynchronousSinkType,
+  MessageLengthPredicateType,
+  SchemaEventPredicate,
   SchemaGreprRawLogsSource,
   SchemaLogsIcebergTableSource,
-  SchemaCreateJob
+  SchemaCreateJob,
+  SchemaMessageLengthPredicate
 } from '../openapi/openApiTypes.js'
 
 export class QueryCommand extends BaseCommand<QueryCommandOptions> implements ICommand {
@@ -69,6 +73,18 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
       {
         flags: '--limit <number>',
         description: 'Maximum number of records to return',
+        parser: parseInt
+      },
+      {
+        flags: '--message-length-min <number>',
+        description:
+          'Inclusive minimum message length in characters. Combined with --query as an AND predicate. Use 0 with --message-length-max 0 to find empty messages.',
+        parser: parseInt
+      },
+      {
+        flags: '--message-length-max <number>',
+        description:
+          'Inclusive maximum message length in characters. Combined with --query as an AND predicate. Use a large value (e.g., 32768) to find oversized messages with --message-length-min.',
         parser: parseInt
       }
     ];
@@ -186,6 +202,7 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
   private async createJobDefinition(options: QueryCommandOptions, datasetId: string): Promise<SchemaCreateJob> {
     try {
       const queryEngine = options.queryEngine || GreprRawLogsSourceType.grepr_raw_log_source;
+      const sourceQuery = buildSourcePredicate(options);
 
       // Build the job definition directly in code based on query engine
       return {
@@ -200,11 +217,8 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
               datasetId: datasetId,
               start: options.start || new Date(Date.now() - 10 * 60 * 1000).toISOString(), // Default: 10 minutes ago
               end: options.end || new Date().toISOString(), // Default: now
-              query: {
-                type: options.queryType || DatadogQueryPredicateType.datadog_query,
-                query: options.query || ''
-              },
-              sortOrder: options.sortOrder || GreprRawLogsSourceSortOrder.UNSORTED,
+              query: sourceQuery,
+              sortOrder: options.sortOrder || GreprLlmPromptResultsSourceSortOrder.UNSORTED,
               limit: options.limit || 100 // Default limit to stay under sync query limit
             } as SchemaGreprRawLogsSource | SchemaLogsIcebergTableSource,
             {
@@ -220,4 +234,56 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
       throw new Error(`Failed to create job definition: ${(error as Error).message}`);
     }
   }
+}
+
+/**
+ * Build a {@link SchemaMessageLengthPredicate} from optional bounds, or
+ * undefined when neither bound is set. Matches the frontend
+ * buildMessageLengthPredicate helper.
+ */
+export function buildMessageLengthPredicate(
+  options: QueryCommandOptions
+): SchemaMessageLengthPredicate | undefined {
+  const min = options.messageLengthMin;
+  const max = options.messageLengthMax;
+  const minIsNumber = typeof min === 'number' && !Number.isNaN(min);
+  const maxIsNumber = typeof max === 'number' && !Number.isNaN(max);
+  if (!minIsNumber && !maxIsNumber) {
+    return undefined;
+  }
+  const predicate: SchemaMessageLengthPredicate = {
+    type: MessageLengthPredicateType.message_length
+  };
+  if (minIsNumber) {
+    predicate.minLength = min;
+  }
+  if (maxIsNumber) {
+    predicate.maxLength = max;
+  }
+  return predicate;
+}
+
+/**
+ * Build the source-vertex query predicate by combining the language query
+ * with an optional message-length filter. When length is set the result is
+ * an AndEventPredicate; otherwise the bare language predicate is returned.
+ * An empty language query plus a length filter collapses to the length
+ * predicate alone, matching the frontend combineWithAnd behavior.
+ */
+export function buildSourcePredicate(options: QueryCommandOptions): SchemaEventPredicate {
+  const languagePredicate: SchemaEventPredicate = {
+    type: options.queryType || DatadogQueryPredicateType.datadog_query,
+    query: options.query || ''
+  };
+  const lengthPredicate = buildMessageLengthPredicate(options);
+  if (!lengthPredicate) {
+    return languagePredicate;
+  }
+  if ((options.query || '').trim() === '') {
+    return lengthPredicate;
+  }
+  return {
+    type: AndEventPredicateType.and_predicate,
+    queries: [languagePredicate, lengthPredicate]
+  };
 }

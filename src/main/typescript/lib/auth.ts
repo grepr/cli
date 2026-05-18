@@ -39,6 +39,11 @@ interface OAuthAuthConfig extends AuthConfig {
 /**
  * Client credentials (2-legged) authentication for non-interactive use.
  * Exchanges client_id + client_secret for a Bearer token via Auth0's /oauth/token endpoint.
+ *
+ * Token resolution order (in priority):
+ * 1. In-memory cache  (always checked first, no I/O)
+ * 2. Disk cache       (if authCache === true and cache file exists and token not expired)
+ * 3. Auth0 fetch      (last resort — saves result to in-memory and disk)
  */
 export class ClientCredentialsAuth {
   public config: ClientCredentialsConfig;
@@ -46,6 +51,13 @@ export class ClientCredentialsAuth {
 
   constructor(options: ApiClientConfig) {
     this.config = this.buildConfig(options);
+  }
+
+  /**
+   * Get the path to the M2M token cache file for this client ID.
+   */
+  private get tokenCachePath(): string {
+    return path.join(AUTH_CACHE_DIR, `${this.config.clientId}-m2m.json`);
   }
 
   /**
@@ -76,11 +88,49 @@ export class ClientCredentialsAuth {
   }
 
   /**
-   * Get a valid access token, fetching a new one if expired
+   * Load cached M2M token from disk. Returns null on cache miss or read error.
+   */
+  private async loadCachedToken(): Promise<TokenData | null> {
+    try {
+      if (await fs.pathExists(this.tokenCachePath)) {
+        return await fs.readJson(this.tokenCachePath);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn('Failed to load cached M2M token:', errorMessage);
+    }
+    return null;
+  }
+
+  /**
+   * Save M2M token to disk cache with restricted permissions (0600).
+   * Errors are swallowed with a warning so a write failure never blocks a CLI invocation.
+   */
+  private async saveCachedToken(tokenData: TokenData): Promise<void> {
+    try {
+      await fs.ensureDir(AUTH_CACHE_DIR, { mode: 0o700 });
+      await fs.writeJson(this.tokenCachePath, tokenData, { spaces: 2, mode: 0o600 });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn('Failed to save M2M token to cache:', errorMessage);
+    }
+  }
+
+  /**
+   * Get a valid access token, fetching a new one if expired.
+   * Checks in-memory cache first, then disk cache (if authCache is enabled), then Auth0.
    */
   private async getAccessToken(): Promise<string> {
     if (this.cachedToken && !this.isTokenExpired(this.cachedToken)) {
       return this.cachedToken.access_token;
+    }
+
+    if (this.config.authCache) {
+      const diskToken = await this.loadCachedToken();
+      if (diskToken && !this.isTokenExpired(diskToken)) {
+        this.cachedToken = diskToken;
+        return diskToken.access_token;
+      }
     }
 
     const tokenUrl = `${this.config.authBaseUrl}/oauth/token`;
@@ -101,6 +151,11 @@ export class ClientCredentialsAuth {
       const tokenData: TokenData = response.data;
       tokenData.expires_at = Date.now() + (tokenData.expires_in * 1000);
       this.cachedToken = tokenData;
+
+      if (this.config.authCache) {
+        await this.saveCachedToken(tokenData);
+      }
+
       return tokenData.access_token;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

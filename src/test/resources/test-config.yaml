@@ -1,5 +1,10 @@
 tsidNodeId: 10
 
+temporal:
+  host: localhost
+  port: 7233
+  namespace: test-grepr-investigations
+
 database:
   driverClass: org.postgresql.Driver
   url: jdbc:postgresql://localhost:5432/postgres
@@ -68,6 +73,9 @@ integrationSecretsConfig:
   provider: aws
 
 batchFlinkConfiguration:
+  fileUploadsConfig:
+    bucketName: "test-upload-bucket"
+    region: "us-east-1"
   s3VectorsConfig:
     vectorBucketName: "test-vector-bucket"
     region: "us-east-1"
@@ -84,9 +92,7 @@ batchFlinkConfiguration:
     maxSyncJobLimit: 100
     greprWarehouseLocation: "/opt/warehouse"
     catalogProperties:
-      catalog-impl: io.grepr.query.iceberg.caching.GreprCachingCatalog
-      cache-enabled: false
-      catalog-cache.cached-catalog-impl: org.apache.iceberg.hadoop.HadoopCatalog
+      catalog-impl: org.apache.iceberg.hadoop.HadoopCatalog
 
   datadogLogSinkConfig:
     logSinkUrlFormat: http://%s/api/v2/logs
@@ -166,6 +172,9 @@ flinkSessionJobConfig:
   greprServerUrl: "http://grepr-server.grepr.svc.cluster.local:8080"
 
 streamingFlinkConfiguration:
+  fileUploadsConfig:
+    bucketName: "test-upload-bucket"
+    region: "us-east-1"
   s3VectorsConfig:
     vectorBucketName: "test-vector-bucket"
     region: "us-east-1"
@@ -183,7 +192,6 @@ streamingFlinkConfiguration:
     greprWarehouseLocation: "/opt/warehouse"
     catalogProperties:
       catalog-impl: org.apache.iceberg.hadoop.HadoopCatalog
-      cache-enabled: true
 
   kafkaProperties:
     "bootstrap.servers": localhost:9092
@@ -215,6 +223,9 @@ googleChatWidgetConfig:
   paidRequestTemplate:
     webhookUrl: https://chat.googleapis.com/v1/spaces/AAAA_EfM9kQ/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=X_il6uY3G4-knX0wnq64eeSlUtxAKmtiUojWjG1045I
     templateName: organization/paid-request-widget.json
+  ssoRequestTemplate:
+    webhookUrl: https://chat.googleapis.com/v1/spaces/AAAA_EfM9kQ/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=X_il6uY3G4-knX0wnq64eeSlUtxAKmtiUojWjG1045I
+    templateName: organization/sso-request-widget.json
 
 defaultOrganizationConfig:
   enabled: false
@@ -229,7 +240,6 @@ organizationConfig:
   maxFreeTrials: 2
   freeTrialDurationDays: 14
   freeTrialConstraints:
-    maxParallelism: 1
     maxPipelines: 1
     validDatadogSites:
     - "datadoghq.com"

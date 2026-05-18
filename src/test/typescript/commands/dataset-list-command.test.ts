@@ -15,6 +15,13 @@ vi.mock('../../../../src/main/typescript/lib/api-client-factory.js', () => ({
   }))
 }));
 
+// Mock fs-extra for file writing tests
+vi.mock('fs-extra', () => ({
+  default: {
+    writeFile: vi.fn(),
+  },
+}));
+
 // Mock console methods
 const consoleSpy = {
   log: vi.spyOn(console, 'log').mockImplementation(() => {}),
@@ -366,6 +373,405 @@ describe('DatasetListCommand', () => {
       expect(transformedDataset.status).toBe('active');
       expect(transformedDataset.location).toBe('s3://bucket/path');
       expect(transformedDataset.customIdentifier).toBe('unique-id-123');
+    });
+  });
+
+  describe('File Output', () => {
+    const mockOptions = {
+      quiet: false,
+      format: 'table' as const,
+      apiBaseUrl: 'https://api.test.com',
+      authMethod: 'oauth' as const,
+      headerName: 'X-Test-Token',
+      headerValue: 'test-token',
+      orgName: 'test-org',
+      authCache: true,
+      browser: true
+    };
+
+    it('test_executeList_withOutputOption_shouldPassOutputPathToFormatAndOutput', async () => {
+      const mockDatasets = [
+        { id: '1', name: 'dataset-1', status: 'active' },
+        { id: '2', name: 'dataset-2', status: 'inactive' }
+      ];
+
+      mockApiClient.listDatasets.mockResolvedValue(mockDatasets);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/datasets-output.json'
+      };
+
+      await command.executeList(optionsWithOutput);
+
+      expect((command as any).formatAndOutput).toHaveBeenCalledWith(
+        mockDatasets,
+        optionsWithOutput,
+        'datasets'
+      );
+
+      // Verify output option is passed through
+      const [[, options]] = vi.mocked((command as any).formatAndOutput).mock.calls;
+      expect(options.output).toBe('/tmp/datasets-output.json');
+    });
+
+    it('test_executeList_withOutputOptionAndQuiet_shouldNotShowConsoleMessages', async () => {
+      const mockDatasets = [
+        { id: '1', name: 'dataset-1', status: 'active' }
+      ];
+
+      mockApiClient.listDatasets.mockResolvedValue(mockDatasets);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/datasets-output.csv',
+        quiet: true
+      };
+
+      await command.executeList(optionsWithOutput);
+
+      expect((command as any).formatAndOutput).toHaveBeenCalledWith(
+        mockDatasets,
+        optionsWithOutput,
+        'datasets'
+      );
+      // showQuerySummary is called but internally checks quiet flag
+      expect((command as any).showQuerySummary).toHaveBeenCalledWith(optionsWithOutput, 1);
+      // Verify the quiet option is set to true
+      const [[options]] = vi.mocked((command as any).showQuerySummary).mock.calls;
+      expect(options.quiet).toBe(true);
+    });
+
+    it('test_executeList_withOutputOptionAndDifferentFormats_shouldPassCorrectFormat', async () => {
+      const mockDatasets = [
+        { id: '1', name: 'dataset-1', status: 'active' }
+      ];
+
+      const formats = ['csv', 'pretty', 'raw', 'compact'] as const;
+
+      for (const format of formats) {
+        vi.clearAllMocks();
+        mockApiClient.listDatasets.mockResolvedValue(mockDatasets);
+
+        const optionsWithOutput = {
+          ...mockOptions,
+          output: `/tmp/datasets-output.${format}`,
+          format
+        };
+
+        await command.executeList(optionsWithOutput);
+
+        expect((command as any).formatAndOutput).toHaveBeenCalledWith(
+          mockDatasets,
+          optionsWithOutput,
+          'datasets'
+        );
+
+        const [[, options]] = vi.mocked((command as any).formatAndOutput).mock.calls;
+        expect(options.format).toBe(format);
+        expect(options.output).toBe(`/tmp/datasets-output.${format}`);
+      }
+    });
+
+    it('test_executeList_withOutputOptionAndEmptyDatasets_shouldStillPassOutputOption', async () => {
+      mockApiClient.listDatasets.mockResolvedValue([]);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/empty-datasets.json'
+      };
+
+      await command.executeList(optionsWithOutput);
+
+      expect((command as any).formatAndOutput).toHaveBeenCalledWith(
+        [],
+        optionsWithOutput,
+        'datasets'
+      );
+
+      const [[, options]] = vi.mocked((command as any).formatAndOutput).mock.calls;
+      expect(options.output).toBe('/tmp/empty-datasets.json');
+    });
+
+    it('test_executeList_withOutputOptionAndRelativePath_shouldPassRelativePathUnmodified', async () => {
+      const mockDatasets = [
+        { id: '1', name: 'dataset-1', status: 'active' }
+      ];
+
+      mockApiClient.listDatasets.mockResolvedValue(mockDatasets);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: './output/datasets.json'
+      };
+
+      await command.executeList(optionsWithOutput);
+
+      const [[, options]] = vi.mocked((command as any).formatAndOutput).mock.calls;
+      expect(options.output).toBe('./output/datasets.json');
+    });
+
+    it('test_executeList_withOutputOptionAndComplexDatasets_shouldPassAllDataToFormatAndOutput', async () => {
+      const complexDatasets = [
+        {
+          id: 'complex-1',
+          name: 'Complex Dataset 1',
+          metadata: {
+            source: 'logs',
+            format: 'iceberg',
+            compression: 'snappy'
+          },
+          tags: ['production', 'analytics'],
+          config: {
+            retention: 30,
+            partitionBy: 'timestamp'
+          }
+        },
+        {
+          id: 'complex-2',
+          name: 'Complex Dataset 2',
+          metadata: {
+            source: 'metrics',
+            format: 'parquet',
+            compression: 'gzip'
+          },
+          tags: ['development', 'testing'],
+          config: {
+            retention: 7,
+            partitionBy: 'date'
+          }
+        }
+      ];
+
+      mockApiClient.listDatasets.mockResolvedValue(complexDatasets);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/complex-datasets.json'
+      };
+
+      await command.executeList(optionsWithOutput);
+
+      const [[datasets]] = vi.mocked((command as any).formatAndOutput).mock.calls;
+      expect(datasets).toEqual(complexDatasets);
+      expect(datasets).toHaveLength(2);
+      expect(datasets[0].metadata).toBeDefined();
+      expect(datasets[0].tags).toBeDefined();
+      expect(datasets[0].config).toBeDefined();
+    });
+  });
+
+  describe('formatAndOutput Implementation Tests', () => {
+    let commandWithRealFormatAndOutput: DatasetListCommand;
+    let mockFs: any;
+
+    beforeEach(async () => {
+      vi.clearAllMocks();
+      commandWithRealFormatAndOutput = new DatasetListCommand();
+
+      // Mock the createApiClient but NOT formatAndOutput
+      (commandWithRealFormatAndOutput as any).createApiClient = vi.fn(() => mockApiClient);
+      (commandWithRealFormatAndOutput as any).showQuerySummary = vi.fn();
+
+      // Get the mocked fs-extra module
+      const fs = await import('fs-extra');
+      mockFs = vi.mocked(fs.default);
+      mockFs.writeFile.mockResolvedValue(undefined);
+    });
+
+    const mockOptions = {
+      quiet: false,
+      format: 'table' as const,
+      apiBaseUrl: 'https://api.test.com',
+      authMethod: 'oauth' as const,
+      headerName: 'X-Test-Token',
+      headerValue: 'test-token',
+      orgName: 'test-org',
+      authCache: true,
+      browser: true
+    };
+
+    it('test_formatAndOutput_withFileOutput_shouldCallFsWriteFileCorrectly', async () => {
+      const mockDatasets = [
+        { id: '1', name: 'dataset-1', status: 'active' },
+        { id: '2', name: 'dataset-2', status: 'inactive' }
+      ];
+
+      mockApiClient.listDatasets.mockResolvedValue(mockDatasets);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/test-datasets.json',
+        format: 'pretty' as const
+      };
+
+      await commandWithRealFormatAndOutput.executeList(optionsWithOutput);
+
+      // Verify fs.default.writeFile was called
+      expect(mockFs.writeFile).toHaveBeenCalledTimes(1);
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
+        '/tmp/test-datasets.json',
+        expect.any(String)
+      );
+
+      // Verify success message was logged
+      expect(consoleSpy.log).toHaveBeenCalledWith('✓ Output written to /tmp/test-datasets.json');
+    });
+
+    it('test_formatAndOutput_withFileOutputAndQuietMode_shouldNotLogSuccessMessage', async () => {
+      const mockDatasets = [
+        { id: '1', name: 'dataset-1', status: 'active' }
+      ];
+
+      mockApiClient.listDatasets.mockResolvedValue(mockDatasets);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/test-datasets-quiet.json',
+        quiet: true
+      };
+
+      await commandWithRealFormatAndOutput.executeList(optionsWithOutput);
+
+      // Verify fs.default.writeFile was called
+      expect(mockFs.writeFile).toHaveBeenCalledTimes(1);
+
+      // Verify success message was NOT logged (quiet mode)
+      expect(consoleSpy.log).not.toHaveBeenCalledWith(
+        expect.stringContaining('Output written to')
+      );
+    });
+
+    it('test_formatAndOutput_withFileOutput_shouldWriteFormattedData', async () => {
+      const mockDatasets = [
+        { id: '1', name: 'dataset-1', status: 'active' }
+      ];
+
+      mockApiClient.listDatasets.mockResolvedValue(mockDatasets);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/test-datasets-formatted.json',
+        format: 'raw' as const
+      };
+
+      await commandWithRealFormatAndOutput.executeList(optionsWithOutput);
+
+      // Verify fs.default.writeFile was called with formatted data
+      expect(mockFs.writeFile).toHaveBeenCalledTimes(1);
+      const [filePath, data] = mockFs.writeFile.mock.calls[0];
+
+      expect(filePath).toBe('/tmp/test-datasets-formatted.json');
+      expect(typeof data).toBe('string');
+      expect(data.length).toBeGreaterThan(0);
+    });
+
+    it('test_formatAndOutput_withDifferentFormats_shouldWriteCorrectFormat', async () => {
+      const mockDatasets = [
+        { id: '1', name: 'dataset-1', status: 'active' }
+      ];
+
+      const formats = ['csv', 'pretty', 'raw', 'compact'] as const;
+
+      for (const format of formats) {
+        vi.clearAllMocks();
+        mockApiClient.listDatasets.mockResolvedValue(mockDatasets);
+
+        const optionsWithOutput = {
+          ...mockOptions,
+          output: `/tmp/test-datasets.${format}`,
+          format
+        };
+
+        await commandWithRealFormatAndOutput.executeList(optionsWithOutput);
+
+        // Verify fs.default.writeFile was called for each format
+        expect(mockFs.writeFile).toHaveBeenCalledTimes(1);
+        expect(mockFs.writeFile).toHaveBeenCalledWith(
+          `/tmp/test-datasets.${format}`,
+          expect.any(String)
+        );
+      }
+    });
+
+    it('test_formatAndOutput_fsWriteFileFails_shouldThrowError', async () => {
+      const mockDatasets = [
+        { id: '1', name: 'dataset-1', status: 'active' }
+      ];
+
+      mockApiClient.listDatasets.mockResolvedValue(mockDatasets);
+
+      // Mock fs.writeFile to fail
+      const writeError = new Error('Permission denied: /tmp/test-datasets.json');
+      mockFs.writeFile.mockRejectedValue(writeError);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/test-datasets.json'
+      };
+
+      await expect(async () => {
+        await commandWithRealFormatAndOutput.executeList(optionsWithOutput);
+      }).rejects.toThrow('process.exit called');
+
+      expect(consoleSpy.error).toHaveBeenCalledWith(
+        'Error listing datasets:',
+        'Permission denied: /tmp/test-datasets.json'
+      );
+    });
+
+    it('test_formatAndOutput_emptyDataWithFileOutput_shouldNotWriteFile', async () => {
+      mockApiClient.listDatasets.mockResolvedValue([]);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/empty-datasets.json'
+      };
+
+      await commandWithRealFormatAndOutput.executeList(optionsWithOutput);
+
+      // Verify fs.default.writeFile was NOT called for empty data
+      expect(mockFs.writeFile).not.toHaveBeenCalled();
+
+      // Verify "No datasets found" message
+      expect(consoleSpy.log).toHaveBeenCalledWith('No datasets found.');
+    });
+
+    it('test_formatAndOutput_explicitFsDefaultCheck_shouldUseCorrectImportPattern', async () => {
+      // IMPORTANT: This test explicitly checks that the implementation uses
+      // fs.default.writeFile (line 161 of list-command.ts)
+      //
+      // The previous bug was that fs.writeFile() was called directly without
+      // accessing the default export, which caused failures in certain environments.
+      //
+      // This test ensures:
+      // 1. The dynamic import returns an object with a 'default' property
+      // 2. The 'default' property has a 'writeFile' method
+      // 3. That method is actually called when writing files
+
+      const mockDatasets = [
+        { id: 'verify-1', name: 'fs-default-verification', status: 'active' }
+      ];
+
+      mockApiClient.listDatasets.mockResolvedValue(mockDatasets);
+
+      const optionsWithOutput = {
+        ...mockOptions,
+        output: '/tmp/verify-fs-default-structure.json'
+      };
+
+      await commandWithRealFormatAndOutput.executeList(optionsWithOutput);
+
+      // Verify that fs.default.writeFile was called (not fs.writeFile)
+      // This would fail if the implementation was changed to fs.writeFile()
+      expect(mockFs.writeFile).toHaveBeenCalledTimes(1);
+
+      // Verify the exact arguments match what we expect
+      const [filepath, content] = mockFs.writeFile.mock.calls[0];
+      expect(filepath).toBe('/tmp/verify-fs-default-structure.json');
+      expect(typeof content).toBe('string');
+      expect(content).toContain('verify-1');
+      expect(content).toContain('fs-default-verification');
     });
   });
 });
