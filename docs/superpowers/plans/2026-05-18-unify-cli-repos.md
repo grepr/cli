@@ -363,9 +363,11 @@ Expected: `validate` workflow passes on the PR. The `npm-publish` workflow shoul
 
 ## Phase 2: Smoke-test npm-publish on the seed branch
 
+**Limitation discovered during execution**: `workflow_dispatch` requires the workflow file to exist on the default branch. Since `npm-publish.yml` doesn't exist on `cli@main` until Phase 5 merge, this dispatch returns HTTP 404. Phase 2 is therefore effectively deferred — the real smoke test happens automatically on the first push to main (the Phase 5 merge) which triggers the workflow via the `push: branches: [main]` paths filter. The version-skip check (`@grepr/cli@1.3.0-994a118` already exists on npm) prevents any actual publish during that first run.
+
 ### Task 2.1: Run npm-publish via workflow_dispatch on the seed branch
 
-This validates that the workflow runs to completion on the cli branch without actually publishing. We rely on the version-skip check (`npm view` confirms `@grepr/cli@<current>` exists → workflow skips publish step).
+**SKIPPED during execution** (see limitation above). Documented for completeness; the equivalent validation occurs in Task 5.2 Step 4.
 
 **Files:**
 - No changes — only verification
