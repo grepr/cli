@@ -1,45 +1,90 @@
-# Grepr CLI for Claude Code
+# Grepr CLI and Claude Code plugin
 
-> **Preview**: this plugin is in early access. Expect rough edges and please [file issues](https://github.com/grepr/cli/issues).
+The Grepr command-line tool (`@grepr/cli`) and a Claude Code plugin that lets Claude drive it for you.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-Skills for [Claude Code](https://claude.com/claude-code) that let Claude manage your [Grepr](https://grepr.ai) pipelines, datasets, integrations, and queries through the [Grepr CLI](https://docs.grepr.ai/cli) — no context-switching to docs, no remembering subcommand syntax.
+## Pick your install
 
-Once installed, Claude can:
+- **Just the CLI** — [jump to CLI section](#cli)
+- **CLI + Claude Code skills** — [jump to Claude Code plugin section](#claude-code-plugin)
 
-- Build, debug, and update log-reduction pipelines from a natural-language description.
-- Iteratively author and test Grok parsing rules against real log samples.
-- Run queries against your data lake and shape the results inline.
-- Manage datasets and integrations without leaving your editor.
+---
 
-## Requirements
+## CLI
 
-- **[Claude Code](https://claude.com/claude-code)** — the CLI, IDE extension, or desktop app.
-- **[Grepr CLI](https://docs.grepr.ai/cli)** — `npm install -g @grepr/cli` (Node.js 20+).
-- A configured Grepr org. See the [CLI configuration guide](https://docs.grepr.ai/cli#cli-configuration).
+### Install
 
-## Install
+```bash
+npm install -g @grepr/cli
+```
 
-1. Install the Grepr CLI and save a configuration:
+Alternatives:
 
-   ```bash
-   npm install -g @grepr/cli
-   grepr --org-name <your-org> config:save default --default
-   ```
+```bash
+# Run without installing
+npx @grepr/cli --help
 
-2. In Claude Code, add the marketplace and install the plugin:
+# Or with yarn
+yarn global add @grepr/cli
+```
 
-   ```
-   /plugin marketplace add grepr/cli
-   /plugin install grepr@grepr-cli
-   ```
+### Requirements
 
-That's it. The first time a skill runs a `grepr` command, you'll be prompted to sign in via your browser. Tokens cache locally; subsequent commands don't prompt.
+- Node.js 18.0.0 or higher
 
-## First steps
+### Quick start
 
-Try one of these in Claude Code after install:
+```bash
+# Save your organization configuration
+grepr --org-name your-org-name config:save myconfig --default
+
+# Query your data
+grepr --conf myconfig query --dataset-name "production-logs" --query "level:ERROR"
+
+# Create a job from a definition file
+grepr --conf myconfig job:create my-job.json
+```
+
+### Authentication
+
+The CLI uses OAuth 2.0 with browser-based login. On the first command that requires access, your browser opens to complete the flow. Tokens are cached locally; subsequent commands don't prompt.
+
+### Output formats
+
+- **Table** — human-readable (default)
+- **CSV** — for data analysis and spreadsheets
+- **JSON** — machine-readable (pretty, raw, or compact)
+
+### Docs
+
+Full command reference and advanced usage: [docs.grepr.ai/cli](https://docs.grepr.ai/cli)
+
+---
+
+## Claude Code plugin
+
+> **Preview**: this plugin is in early access. Expect rough edges and please [file issues](https://github.com/grepr/cli/issues).
+
+Skills for [Claude Code](https://claude.com/claude-code) that let Claude manage your [Grepr](https://grepr.ai) pipelines, datasets, integrations, and queries — no context-switching to docs, no remembering subcommand syntax.
+
+### Requirements
+
+- [Claude Code](https://claude.com/claude-code) — the CLI, IDE extension, or desktop app
+- Grepr CLI installed and configured (see [CLI section](#cli) above)
+
+### Install
+
+In Claude Code:
+
+```
+/plugin marketplace add grepr/cli
+/plugin install grepr@grepr-cli
+```
+
+### First steps
+
+Try these prompts in Claude Code after install:
 
 > List my running Grepr pipelines.
 
@@ -51,7 +96,7 @@ Try one of these in Claude Code after install:
 
 Claude will pick the right skill, run the CLI, and walk you through the result.
 
-## Skills included
+### Skills included
 
 | Category | Skill | What it does |
 |---|---|---|
@@ -68,20 +113,34 @@ Claude will pick the right skill, run the CLI, and walk you through the result.
 | Knowledge | `job-graph-patterns` | Common job graph patterns with examples |
 | Knowledge | `operations-reference` | Reference for available Grepr sources, transforms, and sinks |
 
-## Invocation
+### Invocation
 
 Claude Code lists skills by short name (e.g., `/build-grok`) with a `(grepr)` annotation in autocomplete. You can also invoke any skill by its fully-qualified name (e.g., `/grepr:build-grok`) — both forms work. The prefix becomes mandatory only if another installed plugin defines a skill with the same name.
 
+---
+
 ## Updating
+
+**CLI:**
+
+```bash
+npm update -g @grepr/cli
+```
+
+**Plugin:**
 
 ```
 /plugin marketplace update grepr-cli
 /plugin install grepr@grepr-cli
 ```
 
+---
+
 ## Issues and feedback
 
-Bug reports, feature requests, and feedback go to [github.com/grepr/cli/issues](https://github.com/grepr/cli/issues). For Grepr platform questions unrelated to this plugin, see [docs.grepr.ai](https://docs.grepr.ai) or contact `support@grepr.ai`.
+Bug reports and feature requests go to [github.com/grepr/cli/issues](https://github.com/grepr/cli/issues). For Grepr platform questions, see [docs.grepr.ai](https://docs.grepr.ai) or contact `support@grepr.ai`.
+
+---
 
 ## License
 
