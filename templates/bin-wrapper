@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+
+# Find the grepr.js file in the npm global installation
+# This handles both symlink and copied script scenarios
+if [ -f "$(dirname "$0")/../grepr.js" ]; then
+    # If we're in the package directory (symlinked case)
+    GREPR_SCRIPT="$(dirname "$0")/../grepr.js"
+else
+    # If we're globally installed (copied case), find via npm
+    GREPR_SCRIPT="$(dirname "$0")/../lib/node_modules/grepr/grepr.js"
+fi
+
+# Execute the actual CLI script with node, passing all arguments
+exec node "$GREPR_SCRIPT" "$@"

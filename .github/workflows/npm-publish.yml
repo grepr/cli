@@ -1,0 +1,150 @@
+name: Publish CLI to npm
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'tsconfig.json'
+      - 'scripts/**'
+      - 'templates/**'
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: 'Force publish regardless of version checks'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.check.outputs.should_publish }}
+      version: ${{ steps.extract.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Extract version from package.json
+        id: extract
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted CLI version: $VERSION"
+
+      - name: Check if version should be published
+        id: check
+        run: |
+          VERSION="${{ steps.extract.outputs.version }}"
+
+          if [ "${{ github.event.inputs.force_publish }}" == "true" ]; then
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "Force publish requested for version $VERSION"
+            exit 0
+          fi
+
+          # Check if this version exists on npm
+          if npm view "@grepr/cli@$VERSION" version >/dev/null 2>&1; then
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+            echo "Version $VERSION already exists on npm, skipping"
+          else
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "Version $VERSION not found on npm, will publish"
+          fi
+
+  publish-cli:
+    needs: check-version
+    if: needs.check-version.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build CLI
+        run: |
+          echo "Building CLI..."
+          yarn build
+
+          # Verify build output
+          ls -la build/dist/
+          echo "Verifying CLI executable..."
+          node build/dist/grepr.js --version
+
+      - name: Run tests
+        run: yarn test
+
+      - name: Create distributions
+        run: |
+          echo "Creating distribution packages..."
+          yarn dist
+
+          echo "Created distributions:"
+          ls -la build/customer-distributions/
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          echo "Publishing @grepr/cli@$VERSION to npm..."
+          npm publish --access public
+          echo "✅ Successfully published @grepr/cli@$VERSION"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ needs.check-version.outputs.version }}
+          name: CLI v${{ needs.check-version.outputs.version }}
+          body: |
+            # Grepr CLI v${{ needs.check-version.outputs.version }}
+
+            ## Installation
+
+            ```bash
+            npm install -g @grepr/cli
+            ```
+
+            ## What's Changed
+
+            This release was automatically synced from grepr-server and published to npm.
+
+            See commit history for detailed changes.
+          files: |
+            build/customer-distributions/grepr-v${{ needs.check-version.outputs.version }}.tar.gz
+            build/customer-distributions/grepr-source-v${{ needs.check-version.outputs.version }}.tar.gz
+          draft: false
+          prerelease: ${{ contains(needs.check-version.outputs.version, '-') }}
+
+      - name: Summary
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          echo "## ✅ CLI Published Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "Version \`$VERSION\` published to npm" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [npm package](https://www.npmjs.com/package/@grepr/cli)" >> $GITHUB_STEP_SUMMARY
+          echo "- [GitHub release](https://github.com/grepr/grepr-cli/releases/tag/v$VERSION)" >> $GITHUB_STEP_SUMMARY
