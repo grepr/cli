@@ -4,13 +4,15 @@ import { JsonFormatter, JsonFormatterOptions } from '../lib/json-formatter.js';
 import { ICommand } from '../lib/command-registry.js';
 import { GreprApiClient } from '../lib/api-client.js';
 import { createApiClient, ApiClientFactoryOptions } from '../lib/api-client-factory.js';
+import { OutputFormat } from '../lib/output-format.js';
+import { parseIntArg } from '../lib/option-parsers.js';
 import { CommandOption, MergeConfiguration, CommandOptionsRecord } from '../types.js';
 
 export interface CrudCommandOptions extends ApiClientFactoryOptions {
   quiet?: boolean;
   timezone?: string;
   output?: string;
-  format?: 'table' | 'csv' | 'pretty' | 'raw' | 'compact';
+  format?: OutputFormat;
   sort?: string;
   color?: boolean;
   timestamps?: boolean;
@@ -84,6 +86,16 @@ export abstract class CrudCommand<T extends CrudCommandOptions> implements IComm
   }
 
   /**
+   * Subclasses override this when they register their own `:create` command
+   * (e.g. JobCrudCommand registers a version with extra streaming-format
+   * options). Returning true tells addToProgram to skip the default create
+   * registration so the command isn't double-registered.
+   */
+  protected hasCustomCreate(): boolean {
+    return false;
+  }
+
+  /**
    * Whether this command supports update operations
    */
   protected supportsUpdate(): boolean {
@@ -123,7 +135,7 @@ export abstract class CrudCommand<T extends CrudCommandOptions> implements IComm
 
     // Get command
     if (this.supportsGet()) {
-      program
+      let getCommand = program
         .command(`${prefix}:get <id>`)
         .description(`Get a specific ${resourceName} by ID`)
         .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', 'pretty')
@@ -131,9 +143,25 @@ export abstract class CrudCommand<T extends CrudCommandOptions> implements IComm
         .option('--no-color', 'Disable colored output')
         .option('--no-timestamps', 'Hide timestamps')
         .option('--no-job-state', 'Hide job state messages')
-        .option('--max-depth <number>', 'Maximum object nesting depth for table columns', parseInt, 1)
-        .option('--max-lines <number>', 'Maximum lines per table cell', parseInt, 4)
-        .action(async (resourceId: string, options: CommandOptionsRecord, command: Command) => {
+        .option('--max-depth <number>', 'Maximum object nesting depth for table columns', parseIntArg, 1)
+        .option('--max-lines <number>', 'Maximum lines per table cell', parseIntArg, 4);
+
+      // Add subclass-specific options (e.g. --version and --resolved for jobs).
+      // Mirrors the wiring used by the update command below; without this the
+      // options declared in getGetOptions() are silently ignored.
+      this.getGetOptions().forEach(option => {
+        if (option.parser && option.defaultValue !== undefined) {
+          getCommand = getCommand.option(option.flags, option.description, option.parser, option.defaultValue as string | boolean);
+        } else if (option.parser) {
+          getCommand = getCommand.option(option.flags, option.description, option.parser);
+        } else if (option.defaultValue !== undefined) {
+          getCommand = getCommand.option(option.flags, option.description, option.defaultValue as string | boolean);
+        } else {
+          getCommand = getCommand.option(option.flags, option.description);
+        }
+      });
+
+      getCommand.action(async (resourceId: string, options: CommandOptionsRecord, command: Command) => {
           try {
             const globalOptions = command.parent?.opts() || {};
             const mergedGlobalOptions = await mergeConfiguration(globalOptions);
@@ -151,8 +179,8 @@ export abstract class CrudCommand<T extends CrudCommandOptions> implements IComm
         });
     }
 
-    // Create command
-    if (this.supportsCreate()) {
+    // Create command (skipped when a subclass registers a custom one)
+    if (this.supportsCreate() && !this.hasCustomCreate()) {
       program
         .command(`${prefix}:create <${resourceName}-file>`)
         .description(`Create a new ${resourceName} from file`)
@@ -237,7 +265,7 @@ export abstract class CrudCommand<T extends CrudCommandOptions> implements IComm
    */
   protected setupFormatter(options: T): void {
     const formatterOptions: JsonFormatterOptions = {
-      format: (options.format as 'table' | 'csv' | 'pretty' | 'raw' | 'compact') || 'pretty',
+      format: (options.format as OutputFormat) || 'pretty',
       showTimestamps: options.timestamps !== false,
       colorize: options.color !== false && process.stdout.isTTY && !options.output,
       sortBy: options.sort || 'id:asc',
@@ -302,11 +330,10 @@ export abstract class CrudCommand<T extends CrudCommandOptions> implements IComm
 
       const resourceData = await fs.readJson(resourceFile);
 
-      // Basic validation - most resources should have a name
-      if (!resourceData.name) {
-        throw new Error(`${this.getResourceName()} definition must include a name`);
-      }
-
+      // Leave shape validation to the server — different operations need
+      // different shapes (e.g. Job.UpdateApi has no `name` field but does
+      // require `fromVersion`/`desiredState`). Client-side name-only checks
+      // were rejecting otherwise-valid update payloads.
       return resourceData as TResource;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

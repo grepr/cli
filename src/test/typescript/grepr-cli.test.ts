@@ -121,7 +121,7 @@ describe('GreprQueryCLI Configuration Tests', () => {
 
       // Set defaults
       if (!result.authBaseUrl) {
-        result.authBaseUrl = 'https://grepr-prod.us.auth0.com';
+        result.authBaseUrl = 'https://auth.grepr.ai';
       }
 
       if (!result.apiBaseUrl) {
@@ -234,7 +234,7 @@ describe('GreprQueryCLI Configuration Tests', () => {
       const result = await simulateMergeConfiguration(options);
 
       expect(result.orgName).toBe('test-org');
-      expect(result.authBaseUrl).toBe('https://grepr-prod.us.auth0.com');
+      expect(result.authBaseUrl).toBe('https://auth.grepr.ai');
       expect(result.apiBaseUrl).toBe('https://test-org.app.grepr.ai/api');
       expect(result.clientId).toBe('4XOD92WjzdfT4yxWeHpwh4J2u8t9qPtS');
       expect(result.authCache).toBe(true);
@@ -470,7 +470,7 @@ describe('GreprQueryCLI Configuration Tests', () => {
       }
 
       if (!result.authBaseUrl) {
-        result.authBaseUrl = 'https://grepr-prod.us.auth0.com';
+        result.authBaseUrl = 'https://auth.grepr.ai';
       }
 
       if (!result.apiBaseUrl) {
@@ -556,7 +556,7 @@ describe('GreprQueryCLI Configuration Tests', () => {
       }
 
       if (!result.authBaseUrl) {
-        result.authBaseUrl = 'https://grepr-prod.us.auth0.com';
+        result.authBaseUrl = 'https://auth.grepr.ai';
       }
       if (!result.apiBaseUrl) {
         result.apiBaseUrl = `https://${result.orgName}.app.grepr.ai/api`;
@@ -623,7 +623,7 @@ describe('GreprQueryCLI Configuration Tests', () => {
 
       expect(result.clientId).toBe('4XOD92WjzdfT4yxWeHpwh4J2u8t9qPtS');
       expect(result.clientSecret).toBeUndefined();
-      expect(result.authBaseUrl).toBe('https://grepr-prod.us.auth0.com');
+      expect(result.authBaseUrl).toBe('https://auth.grepr.ai');
     });
   });
 });

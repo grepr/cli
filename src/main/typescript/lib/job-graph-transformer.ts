@@ -34,7 +34,7 @@ import {
   parseEdge,
   generateUUID
 } from './job-graph-utils.js';
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 
 /**
  * Options for transforming a job to a test configuration.

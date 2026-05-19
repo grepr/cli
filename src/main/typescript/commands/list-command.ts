@@ -3,13 +3,15 @@ import { JsonFormatter, JsonFormatterOptions } from '../lib/json-formatter.js';
 import { ICommand } from '../lib/command-registry.js';
 import { GreprApiClient } from '../lib/api-client.js';
 import { createApiClient, ApiClientFactoryOptions } from '../lib/api-client-factory.js';
+import { logHumanFooter, OutputFormat } from '../lib/output-format.js';
+import { parseIntArg } from '../lib/option-parsers.js';
 import { CommandOption, MergeConfiguration, CommandOptionsRecord } from '../types.js';
 
 export interface ListCommandOptions extends ApiClientFactoryOptions {
   quiet?: boolean;
   timezone?: string;
   output?: string;
-  format?: 'table' | 'csv' | 'pretty' | 'raw' | 'compact';
+  format?: OutputFormat;
   sort?: string;
   color?: boolean;
   timestamps?: boolean;
@@ -84,8 +86,8 @@ export abstract class ListCommand<T extends ListCommandOptions> implements IComm
       .option('--no-color', 'Disable colored output')
       .option('--no-timestamps', 'Hide timestamps')
       .option('--no-job-state', 'Hide job state messages')
-      .option('--max-depth <number>', 'Maximum object nesting depth for table columns', parseInt, 1)
-      .option('--max-lines <number>', 'Maximum lines per table cell', parseInt, 4)
+      .option('--max-depth <number>', 'Maximum object nesting depth for table columns', parseIntArg, 1)
+      .option('--max-lines <number>', 'Maximum lines per table cell', parseIntArg, 4)
       .action(async (options: CommandOptionsRecord, command: Command) => {
         try {
           const globalOptions = command.parent?.opts() || {};
@@ -109,7 +111,7 @@ export abstract class ListCommand<T extends ListCommandOptions> implements IComm
    */
   protected setupFormatter(options: T): void {
     const formatterOptions: JsonFormatterOptions = {
-      format: (options.format as 'table' | 'csv' | 'pretty' | 'raw' | 'compact') || 'table',
+      format: (options.format as OutputFormat) || 'table',
       showTimestamps: options.timestamps !== false,
       colorize: options.color !== false && process.stdout.isTTY && !options.output,
       sortBy: options.sort || 'id:asc',
@@ -142,7 +144,7 @@ export abstract class ListCommand<T extends ListCommandOptions> implements IComm
   ): Promise<void> {
     if (!data || data.length === 0) {
       if (!options.quiet) {
-        console.log(`No ${dataType} found.`);
+        logHumanFooter(options.format, `No ${dataType} found.`);
       }
       return;
     }
@@ -173,11 +175,10 @@ export abstract class ListCommand<T extends ListCommandOptions> implements IComm
   }
 
   /**
-   * Generate query summary showing applied filters and results
+   * Generate query summary showing applied filters and results.
    */
   protected generateQuerySummary(options: T, resultCount: number): string {
     const filters: string[] = [];
-    const duration = '0.5s'; // TODO: Track actual duration
 
     // Add filters based on options (subclasses can override)
     if (options.sort) {
@@ -186,18 +187,20 @@ export abstract class ListCommand<T extends ListCommandOptions> implements IComm
 
     const filterStr = filters.length > 0 ? filters.join(', ') : 'none';
 
-    return `\nQuery Summary:
-- Filters: ${filterStr}
-- Results: ${resultCount} ${this.getCommandName().split(':')[0]}s found
-- Duration: ${duration}`;
+    return [
+      '',
+      'Query Summary:',
+      `- Filters: ${filterStr}`,
+      `- Results: ${resultCount} ${this.getCommandName().split(':')[0]}s found`
+    ].join('\n');
   }
 
   /**
-   * Show query summary if not in quiet mode
+   * Show query summary if not in quiet mode. Routes to stderr in
+   * machine-readable formats so the stdout stream stays parseable.
    */
   protected showQuerySummary(options: T, resultCount: number): void {
-    if (!options.quiet) {
-      console.log(this.generateQuerySummary(options, resultCount));
-    }
+    if (options.quiet) return;
+    logHumanFooter(options.format, this.generateQuerySummary(options, resultCount));
   }
 }

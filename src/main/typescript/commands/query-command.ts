@@ -1,6 +1,7 @@
 import { Command } from 'commander'
 import { BaseCommand } from './base-command.js'
 import { ICommand } from '../lib/command-registry.js'
+import { parseIntArg } from '../lib/option-parsers.js'
 import {
   CommandOption,
   MergeConfiguration,
@@ -44,13 +45,8 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
       },
       {
         flags: '--sort-order <order>',
-        description: 'Sort order for results (UNSORTED, ASC, DESC)',
+        description: 'Sort order for results (UNSORTED, ASCENDING, DESCENDING)',
         defaultValue: 'UNSORTED'
-      },
-      {
-        flags: '--query-engine <engine>',
-        description: 'Query engine (grepr-raw-log-source, logs-iceberg-table-source)',
-        defaultValue: 'grepr-raw-log-source'
       },
       {
         flags: '--query-type <type>',
@@ -73,19 +69,19 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
       {
         flags: '--limit <number>',
         description: 'Maximum number of records to return',
-        parser: parseInt
+        parser: parseIntArg
       },
       {
         flags: '--message-length-min <number>',
         description:
           'Inclusive minimum message length in characters. Combined with --query as an AND predicate. Use 0 with --message-length-max 0 to find empty messages.',
-        parser: parseInt
+        parser: parseIntArg
       },
       {
         flags: '--message-length-max <number>',
         description:
           'Inclusive maximum message length in characters. Combined with --query as an AND predicate. Use a large value (e.g., 32768) to find oversized messages with --message-length-min.',
-        parser: parseInt
+        parser: parseIntArg
       }
     ];
   }
@@ -117,7 +113,7 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
       .option('--no-color', 'Disable colored output')
       .option('--no-timestamps', 'Hide timestamps')
       .option('--no-job-state', 'Hide job state messages')
-      .option('--max-lines <number>', 'Maximum lines per table cell', parseInt, 4)
+      .option('--max-lines <number>', 'Maximum lines per table cell', parseIntArg, 4)
       .action(async (options: Record<string, string | boolean | number>, command: Command) => {
         try {
           const globalOptions = command.parent?.opts() || {};
@@ -201,10 +197,11 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
 
   private async createJobDefinition(options: QueryCommandOptions, datasetId: string): Promise<SchemaCreateJob> {
     try {
-      const queryEngine = options.queryEngine || GreprRawLogsSourceType.grepr_raw_log_source;
+      // Only grepr-raw-log-source is supported for synchronous queries — the
+      // iceberg-table-source variant never signals completion under the sync
+      // sink and hangs the client. If/when that's fixed server-side, expose
+      // --query-engine again.
       const sourceQuery = buildSourcePredicate(options);
-
-      // Build the job definition directly in code based on query engine
       return {
         name: `query_tool_job_${Date.now()}`,
         execution: JobExecution.SYNCHRONOUS,
@@ -212,7 +209,7 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
         jobGraph: {
           vertices: [
             {
-              type: queryEngine,
+              type: GreprRawLogsSourceType.grepr_raw_log_source,
               name: 'source',
               datasetId: datasetId,
               start: options.start || new Date(Date.now() - 10 * 60 * 1000).toISOString(), // Default: 10 minutes ago

@@ -19,6 +19,20 @@ import { DocsGetCommand } from './commands/docs-get-command.js';
 import { CliOptions } from './types.js';
 
 /**
+ * Type predicate that narrows a Partial<CliOptions> to a fully-resolved CliOptions.
+ * Returns true when every required field has been populated (either by user input,
+ * saved config, env vars, or default values).
+ */
+function isResolvedCliOptions(options: Partial<CliOptions>): options is CliOptions {
+  return (
+    typeof options.orgName === 'string' &&
+    typeof options.authBaseUrl === 'string' &&
+    typeof options.clientId === 'string' &&
+    (options.authMethod === 'oauth' || options.authMethod === 'client-credentials')
+  );
+}
+
+/**
  * Get the version from package.json
  */
 function getVersion(): string {
@@ -130,7 +144,11 @@ class GreprQueryCLI {
 
     // Set all the defaults
     if (!options.authBaseUrl) {
-      options.authBaseUrl = 'https://grepr-prod.us.auth0.com';
+      // Auth0 custom domain. Must match the domain used when generating the
+      // Self-Service Enterprise Connection ticket in Auth0 — when Auth0
+      // federates to the customer's IdP it uses {authBaseUrl}/login/callback,
+      // and the customer's IdP only has that exact URL registered.
+      options.authBaseUrl = 'https://auth.grepr.ai';
     }
 
     if (!options.apiBaseUrl) {
@@ -142,7 +160,14 @@ class GreprQueryCLI {
       options.clientId = '4XOD92WjzdfT4yxWeHpwh4J2u8t9qPtS';
     }
 
-    return options as CliOptions;
+    if (!options.authMethod) {
+      options.authMethod = 'oauth';
+    }
+
+    if (!isResolvedCliOptions(options)) {
+      throw new Error('Internal error: required CLI options missing after default resolution');
+    }
+    return options;
   }
 
   /**

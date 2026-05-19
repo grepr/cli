@@ -3,6 +3,8 @@ import { ListCommand, ListCommandOptions } from './list-command.js';
 import { CrudCommand, CrudCommandOptions, CrudCreateUpdateOptions } from './crud-command.js';
 import { parseSinceOption } from '../lib/time-utils.js';
 import { StreamingJobExecutor } from '../lib/streaming-job-executor.js';
+import { logHumanFooter } from '../lib/output-format.js';
+import { parseIntArg } from '../lib/option-parsers.js';
 import fs from 'fs-extra';
 import { FormattableCommandOptions, CommandOption, MergeConfiguration, CommandOptionsRecord, JobExecution, JobProcessing, JobState } from '../types.js';
 import { SchemaCreateJob, SchemaUpdateJob } from '../openapi/openApiTypes.js';
@@ -15,12 +17,12 @@ export interface JobListCommandOptions extends ListCommandOptions {
   state?: JobState[];
   name?: string[];
   id?: string[];
-  version?: number;
   resolved?: boolean;
+  all?: boolean;
 }
 
 export interface JobCrudCommandOptions extends CrudCommandOptions {
-  version?: number;
+  forVersion?: number;
   resolved?: boolean;
 }
 
@@ -45,8 +47,7 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
     return [
       {
         flags: '--since <time>',
-        description: 'Filter jobs created since time (ISO 8601 timestamp or duration like PT5H, PT1D)',
-        defaultValue: 'PT6H' // Default to 6 hours ago
+        description: 'Filter to jobs that are still running or ended after this time (ISO 8601 timestamp or duration like PT5H, PT1D). Defaults to PT6H unless --all is set.'
       },
       {
         flags: '--processing <type>',
@@ -59,8 +60,7 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
       },
       {
         flags: '--state <states...>',
-        description: 'Filter by job states (CREATED, PENDING, RUNNING, etc.)',
-        defaultValue: ['PENDING', 'RUNNING', 'FINISHED'] // Smart defaults
+        description: 'Filter by job states (CREATED, PENDING, RUNNING, etc.). Defaults to PENDING,RUNNING,FINISHED unless --all is set.'
       },
       {
         flags: '--name <names...>',
@@ -69,11 +69,6 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
       {
         flags: '--id <ids...>',
         description: 'Filter by job IDs'
-      },
-      {
-        flags: '--version <number>',
-        description: 'Filter by version number',
-        parser: parseInt
       },
       {
         flags: '--resolved',
@@ -108,22 +103,15 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
   private buildJobListParams(options: JobListCommandOptions): Record<string, string | JobState[] | number | string[] | boolean> {
     const params: Record<string, string | JobState[] | number | string[] | boolean> = {};
 
-    // If --all is not specified, apply smart defaults
-    if (!(options as JobListCommandOptions & { all?: boolean }).all) {
-      // Default: show RUNNING + FINISHED jobs since 6 hours ago
-      if (!options.state) {
-        params.state = ['RUNNING', 'FINISHED', 'PENDING'];
-      }
-      if (!options.since) {
-        params.since = parseSinceOption('PT6H');
-      }
-    }
+    // Without --all, fall back to common "what's happening recently" filters.
+    // With --all, no state/since filter is applied unless the user provides one explicitly.
+    const effectiveState = options.state ?? (options.all ? undefined : ['PENDING', 'RUNNING', 'FINISHED']);
+    const effectiveSince = options.since ?? (options.all ? undefined : 'PT6H');
 
-    // Apply user-specified filters
-    if (options.since) params.since = parseSinceOption(options.since);
+    if (effectiveSince) params.since = parseSinceOption(effectiveSince);
     if (options.processing) params.processing = options.processing;
     if (options.allVersions !== undefined) params.latest = !options.allVersions;
-    if (options.state && options.state.length > 0) params.state = options.state;
+    if (effectiveState && effectiveState.length > 0) params.state = effectiveState;
     if (options.name && options.name.length > 0) params.name = options.name;
     if (options.id && options.id.length > 0) params.id = options.id;
 
@@ -144,13 +132,14 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
     if (options.name) filters.push(`name=${options.name.join(',')}`);
     if (options.sort) filters.push(`sort=${options.sort}`);
 
-    const filterStr = filters.length > 0 ? filters.join(', ') : 'defaults (RUNNING,FINISHED since 6h)';
-    const duration = '0.8s'; // TODO: Track actual duration
+    const filterStr = filters.length > 0 ? filters.join(', ') : 'defaults (PENDING,RUNNING,FINISHED since 6h)';
 
-    return `\nQuery Summary:
-- Filters: ${filterStr}
-- Results: ${resultCount} jobs found
-- Duration: ${duration}`;
+    return [
+      '',
+      'Query Summary:',
+      `- Filters: ${filterStr}`,
+      `- Results: ${resultCount} jobs found`
+    ].join('\n');
   }
 }
 
@@ -173,12 +162,20 @@ export class JobCrudCommand extends CrudCommand<JobCrudCommandOptions> {
     return 'job';
   }
 
+  // job:create has extra streaming-format options (table format, --no-color,
+  // --no-timestamps, etc.) because sync jobs stream results back. We register
+  // our own create command in addToProgram below; signal to the parent to skip
+  // its default registration so :create isn't listed twice.
+  protected hasCustomCreate(): boolean {
+    return true;
+  }
+
   protected getGetOptions(): CommandOption[] {
     return [
       {
-        flags: '--version <number>',
+        flags: '--for-version <number>',
         description: 'Get specific version',
-        parser: parseInt
+        parser: parseIntArg
       },
       {
         flags: '--resolved',
@@ -200,7 +197,7 @@ export class JobCrudCommand extends CrudCommand<JobCrudCommandOptions> {
     try {
       this.apiClient = this.createApiClient(options);
 
-      const job = await this.apiClient.getJob(jobId, options.version, options.resolved);
+      const job = await this.apiClient.getJob(jobId, options.forVersion, options.resolved);
 
       if (!job) {
         console.error(`Job ${jobId} not found`);
@@ -210,11 +207,14 @@ export class JobCrudCommand extends CrudCommand<JobCrudCommandOptions> {
       await this.formatAndOutputSingle(job as Record<string, unknown>, options);
 
       if (!options.quiet) {
-        console.log(`\nJob Details:
+        logHumanFooter(
+          options.format,
+          `\nJob Details:
 - ID: ${job.id}
 - Name: ${job.name}
 - State: ${job.state}
-- Version: ${job.version || 'latest'}`);
+- Version: ${job.version || 'latest'}`
+        );
       }
 
     } catch (error) {
@@ -242,8 +242,15 @@ export class JobCrudCommand extends CrudCommand<JobCrudCommandOptions> {
   }
 
   private async executeSynchronousJobCreate(jobDefinition: SchemaCreateJob, options: CrudCreateUpdateOptions): Promise<void> {
-    // Use the streaming job executor for synchronous jobs
-    await this.streamingExecutor.execute(jobDefinition, options as FormattableCommandOptions);
+    // Use the streaming job executor for synchronous jobs. CrudCreateUpdateOptions and
+    // FormattableCommandOptions overlap structurally but live in different inheritance
+    // trees (ApiClientFactoryOptions vs CliOptions), so the type system can't bridge
+    // them statically. Validate at runtime that the auth fields the executor needs
+    // were actually resolved by mergeConfiguration upstream, then pass through narrowed.
+    if (!isFormattableJobCreateOptions(options)) {
+      throw new Error('Internal: job create options missing required auth fields before sync execution');
+    }
+    await this.streamingExecutor.execute(jobDefinition, options);
   }
 
   private async executeAsynchronousJobCreate(jobDefinition: SchemaCreateJob, options: CrudCreateUpdateOptions): Promise<void> {
@@ -324,8 +331,8 @@ export class JobCrudCommand extends CrudCommand<JobCrudCommandOptions> {
         .description(`Create a new ${resourceName} from file`)
         .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', 'table')
         .option('-s, --sort <column:order>', 'Sort table by column (e.g., "eventTimestamp:asc")', 'eventTimestamp:asc')
-        .option('--max-depth <number>', 'Maximum object nesting depth for table columns', (v) => parseInt(v, 10), 1)
-        .option('--max-lines <number>', 'Maximum lines per table cell', (v) => parseInt(v, 10), 4)
+        .option('--max-depth <number>', 'Maximum object nesting depth for table columns', parseIntArg, 1)
+        .option('--max-lines <number>', 'Maximum lines per table cell', parseIntArg, 4)
         .option('--no-color', 'Disable colored output')
         .option('--no-timestamps', 'Hide timestamps')
         .option('--no-job-state', 'Hide job state messages')
@@ -352,5 +359,21 @@ export class JobCrudCommand extends CrudCommand<JobCrudCommandOptions> {
     super.addToProgram(program, mergeConfiguration);
   }
 
+}
+
+/**
+ * Narrows CrudCreateUpdateOptions to the additional shape that StreamingJobExecutor
+ * needs (FormattableCommandOptions). The two interfaces overlap at runtime once
+ * mergeConfiguration has populated the auth fields, but TypeScript can't bridge
+ * them statically because they sit in different inheritance trees. Checking the
+ * specific fields the executor uses is enough — the union check on authMethod also
+ * doubles as runtime validation that mergeConfiguration ran.
+ */
+function isFormattableJobCreateOptions(
+  options: CrudCreateUpdateOptions
+): options is CrudCreateUpdateOptions & FormattableCommandOptions {
+  return typeof options.authBaseUrl === 'string' &&
+    typeof options.clientId === 'string' &&
+    (options.authMethod === 'oauth' || options.authMethod === 'client-credentials');
 }
 

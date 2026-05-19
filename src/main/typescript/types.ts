@@ -7,8 +7,6 @@ import {
   PathsV1JobsGetParametersQueryExecution,
   PathsV1JobsGetParametersQueryProcessing,
   PathsV1JobsGetParametersQueryState,
-  GreprRawLogsSourceType,
-  LogsIcebergTableSourceType,
   // openapi-typescript dedupes identical SortOrder enums under one canonical
   // name; GreprLlmPromptResultsSourceSortOrder is the surviving member of
   // the dedupe equivalence class. The runtime values are the canonical
@@ -68,7 +66,6 @@ export interface QueryCommandOptions extends FormattableCommandOptions {
   datasetId?: string;
   datasetName?: string;
   sortOrder?: GreprLlmPromptResultsSourceSortOrder;
-  queryEngine?: GreprRawLogsSourceType.grepr_raw_log_source | LogsIcebergTableSourceType.logs_iceberg_table_source;
   queryType?: DatadogQueryPredicateType.datadog_query | NewRelicQueryPredicateType.newrelic_query | NrqlQueryPredicateType.nrql_query;
   query?: string;
   start?: string;

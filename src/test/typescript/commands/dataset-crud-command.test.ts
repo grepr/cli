@@ -299,22 +299,27 @@ describe('DatasetCrudCommand', () => {
       expect(mockProcessExit).toHaveBeenCalledWith(1);
     });
 
-    it('test_executeCreate_missingNameField_shouldLogErrorAndExit', async () => {
+    it('test_executeCreate_missingNameField_shouldDelegateValidationToServer', async () => {
+      // Client-side name validation was removed because Job.UpdateApi has no
+      // `name` field, and the server already validates names with a clearer
+      // error message. The CLI now sends payloads through and surfaces any
+      // server error to the user.
       const datasetWithoutName = {
         type: 'logs',
         description: 'Dataset without name'
       };
       mockFs.readJson.mockResolvedValue(datasetWithoutName);
+      mockApiClient.createDataset.mockRejectedValue(new Error('name must not be null'));
 
       await expect(async () => {
         await command.executeCreate(mockOptions);
       }).rejects.toThrow('process.exit called');
 
+      expect(mockApiClient.createDataset).toHaveBeenCalledWith(datasetWithoutName);
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error creating dataset:',
-        expect.stringContaining('dataset definition must include a name')
+        'name must not be null'
       );
-      expect(mockProcessExit).toHaveBeenCalledWith(1);
     });
 
     it('test_executeCreate_apiCreateFails_shouldLogErrorAndExit', async () => {
@@ -533,23 +538,25 @@ describe('DatasetCrudCommand', () => {
       expect(mockFs.readJson).toHaveBeenCalledWith('/path/to/dataset.json');
     });
 
-    it('test_loadResourceFromFile_shouldRejectFileWithoutName', async () => {
-      const invalidDataset = {
+    it('test_loadResourceFromFile_shouldNotEnforceClientSideNameRequirement', async () => {
+      // loadResourceFromFile used to enforce a `name` field; that check broke
+      // valid Job.UpdateApi payloads which don't include `name`. The file load
+      // path now passes the parsed JSON through unchanged.
+      const datasetWithoutName = {
         type: 'logs',
         description: 'Dataset without name'
       };
 
       mockFs.pathExists.mockResolvedValue(true);
-      mockFs.readJson.mockResolvedValue(invalidDataset);
+      mockFs.readJson.mockResolvedValue(datasetWithoutName);
+      mockApiClient.createDataset.mockResolvedValue({
+        id: 'some-id',
+        name: 'server-assigned'
+      });
 
-      await expect(async () => {
-        await command.executeCreate(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      await command.executeCreate(mockOptions);
 
-      expect(consoleSpy.error).toHaveBeenCalledWith(
-        'Error creating dataset:',
-        expect.stringContaining('dataset definition must include a name')
-      );
+      expect(mockApiClient.createDataset).toHaveBeenCalledWith(datasetWithoutName);
     });
   });
 });

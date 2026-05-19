@@ -1,7 +1,8 @@
 import chalk from 'chalk';
+import { OutputFormat } from './output-format.js';
 
 export interface JsonFormatterOptions {
-  format: 'table' | 'csv' | 'pretty' | 'raw' | 'compact';
+  format: OutputFormat;
   showTimestamps?: boolean;
   colorize?: boolean;
   sortBy?: string;
@@ -645,10 +646,9 @@ export class JsonFormatter {
    * Format job state message
    */
   formatJobState(state: string): string {
-    if (!this.options.showTimestamps) {
-      return '';
-    }
-
+    // The timestamp prefix is conditional on showTimestamps; the rest of the
+    // line (state label + human message) always renders, since `--no-timestamps`
+    // is documented as hiding the prefix only, not the whole event.
     const timestamp = this.options.showTimestamps ?
       `${new Date().toISOString()} ` : '';
 

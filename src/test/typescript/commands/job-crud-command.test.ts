@@ -183,7 +183,7 @@ describe('JobCrudCommand', () => {
     });
 
     it('test_executeGet_withVersionAndResolved_shouldPassParameters', async () => {
-      const optionsWithVersion = { ...mockOptions, version: 2, resolved: true };
+      const optionsWithVersion = { ...mockOptions, forVersion: 2, resolved: true };
       const mockJob = { id: '123', name: 'test-job', version: 2 };
 
       mockApiClient.getJob.mockResolvedValue(mockJob);
@@ -495,6 +495,10 @@ describe('JobCrudCommand', () => {
     const mockOptions = {
       resourceFile: '/path/to/sync-job.json',
       apiBaseUrl: 'https://api.test.com',
+      // mergeConfiguration resolves these before the action handler runs in production;
+      // mirror that here so isFormattableJobCreateOptions narrows to FormattableCommandOptions.
+      authBaseUrl: 'https://test-auth.example',
+      clientId: 'test-client-id',
       authMethod: 'oauth' as const,
       headerName: 'X-Test-Token',
       headerValue: 'test-token',
@@ -551,6 +555,8 @@ describe('JobCrudCommand', () => {
       const optionsWithDefaults = {
         resourceFile: '/path/to/sync-job.json',
         apiBaseUrl: 'https://api.test.com',
+        authBaseUrl: 'https://test-auth.example',
+        clientId: 'test-client-id',
         authMethod: 'oauth' as const,
         headerName: 'X-Test-Token',
         headerValue: 'test-token',

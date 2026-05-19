@@ -360,9 +360,11 @@ describe('JsonFormatter', () => {
       expect(heartbeatFormatter.formatHeartbeatStatus('FAILED', 'connection lost')).toContain('FAILED connection lost');
     });
 
-    it('should return empty string for job state when showTimestamps is false', () => {
+    it('should omit timestamp prefix but keep the state message when showTimestamps is false', () => {
+      // --no-timestamps hides the leading ISO timestamp; the [STATE] label and
+      // human message MUST still render so users see what's happening.
       const result = formatter.formatJobState('RUNNING');
-      expect(result).toBe('');
+      expect(result).toBe('[RUNNING] Job is running, processing data...');
     });
   });
 

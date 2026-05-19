@@ -2447,6 +2447,18 @@ export interface components {
       /** Format: double */
       materializedValue?: number;
     };
+    /** @description One aggregation function declaration. */
+    AggregationDecl: {
+      /** @description Function arguments. Heterogeneous; validated at pipeline construction. */
+      args?: Record<string, never>[];
+      /** @description Output suffix. Omitted = preserve source metric name. */
+      as?: string;
+      /**
+       * @description Aggregation function.
+       * @enum {string}
+       */
+      fn: AggregationDeclFn;
+    };
     /**
      * AI Pipeline Inputs Schema
      * @description Schema for the AI pipeline job graph.
@@ -2507,6 +2519,31 @@ export interface components {
        * @enum {string}
        */
       type: AndQueryNodeType;
+    };
+    /** @description One anomaly rule. */
+    AnomalyConfig: {
+      /**
+       * Format: ISO-8601
+       * @description START..END lifecycle window after the last triggering datapoint.
+       * @example PT20.345S
+       */
+      anomalyDuration: string;
+      /**
+       * @description Scalar SQL condition that fires the rule.
+       * @example obj.avg > coh.p90
+       */
+      condition: string;
+      /** @description Alias → aggregation declaration. */
+      from: {
+        [key: string]: components["schemas"]["MetricAggregation"];
+      };
+      /** @description Join expressions linking aliases (Calcite-parsed SQL). */
+      joinOn?: string[];
+      /**
+       * @description Unique rule name.
+       * @example top_decile_cpu
+       */
+      name: string;
     };
     /** @description The payload containing integration data. */
     Anthropic: {
@@ -2857,6 +2894,27 @@ export interface components {
        * @enum {string}
        */
       type: CloudTrailLogsFileSourceType;
+    };
+    /** @description One cohort-output entry. */
+    CohortOutputDecl: {
+      /** @description Aggregations to emit. Null = [{ fn: DEFAULT }]. */
+      aggregations?: components["schemas"]["AggregationDecl"][];
+      selectors?: components["schemas"]["FilterPrimitive"];
+    };
+    /** @description Cohort-identity + space-aggregation configuration. */
+    CohortsConfig: {
+      /**
+       * @description Level-prefixed attribute keys that group objects into cohorts.
+       * @example [
+       *       "resource.cluster",
+       *       "resource.region"
+       *     ]
+       */
+      identifyingAttributes?: string[];
+      /** @description Level-prefixed attribute keys describing cohorts. */
+      metadataAttributes?: string[];
+      /** @description Ordered cohort-output entries (first-match-wins). */
+      outputs?: components["schemas"]["CohortOutputDecl"][];
     };
     /** @description A complete span with its resource and instrumentation scope context. */
     CompleteSpan: {
@@ -3338,6 +3396,19 @@ export interface components {
        */
       type: DoubleDatapointType;
     };
+    /** @description Drops matching series outright. */
+    DropRule: {
+      /**
+       * @description Level-prefixed attribute key → glob pattern. All entries must match.
+       * @example {
+       *       "resource.test": "true"
+       *     }
+       */
+      attributeFilters?: {
+        [key: string]: string;
+      };
+      metricName?: components["schemas"]["MetricNameFilter"];
+    };
     /** @description Strategy to read all files from the beginning */
     EarliestReadingStrategy: {
       type: "EarliestReadingStrategy";
@@ -3630,6 +3701,19 @@ export interface components {
      */
     FileReadingStrategy: {
       type: string;
+    };
+    /** @description Combined metric-name + attribute-value filter. */
+    FilterPrimitive: {
+      /**
+       * @description Level-prefixed attribute key → glob pattern. All entries must match.
+       * @example {
+       *       "resource.env": "prod"
+       *     }
+       */
+      attributeFilters?: {
+        [key: string]: string;
+      };
+      metricName?: components["schemas"]["MetricNameFilter"];
     };
     /** @description The payload containing integration data. */
     Gemini: {
@@ -5409,6 +5493,28 @@ export interface components {
        */
       timeGranularity?: string;
     };
+    /** @description One aggregation declaration inside an anomaly rule. */
+    MetricAggregation: {
+      /** @description Aggregations to emit. Null = dimension view. */
+      aggregations?: components["schemas"]["AggregationDecl"][];
+      filters?: components["schemas"]["FilterPrimitive"];
+      /**
+       * @description Group-by tokens: 'object', 'cohort', 'series', or a level-prefixed attribute path. Empty list = global aggregation.
+       * @example [
+       *       "object",
+       *       "cohort"
+       *     ]
+       */
+      groupBy: string[];
+      /** @description Metric name or nested-aggregation alias. Null for dimension views. */
+      source?: string;
+      /**
+       * Format: ISO-8601
+       * @description Aggregation window. Defaults to timeGranularity.duration.
+       * @example PT20.345S
+       */
+      window?: string;
+    };
     /** @description OTLP-aligned metric data with nested resource, scope, and datapoint hierarchy. */
     MetricData: {
       /** Format: int64 */
@@ -5453,8 +5559,46 @@ export interface components {
        */
       type: MetricEventPredicateType;
     };
-    /** @description SQL-based metric reducer that reduces metric volume through time and space aggregation while preserving anomaly fidelity. */
+    /** @description Glob-pattern filter on metric names. */
+    MetricNameFilter: {
+      /** @description Glob patterns to exclude. Precedence over includes. */
+      excludes?: string[];
+      /** @description Glob patterns to include. Empty list matches all. */
+      includes?: string[];
+    };
+    /** @description Reduces metric volume by aggregating per-object time series into per-cohort summaries while preserving the original signal when anomaly rules fire. Series that don't belong to a monitored object flow through unchanged; series matching a drop rule are discarded. */
     MetricReducer: {
+      /** @description Anomaly rules. */
+      anomalies?: components["schemas"]["AnomalyConfig"][];
+      cohorts?: components["schemas"]["CohortsConfig"];
+      /** @description Drop rules — matching series are discarded outright. */
+      dropRules?: components["schemas"]["DropRule"][];
+      /**
+       * Format: ISO-8601
+       * @description How often the reducer flushes cohort-level output.
+       * @default PT20S
+       * @example PT20.345S
+       */
+      emitInterval: string;
+      /**
+       * Format: ISO-8601
+       * @description Watermark delay applied to give late-arriving data a chance to be aggregated.
+       * @default PT10S
+       * @example PT20.345S
+       */
+      lateArrivalWaitDuration: string;
+      /** @example operation_name */
+      name: string;
+      objects: components["schemas"]["ObjectsConfig"];
+      timeGranularity: components["schemas"]["TimeGranularity"];
+      /**
+       * @description Metric reducer. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: MetricReducerType;
+    };
+    /** @description SQL-based metric reducer that reduces metric volume through time and space aggregation while preserving anomaly fidelity. */
+    MetricReducerSql: {
       /**
        * Format: ISO-8601
        * @description Time alignment window for aggregation.
@@ -5535,7 +5679,7 @@ export interface components {
        * @description SQL-based metric reducer. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
-      type: MetricReducerType;
+      type: MetricReducerSqlType;
     };
     MetricsIcebergTableSink: {
       /** @description The id of the dataset to write to */
@@ -5732,6 +5876,24 @@ export interface components {
        */
       type: NrqlQueryPredicateType;
     };
+    /** @description Object-identity configuration. */
+    ObjectsConfig: {
+      /**
+       * @description Level-prefixed attribute keys that identify an object. Each key must have a 'resource.', 'scope.', or 'series.' prefix.
+       * @example [
+       *       "resource.host.id"
+       *     ]
+       */
+      identifyingAttributes: string[];
+      /**
+       * @description Level-prefixed attribute keys that describe an object but may change.
+       * @example [
+       *       "resource.os.version"
+       *     ]
+       */
+      metadataAttributes?: string[];
+      metricsFilter?: components["schemas"]["FilterPrimitive"];
+    };
     /** @description The payload containing integration data. */
     OpenAi: {
       /**
@@ -5830,6 +5992,7 @@ export interface components {
       | components["schemas"]["TemplateOperation"]
       | components["schemas"]["SqlOperation"]
       | components["schemas"]["TraceReducer"]
+      | components["schemas"]["MetricReducerSql"]
       | components["schemas"]["MetricReducer"]
       | components["schemas"]["DatadogStatsSink"]
       | components["schemas"]["LogsValuesSource"]
@@ -8446,6 +8609,25 @@ export interface components {
        */
       type: TemplateTraceSamplerExceptionType;
     };
+    /** @description Time-aggregation window and per-metric agg-fn overrides. */
+    TimeGranularity: {
+      /**
+       * @description Per-metric-name overrides for time aggregation.
+       * @example {
+       *       "system.cpu.utilization": "LATEST"
+       *     }
+       */
+      aggFnOverrides?: {
+        [key: string]: AggregationDeclFn;
+      };
+      /**
+       * Format: ISO-8601
+       * @description Time-aggregation window; also the slide interval used by every aggregation.
+       * @default PT20S
+       * @example PT20.345S
+       */
+      duration: string;
+    };
     /** @description Time-series rule that detects spikes by comparing short-term to long-term EWMA. */
     TimeSeriesRuleConfig: Omit<
       components["schemas"]["PatternRuleConfig"],
@@ -9249,12 +9431,14 @@ export type SchemaAddToListAttributeAction =
   components["schemas"]["AddToListAttributeAction"];
 export type SchemaAggregationAccumulator =
   components["schemas"]["AggregationAccumulator"];
+export type SchemaAggregationDecl = components["schemas"]["AggregationDecl"];
 export type SchemaAiPipelineTemplateInput =
   components["schemas"]["AiPipelineTemplateInput"];
 export type SchemaAllQueryNode = components["schemas"]["AllQueryNode"];
 export type SchemaAndEventPredicate =
   components["schemas"]["AndEventPredicate"];
 export type SchemaAndQueryNode = components["schemas"]["AndQueryNode"];
+export type SchemaAnomalyConfig = components["schemas"]["AnomalyConfig"];
 export type SchemaAnthropic = components["schemas"]["Anthropic"];
 export type SchemaAny = components["schemas"]["Any"];
 export type SchemaArrayData = components["schemas"]["ArrayData"];
@@ -9291,6 +9475,8 @@ export type SchemaCloudFormationSetupInfo =
   components["schemas"]["CloudFormationSetupInfo"];
 export type SchemaCloudTrailLogsFileSource =
   components["schemas"]["CloudTrailLogsFileSource"];
+export type SchemaCohortOutputDecl = components["schemas"]["CohortOutputDecl"];
+export type SchemaCohortsConfig = components["schemas"]["CohortsConfig"];
 export type SchemaCompleteSpan = components["schemas"]["CompleteSpan"];
 export type SchemaCompositeAttributesMergeStrategy =
   components["schemas"]["CompositeAttributesMergeStrategy"];
@@ -9326,6 +9512,7 @@ export type SchemaDatasetCreate = components["schemas"]["DatasetCreate"];
 export type SchemaDatasetRead = components["schemas"]["DatasetRead"];
 export type SchemaDatasetUpdate = components["schemas"]["DatasetUpdate"];
 export type SchemaDoubleDatapoint = components["schemas"]["DoubleDatapoint"];
+export type SchemaDropRule = components["schemas"]["DropRule"];
 export type SchemaEarliestReadingStrategy =
   components["schemas"]["EarliestReadingStrategy"];
 export type SchemaEmbeddingConfig = components["schemas"]["EmbeddingConfig"];
@@ -9351,6 +9538,7 @@ export type SchemaExternalTriggerPayload =
 export type SchemaFileFormat = components["schemas"]["FileFormat"];
 export type SchemaFileReadingStrategy =
   components["schemas"]["FileReadingStrategy"];
+export type SchemaFilterPrimitive = components["schemas"]["FilterPrimitive"];
 export type SchemaGemini = components["schemas"]["Gemini"];
 export type SchemaGreprApiKey = components["schemas"]["GreprApiKey"];
 export type SchemaGreprJobGraph = components["schemas"]["GreprJobGraph"];
@@ -9495,10 +9683,14 @@ export type SchemaMessageRe2Node = components["schemas"]["MessageRe2Node"];
 export type SchemaMessageWildcardNode =
   components["schemas"]["MessageWildcardNode"];
 export type SchemaMetricAggSpec = components["schemas"]["MetricAggSpec"];
+export type SchemaMetricAggregation =
+  components["schemas"]["MetricAggregation"];
 export type SchemaMetricData = components["schemas"]["MetricData"];
 export type SchemaMetricEventPredicate =
   components["schemas"]["MetricEventPredicate"];
+export type SchemaMetricNameFilter = components["schemas"]["MetricNameFilter"];
 export type SchemaMetricReducer = components["schemas"]["MetricReducer"];
+export type SchemaMetricReducerSql = components["schemas"]["MetricReducerSql"];
 export type SchemaMetricsIcebergTableSink =
   components["schemas"]["MetricsIcebergTableSink"];
 export type SchemaMetricsIcebergTableSource =
@@ -9516,6 +9708,7 @@ export type SchemaNewRelicQueryPredicate =
 export type SchemaNotQueryNode = components["schemas"]["NotQueryNode"];
 export type SchemaNrqlQueryPredicate =
   components["schemas"]["NrqlQueryPredicate"];
+export type SchemaObjectsConfig = components["schemas"]["ObjectsConfig"];
 export type SchemaOpenAi = components["schemas"]["OpenAi"];
 export type SchemaOperation = components["schemas"]["Operation"];
 export type SchemaOrQueryNode = components["schemas"]["OrQueryNode"];
@@ -9684,6 +9877,7 @@ export type SchemaTemplateSqlOperation =
   components["schemas"]["TemplateSqlOperation"];
 export type SchemaTemplateTraceSamplerException =
   components["schemas"]["TemplateTraceSamplerException"];
+export type SchemaTimeGranularity = components["schemas"]["TimeGranularity"];
 export type SchemaTimeSeriesRuleConfig =
   components["schemas"]["TimeSeriesRuleConfig"];
 export type SchemaTimestampReadingStrategy =
@@ -16233,6 +16427,15 @@ export enum AddToListAttributeActionType {
 export enum AggregationAccumulatorAccumulatorType {
   AVERAGE = "AVERAGE",
 }
+export enum AggregationDeclFn {
+  LATEST = "LATEST",
+  SUM = "SUM",
+  AVG = "AVG",
+  CUMULATIVE = "CUMULATIVE",
+  DEFAULT = "DEFAULT",
+  PERCENTILE = "PERCENTILE",
+  SLOPE = "SLOPE",
+}
 export enum AllQueryNodeType {
   all_query_node = "all-query-node",
 }
@@ -16532,6 +16735,9 @@ export enum MetricEventPredicateType {
 }
 export enum MetricReducerType {
   metric_reducer = "metric-reducer",
+}
+export enum MetricReducerSqlType {
+  metric_reducer_sql = "metric-reducer-sql",
 }
 export enum MetricsIcebergTableSinkType {
   metrics_iceberg_table_sink = "metrics-iceberg-table-sink",
@@ -16860,128 +17066,3 @@ export enum VendorImportedExceptionExceptionType {
 export enum WindowBasedLogarithmicSamplingType {
   window_based_logarithmic_sampling = "window-based-logarithmic-sampling",
 }
-
-
-// =============================================================================
-// Auto-generated operation type sets from flink:model
-// DO NOT EDIT - This section is generated by ModelJarCodeGenTask
-// =============================================================================
-
-export const SOURCE_TYPES = new Set<string>([
-  'bounded-datadog-source',
-  'cloudtrail-file-source',
-  'datadog-log-agent-source',
-  'datadog-log-cloud-source',
-  'datadog-metric-agent-source',
-  'datadog-metrics-cloud-source',
-  'datadog-trace-agent-source',
-  'grepr-llm-prompt-results-source',
-  'grepr-metrics-source',
-  'grepr-raw-log-source',
-  'grepr-raw-span-source',
-  'grepr-reducer-log-source',
-  'grepr-uploaded-log-file-source',
-  'llm-prompt-results-iceberg-table-source',
-  'logs-backfill-iceberg-table-source',
-  'logs-iceberg-replay-source',
-  'logs-iceberg-table-source',
-  'logs-values-source',
-  'metrics-iceberg-table-source',
-  'newrelic-log-agent-source',
-  'otlp-log-agent-source',
-  'otlp-trace-agent-source',
-  'reducer-logs-iceberg-table-source',
-  's3-file-source',
-  'spans-backfill-iceberg-table-source',
-  'splunk-log-agent-source',
-  'splunk-log-http-source',
-  'sumologic-log-agent-source',
-  'traces-iceberg-table-source'
-]);
-
-export const SINK_TYPES = new Set<string>([
-  'datadog-log-sink',
-  'datadog-metrics-sink',
-  'datadog-stats-sink',
-  'datadog-trace-sink',
-  'event-dedup-iceberg-table-sink',
-  'llm-prompt-results-iceberg-table-sink',
-  'logs-iceberg-table-sink',
-  'logs-predicates-counter',
-  'logs-sync-sink',
-  'metrics-iceberg-table-sink',
-  'metrics-sync-sink',
-  'newrelic-log-sink',
-  'otlp-log-sink',
-  'otlp-trace-sink',
-  'pattern-lookup-iceberg-table-sink',
-  'query-sink',
-  'spans-dedup-iceberg-table-sink',
-  'spans-sync-sink',
-  'splunk-log-sink',
-  'sumologic-log-sink',
-  'variant-sync-sink'
-]);
-
-export const OPERATION_TYPES = new Set<string>([
-  'clone',
-  'entity-context-aggregation',
-  'grok-parser',
-  'json-log-processor',
-  'llm-prompt',
-  'log-attributes-remapper',
-  'log-reducer',
-  'log-rules-application',
-  'log-transform',
-  'logs-branch',
-  'logs-event-sampler',
-  'logs-filter',
-  'pattern-matcher',
-  'rule-engine',
-  'sql-operation',
-  'template-operation',
-  'trace-reducer',
-  'trace-sampler',
-  'trigger-action',
-  'union'
-]);
-
-export function isSourceType(type: string): boolean {
-  return SOURCE_TYPES.has(type);
-}
-
-export function isSinkType(type: string): boolean {
-  return SINK_TYPES.has(type);
-}
-
-export function isOperationType(type: string): boolean {
-  return OPERATION_TYPES.has(type);
-}
-
-// =============================================================================
-// Auto-generated LLM attribute constants from flink:model
-// DO NOT EDIT - This section is generated by ModelJarCodeGenTask
-// =============================================================================
-
-export const LlmAttributes = {
-  PREFIX: 'grepr.llm.',
-  SUCCESS: 'grepr.llm.success',
-  RESULT: 'grepr.llm.result',
-  ERROR: 'grepr.llm.error',
-  INPUT_TOKENS: 'grepr.llm.inputTokens',
-  OUTPUT_TOKENS: 'grepr.llm.outputTokens',
-  LATENCY_MS: 'grepr.llm.latencyMs',
-  CACHED_INPUT_TOKENS: 'grepr.llm.cachedInputTokens',
-  REASONING_TOKENS: 'grepr.llm.reasoningTokens',
-  MODEL: 'grepr.llm.model',
-  COST_MICRODOLLARS: 'grepr.llm.costMicrodollars',
-  ACTIONABLE: 'grepr.llm.actionable',
-  PROMPT: 'grepr.llm.prompt',
-  ENTITY_CONTEXT: 'grepr.llm.entityContext',
-  RULES: 'grepr.llm.rules',
-  TRIGGER: 'grepr.llm.trigger',
-  TAG_JOB_ID: 'greprJobId',
-  TAG_OPERATOR: 'greprLlmOperator',
-  TAG_SUCCESS: 'greprLlmSuccess',
-  TAG_ACTIONABLE: 'greprLlmActionable'
-} as const;

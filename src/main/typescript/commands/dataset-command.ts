@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { ListCommand, ListCommandOptions } from './list-command.js';
 import { CrudCommand, CrudCommandOptions, CrudCreateUpdateOptions } from './crud-command.js';
+import { logHumanFooter } from '../lib/output-format.js';
 import { CommandOption, MergeConfiguration } from '../types.js';
 import { SchemaDatasetCreate, SchemaDatasetUpdate } from '../openapi/openApiTypes.js';
 
@@ -102,7 +103,10 @@ export class DatasetCrudCommand extends CrudCommand<DatasetCrudCommandOptions> {
       await this.formatAndOutputSingle(dataset as Record<string, unknown>, options);
 
       if (!options.quiet) {
-        console.log(`\nDataset Details:\n- ID: ${dataset.id}\n- Name: ${dataset.name}`);
+        logHumanFooter(
+          options.format,
+          `\nDataset Details:\n- ID: ${dataset.id}\n- Name: ${dataset.name}`
+        );
       }
 
     } catch (error) {

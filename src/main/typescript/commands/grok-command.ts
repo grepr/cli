@@ -3,6 +3,8 @@ import { ICommand } from '../lib/command-registry.js';
 import { GreprApiClient } from '../lib/api-client.js';
 import { createApiClient, ApiClientFactoryOptions } from '../lib/api-client-factory.js';
 import { JsonFormatter, JsonFormatterOptions } from '../lib/json-formatter.js';
+import { OutputFormat } from '../lib/output-format.js';
+import { parseIntArg } from '../lib/option-parsers.js';
 import { SchemaGrokParseResponse, SchemaGrokParseBatchRequest, GrokParserType } from '../openapi/openApiTypes.js';
 import { MergeConfiguration, CommandOptionsRecord } from '../types.js';
 import fs from 'fs-extra';
@@ -11,7 +13,7 @@ export interface GrokParseCommandOptions extends ApiClientFactoryOptions {
   quiet?: boolean;
   timezone?: string;
   output?: string;
-  format?: 'table' | 'csv' | 'pretty' | 'raw' | 'compact';
+  format?: OutputFormat;
   color?: boolean;
   timestamps?: boolean;
   pattern?: string;
@@ -62,8 +64,8 @@ export class GrokParseCommand implements ICommand {
       .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', 'raw')
       .option('--no-color', 'Disable colored output')
       .option('--no-timestamps', 'Hide timestamps')
-      .option('--max-depth <number>', 'Maximum object nesting depth for table columns', parseInt, 1)
-      .option('--max-lines <number>', 'Maximum lines per table cell', parseInt, 4)
+      .option('--max-depth <number>', 'Maximum object nesting depth for table columns', parseIntArg, 1)
+      .option('--max-lines <number>', 'Maximum lines per table cell', parseIntArg, 4)
       .action(async (options: CommandOptionsRecord, command: Command) => {
         try {
           const globalOptions = command.parent?.opts() || {};
@@ -197,7 +199,7 @@ export class GrokParseCommand implements ICommand {
    */
   private setupFormatter(options: GrokParseCommandOptions): void {
     const formatterOptions: JsonFormatterOptions = {
-      format: (options.format as 'table' | 'csv' | 'pretty' | 'raw' | 'compact') || 'raw',
+      format: (options.format as OutputFormat) || 'raw',
       showTimestamps: options.timestamps !== false,
       colorize: options.color !== false && process.stdout.isTTY && !options.output,
       sortBy: 'rule:asc',

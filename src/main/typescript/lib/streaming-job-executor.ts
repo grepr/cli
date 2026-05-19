@@ -4,6 +4,7 @@ import { createApiClient } from './api-client-factory.js';
 import { HeartbeatManager } from './heartbeat.js';
 import { JsonFormatter, JsonFormatterOptions } from './json-formatter.js';
 import { NDJsonStreamParser } from './parser.js';
+import { isMachineReadable, OutputFormat } from './output-format.js';
 import { FormattableCommandOptions, ProcessStats, HEARTBEAT_EVENTS, STREAM_EVENTS, LogEventData } from '../types.js';
 import { SchemaCreateJob } from '../openapi/openApiTypes.js';
 
@@ -18,6 +19,10 @@ export class StreamingJobExecutor {
   private streamParser: NDJsonStreamParser | null = null;
   private outputFileStream: fs.WriteStream | null = null;
   private stats: ProcessStats;
+  // Whether to emit job-state chatter ([CONNECTING], [CONNECTED], [RUNNING], [FINISHED]).
+  // Toggled off by --no-job-state and automatically suppressed for machine-readable formats
+  // so callers piping to jq/CSV don't get non-record lines mixed into stdout.
+  private showJobState = true;
 
   constructor() {
     this.stats = {
@@ -47,7 +52,7 @@ export class StreamingJobExecutor {
 
   private setupFormatter(options: FormattableCommandOptions): void {
     const formatterOptions: JsonFormatterOptions = {
-      format: (options.format as 'table' | 'csv' | 'pretty' | 'raw' | 'compact') || 'table',
+      format: (options.format as OutputFormat) || 'table',
       showTimestamps: options.timestamps !== false,
       colorize: options.color !== false && process.stdout.isTTY && !options.output,
       sortBy: options.sort || 'eventTimestamp:asc',
@@ -186,10 +191,12 @@ export class StreamingJobExecutor {
     const duration = this.stats.endTime - (this.stats.startTime || 0);
     this.stats.duration = this.formatDuration(duration);
 
-    if (this.formatter) {
-      console.log(this.formatter.formatJobState(finalState));
-    } else {
-      console.log(`Job completed with state: ${finalState}`);
+    if (this.showJobState) {
+      if (this.formatter) {
+        console.log(this.formatter.formatJobState(finalState));
+      } else {
+        console.log(`Job completed with state: ${finalState}`);
+      }
     }
 
     this.printFinalState();
@@ -274,9 +281,16 @@ export class StreamingJobExecutor {
     const duration = this.stats.endTime - (this.stats.startTime || 0);
     this.stats.duration = this.formatDuration(duration);
 
-    // Summary always goes to console, not to file
+    // Summary contains non-JSON lines ("Records processed: 3", "Duration: 4s") that
+    // would corrupt machine-readable output piped to jq/CSV parsers. Route to stderr
+    // in those modes so it stays visible to humans but doesn't pollute stdout.
     if (this.formatter) {
-      console.log(this.formatter.formatSummary(this.stats));
+      const summary = this.formatter.formatSummary(this.stats);
+      if (this.showJobState) {
+        console.log(summary);
+      } else {
+        console.error(summary);
+      }
     }
   }
 
@@ -302,7 +316,12 @@ export class StreamingJobExecutor {
     this.setupFormatter(options);
     this.stats.startTime = Date.now();
 
-    if (!options.quiet) {
+    // Machine-readable formats (compact, raw, csv) suppress job-state chatter by default
+    // so callers piping to jq/CSV-parsers don't see interleaved status lines. Explicit
+    // --no-job-state always wins. Human-readable formats (table, pretty) keep chatter on.
+    this.showJobState = options.jobState !== false && !isMachineReadable(options.format);
+
+    if (!options.quiet && this.showJobState) {
       if (this.formatter) {
         console.log(this.formatter.formatConnectionStatus('CONNECTING', `(${options.orgName})`));
       }
@@ -317,7 +336,7 @@ export class StreamingJobExecutor {
     // Setup event handlers
     this.setupEventHandlers(options, options.output);
 
-    if (!options.quiet) {
+    if (!options.quiet && this.showJobState) {
       if (this.formatter) {
         console.log(this.formatter.formatConnectionStatus('CONNECTED'));
         console.log(this.formatter.formatJobState('RUNNING'));

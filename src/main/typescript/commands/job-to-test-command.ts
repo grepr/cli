@@ -18,8 +18,9 @@
  */
 
 import { Command } from 'commander';
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 import { ICommand } from '@/lib/command-registry';
+import { parseIntArg } from '@/lib/option-parsers';
 import { JobExecution, JobProcessing, MergeConfiguration } from '@/types';
 import { SchemaCreateJob } from '@/openapi/openApiTypes';
 import { transformJobToTest, showDiff, JobToTestOptions } from '@/lib/job-graph-transformer';
@@ -44,8 +45,7 @@ export class JobToTestCommand implements ICommand {
     program
       .command('job:to-test <input-file>')
       .description('Transform a job configuration for testing')
-      // Output options
-      .option('-o, --output <file>', 'Output file (default: stdout)')
+      // Output options (note: -o, --output is registered as a global flag on the program)
       .option('--no-pretty', 'Disable pretty printing')
       .option('--show-diff', 'Show transformation diff')
 
@@ -59,7 +59,7 @@ export class JobToTestCommand implements ICommand {
       .option('--query <query>', 'Datadog syntax query for dataset source (optional, requires --dataset-id)')
       .option('--start <time>', 'Start time (ISO 8601)')
       .option('--end <time>', 'End time (ISO 8601)')
-      .option('--limit-records <n>', 'Limit for batch sources', (v) => parseInt(v, 10), 1000)
+      .option('--limit-records <n>', 'Limit for batch sources', parseIntArg, 1000)
 
       // Sink options
       .option('--test-dataset <id>', 'Test dataset ID for async sinks (enables tagging)')
@@ -67,30 +67,37 @@ export class JobToTestCommand implements ICommand {
       // Test metadata
       .option('--test-tag <tag>', 'Custom test tag (default: auto-generated)')
       .option('--test-name <name>', 'Custom test job name (default: {original}_test)')
-      .action(async (inputFile: string, options: JobToTestOptions & { pretty?: boolean; showDiff?: boolean; output?: string }) => {
+      .action(async (
+        inputFile: string,
+        options: JobToTestOptions & { pretty?: boolean; showDiff?: boolean; output?: string },
+        command: Command
+      ) => {
         try {
+          // Merge global options (-o, --output, --quiet, etc.) with sub-command options.
+          // Same pattern used by ListCommand/CrudCommand for consistent flag handling.
+          const merged = { ...command.parent?.opts(), ...options };
+
           // Step 1: Validate that options are valid and compatible
-          this.validateOptions(options);
+          this.validateOptions(merged);
 
           // Step 2: Load the original job definition from file
           const originalJob = await this.loadJobFromFile(inputFile);
 
           // Step 3: Transform the job to test configuration
-          const transformedJob = transformJobToTest(originalJob, options);
+          const transformedJob = transformJobToTest(originalJob, merged);
 
           // Step 4: Show diff if requested (before outputting JSON)
-          if (options.showDiff) {
+          if (merged.showDiff) {
             showDiff(originalJob, transformedJob);
           }
 
           // Step 5: Format the output (pretty or compact JSON)
-          const output = this.formatOutput(transformedJob, options.pretty !== false);
+          const output = this.formatOutput(transformedJob, merged.pretty !== false);
 
           // Step 6: Write to file or stdout
-          if (options.output) {
-            // noinspection TypeScriptUnresolvedReference
-            await fs.writeFile(options.output, output);
-            console.log(`✓ Test job written to ${options.output}`);
+          if (merged.output) {
+            await fs.writeFile(merged.output, output);
+            console.log(`✓ Test job written to ${merged.output}`);
           } else {
             console.log(output);
           }

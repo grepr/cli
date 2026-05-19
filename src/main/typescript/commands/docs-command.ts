@@ -25,6 +25,26 @@ export interface DocsSearchOptions {
 }
 
 /**
+ * Translates Commander's generic CommandOptionsRecord into the typed
+ * DocsSearchOptions shape. Each field is extracted and runtime-validated against
+ * its declared type so unions narrow naturally instead of via `as` assertion.
+ * Unknown values fall through as undefined so consumers fall back to defaults.
+ */
+function parseDocsSearchOptions(opts: CommandOptionsRecord): DocsSearchOptions {
+  const format = opts.format;
+  const type = opts.type;
+  return {
+    limit: typeof opts.limit === 'string' ? opts.limit : undefined,
+    threshold: typeof opts.threshold === 'string' ? opts.threshold : undefined,
+    format: format === 'pretty' || format === 'json' || format === 'compact' ? format : undefined,
+    color: typeof opts.color === 'boolean' ? opts.color : undefined,
+    quiet: typeof opts.quiet === 'boolean' ? opts.quiet : undefined,
+    context: typeof opts.context === 'string' ? opts.context : undefined,
+    type: type === 'all' || type === 'doc' || type === 'api' || type === 'schema' ? type : undefined,
+  };
+}
+
+/**
  * CLI command for searching Grepr documentation using semantic search.
  *
  * This command provides natural language search over the bundled documentation
@@ -61,9 +81,14 @@ export class DocsSearchCommand implements ICommand {
       .option('-c, --context <tokens>', 'Tokens of context per section (default: 300)', '300')
       .option('-t, --type <filter>', 'Filter by type: doc (default), all, api, schema', 'doc')
       .option('--no-color', 'Disable colored output')
-      .action(async (query: string, options: CommandOptionsRecord) => {
+      .action(async (query: string, options: CommandOptionsRecord, command: Command) => {
         try {
-          await this.execute(query, options as DocsSearchOptions);
+          // Merge global options (--quiet, --debug, --timezone, etc.) so they
+          // reach the subcommand, matching the pattern used by every other
+          // ICommand implementation in this CLI.
+          const globalOptions = command.parent?.opts() || {};
+          const merged = { ...globalOptions, ...options };
+          await this.execute(query, parseDocsSearchOptions(merged));
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           console.error(`Error executing ${this.getCommandName()}:`, errorMessage);
@@ -94,7 +119,7 @@ export class DocsSearchCommand implements ICommand {
     const results = await search.search(query, {
       limit,
       threshold,
-      type: options.type as 'all' | 'doc' | 'api' | 'schema' | undefined,
+      type: options.type,
       contextTokens
     });
 

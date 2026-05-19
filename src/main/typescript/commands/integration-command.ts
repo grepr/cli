@@ -1,5 +1,6 @@
 import { ListCommand, ListCommandOptions } from './list-command.js';
 import { CrudCommand, CrudCommandOptions, CrudCreateUpdateOptions } from './crud-command.js';
+import { logHumanFooter } from '../lib/output-format.js';
 import { CommandOption } from '../types.js';
 
 // Integration-specific interfaces extending the base interfaces
@@ -97,7 +98,10 @@ export class IntegrationCrudCommand extends CrudCommand<IntegrationCrudCommandOp
       await this.formatAndOutputSingle(integration as Record<string, unknown>, options);
 
       if (!options.quiet) {
-        console.log(`\nIntegration Details:\n- ID: ${integration.id}\n- Name: ${integration.name}\n- Type: ${type}`);
+        logHumanFooter(
+          options.format,
+          `\nIntegration Details:\n- ID: ${integration.id}\n- Name: ${integration.name}\n- Type: ${type}`
+        );
       }
 
     } catch (error) {

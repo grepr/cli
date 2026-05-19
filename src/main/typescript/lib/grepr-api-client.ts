@@ -41,6 +41,19 @@ import {
 } from '../types.js'
 
 /**
+ * Returns a copy of headers safe to log: bearer tokens are truncated so debug
+ * output pasted into tickets / chat doesn't leak a usable credential.
+ */
+function redactSensitiveHeaders(headers: Headers): Record<string, string> {
+  const result = Object.fromEntries(headers.entries());
+  const auth = result.authorization;
+  if (auth) {
+    result.authorization = auth.replace(/(Bearer\s+\S{8})\S+/, '$1...[REDACTED]');
+  }
+  return result;
+}
+
+/**
  * Main API client for the Grepr CLI using openapi-fetch.
  * This follows the same patterns as the frontend API client.
  */
@@ -74,7 +87,7 @@ export class GreprApiClient {
         });
         if (config.debug) {
           console.log('Request:', request.method, request.url);
-          console.log('Headers:', Object.fromEntries(request.headers.entries()));
+          console.log('Headers:', redactSensitiveHeaders(request.headers));
         }
       },
 

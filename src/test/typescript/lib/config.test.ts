@@ -24,7 +24,7 @@ describe('ConfigManager', () => {
       const config: SavedCliConfig = {
         orgName: 'test-org',
         apiBaseUrl: 'https://test-org.app.grepr.ai/api',
-        authBaseUrl: 'https://grepr-prod.us.auth0.com',
+        authBaseUrl: 'https://auth.grepr.ai',
         authMethod: 'oauth',
         authCache: true,
         browser: true
@@ -307,7 +307,7 @@ describe('ConfigManager', () => {
       const cliOptions = {
         orgName: 'test-org',
         apiBaseUrl: 'https://test.app.grepr.ai/api',
-        authBaseUrl: 'https://grepr-prod.us.auth0.com',
+        authBaseUrl: 'https://auth.grepr.ai',
         authMethod: 'oauth' as const,
         clientId: 'test-client-id',
         authCache: true,
@@ -331,7 +331,7 @@ describe('ConfigManager', () => {
     it('test_extractSaveableConfig_systemTimezone_shouldNotBeSaved', () => {
       const cliOptions = {
         orgName: 'test-org',
-        authBaseUrl: 'https://grepr-prod.us.auth0.com',
+        authBaseUrl: 'https://auth.grepr.ai',
         authMethod: 'oauth' as const,
         clientId: 'test-client-id',
         authCache: true,

@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command } from 'commander';
 import { JobToTestCommand } from '@/commands/job-to-test-command.js';
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
 
@@ -26,6 +26,9 @@ describe('JobToTestCommand', () => {
     command = new JobToTestCommand();
     program = new Command();
     program.exitOverride();
+    // Mirror the global -o/--output flag from grepr.ts so tests exercise
+    // the same parent-options merging path that production uses.
+    program.option('-o, --output <file>', 'Output results to file instead of stdout');
 
     // Create temp directory for test files
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'job-to-test-'));
@@ -62,8 +65,9 @@ describe('JobToTestCommand', () => {
       expect(optionNames).toContain('--processing');
       expect(optionNames).toContain('--dataset-id');
       expect(optionNames).toContain('--test-dataset');
-      expect(optionNames).toContain('--output');
       expect(optionNames).toContain('--show-diff');
+      // --output is a global program flag, not a sub-command flag — verified separately below.
+      expect(optionNames).not.toContain('--output');
     });
   });
 

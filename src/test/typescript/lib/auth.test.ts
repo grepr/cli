@@ -28,7 +28,7 @@ const { ClientCredentialsAuth } = await import('../../../main/typescript/lib/aut
 const BASE_CONFIG: ApiClientConfig = {
   orgName: 'test-org',
   apiBaseUrl: 'https://test.app.grepr.ai/api',
-  authBaseUrl: 'https://grepr-prod.us.auth0.com',
+  authBaseUrl: 'https://auth.grepr.ai',
   authMethod: 'client-credentials',
   clientId: 'test-client-id',
   clientSecret: 'test-client-secret',
