@@ -42,7 +42,7 @@ broken:
 
 ```bash
 grepr query --dataset-id <RAW_DS> --query "<user's filter>" \
-  --start <T0> --end <T1> --limit 50 -f raw > build/grok-samples.json
+  --start <T0> --end <T1> --limit 50 -f raw > grok-samples.json
 ```
 
 Look at the `message` field of the returned logs. The pattern you need to
@@ -59,7 +59,52 @@ Recommended pattern shape:
 - Pin to the start of the message (`^`) if the format is consistent.
 - Don't over-extract — only fields the customer actually queries on.
 
-## Step 4: Build the Patch
+## Step 4: Check for Attribute-Name Collisions
+
+Before testing, sweep your proposed capture names against fields the
+pipeline's remapper and reducer already claim. A capture that collides
+with a reserved attribute produces a **mixed-type array at runtime**
+(e.g. `status: ["info", 404]`) — silent data corruption that won't show
+up unless someone inspects the actual values, not just the match rate.
+
+Collect the names you need to check against. From the resolved remapper
+(visible in `describe-pipeline` or `job:get --resolved`), pull every
+entry in:
+
+- `messageReservedAttributes` (and the leaf names in `…Paths`)
+- `serviceReservedAttributes` / `Paths`
+- `hostReservedAttributes` / `Paths`
+- `statusReservedAttributes` / `Paths`
+- `timestampReservedAttributes` / `Paths`
+- `traceIdReservedAttributes` / `Paths`
+
+And from the resolved reducer:
+
+- `partitionByAttributes`
+- The leaf names in `partitionByAttributePaths`
+
+For each grok capture name in your pattern, check whether it collides
+with any of the above. The frequent offenders are `service`, `host`,
+`status`, `timestamp`, `level`, `severity`, `trace_id`.
+
+If you find a collision, **rename the grok capture before going further**.
+Common rename pattern: prefix with the domain (`http_status_code` instead
+of `status`, `client_ip_addr` instead of `host`).
+
+### Telling the user about a rename
+
+When you rename a user-requested field name, **say so before the test
+step**, not in the final approval summary. One line is enough:
+
+> "I'm renaming `status` → `http_status_code` because the remapper's
+> `statusReservedAttributes` already claims `status`. The collision
+> would produce a mixed-type array on every log. Reply if you'd prefer
+> a different name; otherwise I'll proceed."
+
+If the user doesn't object, continue with the renamed capture. If they
+do, use their suggestion.
+
+## Step 5: Build the Patch
 
 Two cases:
 
@@ -80,7 +125,7 @@ first grok-parser found):
 }
 ```
 
-Save to `build/patch.json`.
+Save to `patch.json`.
 
 ### Case B — No grok parser in the pipeline
 
@@ -97,6 +142,7 @@ position. No manual wiring required.
       "parser": {
         "type": "grok-parser",
         "name": "http_access_grok",
+        "predicate": { "type": "datadog-query", "query": "source:my_service" },
         "patterns": ["%{IPORHOST:client_ip} - %{USER:user} \\[%{HTTPDATE:ts}\\] \"%{WORD:method} %{NOTSPACE:path}\""]
       }
     }
@@ -104,9 +150,25 @@ position. No manual wiring required.
 }
 ```
 
-## Step 5: Hand Off to test-pipeline-change
+### Prefer scoping the parser with a predicate
 
-Invoke `grepr:test-pipeline-change` with `<JOB_ID>` and `build/patch.json`.
+When the pattern only makes sense for one log shape (e.g. a specific
+source, service, or `type`), include a `predicate` on the grok parser
+that restricts which logs it tries to match. Without a predicate, the
+parser runs on every log in the pipeline — non-matches are cheap but
+not free, and a loose pattern can over-match shapes it shouldn't.
+
+The predicate uses the same query-string vocabulary as the rest of the
+pipeline (e.g. `source:pipeline-seed-log-generator`, `service:checkout`,
+`@source.type:http_access`). Pick the narrowest selector that captures
+the log shape the pattern is for.
+
+Skip the predicate only when the grok parser is meant to be
+pipeline-wide (e.g. a catch-all that runs on everything).
+
+## Step 6: Hand Off to test-pipeline-change
+
+Invoke `grepr:test-pipeline-change` with `<JOB_ID>` and `patch.json`.
 That skill:
 - Generates the plan (`pipeline:edit`).
 - Runs the patched config against recent raw data via `job:to-test
@@ -120,10 +182,17 @@ That skill:
 
 | What | Good sign |
 |------|-----------|
-| `attributes.client_ip` (or your target attrs) present | On most matching logs, not just one |
-| `attributes.<attr>` values | Look like the right type (not the raw pattern) |
+| `attributes.<your-fields>` present | On most matching logs, not just one |
+| `attributes.<your-fields>` values | Look like the right type (integer / string), not the raw pattern |
+| **No mixed-type arrays** | `"status": ["info", 404]` means a collision the pre-check missed — abort, rename, retest |
 | Non-matching logs unchanged | The grok parser didn't break logs it shouldn't have touched |
 | Reduction % | Unchanged or slightly better (more attributes = better grouping potential) |
+
+The mixed-type-array check is the one Step 4 is supposed to make redundant
+— but it's the failure mode that's silently destructive, so verify
+explicitly even if you ran the pre-check. Grep the patched draft output
+for `"<your-capture-name>": [` for each captured field; any match means a
+collision slipped through.
 
 ## Common Failure Modes
 
@@ -133,6 +202,14 @@ That skill:
   too much. Use `%{NOTSPACE:foo}` or `%{WORD:foo}` instead.
 - **`add-grok-rule` fails with "no grok-parser found in input.parsers"**:
   you're in Case B — use `add-parser` to introduce the grok parser first.
+- **Field collides with a remapper-reserved attribute**: capture comes
+  back as a mixed-type array (e.g. `"status": ["info", 404]`). Caught by
+  the Step 4 pre-check; if it slipped through, rename the grok capture
+  (`status` → `http_status_code`) and re-test.
+- **Pattern matches more logs than intended**: a grok parser without a
+  `predicate` runs on every log in the pipeline. If your pattern is
+  loose enough to false-positive on other log shapes, add a `predicate`
+  scoped to the source/service/type the pattern is actually for.
 
 ## Hand-off Boundary
 

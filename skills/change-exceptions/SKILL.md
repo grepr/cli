@@ -128,7 +128,7 @@ only pass the predicate.
 
 ## Step 4: Hand Off to test-pipeline-change
 
-Invoke `grepr:test-pipeline-change` with `<JOB_ID>` and `build/patch.json`.
+Invoke `grepr:test-pipeline-change` with `<JOB_ID>` and `patch.json`.
 
 ### What to verify in the test output
 

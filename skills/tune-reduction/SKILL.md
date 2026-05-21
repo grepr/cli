@@ -45,10 +45,22 @@ explicitly approves the change.
 
 ## Step 1: Get Context
 
-Run `grepr:describe-pipeline <JOB_ID>` first. You need:
-- The raw dataset ID (sources section)
+You need:
+- The raw dataset ID (from the source vertex)
 - The current remapper settings (`messageReservedAttributes` / `Paths`)
-- The current reducer settings (`partitionByAttributes` / `Paths`, `logReducerExceptions`, `attributeMergeStrategyEntries`)
+- The current reducer settings (`partitionByAttributes` / `Paths`,
+  `logReducerExceptions`, `attributeMergeStrategyEntries`)
+
+Two ways to fetch these — pick based on what you need:
+
+- **`grepr:describe-pipeline <JOB_ID>`** when you want the full structural
+  view, want to verify topology, or are about to make non-obvious
+  decisions and the wider context will inform them.
+- **`grepr job:get <JOB_ID> --resolved -f raw`** when you only need a
+  couple of fields (e.g. raw dataset ID + reducer config) and the
+  describe-pipeline output would be overkill. Faster and quieter.
+
+Either is fine — don't run both.
 
 ## Step 2: Quick Diagnosis Table
 
@@ -94,6 +106,31 @@ message. Common candidates (try in order):
 names, hostnames. These have unbounded cardinality and produce one pattern
 per log.
 
+### Survey for multiple empty-message shapes before patching
+
+Empty-message logs from one source usually come in **multiple shapes**, not
+one. Skipping this step is the #1 cause of "the patch reduced empty
+messages but didn't eliminate them" — you fixed one shape and missed three
+others.
+
+For each distinct empty-message log shape in your sample, identify the
+candidate path that would carry the message. The simplest way:
+
+- Bucket the empty-message sample by something stable (service, source,
+  the log's `type` or `kind` field, or in test pipelines the `seed_case`
+  tag).
+- For each bucket, look at one example log and ask "where does the
+  human-readable text actually live?"
+
+Build one patch with **all** the candidate paths, not just the first one
+you find. The reducer's `messageReservedAttributePaths` accepts multiple
+paths and picks the first one present per log, so listing several is safe
+and cheap. Approving + applying one larger patch beats two redeploys for
+two patches.
+
+If you genuinely see only one shape in a representative sample (say, 100+
+records), one path is fine — just be deliberate about that conclusion.
+
 ### Build the Patch
 
 Each chosen candidate becomes an `add-message-attribute` operation:
@@ -107,7 +144,7 @@ Each chosen candidate becomes an `add-message-attribute` operation:
 }
 ```
 
-Save to `build/patch.json`.
+Save to `patch.json`.
 
 ## Step 4: Check for Bypassing Exceptions
 
@@ -220,7 +257,7 @@ URLs with path params (use `request.route` if present, not `request.path`).
 **Never apply directly.** Hand the patch to `test-pipeline-change`:
 
 ```
-test-pipeline-change with --job-id <JOB_ID> --patch build/patch.json
+test-pipeline-change with --job-id <JOB_ID> --patch patch.json
 ```
 
 That skill will:
@@ -240,6 +277,17 @@ Report the metrics to the user and ask them to approve.
   than serial test cycles).
 - **Sample bias** — query a few different time windows; reduction can vary
   hourly with traffic mix.
+- **Baseline vs patched draft volume mismatch** — `pipeline:draft` samples
+  a short window of live streaming traffic, so the baseline and patched
+  runs hit different records. Check the total record counts before
+  trusting the percentage comparison:
+  - If the two runs differ by **>20%** in total record count, the windows
+    weren't comparable. Re-run both (longer window if possible) or note
+    the limitation explicitly when you present results.
+  - A literal **0% empty after patch** when the baseline was 5–15% empty
+    is suspicious — verify with a second patched run or a longer window
+    before trusting it. Realistic full-coverage fixes leave a tail of
+    low-single-digit %, not zero.
 - **Don't tune reduction by lowering `dedupThreshold`** — that just lies
   about how many logs you saw. Fix the upstream cause.
 - **The reducer dedupes on the post-mask form of `message`** — masks like

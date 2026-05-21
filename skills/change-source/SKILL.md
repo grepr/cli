@@ -107,7 +107,7 @@ Use the integration's documented source type. Common types:
 
 ## Step 4: Hand Off to test-pipeline-change
 
-Invoke `grepr:test-pipeline-change` with `<JOB_ID>` and `build/patch.json`.
+Invoke `grepr:test-pipeline-change` with `<JOB_ID>` and `patch.json`.
 
 The plan's classification will be `touches-source`, which the draft
 harness allows (unlike sink changes, source ingest is testable

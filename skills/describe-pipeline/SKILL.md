@@ -27,18 +27,39 @@ referencing vertices or fields that don't exist in this specific pipeline.
   configuration."
 - As a building block for other skills (they invoke this first).
 
-## Step 1: Fetch the Resolved Job
+## Step 1: Resolve to a Job ID
+
+`job:get` requires the job ID, not the pipeline name. If the user gave you a
+name (or you're not sure which they gave you), list jobs and find the matching
+`id` first — don't call `job:get <name>` and let it 404:
+
+```bash
+grepr job:list -f raw 2>&1 | head -200
+```
+
+Match the user's input against either the `id` or `name` field, then use the
+`id` for the next step.
+
+## Step 2: Fetch the Resolved Job
 
 ```bash
 grepr job:get <JOB_ID> --resolved -f raw
 ```
 
-`--resolved` is critical. A pipeline built from a template (the common case)
-ships its config as template inputs that get expanded server-side at runtime.
-The resolved form is what's actually running — and what `pipeline:edit`
-operates on.
+`--resolved` is what makes the rest of this skill possible. Template-backed
+pipelines (the common case) carry their config as template inputs that get
+expanded server-side; the resolved form is what's actually running, with all
+vertex names and edges visible.
 
-## Step 2: Categorize Vertices
+**Important callout for the user**: the resolved view's vertex names often
+carry a `template_operation__` prefix (or similar) — that's a template
+expansion artifact, not something they'd reference in a patch. **Edits go
+through `tune-reduction` / `tune-grok` / `change-*` skills, which operate on
+template inputs, not resolved vertex names.** Note this clearly in your
+output so a reader doesn't try to write a patch referencing
+`template_operation__log_reducer` by name.
+
+## Step 3: Categorize Vertices
 
 Split `jobGraph.vertices` by role using the `type` field:
 
@@ -57,7 +78,7 @@ Split `jobGraph.vertices` by role using the `type` field:
 If you see a type not in this list, fall back to `grepr:operations-reference`
 to identify its role.
 
-## Step 3: Extract Key Fields per Category
+## Step 4: Extract Key Fields per Category
 
 Produce a summary like the template below. Only include fields that are
 populated — keep the output focused.
@@ -121,16 +142,45 @@ For each sink:
 
 ### Edges (Topology)
 
-Print the edges as-is, or convert them into a flow graph showing how data
-moves source → … → sink.
+Render the graph as an **indented tree** with arrows. This reads dramatically
+better than the flat `a -> b\nb -> c\n…` edge list when a vertex has multiple
+downstream children (the common case for branched pipelines).
 
-## Step 4: Output Format
+Conventions:
+- Root: source vertex (no parent edges).
+- Use `└─>` for the only or last child of a node, `├─>` for non-last
+  siblings, and align children under their parent.
+- Annotate each leaf and branch endpoint inline, in parentheses: `(iceberg
+  — raw)`, `(DD passback)`, etc. The annotation tells the reader where
+  data ends up at a glance.
+- Drop the `template_operation__` prefix from vertex names in the tree
+  (it's noise that doesn't help understanding) but keep it in the
+  full per-category listings above.
 
-Use markdown sections per category. Wrap field values in inline code so the
-user can grep them. Example shape:
+If two source vertices feed independent chains, render each as a separate
+tree under a clear heading.
+
+## Step 5: Output Format
+
+Lead with a **TL;DR**. Most readers will skim — the first thing they see
+should answer "what is this pipeline and what's notable about it?" in 2–3
+sentences. Then drill into details.
+
+Output shape:
 
 ```
 # Pipeline: prod_log_reducer (job_abc123 — version 42, RUNNING)
+
+## TL;DR
+Standard Datadog basic-logs template. Datadog agent → JSON + remap →
+branches to raw-Iceberg AND reducer (2-min window, partitioned by service);
+reducer output goes to pattern-Iceberg + back to Datadog. All four phase
+filters are empty (pass-through); reducer has 1 exception
+(`skipAggregation:true`).
+
+> Note: vertex names below carry the resolved-graph `template_operation__`
+> prefix. To make changes, use `tune-reduction` / `tune-grok` / `change-*`
+> skills — those operate on template inputs, not the resolved vertex names.
 
 ## Sources
 - `datadog-log-agent-source` `dd_source` — integration `int_dd_1`
@@ -149,11 +199,29 @@ user can grep them. Example shape:
 - `datadog-log-sink` `dd_sink` — integration `int_dd_1`
 
 ## Topology
-dd_source -> log_attributes_remapper
-log_attributes_remapper -> log_reducer
-log_reducer -> warehouse_sink
-log_reducer -> dd_sink
+dd_source
+  └─> log_attributes_remapper
+        └─> log_reducer
+              ├─> warehouse_sink   (iceberg — raw)
+              └─> dd_sink          (DD passback)
 ```
+
+### TL;DR rules
+
+- 2–3 sentences max — anything longer belongs in the detail sections.
+- Name the **template** if recognizable ("Standard Datadog basic-logs", "Log
+  Reducer + Splunk passthrough"), name the **source vendor**, name the
+  **non-default** reducer settings (partition-by, exceptions, custom
+  aggregations), and name **anything unusual** (active filters, vendor
+  exceptions, multiple branches, missing components).
+- Don't include the TL;DR if a previous skill already produced one in the
+  same turn; just print the detail sections.
+
+### One-liner instead of full description
+
+If the user's question is narrow ("does this pipeline have a grok parser?",
+"what dataset does it write to?"), answer the question directly — don't
+emit the full sections. Use judgment.
 
 ## What to Skip
 
