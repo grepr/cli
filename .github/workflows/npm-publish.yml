@@ -107,11 +107,20 @@ jobs:
           ls -la build/customer-distributions/
 
       - name: Publish to npm
+        env:
+          VERSION: ${{ needs.check-version.outputs.version }}
         run: |
-          VERSION="${{ needs.check-version.outputs.version }}"
           echo "Publishing @grepr/cli@$VERSION to npm..."
-          npm publish --access public --provenance
-          echo "✅ Successfully published @grepr/cli@$VERSION"
+          # Prerelease versions (containing a hyphen) need an explicit dist-tag.
+          # npm@11 refuses to publish prereleases without --tag because the
+          # default "latest" would surface a prerelease to plain npm install.
+          if [[ "$VERSION" == *-* ]]; then
+            DIST_TAG="next"
+          else
+            DIST_TAG="latest"
+          fi
+          npm publish --access public --provenance --tag "$DIST_TAG"
+          echo "Successfully published @grepr/cli@$VERSION to dist-tag '$DIST_TAG'"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
