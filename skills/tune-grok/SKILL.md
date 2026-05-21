@@ -55,9 +55,18 @@ the samples. Don't skip this — patterns that look right by eye often miss
 edge cases. The build-grok skill returns a vetted pattern.
 
 Recommended pattern shape:
+- Each rule is `<RuleName> <pattern>` (a name token, then the pattern).
+  Names are used in diagnostics — pick something descriptive like
+  `HttpAccessLog` or `K8sEventLog`.
 - Use named captures (`%{NUMBER:duration_ms}`), not anonymous.
 - Pin to the start of the message (`^`) if the format is consistent.
 - Don't over-extract — only fields the customer actually queries on.
+
+Schema fields the backend reads (write to these exact field names):
+- `grokParsingRules: string[]` — your rule strings.
+- `grokHelperRules: string[]` — reusable helper definitions (optional).
+- `extractAttribute: string` — source attribute the parser reads from
+  (optional, per-parser).
 
 ## Step 4: Check for Attribute-Name Collisions
 
@@ -143,7 +152,7 @@ position. No manual wiring required.
         "type": "grok-parser",
         "name": "http_access_grok",
         "predicate": { "type": "datadog-query", "query": "source:my_service" },
-        "patterns": ["%{IPORHOST:client_ip} - %{USER:user} \\[%{HTTPDATE:ts}\\] \"%{WORD:method} %{NOTSPACE:path}\""]
+        "grokParsingRules": ["MyHttpAccessRule %{IPORHOST:client_ip} - %{USER:user} \\[%{HTTPDATE:ts}\\] \"%{WORD:method} %{NOTSPACE:path}\""]
       }
     }
   ]
