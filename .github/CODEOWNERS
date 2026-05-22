@@ -1,0 +1,7 @@
+# Code owners for grepr/cli.
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-security/customizing-your-repository/about-code-owners
+#
+# The R&D team owns everything by default. Branch protection on main requires
+# code-owner review, so any PR touching this repo needs an R&D approval.
+
+* @grepr/r-d
