@@ -1,6 +1,6 @@
 ---
 description: Set, modify, or clear pipeline filters on a Grepr pipeline. Filters drop unwanted logs at a chosen stage (pre-parser, pre-aggregation, pre-exceptions, pre-warehouse). Estimates drop volume before applying. Routes through test-pipeline-change.
-allowed-tools: Bash(grepr query), Bash(grepr pipeline:edit), Bash(grepr pipeline:plan), Bash(grepr pipeline:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
+allowed-tools: Bash(grepr query), Bash(grepr job:edit), Bash(grepr job:plan), Bash(grepr job:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
 trigger_keywords:
   - change filtering
   - add filter

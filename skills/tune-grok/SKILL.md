@@ -1,6 +1,6 @@
 ---
 description: Diagnose and fix grok parsing on a Grepr pipeline. Adds rules to an existing grok parser or inserts a new grok parser vertex when none exists. Routes through test-pipeline-change before any production update.
-allowed-tools: Bash(grepr query), Bash(grepr grok:parse), Bash(grepr pipeline:edit), Bash(grepr pipeline:plan), Bash(grepr pipeline:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:build-grok, grepr:query-logs
+allowed-tools: Bash(grepr query), Bash(grepr grok:parse), Bash(grepr job:edit), Bash(grepr job:plan), Bash(grepr job:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:build-grok, grepr:query-logs
 trigger_keywords:
   - tune grok
   - fix grok
@@ -179,13 +179,13 @@ pipeline-wide (e.g. a catch-all that runs on everything).
 
 Invoke `grepr:test-pipeline-change` with `<JOB_ID>` and `patch.json`.
 That skill:
-- Generates the plan (`pipeline:edit`).
+- Generates the plan (`job:edit`).
 - Runs the patched config against recent raw data via `job:to-test
   --core-chain`.
 - Compares per-record — does the target attribute (`client_ip`, `method`,
   etc.) now appear on matching logs?
 - Asks the user for explicit approval.
-- Applies via `pipeline:apply`.
+- Applies via `job:apply`.
 
 ### What to verify in the test output
 

@@ -21,7 +21,7 @@ referencing vertices or fields that don't exist in this specific pipeline.
 
 ## When to Use
 
-- Before any `pipeline:edit` patch — confirm which vertices exist and what
+- Before any `job:edit` patch — confirm which vertices exist and what
   fields are populated.
 - When the user says "what does this pipeline do?" or "show me the
   configuration."
@@ -58,6 +58,28 @@ through `tune-reduction` / `tune-grok` / `change-*` skills, which operate on
 template inputs, not resolved vertex names.** Note this clearly in your
 output so a reader doesn't try to write a patch referencing
 `template_operation__log_reducer` by name.
+
+## Step 2a: Detect the Backend Format
+
+Check whether the pipeline is template-backed or a direct job graph. The
+detection is a quick scan over `jobGraph.vertices`:
+
+- **Template-backed**: at least one vertex has `type: "template-operation"`.
+  These are the canonical pipelines — edits route through `job:edit` /
+  `job:apply` against `templateInputs.input`, and `job:draft` gets
+  per-stage tags from the server.
+- **Direct job graph**: no `template-operation` vertex; the parser /
+  remapper / reducer / grok-parser are bare vertices in the graph. Edits
+  still go through the same `job:edit` / `job:apply` CLI commands
+  — the CLI mutates the resolved vertices directly. `job:draft` runs a
+  client-side tap rewrite to produce per-stage `sink-source` tags, but only
+  the field-level patch ops (`add-message-attribute`, `add-group-by`,
+  `add-aggregation`, `add-reducer-exception`, `add-grok-rule`) are
+  supported — topology ops like `set-filter` and `add-source` are rejected
+  on this backend.
+
+Surface the backend in the TL;DR (see below) so downstream skills don't
+have to re-detect.
 
 ## Step 3: Categorize Vertices
 
@@ -170,6 +192,7 @@ Output shape:
 
 ```
 # Pipeline: prod_log_reducer (job_abc123 — version 42, RUNNING)
+**Backend**: template-backed
 
 ## TL;DR
 Standard Datadog basic-logs template. Datadog agent → JSON + remap →
@@ -209,11 +232,16 @@ dd_source
 ### TL;DR rules
 
 - 2–3 sentences max — anything longer belongs in the detail sections.
+- Lead with **`Backend: template-backed`** or **`Backend: direct job
+  graph`** so downstream skills can route without re-detecting.
 - Name the **template** if recognizable ("Standard Datadog basic-logs", "Log
   Reducer + Splunk passthrough"), name the **source vendor**, name the
   **non-default** reducer settings (partition-by, exceptions, custom
   aggregations), and name **anything unusual** (active filters, vendor
   exceptions, multiple branches, missing components).
+- For direct-job-graph pipelines, also flag any **field-level edit limits**:
+  topology ops (`set-filter`, `add-source`, etc.) aren't supported through
+  `job:edit` on this backend; only field-level ops work.
 - Don't include the TL;DR if a previous skill already produced one in the
   same turn; just print the detail sections.
 

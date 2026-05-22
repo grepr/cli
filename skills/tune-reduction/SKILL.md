@@ -1,6 +1,6 @@
 ---
-description: Diagnose and fix bad reduction (high passthrough) on a Grepr pipeline. Covers empty messages, exceptions bypassing the reducer, and over-aggregation. Builds a pipeline:edit patch, validates it via test-pipeline-change, and requires explicit user approval before pipeline:apply.
-allowed-tools: Bash(grepr query), Bash(grepr pipeline:edit), Bash(grepr pipeline:plan), Bash(grepr pipeline:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:change-exceptions, grepr:change-filtering, grepr:change-source, grepr:tune-grok, grepr:query-logs, grepr:grepr-model
+description: Diagnose and fix bad reduction (high passthrough) on a Grepr pipeline. Covers empty messages, exceptions bypassing the reducer, and over-aggregation. Builds a job:edit patch, validates it via test-pipeline-change, and requires explicit user approval before job:apply.
+allowed-tools: Bash(grepr query), Bash(grepr job:edit), Bash(grepr job:plan), Bash(grepr job:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:change-exceptions, grepr:change-filtering, grepr:change-source, grepr:tune-grok, grepr:query-logs, grepr:grepr-model
 trigger_keywords:
   - tune reduction
   - reduction is bad
@@ -39,7 +39,7 @@ skill:
   `grepr:change-filtering` (drop classes of logs at the pipeline edge).
 
 This skill diagnoses which one is hurting the pipeline, builds a
-`pipeline:edit` patch, and **never** applies it directly — it always routes
+`job:edit` patch, and **never** applies it directly — it always routes
 through `test-pipeline-change` so the user sees before/after metrics and
 explicitly approves the change.
 
@@ -261,12 +261,12 @@ test-pipeline-change with --job-id <JOB_ID> --patch patch.json
 ```
 
 That skill will:
-1. Generate a plan with `pipeline:edit`.
+1. Generate a plan with `job:edit`.
 2. Run a core-chain test job via `job:to-test --core-chain`.
 3. Report before/after metrics (empty-message %, reduction %, group
    cardinality).
 4. Wait for explicit user approval.
-5. Call `pipeline:apply` with retry/drift handling.
+5. Call `job:apply` with retry/drift handling.
 
 Report the metrics to the user and ask them to approve.
 
@@ -277,7 +277,7 @@ Report the metrics to the user and ask them to approve.
   than serial test cycles).
 - **Sample bias** — query a few different time windows; reduction can vary
   hourly with traffic mix.
-- **Baseline vs patched draft volume mismatch** — `pipeline:draft` samples
+- **Baseline vs patched draft volume mismatch** — `job:draft` samples
   a short window of live streaming traffic, so the baseline and patched
   runs hit different records. Check the total record counts before
   trusting the percentage comparison:
@@ -298,5 +298,5 @@ Report the metrics to the user and ask them to approve.
 ## Hand-off Boundary
 
 This skill **diagnoses and proposes**. It never PUTs. Production writes only
-happen via `test-pipeline-change` → `pipeline:apply` with explicit user
+happen via `test-pipeline-change` → `job:apply` with explicit user
 approval.

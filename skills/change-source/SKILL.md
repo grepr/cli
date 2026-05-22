@@ -1,6 +1,6 @@
 ---
 description: Add, remove, or replace a source on a Grepr pipeline. Sources are validatable via the draft harness — the platform runs a real ingest against the flink-session-cluster, so credentials, integration setup, and source-specific filtering can be verified before production apply.
-allowed-tools: Bash(grepr query), Bash(grepr pipeline:edit), Bash(grepr pipeline:plan), Bash(grepr pipeline:draft), Bash(grepr pipeline:apply), Bash(grepr job:get), Bash(grepr integration:list), Bash(grepr integration:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:integration-commands
+allowed-tools: Bash(grepr query), Bash(grepr job:edit), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr job:apply), Bash(grepr job:get), Bash(grepr integration:list), Bash(grepr integration:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:integration-commands
 trigger_keywords:
   - change source
   - add source
