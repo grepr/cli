@@ -1,5 +1,5 @@
 ---
-description: Safety harness for validating pipeline patches before production. Called by intent skills (tune-reduction, tune-grok, change-exceptions, change-filtering, change-source) after they produce a patch. Uses the platform's draft-mode pipeline feature — runs the patched template inputs against the flink-session-cluster, streams per-stage NDJSON output (`draftOutputs`), compares against a baseline, and gates production apply on explicit user approval. Not normally invoked directly by users.
+description: Safety harness for validating pipeline patches before production. Called by intent skills (tune-reduction, tune-grok, change-exceptions, change-filtering, change-source) after they produce a patch. Uses template draft mode for template-backed pipelines and CLI-side sync draft rewrites for raw job graphs, streams per-stage NDJSON output, compares against a baseline, and gates production apply on explicit user approval. Not normally invoked directly by users.
 allowed-tools: Bash(grepr job:edit), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr job:apply), Bash(grepr job:get), Bash(grepr query), grepr:describe-pipeline
 trigger_keywords:
   - validate pipeline patch
@@ -23,14 +23,15 @@ skill workflow works for both, but the harness underneath differs:
   `draftMode: true` on the template-operation vertex; the server expands
   the template and runs the patched config on the flink-session-cluster.
   Per-stage tagging is server-supplied. This is the lossless path.
-- **Direct job graph (legacy / pre-template).** `job:draft` does a
-  client-side **tap rewrite** of the proposed job: it replaces the source
-  with a `logs-iceberg-table-source` replay of the raw data lake, drops
-  every production sink, and inserts a `log-transform[tag-action:
-  sink-source=<stage-name>]` after each interesting vertex (parser,
-  remapper, filters, reducer), fanning them into a single shared
-  `logs-sync-sink`. Records arrive interleaved across stages — group by
-  the `sink-source` tag, not stream order.
+- **Direct job graph (legacy / pre-template).** `job:draft` rewrites the
+  proposed job client-side and submits it to `/v1/jobs/sync`. For
+  transform-only patches, it replaces the source with a
+  `logs-iceberg-table-source` replay of the raw data lake, drops every
+  production sink, and adds per-stage taps tagged with
+  `sink-source=<stage-name>`. For source/output-touching patches, it
+  preserves the proposed source vertices, removes production sinks, and
+  adds sync/tap outputs. Records arrive interleaved across stages - group
+  by the `sink-source` tag, not stream order.
 
 Both produce NDJSON with stage-tagged records, so the metric tables below
 work for both.
@@ -46,13 +47,13 @@ strictly better:
    `sink-source` tag from the tap rewrite). You can verify "did the
    remapper actually pick up my new message attribute?" without guessing
    from the final sink output.
-2. **Source-config validation (template-backed only).** Template-backed
-   draft mode runs the patched config end-to-end on the
-   flink-session-cluster, including real source ingest from any newly-
-   added source vertex. The job-graph tap path replays from iceberg, so
-   source-config changes aren't validated through this harness — for
-   job-graph pipelines, source edits aren't supported via `job:edit`
-   at all (apply manually via `job:update`).
+2. **Source-config validation.** Template-backed draft mode runs the
+   patched config end-to-end on the flink-session-cluster, including real
+   source ingest from any newly-added source vertex. Direct job graphs use
+   source-preserving draft for source-touching edits, so canonical
+   UI-shaped raw graph source additions are exercised too. Non-UI raw DAGs
+   still reject UI-level topology edits with `unsupported raw job graph
+   shape`.
 3. **Same substrate as production.** Template-backed draft submission
    uses the same `templateInputs.input` shape as `job:apply`, so
    what you tested is exactly what you'll deploy. Job-graph draft sends a
@@ -60,10 +61,10 @@ strictly better:
    identical to what `job:apply` will write, but the surrounding
    topology (sources/sinks) is replaced for the test only.
 
-What the harness **cannot** validate: sink delivery. There's no readback
-from the destination vendor. Patches that touch sinks are rejected via
-`validateForDraftHarness`; the harness surfaces an error pointing to that
-gap.
+What the harness **cannot** validate: external sink delivery. There's no
+readback from the destination vendor. Sink/data-lake output patches can be
+planned, drafted, and applied, but draft output is graph/upstream
+verification only. Surface that limitation explicitly before apply.
 
 ## Inputs
 
@@ -90,24 +91,25 @@ patch to `templateInputs.input`, and writes a plan file recording:
 No production write happens here.
 
 If the patch is malformed (e.g. `add-message-attribute` on a pipeline with
-no remapper, or a topology op like `set-filter` against a direct-job-graph
-pipeline), `job:edit` fails with a specific error. Report verbatim to
-the calling intent skill and stop.
+no remapper, or a topology op like `set-filter` against a non-UI raw
+graph), `job:edit` fails with a specific error. Report verbatim to the
+calling intent skill and stop.
 
-### Step 1a: Reject sink-touching patches
+### Step 1a: Surface output verification limitations
 
 ```bash
 jq -r '.classification' plan.json
 ```
 
-If the classification is `touches-sink` or `mixed`, **stop**. Don't run
-the draft, don't run `job:apply`, don't offer a bypass. Surface:
+If the classification is `touches-sink` or `mixed`, do not claim draft
+validated delivery to the external destination. Continue only as
+graph/upstream verification and surface:
 
-> "This patch touches a sink vertex (`<classification>`). Use the Grepr
-> UI for sink changes. If the patch also has non-sink ops, split them
-> out and re-run on that subset."
+> "This patch touches sink/data-lake output config (`<classification>`).
+> The sync draft can verify graph/upstream behavior, but it cannot verify
+> external sink delivery."
 
-For `transform-only` and `touches-source`, continue.
+For `transform-only` and `touches-source`, continue normally.
 
 ## Step 2: Show the User the Diff
 
@@ -137,15 +139,16 @@ This:
   flink-session-cluster, and tags each output record with which
   `draftOutputs` stage it came from.
 - **Direct job graph**: builds a tap-instrumented test variant on the
-  client side (sources replaced with iceberg raw-data replay; per-stage
-  taps via `log-transform[tag-action: sink-source=<stage>]` fanning into
-  a shared `logs-sync-sink`) and submits to the same endpoint. Records
-  arrive carrying `sink-source: <stage-name>` tags.
+  client side and submits to the same endpoint. Transform-only edits use
+  iceberg replay. Source/output-touching edits preserve proposed sources,
+  remove production sinks, and add sync/tap outputs. Records arrive
+  carrying `sink-source: <stage-name>` tags.
 
 ### Job-graph extra flags
 
-`job:draft` accepts these flags for the job-graph path (template-backed
-ignores them — the server picks):
+`job:draft` accepts these flags for the job-graph transform-only replay
+path (template-backed ignores them; source-preserving raw drafts reject
+replay flags because they use the proposed source vertices directly):
 
 | Flag | Effect |
 |------|--------|
@@ -156,7 +159,9 @@ ignores them — the server picks):
 
 If the original pipeline ingests from an agent (Datadog, Splunk, OTLP, etc.)
 and has no iceberg source/sink, you'll need `--dataset-id` explicitly —
-auto-detection won't find a raw dataset.
+auto-detection won't find a raw dataset. For source/output-touching raw
+drafts, do not pass `--dataset-id`, `--start`, `--end`, or `--query`; only
+`--limit-records` is relevant.
 
 ## Step 4: Capture a Baseline (if useful)
 
@@ -229,7 +234,8 @@ the new version and re-do the workflow. Don't `--force` automatically.
 
 | Situation | Action |
 |-----------|--------|
-| `job:edit` fails with "not supported on non-template-backed pipelines" | The op is a topology change (`set-filter`, `add-source`, `add-parser`, `set-input-field`, etc.) and the pipeline isn't template-backed. Either change the patch to use field-level ops only, or apply the topology change manually via `grepr job:get` + edit + `grepr job:update`. |
+| `job:edit` fails with "unsupported raw job graph shape" | The op is a UI-level topology change (`set-filter`, `add-source`, `add-parser`, etc.) but the direct job graph is not the canonical UI log-pipeline shape. Either use unambiguous field-level ops only, migrate/template the pipeline, or apply the topology change manually via `grepr job:get` + edit + `grepr job:update`. |
+| `job:edit` fails with "generic template-input paths are not supported on raw job graphs" | `set-input-field` / `unset-input-field` paths only apply to template inputs. Use a semantic operation or edit the raw graph manually. |
 | `job:edit` fails on a domain op (e.g. `add-message-attribute` with no remapper) | Pipeline shape doesn't match the op's assumptions. Adjust the patch or use a different op. |
 | `job:plan` shows `(no changes)` | Patch is a no-op. Stop and ask. |
 | `job:draft` returns errors | Draft submission failed — likely a malformed template input. Show the error verbatim. |

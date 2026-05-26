@@ -20,7 +20,7 @@ Use when:
   permissive.
 - The user wants to reduce ingest cost by filtering at the pipeline edge.
 
-Filter changes operate on transform-stage data — routes through
+Filter changes operate on transform-stage data - routes through
 `grepr:test-pipeline-change`.
 
 ## Step 1: Get Context
@@ -33,10 +33,10 @@ Run `grepr:describe-pipeline <JOB_ID>` and note:
 ## Step 2: Pick the Phase
 
 Filters are **phase-slotted**, not arbitrary vertices in the graph. The
-template owns topology; each phase holds at most one filter. The four
-phases describe **where in the pipeline the filter sits**, not what it
-"protects" — what gets dropped downstream depends on the specific
-template's topology, so verify against `describe-pipeline` before
+template/UI pipeline shape owns topology; each phase holds at most one
+filter. The four phases describe **where in the pipeline the filter
+sits**, not what it "protects" - what gets dropped downstream depends on
+the specific template's topology, so verify against `describe-pipeline` before
 asserting downstream effects to the user.
 
 | Phase | Position in the pipeline |
@@ -45,6 +45,16 @@ asserting downstream effects to the user.
 | `pre-aggregation` | Immediately before the reducer. Parser, remapper, and grok-extracted attributes are available. |
 | `pre-exceptions` | On the path of logs about to bypass the reducer (matched the reducer's `logReducerExceptions` predicates). Filters here narrow the exception bypass. |
 | `pre-warehouse` | After the parser/remapper chain, before downstream branches. In most templates this is upstream of both the warehouse sink and the reducer — verify topology before claiming "drops from warehouse only." |
+
+Direct raw job graph support is shape-dependent:
+- Canonical UI-shaped raw log graphs support `set-filter` and
+  `clear-filter` for `pre-parser`, `pre-warehouse`, and
+  `pre-exceptions`.
+- `pre-aggregation` has no canonical UI raw-graph stage; use a
+  template-backed pipeline for that phase or choose the closest real raw
+  stage after inspecting topology.
+- Non-UI raw DAGs reject UI-level filter topology edits with `unsupported
+  raw job graph shape`.
 
 **Picking the phase:**
 - If the predicate references a grok-extracted attribute → must be at
@@ -143,7 +153,8 @@ first filter or replacing one that's already there:
 ### Case B — Modify just the predicate of an existing filter
 
 Use `set-input-field` to overwrite the predicate without re-stating the
-whole filter shell:
+whole filter shell. This generic path op is template-input only; for raw
+job graphs use `set-filter` with the full filter object.
 
 ```json
 {

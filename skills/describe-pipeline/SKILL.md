@@ -71,12 +71,21 @@ detection is a quick scan over `jobGraph.vertices`:
 - **Direct job graph**: no `template-operation` vertex; the parser /
   remapper / reducer / grok-parser are bare vertices in the graph. Edits
   still go through the same `job:edit` / `job:apply` CLI commands
-  — the CLI mutates the resolved vertices directly. `job:draft` runs a
-  client-side tap rewrite to produce per-stage `sink-source` tags, but only
-  the field-level patch ops (`add-message-attribute`, `add-group-by`,
-  `add-aggregation`, `add-reducer-exception`, `add-grok-rule`) are
-  supported — topology ops like `set-filter` and `add-source` are rejected
-  on this backend.
+  - the CLI mutates the resolved graph directly. Existing-vertex field ops
+  (`add-message-attribute`, `add-group-by`, `add-aggregation`,
+  `add-reducer-exception`, `add-grok-rule`) are supported when the target
+  vertex is unambiguous. UI-level topology ops (`set-filter`,
+  `clear-filter`, `add-source`, `remove-source`, `add-parser`,
+  `remove-parser`) are supported only when the graph matches the canonical
+  UI log-pipeline shape. Non-UI raw DAGs reject those ops with
+  `unsupported raw job graph shape`.
+
+For direct job graphs, `job:draft` has two modes:
+- Transform-only edits use iceberg replay and client-side taps tagged with
+  `sink-source`.
+- Source/output-touching edits preserve the proposed source vertices,
+  remove production sinks, and add sync/tap outputs. Output edits verify
+  graph/upstream behavior only; external sink delivery is not verified.
 
 Surface the backend in the TL;DR (see below) so downstream skills don't
 have to re-detect.
@@ -239,9 +248,10 @@ dd_source
   **non-default** reducer settings (partition-by, exceptions, custom
   aggregations), and name **anything unusual** (active filters, vendor
   exceptions, multiple branches, missing components).
-- For direct-job-graph pipelines, also flag any **field-level edit limits**:
-  topology ops (`set-filter`, `add-source`, etc.) aren't supported through
-  `job:edit` on this backend; only field-level ops work.
+- For direct-job-graph pipelines, also flag any **shape-dependent edit
+  limits**: canonical UI log graphs support UI-level topology ops through
+  `job:edit`, but arbitrary raw DAGs only support unambiguous existing-
+  vertex field ops.
 - Don't include the TL;DR if a previous skill already produced one in the
   same turn; just print the detail sections.
 

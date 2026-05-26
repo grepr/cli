@@ -1,5 +1,5 @@
 ---
-description: Add, remove, or replace a source on a Grepr pipeline. Sources are validatable via the draft harness — the platform runs a real ingest against the flink-session-cluster, so credentials, integration setup, and source-specific filtering can be verified before production apply.
+description: Add, remove, or replace a source on a Grepr pipeline. Sources are validatable via the draft harness for template-backed pipelines and canonical UI-shaped raw job graphs; draft runs exercise the proposed source config before production apply.
 allowed-tools: Bash(grepr query), Bash(grepr job:edit), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr job:apply), Bash(grepr job:get), Bash(grepr integration:list), Bash(grepr integration:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:integration-commands
 trigger_keywords:
   - change source
@@ -20,10 +20,12 @@ Use when:
   integration ID).
 - A source should be retired and removed from the pipeline.
 
-Source changes are validatable via the draft harness. The platform's
-draft-mode run actually starts the source on the flink-session-cluster
-and ingests a small live sample, so you can verify credentials,
-authentication, and record shape before touching production.
+Source changes are validatable via the draft harness. Template-backed
+pipelines run the patched template in draft mode. Canonical UI-shaped raw
+job graphs use source-preserving sync draft: the proposed source vertices
+stay in the graph, production sinks are removed, and sync/tap outputs are
+added. Non-UI raw DAGs reject source topology edits with `unsupported raw
+job graph shape`.
 
 ## Step 1: Get Context
 
@@ -31,6 +33,9 @@ Run `grepr:describe-pipeline <JOB_ID>` and note:
 - Existing sources (name, type, integrationId, query/predicate, time window).
 - Whether the user wants to replace an existing source or add a new one
   alongside.
+- Backend and shape: template-backed pipelines support source ops through
+  template inputs; direct job graphs support source ops only if they match
+  the canonical UI log-pipeline shape.
 
 For adding a new source, also check available integrations:
 
@@ -110,13 +115,14 @@ Use the integration's documented source type. Common types:
 Invoke `grepr:test-pipeline-change` with `<JOB_ID>` and `patch.json`.
 
 The plan's classification will be `touches-source`, which the draft
-harness allows (unlike sink changes, source ingest is testable
-end-to-end). The harness:
+harness allows. The harness:
 
-- Runs the patched template inputs through draft mode on the
-  flink-session-cluster.
+- For template-backed pipelines, runs the patched template inputs through
+  draft mode on the flink-session-cluster.
+- For canonical UI-shaped raw job graphs, runs a source-preserving sync
+  draft that keeps the proposed source vertices.
 - Streams NDJSON output tagged with which `draftOutputs` stage each
-  record came from.
+  record came from, or `sink-source` tags on raw graph drafts.
 - For added sources, the record stream from the new source proves
   ingest works.
 

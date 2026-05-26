@@ -14,6 +14,49 @@ trigger_keywords:
 
 This skill provides a reference for all available operations that can be used in Grepr job graphs.
 
+## Pipeline Edit Contract
+
+Job edits emitted by Claude/CLI skills use the `JobEditOperation`
+JSON contract, currently represented on disk as:
+
+```json
+{ "operations": [ { "op": "<operation-name>" } ] }
+```
+
+`job:edit`, `job:plan`, `job:draft`, and `job:apply` consume that patch
+shape. Backend support:
+
+- Template-backed pipelines mutate `templateInputs.input`; the semantic
+  edit surface is the canonical path.
+- Direct job graphs mutate the resolved graph. Existing-vertex field ops
+  are allowed when the target is unambiguous.
+- UI-level topology ops on direct job graphs are allowed only for canonical
+  UI-shaped log graphs. Non-UI raw DAGs reject with `unsupported raw job
+  graph shape`.
+
+Common operations:
+
+| Op | Purpose |
+|----|---------|
+| `add-message-attribute` | Add a remapper message reserved attribute/path. |
+| `add-group-by` | Add a reducer partition/group-by attribute/path. |
+| `add-aggregation` | Add reducer aggregation strategy entries. |
+| `add-reducer-exception` | Add a reducer query exception. |
+| `add-grok-rule` | Append a rule to an existing grok parser. |
+| `set-filter` / `clear-filter` | Set or clear a phase-slotted filter. |
+| `add-parser` / `remove-parser` | Add or remove a parser in the parser chain. |
+| `add-source` / `remove-source` | Add or remove source vertices. |
+| `set-input-field` / `unset-input-field` | Template-input escape hatch only; not supported on raw job graphs. |
+
+Draft behavior:
+
+- Template-backed drafts use server draft mode and per-stage `draftOutputs`.
+- Raw transform-only drafts use iceberg replay and `sink-source` stage tags.
+- Raw source/output-touching drafts preserve proposed sources, remove
+  production sinks, and add sync/tap outputs.
+- Sink/data-lake output edits are graph/upstream verification only; external
+  sink delivery is not verified by sync draft.
+
 ## Sources (Data Input)
 
 Sources have no inputs and produce log events as output.
