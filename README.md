@@ -13,6 +13,10 @@ The Grepr command-line tool (`@grepr/cli`) and a Claude Code plugin that lets Cl
 
 ## CLI
 
+### Requirements
+
+- Node.js 20.0.0 or higher
+
 ### Install
 
 ```bash
@@ -28,10 +32,6 @@ npx @grepr/cli --help
 # Or with yarn
 yarn global add @grepr/cli
 ```
-
-### Requirements
-
-- Node.js 18.0.0 or higher
 
 ### Quick start
 
