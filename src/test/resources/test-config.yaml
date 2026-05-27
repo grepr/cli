@@ -1,0 +1,256 @@
+# Test fixture for CLI integration tests (e.g. GrokCommandIntegrationTest).
+# Loaded by SafeTestDropwizardAppExtension as src/test/resources/test-config.yaml
+# when tests run from the cli/ working directory.
+#
+# IMPORTANT: this file is mirrored to the public grepr/cli npm-publish repo
+# via the grepr-cli-sync workflow. Public-by-design OAuth identifiers
+# (tenant URLs, JWKS endpoints, issuers, SPA/M2M client_ids, Auth0
+# connection ids, audience identifiers) are fine to include. Never put
+# credentials — client_secrets, API keys, webhook tokens, passwords —
+# here. Use AWS Secrets Manager for those.
+
+tsidNodeId: 10
+
+temporal:
+  host: localhost
+  port: 7233
+  namespace: test-grepr-investigations
+
+database:
+  driverClass: org.postgresql.Driver
+  url: jdbc:postgresql://localhost:5432/postgres
+
+producer:
+  type: grepr-mock
+  name: external-triggers-producer
+  keySerializer:
+    type: void
+  valueSerializer:
+    type: byte-array
+consumer:
+  type: grepr-mock
+  name: casbin
+  consumerGroupId: grepr-server
+  keyDeserializer:
+    type: string
+  valueDeserializer:
+    type: byte-array
+
+kafkaAdmin:
+  type: grepr-mock
+  clientId: grepr-server-kafka-admin
+  name: grepr-server-kafka-admin
+
+kafkaTopicConfig:
+  topicConfigs: {}
+
+server:
+  type: simple
+  applicationContextPath: /
+  rootPath: /api
+  gzip:
+    enabled: true
+    excludedMimeTypes:
+      - application/x-ndjson
+  requestLog:
+    type: external
+
+logging:
+  type: external
+
+auth:
+  provider: auth0
+  oauthDomains: [ https://dev-beseupp4wmfigwzj.us.auth0.com, https://auth.dev.grepr.ai ]
+  greprApiClientId: service
+  oauthSignupClientId: ydBpdo5nY84u4NA8lDyypxxzCz0ObBjc
+  managementOauthAudience: https://dev-beseupp4wmfigwzj.us.auth0.com/api/v2/
+  auth0ManagementClientKey: auth0-management
+  greprClientId: EpAT7I3XY5Q1CxCSd93pKKkcUBi1iOY4
+  adminRoleId: admin_role_id
+  memberRoleId: member_role_id
+  databaseConnectionId: con_paKt2kAS0OYzEO9m
+  googleConnectionId: con_xoOuXHdjPoGrdEJJ
+  jwksEndpoint: https://dev-beseupp4wmfigwzj.us.auth0.com/.well-known/jwks.json
+  issuers: [ https://dev-beseupp4wmfigwzj.us.auth0.com/, https://auth.dev.grepr.ai/ ]
+
+authCachePolicy: maximumSize=1000, expireAfterAccess=60m
+
+secretsConfig:
+  provider: aws
+  ttl: PT0S
+  prefix: dev/
+
+integrationSecretsConfig:
+  provider: aws
+
+batchFlinkConfiguration:
+  fileUploadsConfig:
+    bucketName: "test-upload-bucket"
+    region: "us-east-1"
+  s3VectorsConfig:
+    vectorBucketName: "test-vector-bucket"
+    region: "us-east-1"
+  environmentConfig:
+    type: remote
+    jobManagerHost: localhost
+    jobManagerPort: 8081
+    properties:
+      "table.exec.mini-batch.enabled": "true"
+      "table.exec.mini-batch.allow-latency": "1 s"
+      "table.exec.mini-batch.size": "100"
+
+  icebergConfig:
+    maxSyncJobLimit: 100
+    greprWarehouseLocation: "/opt/warehouse"
+    catalogProperties:
+      catalog-impl: org.apache.iceberg.hadoop.HadoopCatalog
+
+  datadogLogSinkConfig:
+    logSinkUrlFormat: http://%s/api/v2/logs
+    browserLogSinkUrlFormat: http://%s/api/v2/logs
+
+  datadogTraceSinkConfig:
+    traceSinkUrlFormat: http://%s/api/v0.2/traces
+  datadogStatsSinkConfig:
+    statsSinkUrlFormat: http://%s/api/v0.2/stats
+
+  greprMetricsSourceConfig:
+    prometheusUrl: "http://prometheus-label-proxy.prometheus.svc.cluster.local:8080"
+
+  secretsConfig:
+    provider: aws
+    ttl: PT0S
+    prefix: dev/
+
+  integrationSecretsConfig:
+    provider: aws
+
+jobs:
+  asyncStreamingJobStateReconciler: 1s
+  asyncBatchJobScheduler: 1s
+
+jobDeploymentConfigs:
+  jobRunningStateTransitionTimeout: "PT5M"
+  jobStopStateTransitionTimeout: "PT2M"
+  jobDeletedStateTransitionTimeout: "PT1M"
+  greprFlinkRepository: "grepr-flink-query"
+  defaultGreprVersion: "latest"
+
+flinkDeploymentSpec:
+  imagePullPolicy: IfNotPresent
+  flinkVersion: v2_2
+  flinkConfiguration: {}
+  serviceAccount: "flink"
+  envVars: []
+  nodeSelectors: {}
+  taskManager:
+    replicas: 1
+    resource:
+      memory: 1024M
+      cpu: 1
+  jobManager:
+    replicas: 1
+    resource:
+      cpu: 1
+      memory: 1024M
+  logConfiguration: {}
+  podTemplate:
+    spec:
+      nodeSelector: {}
+      containers:
+      - name: flink-main-container
+        env: []
+
+flinkSessionJobSpec:
+  job:
+    entryClass: io.grepr.query.apps.pipeline.PipelineApp
+    parallelism: 4
+    upgradeMode: savepoint
+    allowNonRestoredState: true
+  # This must not be an empty map, otherwise flink session job autoscaling fails.
+  # It's a bug in Flink k8s operator. https://issues.apache.org/jira/browse/FLINK-34960
+  flinkConfiguration:
+    "taskmanager.numberOfTaskSlots": "1"
+    "taskmanager.memory.process.size": "1024m"
+    "taskmanager.cpu.cores": "1"
+    "jobmanager.memory.process.size": "1024m"
+    "jobmanager.cpu.cores": "1"
+    "parallelism.default": "4"
+
+flinkSessionJobConfig:
+  checkpointS3Bucket: "flink-checkpoints"
+  savepointS3Bucket: "flink-checkpoints"
+  greprServerUrl: "http://localhost:8080"
+
+streamingFlinkConfiguration:
+  fileUploadsConfig:
+    bucketName: "test-upload-bucket"
+    region: "us-east-1"
+  s3VectorsConfig:
+    vectorBucketName: "test-vector-bucket"
+    region: "us-east-1"
+  environmentConfig:
+    type: remote
+    jobManagerHost: localhost
+    jobManagerPort: 8081
+    properties:
+      "table.exec.mini-batch.enabled": "true"
+      "table.exec.mini-batch.allow-latency": "1 s"
+      "table.exec.mini-batch.size": "100"
+
+  icebergConfig:
+    maxSyncJobLimit: 100
+    greprWarehouseLocation: "/opt/warehouse"
+    catalogProperties:
+      catalog-impl: org.apache.iceberg.hadoop.HadoopCatalog
+
+  kafkaProperties:
+    "bootstrap.servers": localhost:9092
+
+  datadogLogSinkConfig:
+    logSinkUrlFormat: http://%s/api/v2/logs
+    browserLogSinkUrlFormat: http://%s/api/v2/logs
+
+  datadogTraceSinkConfig:
+    traceSinkUrlFormat: http://%s/api/v0.2/traces
+  datadogStatsSinkConfig:
+    statsSinkUrlFormat: http://%s/api/v0.2/stats
+
+  greprMetricsSourceConfig:
+    prometheusUrl: "http://prometheus-label-proxy.prometheus.svc.cluster.local:8080"
+
+  secretsConfig:
+    provider: aws
+    ttl: PT0S
+    prefix: dev/
+
+  integrationSecretsConfig:
+    provider: aws
+
+googleChatWidgetConfig:
+  orgSignupTemplate:
+    webhookUrl: https://chat.googleapis.com/v1/spaces/EXAMPLE_SPACE/messages?key=EXAMPLE_KEY&token=EXAMPLE_TOKEN
+    templateName: organization/free-trial-signup-widget.json
+  paidRequestTemplate:
+    webhookUrl: https://chat.googleapis.com/v1/spaces/EXAMPLE_SPACE/messages?key=EXAMPLE_KEY&token=EXAMPLE_TOKEN
+    templateName: organization/paid-request-widget.json
+  ssoRequestTemplate:
+    webhookUrl: https://chat.googleapis.com/v1/spaces/EXAMPLE_SPACE/messages?key=EXAMPLE_KEY&token=EXAMPLE_TOKEN
+    templateName: organization/sso-request-widget.json
+
+defaultOrganizationConfig:
+  enabled: false
+
+organizationConfig:
+  customerRoleNameTemplate: customer-role-%s
+  iamAssumeRolePolicyDocumentPath: organization/org-role-assume-role-policy-document.json
+  managedPolicyArns:
+  - arn:aws:iam::aws:policy/AmazonS3FullAccess
+  - arn:aws:iam::aws:policy/AmazonAthenaFullAccess
+  athenaWorkGroupNameTemplate: workgroup-%s
+  maxFreeTrials: 2
+  freeTrialDurationDays: 14
+  freeTrialConstraints:
+    maxPipelines: 1
+    validDatadogSites:
+    - "datadoghq.com"

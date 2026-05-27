@@ -2851,6 +2851,8 @@ export interface components {
       nonce: string;
       /** @description The organization name */
       orgName: string;
+      /** @description The AWS region the bucket must be created in. Matches the region the Grepr deployment is running in. */
+      region: string;
       /** @description The name of the CloudFormation stack */
       stackName: string;
     };
@@ -2985,6 +2987,8 @@ export interface components {
       bucketName: string;
       /** @description The name of the organization */
       orgName: string;
+      /** @description The AWS region the bucket must be created in. Matches the region the Grepr deployment is running in. */
+      region: string;
       /** @description The IAM policy to attach to the assumed role */
       resourcePolicy: string;
     };
@@ -3693,6 +3697,7 @@ export interface components {
     };
     /** @description Describes the file format to read from. */
     FileFormat: {
+      mapper?: components["schemas"]["LogEventMapper"];
       type: string;
     };
     /**
@@ -4086,6 +4091,10 @@ export interface components {
       rule?: string;
       ruleErrors?: components["schemas"]["GrokRuleError"][];
     };
+    /** @description Predicate that determines whether a span matches a head sampling rule. */
+    HeadSamplingFilter: {
+      type: string;
+    };
     /**
      * @description A header with name and value
      * @example [
@@ -4383,6 +4392,7 @@ export interface components {
        * @default UTF-8
        */
       charset?: string;
+      mapper?: components["schemas"]["JsonLogEventMapper"];
       /**
        * @description Path to the list of log records.
        * @default [
@@ -4390,7 +4400,10 @@ export interface components {
        *     ]
        */
       recordsPath?: string[];
+      streamFormat?: components["schemas"]["StreamFormatAny"];
     };
+    /** @description JSON-to-LogEvent mapper. */
+    JsonLogEventMapper: Record<string, never>;
     JsonLogProcessor: {
       /**
        * Format: int32
@@ -4871,6 +4884,10 @@ export interface components {
        * @enum {string}
        */
       type: LogEventType;
+    };
+    /** @description Selects the mapper used to decode raw file records into LogEvents. */
+    LogEventMapper: {
+      type: string;
     };
     LogReducer: {
       /**
@@ -5561,6 +5578,7 @@ export interface components {
     };
     /** @description Glob-pattern filter on metric names. */
     MetricNameFilter: {
+      empty?: boolean;
       /** @description Glob patterns to exclude. Precedence over includes. */
       excludes?: string[];
       /** @description Glob patterns to include. Empty list matches all. */
@@ -7607,6 +7625,19 @@ export interface components {
        */
       timeUnixNano?: number;
     };
+    /**
+     * Span-Scope Head Sampling Rules
+     * @description Head sampling rule evaluated per span. Matched spans are retained regardless of the tail sampler's decision.
+     */
+    SpanHeadSamplingRule: {
+      filter?: components["schemas"]["HeadSamplingFilter"];
+      /**
+       * Format: double
+       * @description Fraction of matching spans/traces to retain, in [0.0, 1.0].
+       * @example 1
+       */
+      rate: number;
+    };
     /** @description A link to another span, potentially from a different trace. */
     SpanLink: {
       attributes?: components["schemas"]["Variant"];
@@ -7923,6 +7954,16 @@ export interface components {
        */
       type: SqlOutputStatementType;
     };
+    /** @description Filter expressed as a raw SQL boolean expression over the CompleteSpan schema. */
+    SqlPredicateFilter: {
+      type: "SqlPredicateFilter";
+    } & (Omit<components["schemas"]["HeadSamplingFilter"], "type"> & {
+      /**
+       * @description SQL boolean expression evaluated per span.
+       * @example servicename = 'core' AND span.operationName LIKE 'worker.%'
+       */
+      predicate: string;
+    });
     /** @description SQL statement that creates a queryable temporary view */
     SqlViewStatement: {
       /** @description Event time attribute column name for watermark re-establishment after materialization. */
@@ -7973,6 +8014,10 @@ export interface components {
        * @example Request timed out
        */
       message?: string;
+    };
+    StreamFormatAny: {
+      producedType?: components["schemas"]["TypeInformationAny"];
+      splittable?: boolean;
     };
     StringData: {
       resultType: "StringData";
@@ -8666,6 +8711,19 @@ export interface components {
       actionId: string;
       type: string;
     };
+    /**
+     * Trace-Scope Head Sampling Rules
+     * @description Head sampling rule evaluated per trace. Matched traces bypass trace assembly.
+     */
+    TraceHeadSamplingRule: {
+      filter?: components["schemas"]["HeadSamplingFilter"];
+      /**
+       * Format: double
+       * @description Fraction of matching spans/traces to retain, in [0.0, 1.0].
+       * @example 1
+       */
+      rate: number;
+    };
     /** @description Action that triggers logs backfill for matching traces. Accumulates trace IDs in time-based windows and calls the logs backfill API with the collected trace IDs. */
     TraceIdLogsBackfillAction: {
       type: "TraceIdLogsBackfillAction";
@@ -8703,7 +8761,7 @@ export interface components {
        */
       traceCollectionDuration: string;
     });
-    /** @description Performs head sampling on trace data by filtering CompleteSpan instances based on deterministic hash-based sampling of their trace IDs. Uses MD5 hash function to ensure consistent sampling decisions across processing instances. */
+    /** @description Reduces trace volume by routing spans through configurable head sampling rules and tail sampling, then emits the retained spans. */
     TraceReducer: {
       /** @description Actions to execute on traces. Actions process spans after sampling decisions have been made and can trigger operations like logs backfill. */
       actions?: components["schemas"]["TraceAction"][];
@@ -8713,19 +8771,21 @@ export interface components {
        * @example 2ABs4Z8QZtSJJCDaGp7KPN
        */
       datasetId?: string;
-      /**
-       * Head Sampling Rate
-       * Format: double
-       * @description The probability (0.0 to 1.0) of sampling a trace based on its ID. Uses deterministic MD5 hashing to ensure the same trace ID always produces the same sampling decision. Supports precision down to 0.001% (0.00001). This is implemented via head sampling, so there's minimal latency.
-       * @default 1
-       * @example 0.1
-       */
-      headSamplingRate?: number;
       /** @example operation_name */
       name: string;
+      /**
+       * Span-Scope Head Sampling Rules
+       * @description Span-scope head sampling rules. Matched spans override the tail sampler's drop decision. Requires tail sampling to be configured. Order is significant; first match wins for metric attribution.
+       */
+      spanHeadSamplingRules?: components["schemas"]["SpanHeadSamplingRule"][];
       tailSampling?: components["schemas"]["TailSamplingConfig"];
       /**
-       * @description Reduces trace volume by sampling CompleteSpan instances based on trace ID hashing. Sampling is deterministic - the same trace ID will always produce the same sampling decision, ensuring consistent behavior across restarts and processing instances. (enum property replaced by openapi-typescript)
+       * Trace-Scope Head Sampling Rules
+       * @description Trace-scope head sampling rules. Matched traces bypass trace assembly and tail sampling. Order is significant; first match wins for metric attribution.
+       */
+      traceHeadSamplingRules?: components["schemas"]["TraceHeadSamplingRule"][];
+      /**
+       * @description Reduces trace volume by sampling CompleteSpan instances. Combines configurable head sampling rules (per-trace bypass and per-span override) with optional quantile-based tail sampling. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: TraceReducerType;
@@ -8910,6 +8970,29 @@ export interface components {
        * @enum {string}
        */
       type: TriggerActionOpType;
+    };
+    TypeInformationAny: {
+      /** Format: int32 */
+      arity?: number;
+      basicType?: boolean;
+      genericParameters?: {
+        [key: string]: components["schemas"]["TypeInformationObject"];
+      };
+      keyType?: boolean;
+      sortKeyType?: boolean;
+      /** Format: int32 */
+      totalFields?: number;
+      tupleType?: boolean;
+    };
+    TypeInformationObject: {
+      /** Format: int32 */
+      arity?: number;
+      basicType?: boolean;
+      keyType?: boolean;
+      sortKeyType?: boolean;
+      /** Format: int32 */
+      totalFields?: number;
+      tupleType?: boolean;
     };
     Update: {
       name: string;
@@ -9565,6 +9648,8 @@ export type SchemaGrokParseResponse =
 export type SchemaGrokParser = components["schemas"]["GrokParser"];
 export type SchemaGrokRuleError = components["schemas"]["GrokRuleError"];
 export type SchemaGrokRuleErrors = components["schemas"]["GrokRuleErrors"];
+export type SchemaHeadSamplingFilter =
+  components["schemas"]["HeadSamplingFilter"];
 export type SchemaHeader = components["schemas"]["Header"];
 export type SchemaIcebergLogsReplaySource =
   components["schemas"]["IcebergLogsReplaySource"];
@@ -9625,6 +9710,8 @@ export type SchemaJobActionRule = components["schemas"]["JobActionRule"];
 export type SchemaJobAnomaly = components["schemas"]["JobAnomaly"];
 export type SchemaJobId = components["schemas"]["JobID"];
 export type SchemaJsonFileFormat = components["schemas"]["JsonFileFormat"];
+export type SchemaJsonLogEventMapper =
+  components["schemas"]["JsonLogEventMapper"];
 export type SchemaJsonLogProcessor = components["schemas"]["JsonLogProcessor"];
 export type SchemaLatestReadingStrategy =
   components["schemas"]["LatestReadingStrategy"];
@@ -9638,6 +9725,7 @@ export type SchemaLlmWorkflowConfig =
 export type SchemaLogAttributesRemapper =
   components["schemas"]["LogAttributesRemapper"];
 export type SchemaLogEvent = components["schemas"]["LogEvent"];
+export type SchemaLogEventMapper = components["schemas"]["LogEventMapper"];
 export type SchemaLogReducer = components["schemas"]["LogReducer"];
 export type SchemaLogReducerFilters =
   components["schemas"]["LogReducerFilters"];
@@ -9811,6 +9899,8 @@ export type SchemaSpan = components["schemas"]["Span"];
 export type SchemaSpanDedupIcebergTableSink =
   components["schemas"]["SpanDedupIcebergTableSink"];
 export type SchemaSpanEvent = components["schemas"]["SpanEvent"];
+export type SchemaSpanHeadSamplingRule =
+  components["schemas"]["SpanHeadSamplingRule"];
 export type SchemaSpanLink = components["schemas"]["SpanLink"];
 export type SchemaSpansBackfillIcebergTableSource =
   components["schemas"]["SpansBackfillIcebergTableSource"];
@@ -9828,12 +9918,15 @@ export type SchemaSqlOperation = components["schemas"]["SqlOperation"];
 export type SchemaSqlOperations = components["schemas"]["SqlOperations"];
 export type SchemaSqlOutputStatement =
   components["schemas"]["SqlOutputStatement"];
+export type SchemaSqlPredicateFilter =
+  components["schemas"]["SqlPredicateFilter"];
 export type SchemaSqlViewStatement = components["schemas"]["SqlViewStatement"];
 export type SchemaSsoClaimMappingRole =
   components["schemas"]["SsoClaimMappingRole"];
 export type SchemaSsoEnablementRequest =
   components["schemas"]["SsoEnablementRequest"];
 export type SchemaStatus = components["schemas"]["Status"];
+export type SchemaStreamFormatAny = components["schemas"]["StreamFormatAny"];
 export type SchemaStringData = components["schemas"]["StringData"];
 export type SchemaSumAttributesMergeStrategy =
   components["schemas"]["SumAttributesMergeStrategy"];
@@ -9883,6 +9976,8 @@ export type SchemaTimeSeriesRuleConfig =
 export type SchemaTimestampReadingStrategy =
   components["schemas"]["TimestampReadingStrategy"];
 export type SchemaTraceAction = components["schemas"]["TraceAction"];
+export type SchemaTraceHeadSamplingRule =
+  components["schemas"]["TraceHeadSamplingRule"];
 export type SchemaTraceIdLogsBackfillAction =
   components["schemas"]["TraceIdLogsBackfillAction"];
 export type SchemaTraceReducer = components["schemas"]["TraceReducer"];
@@ -9893,6 +9988,10 @@ export type SchemaTrigger = components["schemas"]["Trigger"];
 export type SchemaTriggerActionConfig =
   components["schemas"]["TriggerActionConfig"];
 export type SchemaTriggerActionOp = components["schemas"]["TriggerActionOp"];
+export type SchemaTypeInformationAny =
+  components["schemas"]["TypeInformationAny"];
+export type SchemaTypeInformationObject =
+  components["schemas"]["TypeInformationObject"];
 export type SchemaUpdate = components["schemas"]["Update"];
 export type SchemaUpdateJob = components["schemas"]["UpdateJob"];
 export type SchemaUpdateRole = components["schemas"]["UpdateRole"];
@@ -17066,3 +17165,128 @@ export enum VendorImportedExceptionExceptionType {
 export enum WindowBasedLogarithmicSamplingType {
   window_based_logarithmic_sampling = "window-based-logarithmic-sampling",
 }
+
+
+// =============================================================================
+// Auto-generated operation type sets from flink:model
+// DO NOT EDIT - This section is generated by ModelJarCodeGenTask
+// =============================================================================
+
+export const SOURCE_TYPES = new Set<string>([
+  'bounded-datadog-source',
+  'cloudtrail-file-source',
+  'datadog-log-agent-source',
+  'datadog-log-cloud-source',
+  'datadog-metric-agent-source',
+  'datadog-metrics-cloud-source',
+  'datadog-trace-agent-source',
+  'grepr-llm-prompt-results-source',
+  'grepr-metrics-source',
+  'grepr-raw-log-source',
+  'grepr-raw-span-source',
+  'grepr-reducer-log-source',
+  'grepr-uploaded-log-file-source',
+  'llm-prompt-results-iceberg-table-source',
+  'logs-backfill-iceberg-table-source',
+  'logs-iceberg-replay-source',
+  'logs-iceberg-table-source',
+  'logs-values-source',
+  'metrics-iceberg-table-source',
+  'newrelic-log-agent-source',
+  'otlp-log-agent-source',
+  'otlp-trace-agent-source',
+  'reducer-logs-iceberg-table-source',
+  's3-file-source',
+  'spans-backfill-iceberg-table-source',
+  'splunk-log-agent-source',
+  'splunk-log-http-source',
+  'sumologic-log-agent-source',
+  'traces-iceberg-table-source'
+]);
+
+export const SINK_TYPES = new Set<string>([
+  'datadog-log-sink',
+  'datadog-metrics-sink',
+  'datadog-stats-sink',
+  'datadog-trace-sink',
+  'event-dedup-iceberg-table-sink',
+  'llm-prompt-results-iceberg-table-sink',
+  'logs-iceberg-table-sink',
+  'logs-predicates-counter',
+  'logs-sync-sink',
+  'metrics-iceberg-table-sink',
+  'metrics-sync-sink',
+  'newrelic-log-sink',
+  'otlp-log-sink',
+  'otlp-trace-sink',
+  'pattern-lookup-iceberg-table-sink',
+  'query-sink',
+  'spans-dedup-iceberg-table-sink',
+  'spans-sync-sink',
+  'splunk-log-sink',
+  'sumologic-log-sink',
+  'variant-sync-sink'
+]);
+
+export const OPERATION_TYPES = new Set<string>([
+  'clone',
+  'entity-context-aggregation',
+  'grok-parser',
+  'json-log-processor',
+  'llm-prompt',
+  'log-attributes-remapper',
+  'log-reducer',
+  'log-rules-application',
+  'log-transform',
+  'logs-branch',
+  'logs-event-sampler',
+  'logs-filter',
+  'pattern-matcher',
+  'rule-engine',
+  'sql-operation',
+  'template-operation',
+  'trace-reducer',
+  'trace-sampler',
+  'trigger-action',
+  'union'
+]);
+
+export function isSourceType(type: string): boolean {
+  return SOURCE_TYPES.has(type);
+}
+
+export function isSinkType(type: string): boolean {
+  return SINK_TYPES.has(type);
+}
+
+export function isOperationType(type: string): boolean {
+  return OPERATION_TYPES.has(type);
+}
+
+// =============================================================================
+// Auto-generated LLM attribute constants from flink:model
+// DO NOT EDIT - This section is generated by ModelJarCodeGenTask
+// =============================================================================
+
+export const LlmAttributes = {
+  PREFIX: 'grepr.llm.',
+  SUCCESS: 'grepr.llm.success',
+  RESULT: 'grepr.llm.result',
+  ERROR: 'grepr.llm.error',
+  INPUT_TOKENS: 'grepr.llm.inputTokens',
+  OUTPUT_TOKENS: 'grepr.llm.outputTokens',
+  LATENCY_MS: 'grepr.llm.latencyMs',
+  CACHED_INPUT_TOKENS: 'grepr.llm.cachedInputTokens',
+  REASONING_TOKENS: 'grepr.llm.reasoningTokens',
+  MODEL: 'grepr.llm.model',
+  COST_MICRODOLLARS: 'grepr.llm.costMicrodollars',
+  ACTIONABLE: 'grepr.llm.actionable',
+  PROMPT: 'grepr.llm.prompt',
+  ENTITY_CONTEXT: 'grepr.llm.entityContext',
+  RULES: 'grepr.llm.rules',
+  TRIGGER: 'grepr.llm.trigger',
+  TAG_JOB_ID: 'greprJobId',
+  TAG_OPERATOR: 'greprLlmOperator',
+  TAG_SUCCESS: 'greprLlmSuccess',
+  TAG_ACTIONABLE: 'greprLlmActionable'
+} as const;
