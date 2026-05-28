@@ -111,6 +111,34 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/datasets/{id}/estimation-config": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get dataset impact estimation configuration
+     * @description Returns the impact-estimation configuration for the dataset. The presence of a configuration is the per-dataset opt-in for impact estimation.
+     */
+    get: operations["getDatasetEstimationConfig"];
+    /**
+     * Create or update dataset impact estimation configuration
+     * @description Creates or replaces the impact-estimation configuration for the dataset. Replacing the configuration takes effect on the next estimation cycle.
+     */
+    put: operations["upsertDatasetEstimationConfig"];
+    post?: never;
+    /**
+     * Delete dataset impact estimation configuration
+     * @description Deletes the impact-estimation configuration for the dataset. Existing estimation rows for the dataset remain dormant until a new configuration is created.
+     */
+    delete: operations["deleteDatasetEstimationConfig"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/files/upload/presigned-url": {
     parameters: {
       query?: never;
@@ -1385,40 +1413,23 @@ export interface paths {
     };
     /**
      * Get exception impact estimation configuration
+     * @deprecated
      * @description Get the exception impact estimation configuration for the specified integration. This configuration controls how exception impact percentages are calculated.
      */
     get: operations["getExceptionImpactEstimationConfig"];
     /**
      * Create or update exception impact estimation configuration
+     * @deprecated
      * @description Create or update the exception impact estimation configuration for the specified integration. If a configuration already exists, it will be updated with the provided values.
      */
     put: operations["upsertExceptionImpactEstimationConfig"];
     post?: never;
     /**
      * Delete exception impact estimation configuration
+     * @deprecated
      * @description Delete the exception impact estimation configuration for the specified integration.
      */
     delete: operations["deleteExceptionImpactEstimationConfig"];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/integrations/{integrationId}/exceptions/impact-estimation-refresh": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Trigger immediate impact estimation refresh
-     * @description Triggers an immediate refresh of exception impact percentages for all exceptions in the specified integration. This bypasses the normal refresh period schedule and recalculates impact percentages based on the current data. Useful when pipeline configuration changes or when you need up-to-date impact metrics.
-     */
-    post: operations["triggerExceptionImpactEstimationRefresh"];
-    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -3119,7 +3130,6 @@ export interface components {
        * @example ************EN
        */
       readonly clientToken?: string;
-      estimationConfig?: components["schemas"]["EstimationConfig"];
       /** @description The imported exceptions from Datadog. This is a map from the vendor resource Id to the exception. */
       readonly exceptions?: {
         [key: string]: components["schemas"]["VendorImportedException"];
@@ -3368,6 +3378,36 @@ export interface components {
       /** @description The team IDs that this dataset is associated with. */
       teamIds?: string[];
     };
+    DatasetEstimationConfig: {
+      /** Format: date-time */
+      readonly createdAt?: string;
+      readonly datasetId?: string;
+      /**
+       * Format: int32
+       * @description Maximum number of log messages to scan per estimation run.
+       * @default 10000000
+       * @example 10000000
+       */
+      logLimit: number;
+      /**
+       * Format: ISO-8601
+       * @description Time window of data to scan per estimation run. ISO-8601 duration format.
+       * @default PT1H
+       * @example PT20.345S
+       */
+      lookbackDuration: string;
+      readonly organizationId?: string;
+      query?: components["schemas"]["EventPredicate"];
+      /**
+       * Format: ISO-8601
+       * @description How often to recalculate impact percentages. ISO-8601 duration format.
+       * @default P7D
+       * @example PT20.345S
+       */
+      refreshPeriod: string;
+      /** Format: date-time */
+      readonly updatedAt?: string;
+    };
     DatasetRead: {
       id: string;
       integrationId: string;
@@ -3503,37 +3543,6 @@ export interface components {
     ErrorDetails: {
       exception?: string;
       message?: string;
-    };
-    /** @description Configuration for automatic impact estimation on datasets sourced from this integration. */
-    EstimationConfig: {
-      /**
-       * @description When true, impact estimations run automatically against the datasets of any running pipelines that source from this integration.
-       * @default false
-       * @example false
-       */
-      enabled?: boolean;
-      /**
-       * Format: int32
-       * @description Maximum number of log messages to scan per estimation run.
-       * @default 10000000
-       * @example 10000000
-       */
-      logLimit?: number;
-      /**
-       * Format: ISO-8601
-       * @description Time window of data to scan per estimation run. ISO-8601 duration format.
-       * @default PT1H
-       * @example PT20.345S
-       */
-      lookbackDuration?: string;
-      query?: components["schemas"]["EventPredicate"];
-      /**
-       * Format: ISO-8601
-       * @description How often to recalculate impact percentages. ISO-8601 duration format.
-       * @default P7D
-       * @example PT20.345S
-       */
-      refreshPeriod?: string;
     };
     /** @description Base class of all Event Actions */
     EventAction: {
@@ -4216,6 +4225,12 @@ export interface components {
        * @example 25
        */
       autosyncPassthroughRateThreshold?: number;
+      /**
+       * Dataset ID for auto-sync threshold
+       * @description Dataset against which the auto-sync impact threshold is evaluated. Required for threshold filtering to apply; when null, no exceptions bypass via auto-sync.
+       * @example 0n1fhg95fhgp2
+       */
+      datasetId?: string;
       ids?: string[];
       /**
        * Integration ID
@@ -5798,7 +5813,6 @@ export interface components {
        * @example PT20.345S
        */
       dashboardFreshnessWindow?: string;
-      estimationConfig?: components["schemas"]["EstimationConfig"];
       /** @description The imported exceptions from NewRelic. This is a map from the vendor resource ID to the exception. */
       readonly exceptions?: {
         [key: string]: components["schemas"]["VendorImportedException"];
@@ -7749,7 +7763,6 @@ export interface components {
        * @example **************ey
        */
       readonly authToken?: string;
-      estimationConfig?: components["schemas"]["EstimationConfig"];
       /** @description The imported exceptions from Splunk. This is a map from the vendor resource Id to the exception. */
       readonly exceptions?: {
         [key: string]: components["schemas"]["VendorImportedException"];
@@ -9140,17 +9153,6 @@ export interface components {
       readonly eventPredicateHash?: string;
       /** @enum {string} */
       exceptionType?: VendorImportedExceptionExceptionType;
-      /**
-       * Format: date-time
-       * @description Timestamp when the impact percentage was last updated
-       */
-      impactLastUpdated?: string;
-      /**
-       * Format: double
-       * @description The percent of events impacted by this exception
-       * @example 12.5
-       */
-      impactPercentage?: number;
       integrationId?: string;
       parseResult?: components["schemas"]["ParseResult"];
       sourceUri?: string;
@@ -9592,6 +9594,8 @@ export type SchemaDatadogTraceAgentSource =
   components["schemas"]["DatadogTraceAgentSource"];
 export type SchemaDatadogTraceSink = components["schemas"]["DatadogTraceSink"];
 export type SchemaDatasetCreate = components["schemas"]["DatasetCreate"];
+export type SchemaDatasetEstimationConfig =
+  components["schemas"]["DatasetEstimationConfig"];
 export type SchemaDatasetRead = components["schemas"]["DatasetRead"];
 export type SchemaDatasetUpdate = components["schemas"]["DatasetUpdate"];
 export type SchemaDoubleDatapoint = components["schemas"]["DoubleDatapoint"];
@@ -9603,7 +9607,6 @@ export type SchemaEntityContextAggregation =
   components["schemas"]["EntityContextAggregation"];
 export type SchemaEntityRef = components["schemas"]["EntityRef"];
 export type SchemaErrorDetails = components["schemas"]["ErrorDetails"];
-export type SchemaEstimationConfig = components["schemas"]["EstimationConfig"];
 export type SchemaEventAction = components["schemas"]["EventAction"];
 export type SchemaEventActionRule = components["schemas"]["EventActionRule"];
 export type SchemaEventDedupIcebergTableSink =
@@ -10329,6 +10332,114 @@ export interface operations {
       };
       /** @description Dataset has jobs associated with it. */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getDatasetEstimationConfig: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Dataset ID to get configuration for
+         * @example logs-prod
+         */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Configuration retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DatasetEstimationConfig"];
+        };
+      };
+      /** @description No configuration found for this dataset. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  upsertDatasetEstimationConfig: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Dataset ID to create/update configuration for
+         * @example logs-prod
+         */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["DatasetEstimationConfig"];
+      };
+    };
+    responses: {
+      /** @description Configuration created or updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DatasetEstimationConfig"];
+        };
+      };
+      /** @description Invalid configuration data. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Dataset not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  deleteDatasetEstimationConfig: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Dataset ID to delete configuration for
+         * @example logs-prod
+         */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Configuration deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No configuration found for this dataset. */
+      404: {
         headers: {
           [name: string]: unknown;
         };
@@ -13956,44 +14067,6 @@ export interface operations {
     requestBody?: never;
     responses: {
       /** @description Configuration deleted successfully */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Not Found - No configuration found for this integration. */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  triggerExceptionImpactEstimationRefresh: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /**
-         * @description Integration ID to trigger refresh for
-         * @example datadog-prod-123
-         */
-        integrationId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Refresh triggered successfully */
       200: {
         headers: {
           [name: string]: unknown;
