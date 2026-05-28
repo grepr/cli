@@ -2905,14 +2905,10 @@ export interface components {
       awsAccountId: string;
       /** @description The name of the S3 bucket to use for the data warehouse */
       bucketName: string;
-      /** @description The external ID for the assumed role ARN */
-      externalId: string;
-      /** @description Nonce for bucket name generation */
-      nonce: string;
-      /** @description The organization name */
-      orgName: string;
       /** @description The AWS region the bucket must be created in. Matches the region the Grepr deployment is running in. */
       region: string;
+      /** @description The IAM role name for the data warehouse integration */
+      roleName: string;
       /** @description The name of the CloudFormation stack */
       stackName: string;
     };
