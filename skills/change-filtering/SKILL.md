@@ -1,6 +1,6 @@
 ---
 description: Set, modify, or clear pipeline filters on a Grepr pipeline. Filters drop unwanted logs at a chosen stage (pre-parser, pre-aggregation, pre-exceptions, pre-warehouse). Estimates drop volume before applying. Routes through test-pipeline-change.
-allowed-tools: Bash(grepr query), Bash(grepr job:edit), Bash(grepr job:plan), Bash(grepr job:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
+allowed-tools: Bash(grepr query), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr job:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
 trigger_keywords:
   - change filtering
   - add filter
@@ -128,8 +128,12 @@ Show the user the split before constructing the patch. A filter dropping
 
 ### Case A — Add or replace a filter at a phase
 
-`set-filter` overwrites the slot — same op whether you're installing the
-first filter or replacing one that's already there:
+`set-filter` **merges** over the slot — fields you supply win, fields you
+omit are carried over from the existing filter. So phase-specific config
+that's already there (e.g. `maxLateEventTimestampDelta` on `pre-warehouse`,
+or `inverted`) is preserved automatically; you only need to state the fields
+you're changing. Same op whether you're installing the first filter or
+replacing one that's already there:
 
 ```json
 {

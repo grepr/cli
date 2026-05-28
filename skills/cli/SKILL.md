@@ -72,6 +72,27 @@ Build and test Grok patterns for log parsing.
 - Iterative pattern development workflow
 - Command: `grok:parse`
 
+### Inspect a Pipeline → `grepr:describe-pipeline`
+Read-only structural summary of a pipeline (sources, transforms, sinks,
+filters, reducer settings, topology). Run this before any edit.
+
+### Edit a Pipeline → intent skills + `grepr:test-pipeline-change`
+Pipeline edits are plan-first and never write to production without explicit
+approval. Pick the intent skill for the change, which builds a patch and
+routes it through the `grepr:test-pipeline-change` safety harness:
+- `grepr:tune-reduction` — fix high passthrough / bad reduction
+- `grepr:tune-grok` — fix grok parsing / extract attributes
+- `grepr:change-exceptions` — tune reducer exception bypass
+- `grepr:change-filtering` — drop logs at a pipeline phase
+- `grepr:change-source` — add / remove / replace a source
+- `grepr:change-output` — change sinks, forwarding destinations, or datasets
+- `grepr:build-pipeline` — build a new pipeline from scratch
+- `grepr:debug-pipeline` — troubleshoot a misbehaving pipeline
+
+The harness flow uses: `job:plan` (build/preview the plan, `--dry-run` for a
+diff-only preview), `job:draft` (validate against live/replayed data, `-o`
+to capture NDJSON), `job:apply` (write to production after approval).
+
 ## Notes
 
 - When executing multiple steps to answer the user's request, show the user what steps you're taking

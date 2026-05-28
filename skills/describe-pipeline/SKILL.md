@@ -21,8 +21,8 @@ referencing vertices or fields that don't exist in this specific pipeline.
 
 ## When to Use
 
-- Before any `job:edit` patch — confirm which vertices exist and what
-  fields are populated.
+- Before any pipeline patch (`job:plan`) — confirm which vertices exist and
+  what fields are populated.
 - When the user says "what does this pipeline do?" or "show me the
   configuration."
 - As a building block for other skills (they invoke this first).
@@ -65,14 +65,14 @@ Check whether the pipeline is template-backed or a direct job graph. The
 detection is a quick scan over `jobGraph.vertices`:
 
 - **Template-backed**: at least one vertex has `type: "template-operation"`.
-  These are the canonical pipelines — edits route through `job:edit` /
+  These are the canonical pipelines — edits route through `job:plan` /
   `job:apply` against `templateInputs.input`, and `job:draft` gets
   per-stage tags from the server.
 - **Direct job graph**: no `template-operation` vertex; the parser /
   remapper / reducer / grok-parser are bare vertices in the graph. Edits
-  still go through the same `job:edit` / `job:apply` CLI commands
+  still go through the same `job:plan` / `job:apply` CLI commands
   - the CLI mutates the resolved graph directly. Existing-vertex field ops
-  (`add-message-attribute`, `add-group-by`, `add-aggregation`,
+  (`add-message-attribute`, `add-group-by`, `add-aggregation-strategy`,
   `add-reducer-exception`, `add-grok-rule`) are supported when the target
   vertex is unambiguous. UI-level topology ops (`set-filter`,
   `clear-filter`, `add-source`, `remove-source`, `add-parser`,
@@ -250,7 +250,7 @@ dd_source
   exceptions, multiple branches, missing components).
 - For direct-job-graph pipelines, also flag any **shape-dependent edit
   limits**: canonical UI log graphs support UI-level topology ops through
-  `job:edit`, but arbitrary raw DAGs only support unambiguous existing-
+  `job:plan`, but arbitrary raw DAGs only support unambiguous existing-
   vertex field ops.
 - Don't include the TL;DR if a previous skill already produced one in the
   same turn; just print the detail sections.

@@ -1,6 +1,6 @@
 ---
 description: Add, remove, or replace a source on a Grepr pipeline. Sources are validatable via the draft harness for template-backed pipelines and canonical UI-shaped raw job graphs; draft runs exercise the proposed source config before production apply.
-allowed-tools: Bash(grepr query), Bash(grepr job:edit), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr job:apply), Bash(grepr job:get), Bash(grepr integration:list), Bash(grepr integration:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:integration-commands
+allowed-tools: Bash(grepr query), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr job:apply), Bash(grepr job:get), Bash(grepr integration:list), Bash(grepr integration:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:integration-commands
 trigger_keywords:
   - change source
   - add source
@@ -74,13 +74,18 @@ Three cases:
 }
 ```
 
-Use the integration's documented source type. Common types:
-- `datadog-log-agent-source`, `datadog-log-cloud-source`
-- `splunk-log-agent-source`, `splunk-log-http-source`
-- `otlp-log-agent-source`
+Use the integration's documented source type. Canonical agent source types
+(see `grepr:operations-reference` for the authoritative list):
+- `datadog-log-agent-source`
+- `splunk-log-agent-source`
 - `newrelic-log-agent-source`
-- `sumo-log-source`
+- `sumologic-log-agent-source`
+- `otel-log-source`
 - `logs-iceberg-table-source` (for replay from an iceberg dataset)
+
+If you're unsure of the exact type string for a vendor, confirm with
+`grepr docs:search --type schema "<vendor> source"` rather than guessing —
+a wrong `type` is rejected at plan time.
 
 ### Case B — Replace an existing source
 
@@ -110,12 +115,17 @@ Use the integration's documented source type. Common types:
 }
 ```
 
+**Every pipeline must keep at least one source.** A patch that removes the
+only source (or removes all of them) is rejected at plan time with a
+zero-source error — to swap the sole source, pair `remove-source` with an
+`add-source` in the same patch (Case B).
+
 ## Step 4: Hand Off to test-pipeline-change
 
 Invoke `grepr:test-pipeline-change` with `<JOB_ID>` and `patch.json`.
 
-The plan's classification will be `touches-source`, which the draft
-harness allows. The harness:
+The plan's classification will be `source`, which the draft harness allows.
+The harness:
 
 - For template-backed pipelines, runs the patched template inputs through
   draft mode on the flink-session-cluster.

@@ -16,15 +16,17 @@ This skill provides a reference for all available operations that can be used in
 
 ## Pipeline Edit Contract
 
-Job edits emitted by Claude/CLI skills use the `JobEditOperation`
-JSON contract, currently represented on disk as:
+Pipeline edits emitted by Claude/CLI skills use the `JobPatch` JSON
+contract — a list of typed operations on disk:
 
 ```json
 { "operations": [ { "op": "<operation-name>" } ] }
 ```
 
-`job:edit`, `job:plan`, `job:draft`, and `job:apply` consume that patch
-shape. Backend support:
+The root key is `operations` (not `ops`). The commands `job:plan`,
+`job:draft`, and `job:apply` consume this patch shape: `job:plan` builds the
+plan (`--dry-run` previews the diff), `job:draft` validates it, `job:apply`
+writes to production. Backend support:
 
 - Template-backed pipelines mutate `templateInputs.input`; the semantic
   edit surface is the canonical path.
@@ -34,19 +36,30 @@ shape. Backend support:
   UI-shaped log graphs. Non-UI raw DAGs reject with `unsupported raw job
   graph shape`.
 
-Common operations:
+Operations (exact field names matter — a wrong field is rejected with a
+specific error):
 
-| Op | Purpose |
-|----|---------|
-| `add-message-attribute` | Add a remapper message reserved attribute/path. |
-| `add-group-by` | Add a reducer partition/group-by attribute/path. |
-| `add-aggregation` | Add reducer aggregation strategy entries. |
-| `add-reducer-exception` | Add a reducer query exception. |
-| `add-grok-rule` | Append a rule to an existing grok parser. |
-| `set-filter` / `clear-filter` | Set or clear a phase-slotted filter. |
-| `add-parser` / `remove-parser` | Add or remove a parser in the parser chain. |
-| `add-source` / `remove-source` | Add or remove source vertices. |
-| `set-input-field` / `unset-input-field` | Template-input escape hatch only; not supported on raw job graphs. |
+| Op | Required fields | Purpose |
+|----|-----------------|---------|
+| `add-message-attribute` | `attributePath` | Add a remapper message reserved attribute/path. |
+| `add-group-by` | `attributePath` | Add a reducer partition/group-by attribute/path. Append-only (no `remove-group-by`). |
+| `add-aggregation-strategy` | `attributePath`, `strategies` | Add reducer aggregation strategies. `strategies` is an array of `sum`/`min`/`max`/`avg` (e.g. `["avg"]`) — not a scalar, not `"average"`. Append-only. |
+| `add-reducer-exception` | `name`, `predicate` | Add a reducer query exception (bypasses aggregation for matching logs). |
+| `add-grok-rule` | `pattern` (not `rule`); optional `parserName`, `extractAttribute` | Append a rule to a grok parser. `parserName` is required only when more than one grok parser exists; rejected if zero exist. |
+| `set-filter` / `clear-filter` | `phase` (not `stage`); `set` also needs `filter` | Set or clear a phase-slotted filter. Merges over the existing slot, so phase-specific fields (e.g. `maxLateEventTimestampDelta`, `inverted`) are preserved. `clear-filter` keeps the vertex but blanks the predicate query. |
+| `add-parser` / `remove-parser` | `parser` / `name` (not `parserName`) | Add or remove a parser. New parsers append before `pre_data_warehouse_filter`. |
+| `add-source` / `remove-source` | `source` / `name` (not `sourceName`) | Add or remove source vertices. A proposal leaving zero sources is rejected. |
+| `add-sink` / `remove-sink` | `target` (`vendor`\|`processed-logs`), `sink` / `name?` | Add or remove a sink. `vendor` adds a vendor log sink (optionally with a gating `filter`); `processed-logs` sets the single reduced-logs iceberg sink. |
+| `set-raw-dataset` | `datasetId` | Point the raw-logs dataset at a different dataset ID. |
+| `set-input-field` / `unset-input-field` | `path`, `value` / `path` | Template-input escape hatch only (dot-notation, object keys not array indices); rejected on raw job graphs. |
+
+Phases for `set-filter`/`clear-filter`: `pre-parser`, `pre-aggregation`,
+`pre-exceptions`, `pre-warehouse`. (`pre-aggregation` has no canonical raw
+UI-graph stage — template-backed only.)
+
+A plan's `classification` field summarizes what the patch touches:
+`transform`, `source`, `sink`, or `mixed`. Harness skills use it to decide
+the validation path.
 
 Draft behavior:
 

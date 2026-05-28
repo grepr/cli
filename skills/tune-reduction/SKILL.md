@@ -1,6 +1,6 @@
 ---
-description: Diagnose and fix bad reduction (high passthrough) on a Grepr pipeline. Covers empty messages, exceptions bypassing the reducer, and over-aggregation. Builds a job:edit patch, validates it via test-pipeline-change, and requires explicit user approval before job:apply.
-allowed-tools: Bash(grepr query), Bash(grepr job:edit), Bash(grepr job:plan), Bash(grepr job:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:change-exceptions, grepr:change-filtering, grepr:change-source, grepr:tune-grok, grepr:query-logs, grepr:grepr-model
+description: Diagnose and fix bad reduction (high passthrough) on a Grepr pipeline. Covers empty messages, exceptions bypassing the reducer, and over-aggregation. Builds a job:plan patch, validates it via test-pipeline-change, and requires explicit user approval before job:apply.
+allowed-tools: Bash(grepr query), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr job:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:change-exceptions, grepr:change-filtering, grepr:change-source, grepr:tune-grok, grepr:query-logs, grepr:grepr-model
 trigger_keywords:
   - tune reduction
   - reduction is bad
@@ -39,7 +39,7 @@ skill:
   `grepr:change-filtering` (drop classes of logs at the pipeline edge).
 
 This skill diagnoses which one is hurting the pipeline, builds a
-`job:edit` patch, and **never** applies it directly — it always routes
+`job:plan` patch, and **never** applies it directly — it always routes
 through `test-pipeline-change` so the user sees before/after metrics and
 explicitly approves the change.
 
@@ -261,8 +261,9 @@ test-pipeline-change with --job-id <JOB_ID> --patch patch.json
 ```
 
 That skill will:
-1. Generate a plan with `job:edit`.
-2. Run a core-chain test job via `job:to-test --core-chain`.
+1. Generate a plan with `job:plan -o plan.json`.
+2. Run a draft via `job:draft plan.json -o draft-output.ndjson` (template
+   draft mode, or client-side iceberg replay for raw graphs).
 3. Report before/after metrics (empty-message %, reduction %, group
    cardinality).
 4. Wait for explicit user approval.

@@ -1,6 +1,6 @@
 ---
 description: Add, narrow, or remove reducer exceptions on a Grepr pipeline. Exceptions let specific log shapes bypass aggregation (e.g. errors, alerts, important traces). This skill helps tune which logs get the bypass without crippling reduction. Routes through test-pipeline-change.
-allowed-tools: Bash(grepr query), Bash(grepr job:edit), Bash(grepr job:plan), Bash(grepr job:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
+allowed-tools: Bash(grepr query), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr job:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
 trigger_keywords:
   - change exceptions
   - add reducer exception
