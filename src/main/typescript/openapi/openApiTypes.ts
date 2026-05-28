@@ -120,7 +120,7 @@ export interface paths {
     };
     /**
      * Get dataset impact estimation configuration
-     * @description Returns the impact-estimation configuration for the dataset. The presence of a configuration is the per-dataset opt-in for impact estimation.
+     * @description Returns the impact-estimation configuration for the dataset, or null when the dataset is not opted in for estimation. The presence of a configuration is the per-dataset opt-in for impact estimation.
      */
     get: operations["getDatasetEstimationConfig"];
     /**
@@ -1404,7 +1404,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/integrations/{integrationId}/exceptions/impact-estimation-config": {
+  "/v1/integrations/{integrationId}/exceptions/estimation-datasets": {
     parameters: {
       query?: never;
       header?: never;
@@ -1412,24 +1412,13 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * Get exception impact estimation configuration
-     * @deprecated
-     * @description Get the exception impact estimation configuration for the specified integration. This configuration controls how exception impact percentages are calculated.
+     * List estimation-eligible datasets for an integration
+     * @description Returns datasets that are sinks of the integration's non-deleted pipelines, each with the pipelines that wire the integration to that dataset and the dataset's current estimation configuration (or null when not opted in). The estimation configuration is per-dataset and shared across every integration whose pipelines target the same dataset.
      */
-    get: operations["getExceptionImpactEstimationConfig"];
-    /**
-     * Create or update exception impact estimation configuration
-     * @deprecated
-     * @description Create or update the exception impact estimation configuration for the specified integration. If a configuration already exists, it will be updated with the provided values.
-     */
-    put: operations["upsertExceptionImpactEstimationConfig"];
+    get: operations["getEstimationDatasets"];
+    put?: never;
     post?: never;
-    /**
-     * Delete exception impact estimation configuration
-     * @deprecated
-     * @description Delete the exception impact estimation configuration for the specified integration.
-     */
-    delete: operations["deleteExceptionImpactEstimationConfig"];
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -1831,6 +1820,66 @@ export interface paths {
      * @description Returns all permissions available for assignment to organization wide roles.
      */
     get: operations["getAvailablePermissions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/pipelines/{pipelineId}/exceptions/estimation-datasets": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List estimation-eligible datasets for a pipeline
+     * @description Returns the pipeline's sink datasets, each joined with the dataset's current estimation configuration (or null when the dataset is not opted in). The estimation configuration is per-dataset and shared across every pipeline whose sink targets the same dataset.
+     */
+    get: operations["getEstimationDatasets_1"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/pipelines/{pipelineId}/exceptions/impact-estimation-reset": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Reset impact estimations for a pipeline
+     * @description Clears the cached impact percentage and last-updated timestamp on estimation rows in the pipeline's scope. The hourly impact-estimation cycle picks up the cleared rows on its next tick; fresh values appear on a later poll. Rows currently being processed by an active estimation job are skipped and retain their values until that job completes. Returns the number of rows cleared; zero indicates a no-op (no opted-in sink datasets, or no estimation-capable source integrations).
+     */
+    post: operations["resetImpactEstimation"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/pipelines/{pipelineId}/exceptions/integrations/{integrationId}/impacts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get integration exception impacts for a pipeline
+     * @description Returns the per-exception impact percentages the runtime auto-sync threshold filter would compare against for this pipeline/integration pair. The pipeline's sink dataset scopes the lookup; exceptions without an estimation row are absent from the response.
+     */
+    get: operations["getIntegrationExceptionImpacts"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3544,6 +3593,20 @@ export interface components {
       exception?: string;
       message?: string;
     };
+    EstimationDatasetSummary: {
+      config?: components["schemas"]["DatasetEstimationConfig"];
+      /**
+       * @description Dataset this summary describes
+       * @example ds-prod-1
+       */
+      datasetId: string;
+      /**
+       * @description Display name of the dataset
+       * @example logs-prod
+       */
+      datasetName: string;
+      pipelines: components["schemas"]["PipelineRef"][];
+    };
     /** @description Base class of all Event Actions */
     EventAction: {
       /** Format: int32 */
@@ -4238,44 +4301,6 @@ export interface components {
        * @example 0kk67gfs56a
        */
       integrationId: string;
-    };
-    IntegrationExceptionImpactEstimationConfig: {
-      /**
-       * Format: date-time
-       * @description Creation timestamp
-       */
-      readonly createdAt?: string;
-      /** @description ID of the dataset that contains raw data to be queried to calculate how many logs match exceptions loaded by a vendor integration. */
-      datasetId: string;
-      /** @description Integration ID */
-      readonly integrationId?: string;
-      /**
-       * Format: int32
-       * @description Maximum number of log messages to match.
-       */
-      logLimit?: number;
-      /**
-       * Format: ISO-8601
-       * @description Lookback duration for which to calculate exception impact. Uses ISO-8601 duration format.
-       * @default PT1H
-       * @example PT20.345S
-       */
-      lookbackDuration?: string;
-      /** @description Organization ID */
-      readonly organizationId?: string;
-      query?: components["schemas"]["EventPredicate"];
-      /**
-       * Format: ISO-8601
-       * @description How often to refresh exception impact percentages. Uses ISO-8601 duration format.
-       * @default P7D
-       * @example PT20.345S
-       */
-      refreshPeriod?: string;
-      /**
-       * Format: date-time
-       * @description Last update timestamp
-       */
-      readonly updatedAt?: string;
     };
     /** @description Paginated list of vendor imported exceptions for an integration */
     IntegrationExceptionsList: {
@@ -6345,6 +6370,18 @@ export interface components {
        */
       type: PhraseNodeType;
     };
+    PipelineRef: {
+      /**
+       * @description Pipeline id
+       * @example pipe-prod-1
+       */
+      id: string;
+      /**
+       * @description Pipeline display name
+       * @example prod
+       */
+      name: string;
+    };
     /** @description Current operational status and health of the pipeline */
     PipelineStatus: {
       error?: components["schemas"]["ErrorDetails"];
@@ -7292,6 +7329,14 @@ export interface components {
        *     ]
        */
       values: string[];
+    };
+    ResetImpactEstimationResponse: {
+      /**
+       * Format: int32
+       * @description Number of estimation rows whose cached impact percentage was cleared. Zero when nothing was in scope (no opted-in sink datasets, or no estimation-capable integrations).
+       * @example 12
+       */
+      rowsCleared: number;
     };
     /** @description Resource information describing the entity that produced the telemetry data. */
     Resource: {
@@ -9607,6 +9652,8 @@ export type SchemaEntityContextAggregation =
   components["schemas"]["EntityContextAggregation"];
 export type SchemaEntityRef = components["schemas"]["EntityRef"];
 export type SchemaErrorDetails = components["schemas"]["ErrorDetails"];
+export type SchemaEstimationDatasetSummary =
+  components["schemas"]["EstimationDatasetSummary"];
 export type SchemaEventAction = components["schemas"]["EventAction"];
 export type SchemaEventActionRule = components["schemas"]["EventActionRule"];
 export type SchemaEventDedupIcebergTableSink =
@@ -9662,8 +9709,6 @@ export type SchemaInstrumentationScope =
   components["schemas"]["InstrumentationScope"];
 export type SchemaIntegrationExceptionConfig =
   components["schemas"]["IntegrationExceptionConfig"];
-export type SchemaIntegrationExceptionImpactEstimationConfig =
-  components["schemas"]["IntegrationExceptionImpactEstimationConfig"];
 export type SchemaIntegrationExceptionsList =
   components["schemas"]["IntegrationExceptionsList"];
 export type SchemaInvitationsList = components["schemas"]["InvitationsList"];
@@ -9824,6 +9869,7 @@ export type SchemaPatternMatcher = components["schemas"]["PatternMatcher"];
 export type SchemaPatternRuleConfig =
   components["schemas"]["PatternRuleConfig"];
 export type SchemaPhraseNode = components["schemas"]["PhraseNode"];
+export type SchemaPipelineRef = components["schemas"]["PipelineRef"];
 export type SchemaPipelineStatus = components["schemas"]["PipelineStatus"];
 export type SchemaPlan = components["schemas"]["Plan"];
 export type SchemaPlanChangeRequest =
@@ -9874,6 +9920,8 @@ export type SchemaReducerLogsQuerySource =
   components["schemas"]["ReducerLogsQuerySource"];
 export type SchemaRemoveKeyAttributeAction =
   components["schemas"]["RemoveKeyAttributeAction"];
+export type SchemaResetImpactEstimationResponse =
+  components["schemas"]["ResetImpactEstimationResponse"];
 export type SchemaResource = components["schemas"]["Resource"];
 export type SchemaResourceFilter = components["schemas"]["ResourceFilter"];
 export type SchemaRole = components["schemas"]["Role"];
@@ -10354,7 +10402,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Configuration retrieved successfully */
+      /** @description Configuration retrieved, or null if the dataset is not opted in */
       200: {
         headers: {
           [name: string]: unknown;
@@ -10363,7 +10411,7 @@ export interface operations {
           "application/json": components["schemas"]["DatasetEstimationConfig"];
         };
       };
-      /** @description No configuration found for this dataset. */
+      /** @description Dataset not found. */
       404: {
         headers: {
           [name: string]: unknown;
@@ -13967,14 +14015,14 @@ export interface operations {
       };
     };
   };
-  getExceptionImpactEstimationConfig: {
+  getEstimationDatasets: {
     parameters: {
       query?: never;
       header?: never;
       path: {
         /**
-         * @description Integration ID to get configuration for
-         * @example datadog-prod-123
+         * @description Integration id
+         * @example 0q841q0j81m2q
          */
         integrationId: string;
       };
@@ -13982,13 +14030,13 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Configuration retrieved successfully */
+      /** @description Estimation dataset summaries retrieved */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["IntegrationExceptionImpactEstimationConfig"];
+          "application/json": components["schemas"]["EstimationDatasetSummary"][];
         };
       };
       /** @description Unauthorized */
@@ -13998,89 +14046,7 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description Not Found - No configuration found for this integration. */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  upsertExceptionImpactEstimationConfig: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /**
-         * @description Integration ID to create/update configuration for
-         * @example datadog-prod-123
-         */
-        integrationId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["IntegrationExceptionImpactEstimationConfig"];
-      };
-    };
-    responses: {
-      /** @description Configuration created or updated successfully */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["IntegrationExceptionImpactEstimationConfig"];
-        };
-      };
-      /** @description Bad Request - Invalid configuration data. */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  deleteExceptionImpactEstimationConfig: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /**
-         * @description Integration ID to delete configuration for
-         * @example datadog-prod-123
-         */
-        integrationId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Configuration deleted successfully */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Not Found - No configuration found for this integration. */
+      /** @description Not Found - Integration not found. */
       404: {
         headers: {
           [name: string]: unknown;
@@ -14973,6 +14939,133 @@ export interface operations {
       };
       /** @description Insufficient permissions */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getEstimationDatasets_1: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Pipeline ID to list estimation datasets for
+         * @example pipe-prod-1
+         */
+        pipelineId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Estimation dataset summaries retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EstimationDatasetSummary"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Pipeline not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  resetImpactEstimation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Pipeline ID to reset estimations for
+         * @example pipe-prod-1
+         */
+        pipelineId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Reset complete */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ResetImpactEstimationResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Pipeline not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getIntegrationExceptionImpacts: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Pipeline ID providing the dataset scope
+         * @example pipe-prod-1
+         */
+        pipelineId: string;
+        /**
+         * @description Integration whose exceptions to look up impacts for
+         * @example int-dd-1
+         */
+        integrationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Impact percentages retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: number;
+          };
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Pipeline not found. */
+      404: {
         headers: {
           [name: string]: unknown;
         };
