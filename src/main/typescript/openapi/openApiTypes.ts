@@ -8474,6 +8474,11 @@ export interface components {
        */
       checkValidGreprJobGraph?: boolean;
       input: components["schemas"]["TemplateInput"];
+      /**
+       * @description When true, the server skips validating the input values against the template's input schema before running the script. Mirrors the in-process executeTemplateWithoutThrottling path used by some tests and tooling.
+       * @default false
+       */
+      skipInputValidation?: boolean;
       template: components["schemas"]["Template"];
     };
     /** @description Describes an additional output that will be added to the job graph when running a template in draft mode. */
