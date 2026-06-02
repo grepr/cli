@@ -4,16 +4,19 @@ Sanitized patches for the three reduction causes. Each is a copy-paste-valid
 `{ "operations": [...] }` file using only whitelisted ops, fields, and strategy
 values (`sum`|`min`|`max`|`avg`). Hand the file to `grepr:test-pipeline-change`.
 
+> Narrowing an over-broad exception is deferred to ENGT-4722 (dedicated
+> `remove-reducer-exception` op, both backends). Today's only path is the
+> template-only `set-input-field` rewrite — see `grepr:change-exceptions`. The
+> comprehensive example set lands with that ticket.
+
 - [✅ Empty messages + over-aggregation (works on both backends)](#empty)
 - [✅ Raw job-graph patch](#raw)
-- [✅ Narrowing an over-broad exception (TEMPLATE-ONLY)](#narrow)
 - [❌ Bad: multiple strategies on one path](#bad-strategies)
 - [❌ Bad: over-broad exception that craters reduction](#bad-exception)
 
 The `add-message-attribute`, `add-group-by`, and `add-aggregation-strategy` ops
 behave identically on template-backed and raw job-graphs, so the same patch
-applies to both — shown once below. The backend-specific caveat is exception
-*narrowing* (template-only), shown separately.
+applies to both — shown once below.
 
 ## ✅ Empty messages + over-aggregation {#empty}
 
@@ -59,31 +62,6 @@ Why it works: `add-message-attribute` writes the remapper's
 `partitionByAttributes` on a raw graph directly. `msg.operationName` is
 medium-cardinality, so it splits the merged GraphQL pattern without crippling
 the reduction ratio.
-
-## ✅ Narrowing an over-broad exception — TEMPLATE-ONLY {#narrow}
-
-Narrowing replaces the whole exceptions list via `set-input-field`, which only
-works on template-backed pipelines. On a raw job-graph this patch is rejected —
-hand off to `grepr:change-exceptions` instead.
-
-```json
-{
-  "operations": [
-    {
-      "op": "set-input-field",
-      "path": "exceptions",
-      "value": [
-        { "type": "query-exception", "predicate": { "type": "datadog-query", "query": "status:error AND service:checkout-service" } }
-      ]
-    }
-  ]
-}
-```
-
-Why it works: a bare `status:error` exception bypassed all error traffic across
-every service; scoping it to `checkout-service` lets the reducer aggregate the
-rest. `set-input-field` (`path`, `value`) is template-only — for raw graphs the
-narrowing must route through `grepr:change-exceptions`.
 
 ## ❌ Bad: multiple strategies on one path {#bad-strategies}
 

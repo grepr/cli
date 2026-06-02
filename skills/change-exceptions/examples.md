@@ -1,8 +1,13 @@
 # Change-exceptions examples
 
-Sanitized patches for adding and narrowing reducer exceptions. Every patch root
+Sanitized patches for adding reducer exceptions. Every patch root
 is `{ "operations": [ … ] }`. The only field on `add-reducer-exception` is
 `predicate`; there is no `name`.
+
+> Narrowing or removing an existing exception is deferred to ENGT-4722, which adds
+> a dedicated `remove-reducer-exception` op that works on both backends. Until then
+> the only path is the template-only `set-input-field` rewrite; the full example
+> set (narrow/remove on both backends) lands with that ticket.
 
 ## ✅ Add an exception (works on both backends)
 
@@ -36,29 +41,6 @@ nothing more.
 Why this works: on a raw graph the harness appends the predicate to the reducer's
 `logReducerExceptions`. `@alert_active` targets a message attribute (the `@`
 prefix), not a tag, so it matches only logs that actually carry that attribute.
-
-## ✅ Narrow an over-broad exception (template-backed ONLY)
-
-A pipeline has a too-broad `status:error` exception. Tighten it by rewriting the
-full `exceptions` array with `set-input-field`. Start from
-`describe-pipeline`'s current array and replace just the offending entry.
-
-```json
-{ "operations": [
-  { "op": "set-input-field",
-    "path": "exceptions",
-    "value": [
-      { "type": "query-exception", "predicate": { "type": "datadog-query", "query": "status:error AND service:checkout-service" } },
-      { "type": "query-exception", "predicate": { "type": "datadog-query", "query": "@alert_active:true" } }
-    ] }
-] }
-```
-
-Why this works: `set-input-field` edits template inputs, so it can replace an
-existing entry — the only way to narrow. It is TEMPLATE-ONLY and is rejected at
-plan time on raw job graphs (they have no template inputs). Raw graphs are
-add-only; if a raw-graph exception is too broad, surface that limitation instead
-of patching.
 
 ## ❌ Over-broad predicate that craters reduction
 

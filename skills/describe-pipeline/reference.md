@@ -77,6 +77,10 @@ pre_exceptions_filter → log_reducer → sinks
 | `set-input-field` / `unset-input-field` | ✅ | ❌ template-only | ❌ template-only |
 | `set-filter` phase `pre-aggregation` | ✅ | ❌ template-only stage | ❌ template-only stage |
 
+This matrix reflects the current add-biased op surface. ENGT-4722 adds `update-*`
+(source/sink/parser) and per-entry `remove-*` ops; expect raw-graph narrowing/removal
+support to widen when it lands.
+
 Two op families:
 
 - **Existing-vertex field ops** (`add-message-attribute`, `add-group-by`,
