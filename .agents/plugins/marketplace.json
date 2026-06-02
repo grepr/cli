@@ -1,0 +1,15 @@
+{
+  "name": "grepr-cli",
+  "interface": {
+    "displayName": "Grepr CLI"
+  },
+  "plugins": [
+    {
+      "name": "grepr",
+      "source": {
+        "source": "local",
+        "path": "./plugins/grepr"
+      }
+    }
+  ]
+}
