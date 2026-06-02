@@ -78,6 +78,43 @@ export interface QueryCommandOptions extends FormattableCommandOptions {
   messageLengthMax?: number;
 }
 
+export interface JobPlanCommandOptions extends CliOptions {
+  jobId?: string;
+  patch?: string;
+  color?: boolean;
+  dryRun?: boolean;
+}
+
+export interface JobApplyCommandOptions extends CliOptions {
+  force?: boolean;
+}
+
+export interface JobDraftCommandOptions extends CliOptions {
+  /**
+   * Draft the live pipeline as-is with no edits (no plan file). Fetches the
+   * job by id and runs the current config through draft mode. Mutually
+   * exclusive with the positional plan-file argument.
+   */
+  jobId?: string;
+  /**
+   * Job-graph backend only. `maxAllowedRate` (messages/sec) for the
+   * logs-event-sampler inserted after each live source. Omitted by default so
+   * the server's sampler default applies, mirroring the UI's template drafts.
+   */
+  sampleRate?: number;
+  /**
+   * Job-graph backend only. `maxBurstLimit` (messages) for the inserted
+   * logs-event-sampler. Defaults to the UI draft value when omitted.
+   */
+  sampleBurst?: number;
+  /**
+   * Job-graph backend only. Wall-clock cap in seconds for a live
+   * source-preserving draft; the streaming sync job is aborted after it so the
+   * draft doesn't run indefinitely.
+   */
+  maxDurationSeconds?: number;
+}
+
 export interface ApiClientConfig {
   orgName: string;
   apiBaseUrl: string;

@@ -11,3 +11,11 @@
 export function parseIntArg(value: string): number {
   return parseInt(value, 10);
 }
+
+/**
+ * Float counterpart to {@link parseIntArg} for numeric options that accept a
+ * fractional value (e.g. a sub-1 messages-per-second sampler rate).
+ */
+export function parseFloatArg(value: string): number {
+  return parseFloat(value);
+}

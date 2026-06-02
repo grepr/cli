@@ -11,6 +11,9 @@ import { QueryCommand } from './commands/query-command.js';
 import { ConfigCommand } from './commands/config-command.js';
 import { JobListCommand, JobCrudCommand } from './commands/job-command.js';
 import { JobToTestCommand } from './commands/job-to-test-command.js';
+import { JobPlanCommand } from './commands/job-plan-command.js';
+import { JobDraftCommand } from './commands/job-draft-command.js';
+import { JobApplyCommand } from './commands/job-apply-command.js';
 import { IntegrationListCommand, IntegrationCrudCommand } from './commands/integration-command.js';
 import { DatasetListCommand, DatasetCrudCommand } from './commands/dataset-command.js';
 import { GrokParseCommand } from './commands/grok-command.js';
@@ -184,6 +187,11 @@ class GreprQueryCLI {
     this.commandRegistry.register(new JobListCommand());
     this.commandRegistry.register(new JobCrudCommand());
     this.commandRegistry.register(new JobToTestCommand());
+
+    // Register pipeline-editing commands (terraform-style plan / draft / apply)
+    this.commandRegistry.register(new JobPlanCommand());
+    this.commandRegistry.register(new JobDraftCommand());
+    this.commandRegistry.register(new JobApplyCommand());
 
     // Register integration commands
     this.commandRegistry.register(new IntegrationListCommand());

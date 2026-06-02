@@ -20,7 +20,15 @@ import {
   TagActionType,
   LogTransformActionType,
   SchemaLogsIcebergTableSource,
-  SchemaDatadogQueryPredicate
+  SchemaDatadogQueryPredicate,
+  SchemaReadJob,
+  SchemaUpdateJob,
+  SchemaLogReducerTemplateInput,
+  LogAttributesRemapperType,
+  LogReducerType,
+  JsonLogProcessorType,
+  TemplateOperationType,
+  PathsV1JobsGetParametersQueryState
 } from '@/openapi/openApiTypes.js';
 import { DEFAULT_LIMIT } from '@/types.js';
 
@@ -159,4 +167,127 @@ export function createTestTagOp(name: string, testRunId: string, sinkName: strin
       }
     ]
   };
+}
+
+/**
+ * Builds a full LogReducerTemplateInput from a partial override, filling in the
+ * default reducer/empty collections expected by template-backed pipeline tests.
+ */
+export function buildTemplateInput(input: Partial<SchemaLogReducerTemplateInput> = {}): SchemaLogReducerTemplateInput {
+  return {
+    exceptions: [], filters: {}, parsers: [],
+    reducer: { delimiters: [' '], enabledMasks: [], masks: [], name: 'log_reducer', type: 'log-reducer' } as never,
+    sources: [],
+    ...input,
+  } as SchemaLogReducerTemplateInput;
+}
+
+/**
+ * Construct a template-backed pipeline job for tests. The shape mirrors what
+ * the API returns for an unresolved job: jobGraph contains exactly one
+ * template-operation vertex whose templateInputs.input is a
+ * LogReducerTemplateInput.
+ */
+export function makeTemplateJob(
+  input: Partial<SchemaLogReducerTemplateInput> = {},
+  version = 7,
+  processing = 'STREAMING',
+): SchemaReadJob {
+  return {
+    id: 'job_test', name: 'p', organizationId: 'grepr', version,
+    createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+    desiredState: PathsV1JobsGetParametersQueryState.RUNNING, state: PathsV1JobsGetParametersQueryState.RUNNING,
+    execution: 'ASYNCHRONOUS', processing, tags: {},
+    jobGraph: { vertices: [{
+      type: TemplateOperationType.template_operation, name: 'log_reducer_template',
+      templateId: 'log-reducer', templateVersion: 1, draftMode: false,
+      templateInputs: { input: buildTemplateInput(input) as unknown as Record<string, never> },
+    } as never], edges: [] },
+  } as unknown as SchemaReadJob;
+}
+
+/** Build a SchemaUpdateJob containing a template-operation vertex with the given input. */
+export function makeTemplateUpdate(input: Partial<SchemaLogReducerTemplateInput> = {}, fromVersion = 1): SchemaUpdateJob {
+  return {
+    desiredState: PathsV1JobsGetParametersQueryState.RUNNING, fromVersion,
+    jobGraph: { vertices: [{
+      type: TemplateOperationType.template_operation, name: 'log_reducer_template',
+      templateId: 'log-reducer', templateVersion: 1,
+      templateInputs: { input: buildTemplateInput(input) as unknown as Record<string, never> },
+    } as never], edges: [] },
+  } as unknown as SchemaUpdateJob;
+}
+
+/**
+ * Build a non-template (job-graph) pipeline job for tests. The shape mirrors
+ * what the API returns for a resolved/non-template job: jobGraph.vertices
+ * contains parser/remapper/reducer operations directly, with no
+ * template-operation wrapper.
+ */
+export function makeJobGraphJob(overrides?: { vertices?: Record<string, unknown>[]; edges?: string[] }, version = 3): SchemaReadJob {
+  const defaultVertices: Record<string, unknown>[] = [
+    { type: LogAttributesRemapperType.log_attributes_remapper, name: 'log_attributes_remapper', messageReservedAttributes: ['message', 'msg'] },
+    { type: LogReducerType.log_reducer, name: 'log_reducer', delimiters: [' '], enabledMasks: [], masks: [] },
+  ];
+  return {
+    id: 'job_jg',
+    name: 'p',
+    organizationId: 'grepr',
+    version,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    desiredState: PathsV1JobsGetParametersQueryState.RUNNING,
+    state: PathsV1JobsGetParametersQueryState.RUNNING,
+    execution: 'ASYNCHRONOUS',
+    processing: 'STREAMING',
+    tags: {},
+    jobGraph: {
+      vertices: (overrides?.vertices ?? defaultVertices) as never[],
+      edges: overrides?.edges ?? [],
+    },
+  } as unknown as SchemaReadJob;
+}
+
+export function makeUiRawJobGraphJob(overrides?: { vertices?: Record<string, unknown>[]; edges?: string[] }): SchemaReadJob {
+  const vertices: Record<string, unknown>[] = [
+    { type: 'logs-iceberg-table-source', name: 'src', datasetId: 'raw_ds' },
+    {
+      type: LogsFilterType.logs_filter,
+      name: 'pre_parser_filter',
+      predicate: { type: DatadogQueryPredicateType.datadog_query, query: '' },
+    },
+    { type: JsonLogProcessorType.json_log_processor, name: 'json_log_processor' },
+    { type: LogAttributesRemapperType.log_attributes_remapper, name: 'log_attributes_remapper' },
+    {
+      type: LogsFilterType.logs_filter,
+      name: 'pre_data_warehouse_filter',
+      predicate: { type: DatadogQueryPredicateType.datadog_query, query: '' },
+    },
+    {
+      type: LogsFilterType.logs_filter,
+      name: 'pre_exceptions_filter',
+      predicate: { type: DatadogQueryPredicateType.datadog_query, query: '' },
+    },
+    { type: LogReducerType.log_reducer, name: 'log_reducer', delimiters: [' '], enabledMasks: [], masks: [] },
+    { type: 'logs-sync-sink', name: 'sink' },
+  ];
+  const edges = [
+    'src -> pre_parser_filter',
+    'pre_parser_filter -> json_log_processor',
+    'json_log_processor -> log_attributes_remapper',
+    'log_attributes_remapper -> pre_data_warehouse_filter',
+    'pre_data_warehouse_filter -> pre_exceptions_filter',
+    'pre_exceptions_filter -> log_reducer',
+    'log_reducer -> sink',
+  ];
+  return makeJobGraphJob({
+    vertices: overrides?.vertices ?? vertices,
+    edges: overrides?.edges ?? edges,
+  });
+}
+
+export function findJobGraphVertex(update: { jobGraph?: { vertices?: { name?: string }[] } }, name: string): Record<string, unknown> {
+  const v = update.jobGraph?.vertices?.find(vert => vert.name === name);
+  if (!v) throw new Error(`vertex ${name} not found in update`);
+  return v as unknown as Record<string, unknown>;
 }

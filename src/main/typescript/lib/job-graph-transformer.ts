@@ -27,13 +27,26 @@ import {
   TagActionType,
   SchemaLogsIcebergTableSink,
   LogsValuesSourceType,
-  SchemaLogEvent
+  SchemaLogEvent,
+  JsonLogProcessorType,
+  GrokParserType,
+  LogAttributesRemapperType,
+  LogsFilterType,
+  LogReducerType,
+  LogsEventSamplerType,
+  GreprUploadedLogFileSourceType,
 } from '@/openapi/openApiTypes';
 import {
   canLimit,
   parseEdge,
-  generateUUID
+  generateUUID,
 } from './job-graph-utils.js';
+import {
+  RAW_JSON_PROCESSOR,
+  RAW_PRE_EXCEPTIONS_FILTER,
+  RAW_PRE_PARSER_FILTER,
+  RAW_PRE_WAREHOUSE_FILTER,
+} from './job-graph-log-pipeline-constants.js';
 import fs from 'fs-extra';
 
 /**
@@ -72,7 +85,31 @@ export interface JobToTestOptions {
 
   /** Custom test job name (default: {original}_test) */
   testName?: string;
+
+  /**
+   * Tuning for the logs-event-sampler inserted after each live source in a
+   * source-preserving draft. Omitted fields fall back to the UI's draft
+   * defaults (see {@link DEFAULT_DRAFT_SAMPLER_BURST}).
+   */
+  sampler?: DraftSamplerOptions;
 }
+
+/** Sampler knobs for a source-preserving draft, mirroring the UI's logs-event-sampler. */
+export interface DraftSamplerOptions {
+  /** `maxAllowedRate` in messages/sec; omitted -> server default applies. */
+  maxAllowedRate?: number;
+  /** `maxBurstLimit` in messages; omitted -> {@link DEFAULT_DRAFT_SAMPLER_BURST}. */
+  maxBurstLimit?: number;
+}
+
+/**
+ * Default `maxBurstLimit` for a draft logs-event-sampler. Matches the UI's
+ * template-draft fallback (`logSampler?.maxBurstLimit ?? 1000`) so CLI raw-job
+ * drafts sample at the same rate as the UI's template drafts. `maxAllowedRate`
+ * has no CLI default: when unset we omit it and let the server default apply,
+ * exactly as the UI does.
+ */
+export const DEFAULT_DRAFT_SAMPLER_BURST = 1000;
 
 /**
  * Transforms a production job configuration into a test job configuration.
@@ -240,11 +277,11 @@ function transformSourcesToSampleData(
   jobGraph: Map<string, Vertex>,
   sampleDataFile: string
 ): void {
-  // Read and parse the sample data file
   if (!fs.existsSync(sampleDataFile)) {
     throw new Error(`Sample data file not found: ${sampleDataFile}`);
   }
 
+  // Read and parse the sample data file
   let sampleLogs: SchemaLogEvent[];
   try {
     const fileContent = fs.readFileSync(sampleDataFile, 'utf-8');
@@ -318,7 +355,6 @@ function transformSourcesToDatasetQuery(
   processing: JobProcessing,
   limitRecords?: number
 ): void {
-  // Create a new Iceberg table source with the specified configuration
   const newSource: SchemaOperation = {
     type: LogsIcebergTableSourceType.logs_iceberg_table_source,
     name: 'test_dataset_source',
@@ -370,10 +406,8 @@ function transformSourcesInPlace(
   processing: JobProcessing,
   limitRecords?: number
 ): void {
-
   for (const vertex of jobGraph.values()) {
     if (!isSource(vertex)) {
-      // Not a source vertex
       continue;
     }
 
@@ -455,7 +489,6 @@ function transformSinksToAsynchronous(
   jobGraph: Map<string, Vertex>,
   testDatasetId: string
 ): void {
-
   // For each sink (no outputs), replace with test dataset sink.
   const sinkOp: SchemaLogsIcebergTableSink = {
     type: LogsIcebergTableSinkType.logs_iceberg_table_sink,
@@ -559,6 +592,325 @@ function createTestTagOperation(name: string, testRunId: string, edge: string): 
 
 const isSource = (vertex: Vertex): boolean => vertex.prev.size === 0;
 const isSink = (vertex: Vertex): boolean => vertex.next.size === 0;
+
+/**
+ * Vertex types tapped by type (the ones `applyPatchToJobGraph` mutates), so
+ * legacy graphs with noncanonical names still tap the edited vertex. Pass-through
+ * stages are matched by name instead (see {@link TAP_STAGE_NAME_TYPES}) because
+ * linearizing parallel per-sink `logs-filter` vertices would change draft semantics.
+ * Tap-eligible vertices fork their output to the shared sync sink (tagged for demux);
+ * sources keep streaming live and sinks collapse into that one shared sync sink.
+ */
+const TAP_MUTABLE_TYPES: ReadonlySet<string> = new Set([
+  GrokParserType.grok_parser,
+  LogAttributesRemapperType.log_attributes_remapper,
+  LogReducerType.log_reducer,
+]);
+
+const TAP_STAGE_NAME_TYPES: ReadonlyMap<string, string> = new Map<string, string>([
+  [RAW_PRE_PARSER_FILTER, LogsFilterType.logs_filter],
+  [RAW_JSON_PROCESSOR, JsonLogProcessorType.json_log_processor],
+  [RAW_PRE_WAREHOUSE_FILTER, LogsFilterType.logs_filter],
+  [RAW_PRE_EXCEPTIONS_FILTER, LogsFilterType.logs_filter],
+]);
+
+function isTapEligible(vertex: SchemaOperation): boolean {
+  if (TAP_MUTABLE_TYPES.has(vertex.type as string)) {
+    return true;
+  }
+  return TAP_STAGE_NAME_TYPES.get(vertex.name) === vertex.type;
+}
+
+/**
+ * Tap-eligible vertices in topological order (Kahn's algorithm). Uses edges,
+ * not vertex-array order, since the array order isn't guaranteed topological.
+ */
+function collectTapEligibleInOrder(jobGraph: SchemaGreprJobGraph): SchemaOperation[] {
+  const vertices = jobGraph.vertices ?? [];
+  const edges = jobGraph.edges ?? [];
+
+  const verticesByName = new Map<string, SchemaOperation>();
+  for (const v of vertices) {
+    if (v.name) verticesByName.set(v.name, v);
+  }
+
+  const downstream = new Map<string, string[]>();
+  const inboundCount = new Map<string, number>();
+  for (const v of vertices) {
+    if (v.name) {
+      downstream.set(v.name, []);
+      inboundCount.set(v.name, 0);
+    }
+  }
+  for (const edge of edges) {
+    const { sourceVertex, targetVertex } = parseEdge(edge);
+    downstream.get(sourceVertex)?.push(targetVertex);
+    inboundCount.set(targetVertex, (inboundCount.get(targetVertex) ?? 0) + 1);
+  }
+
+  const queue: string[] = [];
+  for (const [name, count] of inboundCount) {
+    if (count === 0) queue.push(name);
+  }
+
+  const ordered: SchemaOperation[] = [];
+  const processed = new Set<string>();
+  while (queue.length > 0) {
+    const name = queue.shift() as string;
+    processed.add(name);
+    const vertex = verticesByName.get(name);
+    if (vertex && isTapEligible(vertex)) {
+      ordered.push(vertex);
+    }
+    for (const child of downstream.get(name) ?? []) {
+      const remaining = (inboundCount.get(child) ?? 0) - 1;
+      inboundCount.set(child, remaining);
+      if (remaining === 0) queue.push(child);
+    }
+  }
+  if (processed.size < verticesByName.size) {
+    throw new Error(
+      `Unsupported raw job graph shape: cycle detected while building tapped draft ` +
+        `(${processed.size}/${verticesByName.size} vertices were topologically reachable).`,
+    );
+  }
+  return ordered;
+}
+
+/**
+ * Build a source-preserving draft from a job-graph pipeline: keep the proposed
+ * source vertices streaming live (so add/remove-source edits are exercised),
+ * interpose a logs-event-sampler after each live source to bound per-source
+ * volume, strip production sinks, and fan output into a shared logs-sync-sink.
+ * Mirrors the UI's template draft mode for raw (non-templated) jobs. Verifies
+ * the graph runs, not external sink delivery.
+ */
+export function transformJobGraphToSourcePreservingDraft(
+  originalJob: SchemaCreateJob,
+  options: JobToTestOptions = {},
+): SchemaCreateJob {
+  if (!originalJob.jobGraph) {
+    throw new Error('Job graph is required');
+  }
+
+  const graph = structuredClone(originalJob.jobGraph);
+  const existingNames = new Set<string>();
+  for (const vertex of graph.vertices) {
+    if (vertex.name) existingNames.add(vertex.name);
+  }
+
+  const targetProcessing = options.processing ?? originalJob.processing ?? JobProcessing.STREAMING;
+  const sinkNames = new Set(
+    graph.vertices
+      .filter(isProductionSinkOperation)
+      .map(vertex => vertex.name)
+      .filter((name): name is string => typeof name === 'string' && name.length > 0),
+  );
+
+  const originalParsedEdges = parseGraphEdges(graph.edges ?? []);
+  const sinkInboundEdges = originalParsedEdges.filter(edge => sinkNames.has(edge.targetVertex));
+  const retainedVertices = graph.vertices.filter(vertex => !sinkNames.has(vertex.name));
+  const retainedEdges = (graph.edges ?? []).filter(edge => !edgeTouchesAny(edge, sinkNames));
+
+  // Interpose a logs-event-sampler after each live source (mutates the retained
+  // vertices/edges in place) so the live stream is rate-limited, mirroring the
+  // UI's template draft mode. Done before the tap/sink wiring below so the
+  // sampler vertices are part of the graph the rest of this function reasons over.
+  insertSourceSamplers(retainedVertices, retainedEdges, existingNames, options.sampler);
+
+  const syncSinkName = uniqueDraftName(existingNames, 'draft_source_preserving_sink');
+  existingNames.add(syncSinkName);
+  const syncSink = makeOperation(LogsSynchronousSinkType.logs_sync_sink, syncSinkName);
+
+  const tapVertices = collectTapEligibleInOrder({ vertices: retainedVertices, edges: retainedEdges });
+  const tapEligibleNames = new Set(
+    tapVertices
+      .map(vertex => vertex.name)
+      .filter((name): name is string => typeof name === 'string' && name.length > 0),
+  );
+
+  const draftEdges = [...retainedEdges];
+  for (const inbound of sinkInboundEdges) {
+    // Tap-eligible sink-predecessors reach the sync sink through their tagger
+    // below; adding a direct edge here too would deliver their records twice
+    // (once untagged, once tagged), inflating counts the per-stage demux can't
+    // attribute. Route them only through the tagger.
+    if (tapEligibleNames.has(inbound.sourceVertex)) continue;
+    addDraftEdgeIfMissing(draftEdges, inbound.sourceVertex, inbound.sourcePort, syncSinkName, DEFAULT_INPUT);
+  }
+  // Fallback: no production sinks had recorded inbound edges; wire all terminal vertices to the sync sink.
+  if (sinkInboundEdges.length === 0) {
+    for (const terminal of terminalVertices(retainedVertices, retainedEdges)) {
+      if (tapEligibleNames.has(terminal.name)) continue; // same double-delivery reasoning as above
+      addDraftEdgeIfMissing(draftEdges, terminal.name, DEFAULT_OUTPUT, syncSinkName, DEFAULT_INPUT);
+    }
+  }
+
+  const taggerVertices: SchemaOperation[] = [];
+  for (const tapVertex of tapVertices) {
+    if (!tapVertex.name) continue;
+    const taggerName = uniqueDraftName(existingNames, `tap_${tapVertex.name}`);
+    existingNames.add(taggerName);
+    const tagger = makeSinkSourceTagger(taggerName, tapVertex.name);
+    taggerVertices.push(tagger);
+    addDraftEdgeIfMissing(draftEdges, tapVertex.name, DEFAULT_OUTPUT, taggerName, DEFAULT_INPUT);
+    addDraftEdgeIfMissing(draftEdges, taggerName, DEFAULT_OUTPUT, syncSinkName, DEFAULT_INPUT);
+  }
+
+  return {
+    ...originalJob,
+    name: options.testName ?? `${originalJob.name}_draft`,
+    execution: JobExecution.SYNCHRONOUS,
+    processing: targetProcessing,
+    tags: {
+      ...(originalJob.tags ?? {}),
+    },
+    jobGraph: {
+      vertices: [...retainedVertices, ...taggerVertices, syncSink],
+      edges: draftEdges,
+    },
+  };
+}
+
+interface ParsedDraftEdge {
+  sourceVertex: string;
+  sourcePort: string;
+  targetVertex: string;
+  targetPort: string;
+}
+
+function parseGraphEdges(edges: string[]): ParsedDraftEdge[] {
+  return edges.map(edge => parseEdge(edge));
+}
+
+function edgeTouchesAny(edge: string, names: ReadonlySet<string>): boolean {
+  const parsed = parseEdge(edge);
+  return names.has(parsed.sourceVertex) || names.has(parsed.targetVertex);
+}
+
+function isProductionSinkOperation(operation: SchemaOperation): boolean {
+  return typeof operation.type === 'string' && operation.type.endsWith('-sink');
+}
+
+function makeOperation(
+  type: string,
+  name: string,
+  extra: Record<string, unknown> = {},
+): SchemaOperation {
+  return { type, name, ...extra } as unknown as SchemaOperation;
+}
+
+/** A `log-transform` vertex that tags records with `sink-source=<sourceName>` for per-stage demux. */
+function makeSinkSourceTagger(taggerName: string, sourceName: string): SchemaOperation {
+  return makeOperation(LogTransformActionType.log_transform, taggerName, {
+    transforms: [
+      { type: TagActionType.tag_action, modification: TagActionModification.ADD, tagKey: 'sink-source', values: [sourceName], order: 0 },
+    ],
+  });
+}
+
+/** A `logs-event-sampler` vertex tuned for a draft, mirroring the UI's template draft sampler. */
+function makeEventSampler(name: string, sampler: DraftSamplerOptions | undefined): SchemaOperation {
+  const extra: Record<string, unknown> = {
+    maxBurstLimit: sampler?.maxBurstLimit ?? DEFAULT_DRAFT_SAMPLER_BURST,
+  };
+  // Omit maxAllowedRate unless set so the server's sampler default applies, exactly as the UI does.
+  if (sampler?.maxAllowedRate !== undefined) {
+    extra.maxAllowedRate = sampler.maxAllowedRate;
+  }
+  return makeOperation(LogsEventSamplerType.logs_event_sampler, name, extra);
+}
+
+/**
+ * Interpose a logs-event-sampler between each live source and its downstream
+ * targets, rewiring `source -> target` into `source -> sampler -> target`.
+ * Mutates `vertices` (appends samplers) and `edges` (rewires) in place.
+ *
+ * A source is any vertex with no inbound edge. Uploaded-log-file sources are
+ * skipped, matching the UI, which doesn't rate-limit uploaded-file drafts.
+ * Isolated sources (no outbound edge) get no sampler — there's nothing to bound.
+ */
+function insertSourceSamplers(
+  vertices: SchemaOperation[],
+  edges: string[],
+  existingNames: Set<string>,
+  sampler: DraftSamplerOptions | undefined,
+): void {
+  const targets = new Set(parseGraphEdges(edges).map(edge => edge.targetVertex));
+  const sources = vertices.filter(
+    (vertex): vertex is SchemaOperation & { name: string } =>
+      typeof vertex.name === 'string' &&
+      vertex.name.length > 0 &&
+      !targets.has(vertex.name) &&
+      vertex.type !== GreprUploadedLogFileSourceType.grepr_uploaded_log_file_source,
+  );
+
+  for (const source of sources) {
+    const outbound = parseGraphEdges(edges).filter(edge => edge.sourceVertex === source.name);
+    if (outbound.length === 0) continue;
+
+    const samplerName = uniqueDraftName(existingNames, `${source.name}_draft_sampler`);
+    existingNames.add(samplerName);
+    vertices.push(makeEventSampler(samplerName, sampler));
+
+    // Drop the source's outbound edges, then relink them through the sampler.
+    for (let i = edges.length - 1; i >= 0; i--) {
+      if (parseEdge(edges[i] as string).sourceVertex === source.name) edges.splice(i, 1);
+    }
+    edges.push(formatDraftEdge(source.name, outbound[0]?.sourcePort ?? DEFAULT_OUTPUT, samplerName, DEFAULT_INPUT));
+    for (const edge of outbound) {
+      edges.push(formatDraftEdge(samplerName, DEFAULT_OUTPUT, edge.targetVertex, edge.targetPort));
+    }
+  }
+}
+
+function terminalVertices(vertices: SchemaOperation[], edges: string[]): SchemaOperation[] {
+  const sources = new Set<string>();
+  const targets = new Set<string>();
+  for (const edge of parseGraphEdges(edges)) {
+    sources.add(edge.sourceVertex);
+    targets.add(edge.targetVertex);
+  }
+  return vertices.filter(vertex =>
+    typeof vertex.name === 'string' &&
+    vertex.name.length > 0 &&
+    !sources.has(vertex.name) &&
+    targets.has(vertex.name),
+  );
+}
+
+function uniqueDraftName(existing: ReadonlySet<string>, base: string): string {
+  if (!existing.has(base)) return base;
+  let i = 1;
+  while (existing.has(`${base}_${i}`)) {
+    i += 1;
+  }
+  return `${base}_${i}`;
+}
+
+function formatDraftEdge(sourceVertex: string, sourcePort: string, targetVertex: string, targetPort: string): string {
+  const source = sourcePort === DEFAULT_OUTPUT ? sourceVertex : `${sourceVertex}:${sourcePort}`;
+  const target = targetPort === DEFAULT_INPUT ? targetVertex : `${targetVertex}:${targetPort}`;
+  return `${source} -> ${target}`;
+}
+
+function addDraftEdgeIfMissing(
+  edges: string[],
+  sourceVertex: string,
+  sourcePort: string,
+  targetVertex: string,
+  targetPort: string,
+): void {
+  const exists = parseGraphEdges(edges).some(edge =>
+    edge.sourceVertex === sourceVertex &&
+    edge.sourcePort === sourcePort &&
+    edge.targetVertex === targetVertex &&
+    edge.targetPort === targetPort,
+  );
+  if (!exists) {
+    edges.push(formatDraftEdge(sourceVertex, sourcePort, targetVertex, targetPort));
+  }
+}
 
 /**
  * Displays a summary of the transformations applied to a job.

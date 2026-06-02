@@ -8,9 +8,14 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { transformJobToTest, JobToTestOptions } from '@/lib/job-graph-transformer.js';
+import {
+  transformJobToTest,
+  transformJobGraphToSourcePreservingDraft,
+  DEFAULT_DRAFT_SAMPLER_BURST,
+  JobToTestOptions,
+} from '@/lib/job-graph-transformer.js';
 import { JobExecution, JobProcessing } from '@/types.js';
-import { SchemaCreateJob, SchemaOperation, LogsIcebergTableSourceType, DatadogQueryPredicateType, LogsIcebergTableSinkType, LogTransformActionType, TagActionModification, TagActionType } from '@/openapi/openApiTypes.js';
+import { SchemaCreateJob, SchemaOperation, LogsIcebergTableSourceType, DatadogQueryPredicateType, LogsIcebergTableSinkType, LogTransformActionType, TagActionModification, TagActionType, LogsEventSamplerType, GreprUploadedLogFileSourceType } from '@/openapi/openApiTypes.js';
 import {
   createDatadogSource,
   createDatadogSink,
@@ -1558,5 +1563,167 @@ describe('job-graph-transformer', () => {
         expect(testJob, 'Non-default port names should be preserved in edge names').toEqual(expectedJob);
       });
     });
+  });
+});
+
+describe('transformJobGraphToSourcePreservingDraft', () => {
+  it('test_sourcePreservingDraft_onlyRemovesSuffixSinkTypes', () => {
+    const job: SchemaCreateJob = {
+      name: 'source-preserving',
+      execution: JobExecution.ASYNCHRONOUS,
+      processing: JobProcessing.STREAMING,
+      jobGraph: {
+        vertices: [
+          { type: LogsIcebergTableSourceType.logs_iceberg_table_source, name: 'src', datasetId: 'raw_ds_1' } as unknown as SchemaOperation,
+          { type: 'sink-enricher', name: 'sink_enricher' } as unknown as SchemaOperation,
+          { type: 'log-reducer', name: 'log_reducer' } as unknown as SchemaOperation,
+          { type: 'datadog-log-sink', name: 'dd_sink' } as unknown as SchemaOperation,
+        ],
+        edges: ['src -> sink_enricher', 'sink_enricher -> log_reducer', 'log_reducer -> dd_sink'],
+      },
+    };
+
+    const draft = transformJobGraphToSourcePreservingDraft(job, { processing: JobProcessing.STREAMING });
+    const vertexNames = draft.jobGraph?.vertices.map(v => v.name) ?? [];
+    const edges = draft.jobGraph?.edges ?? [];
+    expect(vertexNames).toContain('sink_enricher');
+    expect(vertexNames).not.toContain('dd_sink');
+    expect(vertexNames).toContain('draft_source_preserving_sink');
+    expect(edges).toContain('sink_enricher -> log_reducer');
+    // log_reducer is tap-eligible, so it reaches the sync sink only through its
+    // tagger — not via a direct untagged edge that would double-deliver.
+    expect(edges).toContain('log_reducer -> tap_log_reducer');
+    expect(edges).toContain('tap_log_reducer -> draft_source_preserving_sink');
+    expect(edges).not.toContain('log_reducer -> draft_source_preserving_sink');
+  });
+
+  it('test_sourcePreservingDraft_tapEligibleSinkPredecessor_noDoubleDelivery', () => {
+    // Canonical-ish raw graph: log_reducer feeds a production -sink AND is
+    // tap-eligible. It must reach the sync sink exactly once (tagged via its
+    // tagger), not also directly — direct + tagged double-counts the demux.
+    const job: SchemaCreateJob = {
+      name: 'tap-sink-predecessor',
+      execution: JobExecution.ASYNCHRONOUS,
+      processing: JobProcessing.STREAMING,
+      jobGraph: {
+        vertices: [
+          { type: LogsIcebergTableSourceType.logs_iceberg_table_source, name: 'src', datasetId: 'raw_ds_1' } as unknown as SchemaOperation,
+          { type: 'log-reducer', name: 'log_reducer' } as unknown as SchemaOperation,
+          { type: 'pattern-data-sink', name: 'pattern_data_sink' } as unknown as SchemaOperation,
+        ],
+        edges: ['src -> log_reducer', 'log_reducer -> pattern_data_sink'],
+      },
+    };
+
+    const draft = transformJobGraphToSourcePreservingDraft(job, { processing: JobProcessing.STREAMING });
+    const edges = draft.jobGraph?.edges ?? [];
+    // Exactly one edge feeds the sync sink, and it is the tagged one.
+    const intoSyncSink = edges.filter(edge => edge.endsWith('-> draft_source_preserving_sink'));
+    expect(intoSyncSink).toEqual(['tap_log_reducer -> draft_source_preserving_sink']);
+    expect(edges).not.toContain('log_reducer -> draft_source_preserving_sink');
+  });
+
+  /** A job graph with `sourceCount` live sources each feeding a shared reducer, then a production sink. */
+  function makeLiveSourceJob(sourceCount = 1): SchemaCreateJob {
+    const sources = Array.from({ length: sourceCount }, (_unused, i) => ({
+      type: 'datadog-log-agent-source',
+      name: `src_${i}`,
+      integrationId: `int_${i}`,
+    } as unknown as SchemaOperation));
+    return {
+      name: 'live',
+      execution: JobExecution.ASYNCHRONOUS,
+      processing: JobProcessing.STREAMING,
+      jobGraph: {
+        vertices: [
+          ...sources,
+          { type: 'log-reducer', name: 'log_reducer' } as unknown as SchemaOperation,
+          { type: 'datadog-log-sink', name: 'dd_sink' } as unknown as SchemaOperation,
+        ],
+        edges: [...sources.map(s => `${s.name} -> log_reducer`), 'log_reducer -> dd_sink'],
+      },
+    };
+  }
+
+  /** All logs-event-sampler vertices in a draft graph. */
+  function samplerVertices(draft: SchemaCreateJob): (SchemaOperation & { maxBurstLimit?: number; maxAllowedRate?: number })[] {
+    return (draft.jobGraph?.vertices ?? []).filter(
+      v => v.type === LogsEventSamplerType.logs_event_sampler,
+    );
+  }
+
+  it('test_sourcePreservingDraft_keepsLiveSourceAndInsertsSamplerAfterIt', () => {
+    const draft = transformJobGraphToSourcePreservingDraft(makeLiveSourceJob(), { processing: JobProcessing.STREAMING });
+    const vertexNames = draft.jobGraph?.vertices.map(v => v.name) ?? [];
+    const edges = draft.jobGraph?.edges ?? [];
+    // The live source is preserved (not swapped for an iceberg replay)...
+    expect(vertexNames).toContain('src_0');
+    // ...and a sampler is interposed between it and its old downstream.
+    expect(vertexNames).toContain('src_0_draft_sampler');
+    expect(edges).toContain('src_0 -> src_0_draft_sampler');
+    expect(edges).toContain('src_0_draft_sampler -> log_reducer');
+    // The original source->downstream edge is gone.
+    expect(edges).not.toContain('src_0 -> log_reducer');
+  });
+
+  it('test_sourcePreservingDraft_samplerDefaultsMirrorUi', () => {
+    // No sampler options -> UI defaults: burst = 1000, maxAllowedRate omitted
+    // (server default applies).
+    const draft = transformJobGraphToSourcePreservingDraft(makeLiveSourceJob(), { processing: JobProcessing.STREAMING });
+    const samplers = samplerVertices(draft);
+    expect(samplers).toHaveLength(1);
+    expect(samplers[0]?.maxBurstLimit).toBe(DEFAULT_DRAFT_SAMPLER_BURST);
+    expect(samplers[0]?.maxAllowedRate).toBeUndefined();
+  });
+
+  it('test_sourcePreservingDraft_samplerOptionsOverrideDefaults', () => {
+    const draft = transformJobGraphToSourcePreservingDraft(makeLiveSourceJob(), {
+      processing: JobProcessing.STREAMING,
+      sampler: { maxAllowedRate: 25, maxBurstLimit: 500 },
+    });
+    const samplers = samplerVertices(draft);
+    expect(samplers[0]?.maxAllowedRate).toBe(25);
+    expect(samplers[0]?.maxBurstLimit).toBe(500);
+  });
+
+  it('test_sourcePreservingDraft_oneSamplerPerLiveSource', () => {
+    const draft = transformJobGraphToSourcePreservingDraft(makeLiveSourceJob(3), { processing: JobProcessing.STREAMING });
+    const vertexNames = draft.jobGraph?.vertices.map(v => v.name) ?? [];
+    const edges = draft.jobGraph?.edges ?? [];
+    expect(samplerVertices(draft)).toHaveLength(3);
+    for (const name of ['src_0', 'src_1', 'src_2']) {
+      expect(vertexNames).toContain(`${name}_draft_sampler`);
+      expect(edges).toContain(`${name} -> ${name}_draft_sampler`);
+      expect(edges).toContain(`${name}_draft_sampler -> log_reducer`);
+    }
+  });
+
+  it('test_sourcePreservingDraft_uploadedFileSourceIsNotSampled', () => {
+    // Mirrors the UI, which skips the sampler for uploaded-file draft runs.
+    const job: SchemaCreateJob = {
+      name: 'upload',
+      execution: JobExecution.ASYNCHRONOUS,
+      processing: JobProcessing.BATCH,
+      jobGraph: {
+        vertices: [
+          { type: GreprUploadedLogFileSourceType.grepr_uploaded_log_file_source, name: 'upload_src' } as unknown as SchemaOperation,
+          { type: 'log-reducer', name: 'log_reducer' } as unknown as SchemaOperation,
+          { type: 'datadog-log-sink', name: 'dd_sink' } as unknown as SchemaOperation,
+        ],
+        edges: ['upload_src -> log_reducer', 'log_reducer -> dd_sink'],
+      },
+    };
+    const draft = transformJobGraphToSourcePreservingDraft(job, { processing: JobProcessing.BATCH });
+    const edges = draft.jobGraph?.edges ?? [];
+    expect(samplerVertices(draft)).toHaveLength(0);
+    expect(edges).toContain('upload_src -> log_reducer');
+  });
+
+  it('test_sourcePreservingDraft_runsLiveAsSynchronousStreaming', () => {
+    // Unlike the old tapped replay (BATCH), the live draft keeps the pipeline's
+    // processing type and only switches execution to SYNCHRONOUS for /jobs/sync.
+    const draft = transformJobGraphToSourcePreservingDraft(makeLiveSourceJob(), { processing: JobProcessing.STREAMING });
+    expect(draft.execution).toBe(JobExecution.SYNCHRONOUS);
+    expect(draft.processing).toBe(JobProcessing.STREAMING);
   });
 });

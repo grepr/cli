@@ -53,6 +53,29 @@ function redactSensitiveHeaders(headers: Headers): Record<string, string> {
   return result;
 }
 
+/** API error with response status and Retry-After metadata for retry logic. */
+export class ApiError extends Error {
+  readonly status?: number;
+  readonly retryAfterMs?: number;
+
+  constructor(message: string, status?: number, retryAfterMs?: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+/** Parse a `Retry-After` header (delay-seconds or HTTP-date) into milliseconds. */
+function retryAfterMsFromResponse(response: Response | undefined): number | undefined {
+  const header = response?.headers?.get('retry-after');
+  if (!header) return undefined;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+  const dateMs = Date.parse(header);
+  return Number.isNaN(dateMs) ? undefined : Math.max(0, dateMs - Date.now());
+}
+
 /**
  * Main API client for the Grepr CLI using openapi-fetch.
  * This follows the same patterns as the frontend API client.
@@ -167,7 +190,7 @@ export class GreprApiClient {
 
   async updateJob(id: string, job: SchemaUpdateJob, rollbackEnabled = false): Promise<SchemaReadJob | undefined> {
     // noinspection TypeScriptValidateTypes
-    const { data, error } = await this.client.PUT('/v1/jobs/{id}', {
+    const { data, error, response } = await this.client.PUT('/v1/jobs/{id}', {
       params: {
         path: { id },
         query: { rollbackEnabled },
@@ -176,7 +199,11 @@ export class GreprApiClient {
     });
 
     if (error) {
-      throw new Error(`Failed to update job ${id}: ${JSON.stringify(error)}`);
+      throw new ApiError(
+        `Failed to update job ${id}: ${JSON.stringify(error)}`,
+        response?.status,
+        retryAfterMsFromResponse(response),
+      );
     }
 
     return data;
@@ -554,7 +581,14 @@ export class GreprApiClient {
   }
 
   // Sync job submission for the existing sync command - using fetch directly due to streaming
-  async submitSyncJob(jobDefinition: SchemaCreateJob): Promise<NodeJS.ReadableStream> {
+  /**
+   * POST a job to `/v1/jobs/sync` and stream the NDJSON response.
+   *
+   * @param signal optional AbortSignal; aborting it (e.g. a draft's
+   *   max-duration cap) ends the returned stream cleanly rather than erroring,
+   *   so partial output already received is preserved.
+   */
+  async submitSyncJob(jobDefinition: SchemaCreateJob, signal?: AbortSignal): Promise<NodeJS.ReadableStream> {
     const baseUrl = this.auth.config.apiBaseUrl;
     const response = await fetch(`${baseUrl}/v1/jobs/sync`, {
       method: 'POST',
@@ -563,6 +597,7 @@ export class GreprApiClient {
         ...(await this.auth.getAuthHeaders()),
       },
       body: JSON.stringify(jobDefinition),
+      signal,
     });
 
     if (!response.ok) {
@@ -603,7 +638,14 @@ export class GreprApiClient {
           nodeStream.push(Buffer.from(value as ArrayLike<number>));
         }
       } catch (error) {
-        nodeStream.destroy(error as Error);
+        // An intentional abort (the caller hit its max-duration cap) is a clean
+        // stop, not a failure: end the stream so already-streamed records are
+        // treated as a successful partial draft.
+        if (signal?.aborted) {
+          nodeStream.push(null);
+        } else {
+          nodeStream.destroy(error as Error);
+        }
       }
     };
 

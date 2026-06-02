@@ -163,3 +163,65 @@ describe('GreprApiClient sendHeartbeat', () => {
     );
   });
 });
+
+describe('GreprApiClient submitSyncJob', () => {
+  let client: InstanceType<typeof GreprApiClient>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    client = new GreprApiClient({
+      orgName: 'test-org',
+      apiBaseUrl: 'https://test.app.grepr.ai/api',
+      authBaseUrl: 'https://test.app.grepr.ai/auth',
+      authMethod: 'client-credentials',
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+      debug: false,
+      authCache: true,
+      browser: true,
+    } as ApiClientConfig);
+  });
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  /** Drains a Node stream, resolving with its concatenated text or rejecting on stream 'error'. */
+  function drain(stream: NodeJS.ReadableStream): Promise<string> {
+    const chunks: Buffer[] = [];
+    return new Promise<string>((resolve, reject) => {
+      stream.on('data', chunk => chunks.push(chunk as Buffer));
+      stream.on('end', () => resolve(Buffer.concat(chunks).toString()));
+      stream.on('error', reject);
+    });
+  }
+
+  it('ends the stream cleanly (no error) when the abort signal fires mid-stream', async () => {
+    // A max-duration abort must surface already-streamed records as a clean
+    // end, not a stream error — otherwise the draft would be read as failed.
+    const controller = new AbortController();
+    const reader = {
+      read: vi
+        .fn()
+        .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode('{"jobState":"RUNNING"}\r\n') })
+        .mockImplementationOnce(() => {
+          controller.abort();
+          return Promise.reject(new Error('The operation was aborted'));
+        }),
+    };
+    mockFetch.mockResolvedValueOnce({ ok: true, body: { getReader: () => reader } });
+
+    const stream = await client.submitSyncJob({ name: 'draft' } as never, controller.signal);
+
+    await expect(drain(stream)).resolves.toContain('"jobState":"RUNNING"');
+  });
+
+  it('destroys the stream with the error when it fails without an abort', async () => {
+    const reader = { read: vi.fn().mockRejectedValueOnce(new Error('network boom')) };
+    mockFetch.mockResolvedValueOnce({ ok: true, body: { getReader: () => reader } });
+
+    const stream = await client.submitSyncJob({ name: 'draft' } as never);
+
+    await expect(drain(stream)).rejects.toThrow('network boom');
+  });
+});

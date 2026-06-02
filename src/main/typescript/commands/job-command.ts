@@ -213,7 +213,7 @@ export class JobCrudCommand extends CrudCommand<JobCrudCommandOptions> {
 - ID: ${job.id}
 - Name: ${job.name}
 - State: ${job.state}
-- Version: ${job.version || 'latest'}`
+- Version: ${job.version ?? 'latest'}`
         );
       }
 
