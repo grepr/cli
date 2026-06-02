@@ -1,6 +1,6 @@
-# Grepr CLI and Claude Code plugin
+# Grepr CLI and Agent Plugins
 
-The Grepr command-line tool (`@grepr/cli`) and a Claude Code plugin that lets Claude drive it for you.
+The Grepr command-line tool (`@grepr/cli`) and agent plugins that let Claude Code and Codex drive it for you.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
@@ -8,6 +8,7 @@ The Grepr command-line tool (`@grepr/cli`) and a Claude Code plugin that lets Cl
 
 - **Just the CLI** — [jump to CLI section](#cli)
 - **CLI + Claude Code skills** — [jump to Claude Code plugin section](#claude-code-plugin)
+- **CLI + Codex skills** — [jump to Codex plugin section](#codex-plugin)
 
 ---
 
@@ -62,29 +63,19 @@ Full command reference and advanced usage: [docs.grepr.ai/cli](https://docs.grep
 
 ---
 
-## Claude Code plugin
+## Agent Skills
 
-> **Preview**: this plugin is in early access. Expect rough edges and please [file issues](https://github.com/grepr/cli/issues).
+> **Preview**: these skills are in early access. Expect rough edges and please [file issues](https://github.com/grepr/cli/issues).
 
-Skills for [Claude Code](https://claude.com/claude-code) that let Claude manage your [Grepr](https://grepr.ai) pipelines, datasets, integrations, and queries — no context-switching to docs, no remembering subcommand syntax.
+Skills for AI coding agents that let them manage your [Grepr](https://grepr.ai) pipelines, datasets, integrations, and queries through the Grepr CLI — no context-switching to docs, no remembering subcommand syntax.
 
 ### Requirements
 
-- [Claude Code](https://claude.com/claude-code) — the CLI, IDE extension, or desktop app
 - Grepr CLI installed and configured (see [CLI section](#cli) above)
-
-### Install
-
-In Claude Code:
-
-```
-/plugin marketplace add grepr/cli
-/plugin install grepr@grepr-cli
-```
 
 ### First steps
 
-Try these prompts in Claude Code after install:
+Try these prompts after installing the plugin for your agent:
 
 > List my running Grepr pipelines.
 
@@ -94,7 +85,7 @@ Try these prompts in Claude Code after install:
 
 > Query the last hour of error logs from the `production-logs` dataset.
 
-Claude will pick the right skill, run the CLI, and walk you through the result.
+The agent will pick the right skill, run the CLI, and walk you through the result.
 
 ### Skills included
 
@@ -115,7 +106,41 @@ Claude will pick the right skill, run the CLI, and walk you through the result.
 
 ### Invocation
 
-Claude Code lists skills by short name (e.g., `/build-grok`) with a `(grepr)` annotation in autocomplete. You can also invoke any skill by its fully-qualified name (e.g., `/grepr:build-grok`) — both forms work. The prefix becomes mandatory only if another installed plugin defines a skill with the same name.
+You can ask for Grepr work in natural language, or reference a skill by name when you want a specific workflow. Claude Code also lists skills by short name (e.g., `/build-grok`) with a `(grepr)` annotation in autocomplete; fully-qualified names such as `/grepr:build-grok` work when disambiguation is needed.
+
+---
+
+## Claude Code plugin
+
+### Requirements
+
+- [Claude Code](https://claude.com/claude-code) — the CLI, IDE extension, or desktop app
+- Grepr CLI installed and configured (see [CLI section](#cli) above)
+
+### Install
+
+In Claude Code:
+
+```
+/plugin marketplace add grepr/cli
+/plugin install grepr@grepr-cli
+```
+
+---
+
+## Codex plugin
+
+### Requirements
+
+- [Codex](https://openai.com/codex/) CLI, IDE extension, or app
+- Grepr CLI installed and configured (see [CLI section](#cli) above)
+
+### Install
+
+```bash
+codex plugin marketplace add grepr/cli --ref main
+codex plugin add grepr@grepr-cli
+```
 
 ---
 
@@ -127,11 +152,18 @@ Claude Code lists skills by short name (e.g., `/build-grok`) with a `(grepr)` an
 npm update -g @grepr/cli
 ```
 
-**Plugin:**
+**Claude Code plugin:**
 
 ```
 /plugin marketplace update grepr-cli
 /plugin install grepr@grepr-cli
+```
+
+**Codex plugin:**
+
+```bash
+codex plugin marketplace upgrade grepr-cli
+codex plugin add grepr@grepr-cli
 ```
 
 ---

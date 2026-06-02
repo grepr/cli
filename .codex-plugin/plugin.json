@@ -1,0 +1,13 @@
+{
+  "name": "grepr",
+  "version": "0.1.0",
+  "description": "Skills for managing Grepr jobs and pipelines, building grok parsers, querying log data, and debugging log reduction. Requires the Grepr CLI (npm install -g @grepr/cli).",
+  "author": {
+    "name": "Grepr",
+    "email": "support@grepr.ai"
+  },
+  "repository": "https://github.com/grepr/cli",
+  "license": "Apache-2.0",
+  "keywords": ["grepr", "observability", "logs", "datadog", "log-reduction", "grok", "flink"],
+  "skills": "./skills/"
+}
