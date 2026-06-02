@@ -1,226 +1,140 @@
 ---
-description: Diagnose and fix grok parsing on a Grepr pipeline. Adds rules to an existing grok parser or inserts a new grok parser vertex when none exists. Routes through test-pipeline-change before any production update.
-allowed-tools: Bash(grepr query), Bash(grepr grok:parse), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr job:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:build-grok, grepr:query-logs
-trigger_keywords:
-  - tune grok
-  - fix grok
-  - logs not parsing
-  - grok not matching
-  - add grok rule
-  - extract attributes from logs
-  - structured logging missing
+description: Diagnose and fix broken grok parsing on a Grepr pipeline when log messages stay unparsed in `message` instead of becoming structured attributes — samples unparsed logs, authors a grok pattern, adds a rule to an existing grok parser or inserts a new grok-parser vertex, and routes through test-pipeline-change. Use for "tune grok", "fix grok", "logs not parsing", "grok not matching", "extract attributes from logs".
+allowed-tools: Bash(grepr query), Bash(grepr grok:parse), Bash(grepr job:get), Bash(grepr --conf * query), Bash(grepr --conf * grok:parse), Bash(grepr --conf * job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:build-grok, grepr:query-logs
 ---
 
 # Tune Grok Parsing
 
-Use when log messages aren't being parsed into structured attributes — the
-classic symptom is "everything is in `message`, nothing is in
-`attributes.X`." This skill identifies the unparsed log shapes, builds grok
-patterns that match them, and patches the pipeline.
+Fix the classic symptom "everything is in `message`, nothing is in `attributes.X`."
+Identify the unparsed log shapes, author a grok pattern that matches them, and patch
+the pipeline. This is a transform-only change (adds a grok rule or a new grok-parser
+vertex), so sync-replay testing is sufficient.
 
-This is a transform-only change (modifies or adds a grok parser vertex) —
-sync-replay testing is sufficient, so it routes through
-`grepr:test-pipeline-change`.
+Resolve the org config once and reuse it on every command — see the `grepr:cli` skill.
 
-## When to Use
+## When to use
 
-- Specific log shape isn't getting parsed (no extracted attributes).
-- A vendor-imported pattern was wrong and needs to be overridden.
-- New log shape appeared in production after the pipeline was set up.
+- A specific log shape isn't parsed (no extracted attributes).
+- A vendor-imported pattern was wrong and needs overriding.
+- A new log shape appeared in production after the pipeline was built.
 
-## Step 1: Get Context
+## Workflow
 
-Run `grepr:describe-pipeline <JOB_ID>` first. Note:
-- Whether a `grok-parser` vertex already exists (and its name).
-- The raw dataset ID (for sampling).
-- What the existing grok rules look like.
+### 1. Get context
 
-## Step 2: Sample the Unparsed Logs
+Run `grepr:describe-pipeline <JOB_ID>` first. For backend detection (template vs raw
+graph) and which ops each backend supports, see `grepr:describe-pipeline`. Note:
 
-Pull a sample from the raw dataset, filtered to the shape the user says is
-broken:
+- Whether a `grok-parser` vertex already exists, and its name (drives Case A vs B below).
+- How many grok parsers exist (drives whether `parserName` is required).
+- The raw dataset ID, for sampling.
+- The existing grok rules, remapper reserved attributes, and reducer group-by — needed
+  for the collision pre-check in step 3.
+
+### 2. Sample the unparsed logs
+
+Pull a sample from the raw dataset, filtered to the shape the user says is broken:
 
 ```bash
 grepr query --dataset-id <RAW_DS> --query "<user's filter>" \
-  --start <T0> --end <T1> --limit 50 -f raw > grok-samples.json
+  --start <T0> --end <T1> --limit 50 -f raw -o grok-samples-<tag>.ndjson
 ```
 
-Look at the `message` field of the returned logs. The pattern you need to
-extract should be visible by eye.
+`--start`/`--end` need absolute ISO-8601 UTC (e.g. `2026-05-29T03:00:00Z`); relative
+offsets like `now-2h` are rejected, so compute the window first (e.g. with `date -u`).
+Inspect the `message` field — the pattern to extract should be visible by eye.
 
-## Step 3: Author the Grok Pattern
+### 3. Author the grok pattern (defer to grepr:build-grok)
 
-Use `grepr:build-grok` (existing skill) to iterate on the pattern against
-the samples. Don't skip this — patterns that look right by eye often miss
-edge cases. The build-grok skill returns a vetted pattern.
+Hand the samples to `grepr:build-grok` to iterate the pattern and verify it with
+`grok:parse`. That skill owns the full matcher reference and authoring rules (Datadog
+camelCase matchers like `%{number:duration_ms}`, named captures, anchoring, not
+over-extracting). Don't ship a pattern you haven't run through `grok:parse` — patterns
+that look right by eye routinely miss edge cases.
 
-Recommended pattern shape:
-- Each rule is `<RuleName> <pattern>` (a name token, then the pattern).
-  Names are used in diagnostics — pick something descriptive like
-  `HttpAccessLog` or `K8sEventLog`.
-- Use named captures (`%{NUMBER:duration_ms}`), not anonymous.
-- Pin to the start of the message (`^`) if the format is consistent.
-- Don't over-extract — only fields the customer actually queries on.
+**Collision pre-check (do this before testing).** Sweep your proposed capture names
+against the attributes the pipeline's remapper and reducer already claim. A capture that
+collides with a reserved attribute produces a mixed-type array at runtime (e.g.
+`status: ["info", 404]`) — silent corruption that won't surface unless someone inspects
+actual values, not just match rate. Check each capture name against the remapper's
+`messageReservedAttributes` / `…Paths` and the `service`/`host`/`status`/`timestamp`/
+`traceId` reserved sets, plus the reducer's `partitionByAttributes` /
+`partitionByAttributePaths` (all visible in `describe-pipeline` or `job:get --resolved`).
+Frequent offenders: `service`, `host`, `status`, `timestamp`, `level`, `severity`,
+`trace_id`.
 
-Schema fields the backend reads (write to these exact field names):
-- `grokParsingRules: string[]` — your rule strings.
-- `grokHelperRules: string[]` — reusable helper definitions (optional).
-- `extractAttribute: string` — source attribute the parser reads from
-  (optional, per-parser).
+On a collision, rename the capture before going further (prefix with the domain, e.g.
+`http_status_code` instead of `status`). When you rename a user-requested field name,
+say so before the test step, not in the final summary — one line is enough:
 
-## Step 4: Check for Attribute-Name Collisions
+> "I'm renaming `status` → `http_status_code` because the remapper already claims
+> `status`; the collision would make a mixed-type array on every log. Reply if you'd
+> prefer a different name; otherwise I'll proceed."
 
-Before testing, sweep your proposed capture names against fields the
-pipeline's remapper and reducer already claim. A capture that collides
-with a reserved attribute produces a **mixed-type array at runtime**
-(e.g. `status: ["info", 404]`) — silent data corruption that won't show
-up unless someone inspects the actual values, not just the match rate.
+### 4. Build the patch
 
-Collect the names you need to check against. From the resolved remapper
-(visible in `describe-pipeline` or `job:get --resolved`), pull every
-entry in:
+Write a semantic patch (`{"operations":[...]}`) to a fresh request-specific file (e.g.
+`patch-<short-tag>.json`) and let `job:plan` wire it into the right backend shape. Do
+not hand-build full job JSON or call `job:update`. For the full op catalog and exact
+field names, see `grepr:operations-reference`.
 
-- `messageReservedAttributes` (and the leaf names in `…Paths`)
-- `serviceReservedAttributes` / `Paths`
-- `hostReservedAttributes` / `Paths`
-- `statusReservedAttributes` / `Paths`
-- `timestampReservedAttributes` / `Paths`
-- `traceIdReservedAttributes` / `Paths`
+| Pipeline state | Op | Notes |
+|---|---|---|
+| A grok parser already exists | `add-grok-rule` | `parserName` required only if >1 grok parser; rejected if 0 grok parsers |
+| No grok parser exists | `add-parser` (a `grok-parser`) | template-backed adds it to `input.parsers`; raw graphs insert the vertex into the parser chain |
 
-And from the resolved reducer:
+`add-grok-rule` takes `pattern` (and optional `extractAttribute`). The new-parser shape
+carries its rules in `grokParsingRules` (and optional `grokHelperRules`).
 
-- `partitionByAttributes`
-- The leaf names in `partitionByAttributePaths`
+Prefer scoping a new parser with a `predicate` (`{ "type":"datadog-query", "query":
+"source:checkout-service" }`) when the pattern only makes sense for one log shape.
+Without a predicate the parser runs on every log; a loose pattern can then mis-parse
+unrelated shapes. Skip the predicate only for a deliberate pipeline-wide catch-all.
 
-For each grok capture name in your pattern, check whether it collides
-with any of the above. The frequent offenders are `service`, `host`,
-`status`, `timestamp`, `level`, `severity`, `trace_id`.
+See `examples.md` for copy-paste patches (template + raw graph) and the anti-patterns.
 
-If you find a collision, **rename the grok capture before going further**.
-Common rename pattern: prefix with the domain (`http_status_code` instead
-of `status`, `client_ip_addr` instead of `host`).
+### 5. Hand off to test-pipeline-change
 
-### Telling the user about a rename
-
-When you rename a user-requested field name, **say so before the test
-step**, not in the final approval summary. One line is enough:
-
-> "I'm renaming `status` → `http_status_code` because the remapper's
-> `statusReservedAttributes` already claims `status`. The collision
-> would produce a mixed-type array on every log. Reply if you'd prefer
-> a different name; otherwise I'll proceed."
-
-If the user doesn't object, continue with the renamed capture. If they
-do, use their suggestion.
-
-## Step 5: Build the Patch
-
-Two cases:
-
-### Case A — Grok parser already exists
-
-Add the rule to the named parser (or omit `parserName` to target the
-first grok-parser found):
-
-```json
-{
-  "operations": [
-    {
-      "op": "add-grok-rule",
-      "parserName": "<existing-grok-parser-name>",
-      "pattern": "%{IPORHOST:client_ip} - %{USER:user} \\[%{HTTPDATE:ts}\\] \"%{WORD:method} %{NOTSPACE:path}\""
-    }
-  ]
-}
-```
-
-Save to `patch.json`.
-
-### Case B — No grok parser in the pipeline
-
-Append a new grok parser to `input.parsers`. The template owns the
-topology — it threads parsers in the order `json-log-processor → remapper
-→ grok parsers`, so a new grok parser automatically slots into the right
-position. No manual wiring required.
-
-```json
-{
-  "operations": [
-    {
-      "op": "add-parser",
-      "parser": {
-        "type": "grok-parser",
-        "name": "http_access_grok",
-        "predicate": { "type": "datadog-query", "query": "source:my_service" },
-        "grokParsingRules": ["MyHttpAccessRule %{IPORHOST:client_ip} - %{USER:user} \\[%{HTTPDATE:ts}\\] \"%{WORD:method} %{NOTSPACE:path}\""]
-      }
-    }
-  ]
-}
-```
-
-### Prefer scoping the parser with a predicate
-
-When the pattern only makes sense for one log shape (e.g. a specific
-source, service, or `type`), include a `predicate` on the grok parser
-that restricts which logs it tries to match. Without a predicate, the
-parser runs on every log in the pipeline — non-matches are cheap but
-not free, and a loose pattern can over-match shapes it shouldn't.
-
-The predicate uses the same query-string vocabulary as the rest of the
-pipeline (e.g. `source:pipeline-seed-log-generator`, `service:checkout`,
-`@source.type:http_access`). Pick the narrowest selector that captures
-the log shape the pattern is for.
-
-Skip the predicate only when the grok parser is meant to be
-pipeline-wide (e.g. a catch-all that runs on everything).
-
-## Step 6: Hand Off to test-pipeline-change
-
-Invoke `grepr:test-pipeline-change` with `<JOB_ID>` and `patch.json`.
-That skill:
-- Generates the plan (`job:plan -o plan.json`).
-- Runs the patched config against recent data via `job:draft` (template
-  draft mode, or client-side iceberg replay for raw graphs).
-- Compares per-record — does the target attribute (`client_ip`, `method`,
-  etc.) now appear on matching logs?
-- Asks the user for explicit approval.
-- Applies via `job:apply`.
-
-### What to verify in the test output
+Hand the patch file to `grepr:test-pipeline-change`, which plans, drafts, gates on
+approval, and applies. Verify in the draft output:
 
 | What | Good sign |
-|------|-----------|
+|---|---|
 | `attributes.<your-fields>` present | On most matching logs, not just one |
-| `attributes.<your-fields>` values | Look like the right type (integer / string), not the raw pattern |
-| **No mixed-type arrays** | `"status": ["info", 404]` means a collision the pre-check missed — abort, rename, retest |
-| Non-matching logs unchanged | The grok parser didn't break logs it shouldn't have touched |
-| Reduction % | Unchanged or slightly better (more attributes = better grouping potential) |
+| values look right-typed | Integer / string, not the raw pattern text |
+| No mixed-type arrays | `"status": ["info", 404]` = a collision the pre-check missed — abort, rename, retest |
+| Non-matching logs unchanged | The parser didn't disturb logs it shouldn't touch |
+| Reduction % | Unchanged or slightly better |
 
-The mixed-type-array check is the one Step 4 is supposed to make redundant
-— but it's the failure mode that's silently destructive, so verify
-explicitly even if you ran the pre-check. Grep the patched draft output
-for `"<your-capture-name>": [` for each captured field; any match means a
-collision slipped through.
+Verify the mixed-type-array case explicitly even though step 3 should make it redundant:
+grep the patched draft for `"<your-capture-name>": [` on each captured field; any match
+means a collision slipped through.
 
-## Common Failure Modes
+## Common failure modes
 
-- **Pattern matches nothing**: usually a regex escape issue. `\[` not `[`,
-  `\(` not `(`. Re-run `grepr:build-grok` against the samples to verify.
-- **Pattern matches everything (greedy)**: usually `%{DATA:foo}` consuming
-  too much. Use `%{NOTSPACE:foo}` or `%{WORD:foo}` instead.
-- **`add-grok-rule` fails with "no grok-parser found in input.parsers"**:
-  you're in Case B — use `add-parser` to introduce the grok parser first.
-- **Field collides with a remapper-reserved attribute**: capture comes
-  back as a mixed-type array (e.g. `"status": ["info", 404]`). Caught by
-  the Step 4 pre-check; if it slipped through, rename the grok capture
-  (`status` → `http_status_code`) and re-test.
-- **Pattern matches more logs than intended**: a grok parser without a
-  `predicate` runs on every log in the pipeline. If your pattern is
-  loose enough to false-positive on other log shapes, add a `predicate`
-  scoped to the source/service/type the pattern is actually for.
+- **Matches nothing**: usually a regex escape issue — `\[` not `[`, `\(` not `(`; inside
+  `%{regex("…")}` use a single backslash (`[^\]]`). Multiple spaces need `%{space}`, not a
+  literal space. Re-run `grepr:build-grok` against the samples.
+- **Matches everything (greedy)**: `%{data:foo}` consuming too much; use `%{notSpace:foo}`
+  or `%{word:foo}`.
+- **`add-grok-rule` rejected, "no grok-parser found"**: zero grok parsers — you're in the
+  no-parser case; use `add-parser` to introduce one first.
+- **Capture comes back a mixed-type array**: collides with a remapper-reserved attribute;
+  rename the capture and retest.
+- **Parses more logs than intended**: a parser with no `predicate` runs pipeline-wide;
+  scope it to the source/service/type the pattern is for.
 
-## Hand-off Boundary
+## Hand-off boundary
 
-This skill **diagnoses and proposes**. Production writes happen only via
+This skill diagnoses and proposes. Production writes happen only via
 `grepr:test-pipeline-change` after explicit user approval.
+
+## Resources
+
+- `examples.md` — ✅ template-backed and ✅ raw job-graph patches (`add-grok-rule`,
+  `add-parser`) plus ❌ anti-patterns, each with a short "why".
+- Pattern authoring + matcher reference: `grepr:build-grok`.
+- Backend detection and per-backend op support: `grepr:describe-pipeline`.
+- Org config (`--conf`) handling: `grepr:cli`.
+- Full op catalog and field names: `grepr:operations-reference`.
+- Plan / draft / approval-gated apply: `grepr:test-pipeline-change`.

@@ -1,171 +1,104 @@
 ---
-description: Add, remove, or replace a source on a Grepr pipeline. Sources are validatable via the draft harness for template-backed pipelines and canonical UI-shaped raw job graphs; draft runs exercise the proposed source config before production apply.
-allowed-tools: Bash(grepr query), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr job:apply), Bash(grepr job:get), Bash(grepr integration:list), Bash(grepr integration:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:integration-commands
-trigger_keywords:
-  - change source
-  - add source
-  - new source
-  - swap source
-  - remove source
-  - source not ingesting
-  - source missing logs
+description: Add, remove, or replace an input source on a Grepr pipeline — new Datadog/Splunk/OTLP integration, iceberg replay, fixing a wrong integrationId/query, or retiring a source. Use whenever a source is being changed, swapped, added, or a source is not ingesting or missing logs.
+allowed-tools: Bash(grepr integration:list), Bash(grepr integration:get), Bash(grepr job:get), Bash(grepr --conf * integration:list), Bash(grepr --conf * integration:get), Bash(grepr --conf * job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:integration-commands
 ---
 
 # Change Pipeline Source
 
-Use when:
-- A new data source needs to be added (new Datadog integration, new
-  Splunk endpoint, new OTLP collector, etc.).
-- An existing source's config is wrong (credentials, query filter,
-  integration ID).
-- A source should be retired and removed from the pipeline.
+Add, remove, or replace a source on a Grepr pipeline, then validate the proposed
+source config in a draft run before any production apply. A source feeds raw log
+events into the pipeline; every pipeline must keep at least one.
 
-Source changes are validatable via the draft harness. Template-backed
-pipelines run the patched template in draft mode. Canonical UI-shaped raw
-job graphs use source-preserving sync draft: the proposed source vertices
-stay in the graph, production sinks are removed, and sync/tap outputs are
-added. Non-UI raw DAGs reject source topology edits with `unsupported raw
-job graph shape`.
+Resolve the org config once and reuse it on every command — see the `grepr:cli` skill.
 
-## Step 1: Get Context
+## Step 1 — Get context
 
-Run `grepr:describe-pipeline <JOB_ID>` and note:
-- Existing sources (name, type, integrationId, query/predicate, time window).
-- Whether the user wants to replace an existing source or add a new one
-  alongside.
-- Backend and shape: template-backed pipelines support source ops through
-  template inputs; direct job graphs support source ops only if they match
-  the canonical UI log-pipeline shape.
+Run `grepr:describe-pipeline <JOB_ID>` and record the existing sources (name, type,
+`integrationId`, query/predicate, time window) and the backend shape. For backend
+detection and which ops each backend supports, see `grepr:describe-pipeline`.
 
-For adding a new source, also check available integrations:
+Source ops apply to template-backed pipelines and to canonical UI-shaped raw job
+graphs. A non-canonical raw DAG rejects source topology edits with `unsupported raw
+job graph shape`, so confirm the shape before building a patch.
+
+When adding a source, list the integrations so the new vertex can reference a real
+`integrationId`:
 
 ```bash
 grepr integration:list
 ```
 
-The source vertex needs an `integrationId` matching one of these.
+Reusing the same source `type` + `integrationId` as an existing source is a duplicate
+no-op — only do it when the user is deliberately replacing that source.
 
-## Step 2: Decide the Patch Shape
+## Step 2 — Pick the case
 
-Three cases:
+| Intent | Ops | Note |
+|--------|-----|------|
+| Add a new source alongside the existing ones | `add-source` | appends; no source is removed |
+| Replace a source with new config | `remove-source` + `add-source` | pair them in one patch so a source always remains |
+| Retire a source | `remove-source` | rejected if it would leave zero sources |
 
-| Intent | Ops |
-|--------|-----|
-| Add a new source alongside existing | `add-source` |
-| Replace an existing source with new config | `remove-source` + `add-source` |
-| Just retire an existing source | `remove-source` |
+A patch leaving zero sources is rejected at plan time, because a pipeline with no
+input has nothing to process. To swap the only source, use the replace case so the
+`add-source` lands in the same patch.
 
-## Step 3: Build the Patch
+## Step 3 — Build the patch
 
-### Case A — Add a new source
+The patch root is `{ "operations": [ ... ] }`. The two source ops and their exact
+fields:
 
-```json
-{
-  "operations": [
-    {
-      "op": "add-source",
-      "source": {
-        "type": "datadog-log-agent-source",
-        "name": "dd_prod_logs",
-        "integrationId": "<integration-id-from-step-1>"
-      }
-    }
-  ]
-}
-```
+| op | required field | shape |
+|----|----------------|-------|
+| `add-source` | `source` (object) | agent or iceberg source, see below |
+| `remove-source` | `name` (string) | name of an existing source vertex |
 
-Use the integration's documented source type. Canonical agent source types
-(see `grepr:operations-reference` for the authoritative list):
-- `datadog-log-agent-source`
-- `splunk-log-agent-source`
-- `newrelic-log-agent-source`
-- `sumologic-log-agent-source`
-- `otel-log-source`
-- `logs-iceberg-table-source` (for replay from an iceberg dataset)
+Source shapes (the canonical UI shape — required for raw-graph edits):
+- Agent: `{ "type": "datadog-log-agent-source", "name": "...", "integrationId": "..." }`
+- Iceberg replay: `{ "type": "logs-iceberg-table-source", "name": "...", "datasetId": "...", "query": {...}, "start": "...", "end": "...", "limit": 1000 }`
 
-If you're unsure of the exact type string for a vendor, confirm with
-`grepr docs:search --type schema "<vendor> source"` rather than guessing —
-a wrong `type` is rejected at plan time.
+A wrong `type` string is rejected at plan time. For the full source-type catalog
+(Splunk, New Relic, Sumo, OTLP agents) and exact field names, see
+`grepr:operations-reference`. See `examples.md` for ready-to-copy ✅/❌ patches.
 
-### Case B — Replace an existing source
+## Step 4 — Validate and apply
 
-```json
-{
-  "operations": [
-    { "op": "remove-source", "name": "old_dd_source" },
-    {
-      "op": "add-source",
-      "source": {
-        "type": "datadog-log-agent-source",
-        "name": "dd_prod_logs",
-        "integrationId": "int_new_123"
-      }
-    }
-  ]
-}
-```
+Hand the patch file to `grepr:test-pipeline-change`, which plans, drafts, gates on
+approval, and applies. The plan classifies as `source`, which the draft harness runs:
+the proposed source vertices stay live in the draft so their record stream proves
+ingest works before production.
 
-`remove-source` cleans up the entry; `add-source` appends the new one.
+What to confirm in the draft output:
 
-### Case C — Retire a source
+| Check | Good sign |
+|-------|-----------|
+| Records from the new source vertex | Non-zero volume in the draft window |
+| Source-error tags (`_grepr.source.error`) | Absent |
+| Reserved attributes populated | `service`, `host`, `message` look right |
+| Volume sane | Matches the integration's documented rate, not production-scale |
 
-```json
-{
-  "operations": [{ "op": "remove-source", "name": "deprecated_source" }]
-}
-```
+If the new source emits nothing in the draft window, stop before applying — the
+credentials, integration auth, or query filter is the likely cause.
 
-**Every pipeline must keep at least one source.** A patch that removes the
-only source (or removes all of them) is rejected at plan time with a
-zero-source error — to swap the sole source, pair `remove-source` with an
-`add-source` in the same patch (Case B).
+## Failure modes
 
-## Step 4: Hand Off to test-pipeline-change
-
-Invoke `grepr:test-pipeline-change` with `<JOB_ID>` and `patch.json`.
-
-The plan's classification will be `source`, which the draft harness allows.
-The harness:
-
-- For template-backed pipelines, runs the patched template inputs through
-  draft mode on the flink-session-cluster.
-- For canonical UI-shaped raw job graphs, runs a source-preserving sync
-  draft that keeps the proposed source vertices.
-- Streams NDJSON output tagged with which `draftOutputs` stage each
-  record came from, or `sink-source` tags on raw graph drafts.
-- For added sources, the record stream from the new source proves
-  ingest works.
-
-### What to verify in the test output
-
-| What | Good sign |
-|------|-----------|
-| Records flowing from the new source vertex | Non-zero volume within the draft window |
-| Source-error tags / `_grepr.source.error` | Absent |
-| Expected reserved attributes present | `service`, `host`, `message` populated correctly |
-| Volume is reasonable | Matches the integration's documented rate; not pulling production-scale traffic during draft |
-
-If the new source doesn't emit anything during the draft window, **stop
-before applying** — credentials, integration auth, or query filter is
-likely wrong.
-
-## Common Failure Modes
-
-- **No records from the new source**: usually credentials/auth. Check
-  `grepr integration:get <id>` for the integration's status. The draft
-  output will sometimes carry an explicit error tag pointing at the cause.
-- **Records arrive but with wrong tags/attributes**: the source-specific
-  remapping or reserved-attribute config isn't matching the vendor's
-  payload shape. May need a follow-up `change-exceptions` or remapper
+- No records from the new source — usually credentials/auth. Check
+  `grepr integration:get <id>` for the integration's status; the draft sometimes
+  carries an explicit source-error tag pointing at the cause.
+- Records arrive with wrong tags/attributes — the source's reserved-attribute mapping
+  does not match the vendor payload. Follow up with a remapper or `change-exceptions`
   patch.
-- **Source-side rate limit**: vendor APIs often rate-limit; if the draft
-  pulls aggressively the vendor may throttle. Re-run after a short delay
-  before concluding the source is broken.
-- **Replaced source isn't superseded cleanly**: the old source might
-  still be ingesting during the production apply transition. Confirm
-  `remove-source` succeeded by checking the plan diff.
+- Source-side rate limit — vendor APIs throttle aggressive pulls. Re-run after a short
+  delay before concluding the source is broken.
+- Replaced source still ingesting — confirm `remove-source` landed by checking the
+  plan diff before apply.
 
-## Hand-off Boundary
+## Resources
 
-This skill **diagnoses and proposes**. Production writes happen only via
-`grepr:test-pipeline-change` after explicit user approval.
+- `examples.md` — ✅ template-backed add/replace patches, ✅ raw-graph add-source, and
+  ❌ rejected patches (zero-source removal, non-canonical raw graph), each with a why.
+- `grepr:describe-pipeline` — backend detection and per-backend op support.
+- `grepr:operations-reference` — full source-type catalog and exact field names.
+- `grepr:integration-commands` — list/inspect integrations for `integrationId`.
+- `grepr:test-pipeline-change` — plans, drafts, gates, and applies the patch.
+- `grepr:cli` — resolve and reuse the org `--conf` config.

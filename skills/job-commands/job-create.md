@@ -17,7 +17,9 @@ Create a new Grepr pipeline (job) from a JSON configuration file. Remember that 
 in Grepr is a job, and they can be synchronous/asynchronous and streaming/batch.
 
 ## Notes
-- Review the Job documentation (`grepr docs:search "grepr job model"`) if needed. As a summary:
+- Use `grepr:grepr-model` and `grepr:operations-reference` for job model
+  and operation details. Do not block on `docs:search`; some environments
+  do not have the semantic docs index loaded. As a summary:
   - A SYNCHRONOUS job requires a `SynchronousSink` and returns results immediately.
   - An ASYNCHRONOUS job requires an asynchronous sink and runs in the background.
   - A STREAMING job processes data in real-time as it arrives and continues running indefinitely.
@@ -62,7 +64,7 @@ a copy of the data at each step. This way you can inspect the output at each sta
 4. Update the job configuration to use these test datasets as sinks. You can find the sink operations in the `jobGraph`. Replace the vendor sinks (newrelic, datadog, etc.) with the processed data sink dataset, and replace the real raw data sink with the test raw data sink dataset. Also add a `LogTransformAction` operation before each sink with a `TagAction` to tag the data before it goes into either sinks so you can search for those tags when querying the datasets.
 5. Validate the JSON for the new job with the user to ensure it looks correct and it won't impact production data.
 6. Create the temporary job using [job:create](job-create.md) with the modified configuration.
-7. It'll take a few minutes for the pipeline to start and for data to start flowing through. You can monitor the job status using `grepr job:get <temp_job_id> --quiet` and checking the status field.
+7. It'll take a few minutes for the pipeline to start and for data to start flowing through. You can monitor the job status using `grepr job:get <temp_job_id> --quiet` and checking the status field. If the user selected a non-default config, reuse that concrete `--conf <name>` value.
 8. Once the job is running, you can query the test datasets using [query](query.md) to validate that the data is being processed as expected.
 9. After validation, delete the temporary job using [job:delete](job-delete.md). Ask the user if they want to keep the test datasets for reuse later or delete them as well.
 10. If everything looks good, you can proceed to update the original job with the updated configuration after confirming with the user.
@@ -86,7 +88,7 @@ The job name lives in the JSON file (`name` field). To change it, edit the file
 before submitting — there's no `--name` flag on `job:create`.
 
 ## Configuration Format
-See existing jobs via `grepr job:get <id>` for example configurations.
+See existing jobs via `grepr job:get <id>` for example configurations. If the user selected a non-default config, reuse that concrete `--conf <name>` value.
 
 ## Example jobs
 

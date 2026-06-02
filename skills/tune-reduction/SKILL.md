@@ -1,15 +1,6 @@
 ---
-description: Diagnose and fix bad reduction (high passthrough) on a Grepr pipeline. Covers empty messages, exceptions bypassing the reducer, and over-aggregation. Builds a job:plan patch, validates it via test-pipeline-change, and requires explicit user approval before job:apply.
-allowed-tools: Bash(grepr query), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr job:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:change-exceptions, grepr:change-filtering, grepr:change-source, grepr:tune-grok, grepr:query-logs, grepr:grepr-model
-trigger_keywords:
-  - tune reduction
-  - reduction is bad
-  - reduction not working
-  - passthrough too high
-  - too many logs
-  - low reduction ratio
-  - fix reduction
-  - improve reduction
+description: Diagnose and fix bad reduction (high passthrough, low reduction ratio, too many logs reaching sinks) on a Grepr pipeline. Use when reduction is bad, not working, or passthrough is too high. Covers the three causes — empty messages, over-broad reducer exceptions, and over-aggregation — builds a job-patch, and validates it via test-pipeline-change before any apply.
+allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr --conf * query), Bash(grepr --conf * job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:change-exceptions, grepr:change-filtering, grepr:tune-grok, grepr:operations-reference
 ---
 
 # Tune Pipeline Reduction
@@ -18,286 +9,150 @@ Reducer passthrough is "high" when too many incoming logs reach the sinks
 unaggregated. Three independent causes drive this:
 
 1. **Empty messages** — the reducer dedupes on the `message` field. If
-   `message` is empty/missing, every log is its own "pattern" and nothing
+   `message` is empty/missing, every log is its own pattern and nothing
    aggregates.
 2. **Reducer exceptions** — logs matching `logReducerExceptions` predicates
-   skip aggregation by design. If these predicates are too broad, the bypass
-   is too aggressive.
-3. **Over-aggregation / wrong group-by** — logs that *should* group into
-   distinct buckets all collapse into one pattern (e.g. all GraphQL queries
-   merging because they share `operationName` but differ by `query` text).
+   skip aggregation by design. Too-broad predicates bypass too much.
+3. **Over-aggregation / wrong group-by** — logs that *should* split into
+   distinct buckets collapse into one pattern (e.g. all GraphQL queries
+   merging on `operationName` while differing by `query` text).
 
-For the specific cases below, this skill diagnoses and patches in-place.
-For deeper edits to one dimension, hand off to the dedicated sibling
-skill:
+This skill diagnoses which cause is hurting the pipeline and builds a patch.
+Resolve the org config once and reuse it on every command — see the `grepr:cli`
+skill.
 
-- **Exception predicates need surgery** → `grepr:change-exceptions` (broader
-  vocabulary for narrowing, adding, or removing exceptions).
-- **Unparsed log shapes are why messages are empty** → `grepr:tune-grok`
-  (extract attributes first, then come back here).
-- **Noise should never reach the reducer in the first place** →
-  `grepr:change-filtering` (drop classes of logs at the pipeline edge).
+## Step 1: Get context
 
-This skill diagnoses which one is hurting the pipeline, builds a
-`job:plan` patch, and **never** applies it directly — it always routes
-through `test-pipeline-change` so the user sees before/after metrics and
-explicitly approves the change.
+Fetch the raw dataset ID (source vertex), the remapper message paths, and the
+reducer config (`partitionByAttributes`/`Paths`, `logReducerExceptions`,
+`attributeMergeStrategyEntries`). Run `grepr:describe-pipeline <JOB_ID>` for the
+full structural view, or `grepr job:get <JOB_ID> --resolved -f raw` when you
+only need a couple of fields. For backend detection (template-backed vs raw
+job-graph) and which ops each backend supports, see `grepr:describe-pipeline`.
 
-## Step 1: Get Context
+`grepr query --start/--end` require **absolute ISO-8601 UTC** (e.g.
+`2026-05-29T03:00:00Z`); relative offsets like `now-2h` are rejected. Compute
+the window first with `date -u`.
 
-You need:
-- The raw dataset ID (from the source vertex)
-- The current remapper settings (`messageReservedAttributes` / `Paths`)
-- The current reducer settings (`partitionByAttributes` / `Paths`,
-  `logReducerExceptions`, `attributeMergeStrategyEntries`)
+## Step 2: Diagnose
 
-Two ways to fetch these — pick based on what you need:
+| Symptom | Likely cause | First check |
+|---|---|---|
+| Many logs have empty `message` | Empty messages | `grepr query --dataset-id <RAW_DS> --message-length-min 0 --message-length-max 0 --limit 100` |
+| Sink throughput ≈ source throughput on specific tags | Exceptions too broad | sample `logReducerExceptions` predicate volume |
+| One pattern matches very different contents | Over-aggregation | sample reduced output; compare aggregated `message` vs a splitting attribute |
+| One pattern per log | Empty messages or wrong group-by | check both |
 
-- **`grepr:describe-pipeline <JOB_ID>`** when you want the full structural
-  view, want to verify topology, or are about to make non-obvious
-  decisions and the wider context will inform them.
-- **`grepr job:get <JOB_ID> --resolved -f raw`** when you only need a
-  couple of fields (e.g. raw dataset ID + reducer config) and the
-  describe-pipeline output would be overkill. Faster and quieter.
+If unsure, run all three checks — they are cheap. Empty messages and wrong
+group-by often coexist; build one patch with all needed ops and test the set
+together rather than serial cycles.
 
-Either is fine — don't run both.
+## Step 3: Empty messages
 
-## Step 2: Quick Diagnosis Table
-
-| Symptom                                              | Most likely cause            | First check                                                                                  |
-|------------------------------------------------------|------------------------------|----------------------------------------------------------------------------------------------|
-| Many logs have empty `message`                       | Empty messages               | `grepr query --dataset-id <RAW_DS> --message-length-min 0 --message-length-max 0 --limit 100` |
-| Sink throughput ≈ source throughput on specific tags | Exceptions too broad         | Check `logReducerExceptions` against actual log volume                                       |
-| One pattern matches very different log contents      | Over-aggregation             | Sample reduced logs; look at the aggregated `message` vs. an attribute that should split it  |
-| Logs split when they shouldn't (one pattern per log) | Empty messages or wrong group-by | Check both                                                                                  |
-
-If unsure, **run all three checks** — they're cheap.
-
-## Step 3: Check for Empty Messages
-
-The raw dataset stores logs before the reducer sees them. Use the
-`--message-length-min/max` predicate on `grepr query`:
+Sample the raw dataset (logs before the reducer); null messages count as
+length zero:
 
 ```bash
-grepr query --dataset-id <RAW_DS> \
-  --message-length-min 0 --message-length-max 0 \
-  --start <T0> --end <T1> --limit 1000 -f raw
+grepr query --dataset-id <RAW_DS> --message-length-min 0 --message-length-max 0 \
+  --start <T0> --end <T1> --limit 1000 -q -f raw -o empty-sample.ndjson
 ```
 
-Compute the percentage of empty messages in the sample. **A figure above
-~10% is significant.**
+A figure above ~10% is significant. If both the total and empty queries return
+~`limit` rows, treat it as "empty dominates" and widen the window for an exact
+ratio.
 
-### Find a Message Attribute Candidate
+Empty-message logs usually arrive in **multiple shapes**. Bucket the sample by
+something stable (service, the log's `type`/`kind`, or `seed_case` in test
+pipelines), and for each bucket find where the human-readable text lives. The
+#1 cause of "patch reduced empties but didn't eliminate them" is fixing one
+shape and missing the others. For candidate-field selection (which path becomes
+`message`, group-by, aggregation) and the empty-`""`-vs-absent behavior, see
+[reference.md](reference.md).
 
-For each sample empty-message log, look for fields containing a human-readable
-message. Common candidates (try in order):
+Build ONE patch covering all shapes:
+- Each message candidate → `add-message-attribute` (`attributePath`).
+  `messageReservedAttributePaths` accepts many paths and picks the first present.
+- Medium-cardinality splitters → `add-group-by` (`attributePath`).
+- Numeric measurements → `add-aggregation-strategy` (`attributePath`,
+  single-element `strategies`: `sum`|`min`|`max`|`avg`). One strategy per path.
 
-| Candidate path        | Notes                                                       |
-|-----------------------|-------------------------------------------------------------|
-| `message.data.message` | Common in nested log frames (Datadog, vendor wrappers).    |
-| `msg.request.query`   | GraphQL — the query text is the actual content.            |
-| `msg.message`         | Catches re-serialized log objects.                          |
-| `body`                | OTLP-style.                                                 |
-| `body.action`, `body.method` | Action-style logs.                                    |
-| `request.path`        | HTTP access logs without a body.                            |
-| `event.type`          | Event-driven logs.                                          |
+See [examples.md](examples.md) for full patches. For exact field schemas, see
+`grepr:operations-reference`.
 
-**Avoid as candidates:** trace IDs, span IDs, request IDs, timestamps, pod
-names, hostnames. These have unbounded cardinality and produce one pattern
-per log.
+## Step 4: Over-broad exceptions
 
-### Survey for multiple empty-message shapes before patching
-
-Empty-message logs from one source usually come in **multiple shapes**, not
-one. Skipping this step is the #1 cause of "the patch reduced empty
-messages but didn't eliminate them" — you fixed one shape and missed three
-others.
-
-For each distinct empty-message log shape in your sample, identify the
-candidate path that would carry the message. The simplest way:
-
-- Bucket the empty-message sample by something stable (service, source,
-  the log's `type` or `kind` field, or in test pipelines the `seed_case`
-  tag).
-- For each bucket, look at one example log and ask "where does the
-  human-readable text actually live?"
-
-Build one patch with **all** the candidate paths, not just the first one
-you find. The reducer's `messageReservedAttributePaths` accepts multiple
-paths and picks the first one present per log, so listing several is safe
-and cheap. Approving + applying one larger patch beats two redeploys for
-two patches.
-
-If you genuinely see only one shape in a representative sample (say, 100+
-records), one path is fine — just be deliberate about that conclusion.
-
-### Build the Patch
-
-Each chosen candidate becomes an `add-message-attribute` operation:
-
-```json
-{
-  "operations": [
-    { "op": "add-message-attribute", "attributePath": "message.data.message" },
-    { "op": "add-message-attribute", "attributePath": "msg.request.query" }
-  ]
-}
-```
-
-Save to `patch.json`.
-
-## Step 4: Check for Bypassing Exceptions
-
-From `describe-pipeline`, list every `logReducerExceptions` predicate. Run a
-query for each predicate's matching volume:
+List every `logReducerExceptions` predicate from describe-pipeline. Sample each
+predicate's matching volume against total traffic (same window/limit); `grepr
+query` has no exact-count mode, so report a sample estimate:
 
 ```bash
 grepr query --dataset-id <RAW_DS> --query "<predicate.query>" \
-  --start <T0> --end <T1> --limit 0 -f raw
+  --start <T0> --end <T1> --limit 1000 -q -f raw -o exception-sample.ndjson
 ```
 
-(`--limit 0` returns counts when supported; otherwise use a small limit and
-inspect.) Calculate what fraction of total volume each exception lets
-through.
+**Red flag:** any single exception matching >20% of traffic is almost certainly
+too broad. Common offenders: `status:error` (true error volume is usually <5%),
+`severity:>=WARNING`, and auto-synced vendor exceptions with no allow-list.
 
-**Red flag:** any single exception matching > 20% of traffic — that's almost
-certainly too broad. Common offenders:
+Narrowing an existing exception is **template-only** (`set-input-field` on
+`exceptions`). On raw graphs that path is rejected — hand off to
+`grepr:change-exceptions`, which owns the broader narrow/add/remove vocabulary.
+Adding a new exception (`add-reducer-exception`, `predicate` only) almost always
+hurts reduction further, so prefer narrowing.
 
-- `status:error` — true error volume is usually < 5%; if it's higher the
-  pipeline is probably misclassifying.
-- `severity:>=WARNING` — equivalent issue.
-- Vendor-imported exceptions (`integrationExceptionConfigs.autoSync: true`)
-  with no allow-list.
+## Step 5: Over-aggregation
 
-### Build the Patch
-
-Replace the full exceptions list via `set-input-field` on
-`exceptions`. Each entry is a `TemplateException` — for predicate-driven
-bypass, use `type: "query-exception"`:
-
-```json
-{
-  "operations": [
-    {
-      "op": "set-input-field",
-      "path": "exceptions",
-      "value": [
-        { "type": "query-exception", "predicate": { "type": "datadog-query", "query": "status:error AND service:checkout" } }
-      ]
-    }
-  ]
-}
-```
-
-For surgical edits — adding to or narrowing one specific entry — prefer
-the dedicated `grepr:change-exceptions` skill.
-
-Alternatively, to *add* a new exception without touching existing ones:
-
-```json
-{
-  "operations": [
-    {
-      "op": "add-reducer-exception",
-      "name": "checkout-errors",
-      "predicate": { "type": "datadog-query", "query": "status:error AND service:checkout" }
-    }
-  ]
-}
-```
-
-Prefer **narrowing existing predicates** over adding new ones — adding
-exceptions almost always hurts reduction further.
-
-## Step 5: Check for Over-Aggregation
-
-Pull a sample of reduced output (the warehouse sink dataset, or via the
-warehouse sink iceberg dataset):
+Sample reduced output only when a reduced/warehouse dataset is visible from
+describe-pipeline. Do not invent `<REDUCED_DS>` from the raw dataset — if no
+reduced sink is identifiable, validate from the draft's reducer-stage tap
+instead.
 
 ```bash
-grepr query --dataset-id <REDUCED_DS> --start <T0> --end <T1> --limit 100 -f raw
+grepr query --dataset-id <REDUCED_DS> --start <T0> --end <T1> --limit 100 -q -f raw -o reduced-sample.ndjson
 ```
 
-For each aggregated message, ask: do these source logs *belong together*?
-Signs of over-aggregation:
+Over-aggregation shows as an enormous aggregated count, or a generic `message`
+where an attribute (HTTP method, error code, operation name) differs across the
+merged sources. Fix it by adding a **medium-cardinality** (10–10,000 distinct)
+group-by — high enough to split buckets, low enough to keep reduction. Avoid
+trace/span/request IDs and path-param URLs (use `request.route`, not
+`request.path`). Build with `add-group-by`; see [examples.md](examples.md).
 
-- The aggregated count is enormous (thousands of logs in one pattern).
-- The `message` field is generic but an attribute differs across sources
-  (e.g., HTTP method, error code, GraphQL operation name).
+## Step 6: Validate and apply
 
-### Pick a Group-By Attribute
+Write the patch to a fresh `patch-<short-tag>.json` (`{ "operations": [...] }`),
+then hand the patch file to `grepr:test-pipeline-change`, which plans, drafts,
+gates on approval, and applies. Report the before/after metrics (empty-message
+%, reduction %, group cardinality) to the user and ask them to approve. This
+skill never PUTs directly.
 
-Aim for **medium cardinality** (10–10,000 distinct values) — high enough to
-split the buckets meaningfully, low enough to still get reduction. Good
-candidates:
+When interpreting draft results:
+- `job:draft` samples a short live-streaming window, so baseline and patched
+  runs hit different records. If total record counts differ by **>20%**, the
+  windows weren't comparable — re-run or note the limitation.
+- A literal **0% empty after patch** (baseline was 5–15%) is suspicious; real
+  full-coverage fixes leave a low-single-digit tail. Verify with a second run.
 
-| Candidate              | Good for                            |
-|------------------------|--------------------------------------|
-| `request.method`       | HTTP access logs                     |
-| `request.status_code`  | HTTP responses                       |
-| `error.type`           | Exception logs                       |
-| `msg.operationName`    | GraphQL                              |
-| `service`              | Multi-service pipelines              |
+## What to watch out for
 
-**Bad candidates (too high cardinality):** trace IDs, span IDs, request IDs,
-URLs with path params (use `request.route` if present, not `request.path`).
+- **Don't lower `dedupThreshold`** to fake reduction — fix the upstream cause.
+- The reducer dedupes on the **post-mask** `message` (`timestamp`, `uuid`,
+  `ipport`, `number` masks pre-applied). Numeric IDs in patterns usually mean a
+  mask is off — check the reducer's `enabledMasks`.
+- Aggregation strategies are safe only for fields that are actually numeric in
+  the sample; string/missing/mixed-type fields can fail the draft.
+- Query a few time windows — reduction varies hourly with traffic mix.
+- Unparsed shapes causing empty messages → `grepr:tune-grok` first. Noise that
+  should never reach the reducer → `grepr:change-filtering`.
 
-### Build the Patch
+## Resources
 
-```json
-{
-  "operations": [
-    { "op": "add-group-by", "attributePath": "msg.operationName" }
-  ]
-}
-```
-
-## Step 6: Validate via `test-pipeline-change`
-
-**Never apply directly.** Hand the patch to `test-pipeline-change`:
-
-```
-test-pipeline-change with --job-id <JOB_ID> --patch patch.json
-```
-
-That skill will:
-1. Generate a plan with `job:plan -o plan.json`.
-2. Run a draft via `job:draft plan.json -o draft-output.ndjson` (template
-   draft mode, or client-side iceberg replay for raw graphs).
-3. Report before/after metrics (empty-message %, reduction %, group
-   cardinality).
-4. Wait for explicit user approval.
-5. Call `job:apply` with retry/drift handling.
-
-Report the metrics to the user and ask them to approve.
-
-## What to Watch Out For
-
-- **Multi-cause issues** — empty messages and wrong group-by often coexist.
-  Build one patch with all needed ops, test the whole set together (cheaper
-  than serial test cycles).
-- **Sample bias** — query a few different time windows; reduction can vary
-  hourly with traffic mix.
-- **Baseline vs patched draft volume mismatch** — `job:draft` samples
-  a short window of live streaming traffic, so the baseline and patched
-  runs hit different records. Check the total record counts before
-  trusting the percentage comparison:
-  - If the two runs differ by **>20%** in total record count, the windows
-    weren't comparable. Re-run both (longer window if possible) or note
-    the limitation explicitly when you present results.
-  - A literal **0% empty after patch** when the baseline was 5–15% empty
-    is suspicious — verify with a second patched run or a longer window
-    before trusting it. Realistic full-coverage fixes leave a tail of
-    low-single-digit %, not zero.
-- **Don't tune reduction by lowering `dedupThreshold`** — that just lies
-  about how many logs you saw. Fix the upstream cause.
-- **The reducer dedupes on the post-mask form of `message`** — masks like
-  `timestamp`, `uuid`, `ipport`, `number` are already applied. If you see
-  numeric IDs in patterns, they probably aren't being masked; check the
-  reducer's `enabledMasks` field.
-
-## Hand-off Boundary
-
-This skill **diagnoses and proposes**. It never PUTs. Production writes only
-happen via `test-pipeline-change` → `job:apply` with explicit user
-approval.
+- [examples.md](examples.md) — ✅ template-backed + ✅ raw-graph patches,
+  ❌ anti-patterns, each with a short "why".
+- [reference.md](reference.md) — empty-message candidate-field analysis tables
+  and the empty-`""`-vs-absent remapper behavior.
+- `grepr:describe-pipeline` — backend detection + capability matrix.
+- `grepr:test-pipeline-change` — plan → draft → gate → apply.
+- `grepr:operations-reference` — full op catalog and exact field names.
+- `grepr:change-exceptions`, `grepr:change-filtering`, `grepr:tune-grok` —
+  dedicated edits to one dimension.

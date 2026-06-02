@@ -12,6 +12,11 @@
 ## When to Use
 Update an existing pipeline's configuration. Use this to modify operations, change integrations, or adjust settings.
 
+For patchable pipeline edits, prefer the `job:plan` / `job:draft` /
+`job:apply` safety workflow used by the pipeline tuning skills. Treat
+`job:update` as a manual full-graph update path only when the user
+explicitly starts that workflow.
+
 ## Examples
 
 ```bash
@@ -22,12 +27,17 @@ grepr job:update abc123 updated-pipeline.json
 ## Notes
 - Job will be restarted with new configuration
 - Updated configuration must be complete (full job graph)
+- Use the selected config consistently. If the user did not choose a
+  non-default config, omit `--conf`; if they did, reuse that concrete
+  `--conf <name>` value on every command.
 - Get current config first with `grepr job:get <id> --quiet` and output to a file to modify incrementally. You'll need the version for the `fromVersion` parameter.
 - The JSON for a job update contains:
   - `fromVersion`: The job version to update from
   - `desiredState`: RUNNING or STOPPED
-  - `jobGraph`: The Grepr Job Graph with `vertices` and `edges`. Operations are described in the
-    Grepr OpenAPI spec which you can search using the CLI's `docs:search` command.
+  - `jobGraph`: The Grepr Job Graph with `vertices` and `edges`. Use
+    `grepr:operations-reference`, local OpenAPI types, or known `docs:get`
+    URIs for operation details. Do not block on `docs:search`; some
+    environments do not have the semantic docs index loaded.
 - Before you execute an update, you should test the updated job in isolation to make sure it'll do what's expected. See below.
 - Don't be phased by the complexity of testing. Testing is very important to ensure that jobs work as expected before deploying to production.
 - Change the job graph step by step using `jq` as needed when creating a job or modifying an existing job. Check the result of your jq commands after each step to make sure it's going as expected. Use a new file for each step to avoid mistakes and be able to retry until success.

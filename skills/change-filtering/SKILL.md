@@ -1,233 +1,132 @@
 ---
-description: Set, modify, or clear pipeline filters on a Grepr pipeline. Filters drop unwanted logs at a chosen stage (pre-parser, pre-aggregation, pre-exceptions, pre-warehouse). Estimates drop volume before applying. Routes through test-pipeline-change.
-allowed-tools: Bash(grepr query), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr job:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
-trigger_keywords:
-  - change filtering
-  - add filter
-  - drop logs
-  - filter out
-  - exclude logs
-  - remove filter
-  - filter too aggressive
+description: Set, modify, or clear pipeline filters on a Grepr pipeline to drop unwanted logs (debug, health checks, vendor heartbeats) at a chosen phase — pre-parser, pre-aggregation, pre-exceptions, or pre-warehouse. Estimates drop volume first and routes through test-pipeline-change. Use for "add a filter", "drop these logs", "filter is too aggressive", or "stop filtering".
+allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:plan), Bash(grepr --conf * job:draft), Read, Write, grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
 ---
 
 # Change Pipeline Filtering
 
-Use when:
-- A class of logs should never reach the warehouse (debug logs, health
-  checks, vendor heartbeats).
-- An existing filter at one of the four phases is too aggressive or too
-  permissive.
-- The user wants to reduce ingest cost by filtering at the pipeline edge.
+Filters drop unwanted logs at one of four phase slots. A `logs-filter` is
+**keep-style**: it keeps logs matching its predicate, so phrase the predicate as
+"what to keep" and wrap the drop condition in `NOT (...)`. This skill diagnoses
+and proposes; production writes happen only through the test harness.
 
-Filter changes operate on transform-stage data - routes through
-`grepr:test-pipeline-change`.
+Resolve the org config once and reuse it on every command — see the `grepr:cli` skill.
 
-## Step 1: Get Context
+## Step 1 — Get context
 
-Run `grepr:describe-pipeline <JOB_ID>` and note:
-- Which of the four phase slots currently has a filter and what its
-  predicate is.
-- The raw dataset ID (for drop-volume estimation).
+Run `grepr:describe-pipeline <JOB_ID>` and note which of the four phase slots
+already holds a filter, its predicate, and the raw dataset ID (needed for
+drop-volume estimation). For backend detection and which ops each backend
+supports, see `grepr:describe-pipeline`.
 
-## Step 2: Pick the Phase
+## Step 2 — Pick the phase
 
-Filters are **phase-slotted**, not arbitrary vertices in the graph. The
-template/UI pipeline shape owns topology; each phase holds at most one
-filter. The four phases describe **where in the pipeline the filter
-sits**, not what it "protects" - what gets dropped downstream depends on
-the specific template's topology, so verify against `describe-pipeline` before
-asserting downstream effects to the user.
+Filters are phase-slotted, not arbitrary vertices: each phase holds at most one
+filter, and topology decides what gets dropped downstream. The phase names
+describe *where the filter sits*, not what it "protects" — verify the actual
+downstream effect against `describe-pipeline` before telling the user where logs
+land.
 
-| Phase | Position in the pipeline |
-|-------|---------------------------|
-| `pre-parser` | First, before any parser. Cheapest drop point — JSON parsing skipped on dropped logs. Attributes from parsers/grok are NOT available yet (predicates can only reference fields present on the raw log). |
-| `pre-aggregation` | Immediately before the reducer. Parser, remapper, and grok-extracted attributes are available. |
-| `pre-exceptions` | On the path of logs about to bypass the reducer (matched the reducer's `logReducerExceptions` predicates). Filters here narrow the exception bypass. |
-| `pre-warehouse` | After the parser/remapper chain, before downstream branches. In most templates this is upstream of both the warehouse sink and the reducer — verify topology before claiming "drops from warehouse only." |
+| Phase | Position | Attributes available |
+|-------|----------|----------------------|
+| `pre-parser` | Before any parser. Cheapest drop point (JSON parse skipped on dropped logs). | Raw log fields only — parser/grok captures NOT yet present. |
+| `pre-aggregation` | Immediately before the reducer. TEMPLATE-ONLY (no raw UI stage). | Parser, remapper, and grok-extracted attributes. |
+| `pre-exceptions` | On the path of logs bypassing the reducer (matched `logReducerExceptions`). Narrows the bypass. | Post-parser attributes. |
+| `pre-warehouse` | After the parser/remapper chain, before downstream branches. Often upstream of *both* warehouse sink and reducer. | Post-parser attributes. |
 
-Direct raw job graph support is shape-dependent:
-- Canonical UI-shaped raw log graphs support `set-filter` and
-  `clear-filter` for `pre-parser`, `pre-warehouse`, and
-  `pre-exceptions`.
-- `pre-aggregation` has no canonical UI raw-graph stage; use a
-  template-backed pipeline for that phase or choose the closest real raw
-  stage after inspecting topology.
-- Non-UI raw DAGs reject UI-level filter topology edits with `unsupported
-  raw job graph shape`.
+Pick by what the predicate references:
 
-**Picking the phase:**
-- If the predicate references a grok-extracted attribute → must be at
-  `pre-aggregation`, `pre-warehouse`, or `pre-exceptions` (anywhere
-  post-grok). `pre-parser` won't have the attribute yet.
-- If the predicate references only raw log fields (e.g. a top-level
-  `source` tag or a raw attribute like `message`) → `pre-parser` is the
-  cheapest place to drop.
-- Most "drop noise everywhere" requests fit `pre-parser` when the
-  predicate is composable from raw fields, otherwise `pre-warehouse`.
+| Predicate references | Phase |
+|----------------------|-------|
+| Only raw log fields (a top-level tag, raw `message`) | `pre-parser` — cheapest drop |
+| A grok-extracted or parsed attribute (`@route`, `@http_status_code`) | Any post-parser phase. `pre-parser` won't have it yet → silent no-op. |
+| "Drop noise everywhere" composable from raw fields | `pre-parser`, else `pre-warehouse` |
 
-**When describing the patch to the user, state the *actual* downstream
-effect for this pipeline's topology** (e.g. "in this pipeline,
-pre-warehouse is upstream of the reducer too, so this drops from both
-the warehouse sink and the reducer/exception paths"). Read the topology
-from `describe-pipeline`'s output rather than asserting a generic
-template behavior.
+Raw job-graph support is shape-dependent: canonical UI-shaped graphs accept
+`set-filter`/`clear-filter` for `pre-parser`, `pre-warehouse`, and
+`pre-exceptions`. `pre-aggregation` has no raw stage — use a template-backed
+pipeline for it. Non-UI raw DAGs reject these edits with `unsupported raw job
+graph shape`.
 
-## Step 2a: Predicate Syntax — Tags vs Attributes
+## Step 2a — Predicate syntax: tags vs attributes (high-failure)
 
-Filter predicates use the same query syntax as `grepr query`: Datadog-
-style. The distinction that catches people out:
+Predicates use Datadog-style query syntax (same as `grepr query`). The
+distinction that silently breaks filters:
 
 | Syntax | Matches |
 |--------|---------|
-| `field:value` | A **tag** named `field` (top-level, vendor-set or remapper-set) |
-| `@field:value` | An **attribute** named `field` (deep field, including grok-extracted captures) |
+| `field:value` | A **tag** named `field` (top-level; vendor-set or remapper-set) |
+| `@field:value` | An **attribute** named `field` (deep field, including grok captures) |
 
-Common tag names: `source`, `service`, `host`, `env`. Reserved attribute
-names land back as tags via the remapper, so `service:checkout` works.
+Common tags: `source`, `service`, `host`, `env` (reserved attributes land back
+as tags via the remapper, so `service:checkout` works). Common attributes:
+grok captures (`@route`, `@http_status_code`, `@duration_ms`) and structured
+body fields (`@body.message`, `@msg.operationName`).
 
-Common attribute paths: anything grok-extracted (`@route`,
-`@http_status_code`, `@duration_ms`), anything in the structured body
-(`@body.message`, `@msg.operationName`).
+Get this wrong and the predicate evaluates false on every log. Because the
+filter is keep-style with a `NOT (...)` wrapper, "matches nothing to keep"
+inverts to **every log kept** — a silent no-op. The patch ships, looks applied,
+and drops nothing. This is the most common filtering failure, so sanity-check
+each field against draft records: a `@x` predicate needs `x` under `attributes`;
+a bare `x` predicate needs `x` under `tags`.
 
-If you get this wrong, the filter **silently matches nothing** — and
-because the filter is keep-style with a `NOT (...)` wrapper, "matches
-nothing" means **every log is kept** (filter is a no-op). This is worse
-than no filter: the patch ships, the user thinks it's working, and
-nothing is actually being dropped.
+## Step 3 — Estimate drop volume
 
-Sanity-check the syntax in your draft output:
-- For each field in your predicate, grep one record from the patched
-  draft to confirm the field is present and has the value the predicate
-  expects.
-- If the predicate uses `@x`, the record should have `x` under
-  `attributes` (or wherever attributes land in the draft's output
-  format).
-- If the predicate uses `x` (no @), the record should have `x` under
-  `tags`.
-
-## Step 3: Estimate Drop Volume
-
-`logs-filter` **keeps** logs matching its predicate. Phrase your predicate
-as "what to keep" — use `NOT (...)` when the intent is "drop these."
+Sample both sides over the same window and limit, then report the split:
 
 ```bash
-# Count what would be DROPPED (matches the negation of the keep predicate)
-grepr query --dataset-id <RAW_DS> --query "<the drop condition>" \
-  --start <T0> --end <T1> --limit 0 -f raw
+# What would be DROPPED (the drop condition itself)
+grepr query --dataset-id <RAW_DS> --query "<drop condition>" \
+  --start <T0> --end <T1> --limit 1000 -q -f raw -o dropped-<tag>.ndjson
 
-# And what would be KEPT
-grepr query --dataset-id <RAW_DS> --query "NOT (<the drop condition>)" \
-  --start <T0> --end <T1> --limit 0 -f raw
+# What would be KEPT (its negation — what the filter predicate keeps)
+grepr query --dataset-id <RAW_DS> --query "NOT (<drop condition>)" \
+  --start <T0> --end <T1> --limit 1000 -q -f raw -o kept-<tag>.ndjson
 ```
 
-Show the user the split before constructing the patch. A filter dropping
->50% of traffic should be a deliberate decision, not an accident.
+`grepr query` has no exact-count mode here — report a sample estimate. Treat a
+filter dropping >50% of the sample as a deliberate decision and confirm with the
+user. See `grepr:query-logs` for query mechanics.
 
-## Step 4: Build the Patch
+## Step 4 — Build the patch
 
-### Case A — Add or replace a filter at a phase
+`set-filter` **merges** into the slot: fields you supply win, fields you omit
+(e.g. `maxLateEventTimestampDelta`, `inverted`) carry over from the existing
+filter. The same op installs the first filter or replaces one already there. The
+`filter` shape is `{"predicate":{"type":"datadog-query","query":"..."}}`. Use
+`clear-filter` to blank a phase's query while keeping the vertex.
 
-`set-filter` **merges** over the slot — fields you supply win, fields you
-omit are carried over from the existing filter. So phase-specific config
-that's already there (e.g. `maxLateEventTimestampDelta` on `pre-warehouse`,
-or `inverted`) is preserved automatically; you only need to state the fields
-you're changing. Same op whether you're installing the first filter or
-replacing one that's already there:
+See examples.md for copy-paste patches: a ✅ template-backed `set-filter`, a ✅
+raw-graph `set-filter`/`clear-filter`, and the ❌ tag-vs-`@attribute` no-op.
 
-```json
-{
-  "operations": [
-    {
-      "op": "set-filter",
-      "phase": "pre-parser",
-      "filter": {
-        "type": "logs-filter",
-        "name": "drop_healthchecks",
-        "predicate": {
-          "type": "datadog-query",
-          "query": "NOT (path:/healthz OR path:/readyz OR path:/ping)"
-        }
-      }
-    }
-  ]
-}
-```
+For modifying only the predicate of an existing template filter without
+restating the slot, `set-input-field` (`path` like `filters.pre-parser`) works —
+but it is TEMPLATE-ONLY and rejected on raw graphs; use `set-filter` there. For
+the full op catalog and exact field names, see `grepr:operations-reference`.
 
-### Case B — Modify just the predicate of an existing filter
+## Step 5 — Hand off to test-pipeline-change
 
-Use `set-input-field` to overwrite the predicate without re-stating the
-whole filter shell. This generic path op is template-input only; for raw
-job graphs use `set-filter` with the full filter object.
-
-```json
-{
-  "operations": [
-    {
-      "op": "set-input-field",
-      "path": "filters.pre-parser.predicate.query",
-      "value": "NOT (path:/healthz OR path:/readyz OR path:/ping OR path:/metrics)"
-    }
-  ]
-}
-```
-
-### Case C — Remove a filter entirely
-
-```json
-{
-  "operations": [
-    { "op": "clear-filter", "phase": "pre-warehouse" }
-  ]
-}
-```
-
-## Step 5: Hand Off to test-pipeline-change
-
-Invoke `grepr:test-pipeline-change` with `<JOB_ID>` and `patch.json`.
-The draft harness runs the patched pipeline on the flink-session-cluster
-and tags output with `draftOutputs` stage info — you can see records
-flowing into and out of each filter stage.
-
-### What to verify in the test output
+Write the patch to a file and hand it off: "Hand the patch file to
+`grepr:test-pipeline-change`, which plans, drafts, gates on approval, and
+applies." Verify in the draft output:
 
 | What | Good sign |
 |------|-----------|
-| Output volume after the patched filter stage | Matches the "kept" count from step 3, within a few % |
-| Patched count of records the filter targets | **Zero** in the patched draft; non-zero in baseline. If both are non-zero, the predicate is silently no-op'ing (likely a tag-vs-attribute mix-up — see Step 2a). |
-| Sampled output | None of the unwanted shape made it through |
-| Sampled output | All of the wanted shape still made it through |
-| Reduction % (if filter is upstream of the reducer) | Sharp drop → you removed something the reducer was successfully aggregating. Sharp increase → the dropped pattern was hurting reduction (likely good). Unchanged → neutral effect. Usually slight improvement for repetitive-noise drops (healthchecks, heartbeats). |
+| Output volume after the filter stage | Roughly matches the step-3 "kept" sample (estimate, not exact). |
+| Records the filter targets | Zero in the patched draft, non-zero in baseline. Both non-zero → silent no-op, likely a tag-vs-attribute mix-up (Step 2a). |
+| Sampled output | No unwanted shape passes; all wanted shape still passes. |
+| Reduction % (if filter is upstream of the reducer) | Sharp increase → the dropped pattern was hurting reduction (good). Sharp drop → you removed something the reducer aggregated well. Unchanged → neutral. |
 
-When presenting the result to the user, **state the actual downstream
-effect using this pipeline's topology** — e.g., "in this pipeline,
-pre-warehouse is upstream of the reducer too, so this drops from both
-the warehouse sink and the reducer/exception paths." Don't recycle the
-generic phase description from Step 2.
+When reporting to the user, state the *actual* downstream effect for this
+pipeline's topology (e.g. "here pre-warehouse is upstream of the reducer too, so
+this drops from both the warehouse sink and the reducer/exception paths") rather
+than reciting the generic phase description.
 
-## Common Failure Modes
+## Resources
 
-- **Filter drops everything**: predicate is the opposite of what you
-  intended. `logs-filter` keeps matches — `query: "service:foo"` keeps
-  only `service:foo` logs, it doesn't drop them. Use `NOT (...)` to drop.
-- **Filter is silently a no-op (tag vs attribute mix-up)**: predicate
-  references `field:value` when the field is actually an attribute (needs
-  `@field:value`), or the reverse. Predicate evaluates false on every log;
-  with the `NOT (...)` wrapper, every log is kept and no drops happen. The
-  patched draft will look identical to the baseline. Sanity-check field
-  presence per Step 2a before approving.
-- **Filter drops too much**: predicate is overly broad. Re-run step 3 with
-  the actual predicate (not a paraphrase) before applying.
-- **Phase choice is wrong for the field**: if the predicate references a
-  grok-extracted attribute, picking `pre-parser` means the attribute
-  isn't available there and the predicate evaluates false on every log
-  (silent no-op). Pick a post-grok phase.
-- **Phase choice picks the wrong downstream effect**: a "drop from
-  warehouse only" intent at `pre-warehouse` may also drop from the
-  reducer in templates where `pre-warehouse` is upstream of both
-  branches. Verify topology before assuming where the drop lands.
-
-## Hand-off Boundary
-
-This skill **diagnoses and proposes**. Production writes happen only via
-`grepr:test-pipeline-change` after explicit user approval.
+- `examples.md` — ✅ template `set-filter`, ✅ raw-graph `set-filter`/`clear-filter`, ❌ tag-vs-`@attribute` no-op and unsupported raw-graph shape.
+- `grepr:describe-pipeline` — backend detection and per-backend op support.
+- `grepr:test-pipeline-change` — plan → draft → approval → apply.
+- `grepr:operations-reference` — full op catalog and exact field names.
+- `grepr:cli` — org config (`--conf`) resolution.
+- `grepr:query-logs` — query syntax and mechanics for drop-volume sampling.

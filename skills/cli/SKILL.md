@@ -1,14 +1,5 @@
 ---
-description: Router for Grepr CLI commands. Directs to specialized command skills based on the task.
-trigger_keywords:
-  - grepr cli
-  - grepr commands
-  - manage grepr jobs
-  - manage grepr datasets
-  - grepr integrations
-  - grepr documentation
-  - edit grepr pipelines
-  - query grepr data or logs
+description: Router for the Grepr CLI. Use whenever the user wants to manage Grepr jobs/pipelines, datasets, integrations, or documentation, query log data, or edit a pipeline — it directs to the specialized command and pipeline-editing skills. Start here for any "grepr" command request.
 ---
 
 # Grepr CLI
@@ -23,6 +14,14 @@ grepr job:list
 ```
 
 If this fails due to missing org information, ask the user to provide `--org-name` or `--conf` options.
+
+## Config handling (canonical)
+
+Every other skill defers here for this. Use the default config only when the user did
+not name another customer/org. If they did, resolve the matching saved config **once**
+(`grepr config:list` / `config:show`) and reuse that concrete `--conf <name>` value on
+every Grepr command for the rest of the workflow. Do not put placeholder
+`--conf <CONF>` text into commands before a real config name is known.
 
 ## General CLI Usage
 
@@ -85,7 +84,7 @@ routes it through the `grepr:test-pipeline-change` safety harness:
 - `grepr:change-exceptions` — tune reducer exception bypass
 - `grepr:change-filtering` — drop logs at a pipeline phase
 - `grepr:change-source` — add / remove / replace a source
-- `grepr:change-output` — change sinks, forwarding destinations, or datasets
+- `grepr:change-sink` — change sinks, forwarding destinations, or datasets
 - `grepr:build-pipeline` — build a new pipeline from scratch
 - `grepr:debug-pipeline` — troubleshoot a misbehaving pipeline
 

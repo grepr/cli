@@ -14,6 +14,10 @@ trigger_keywords:
 
 This workflow helps troubleshoot pipelines that aren't working as expected.
 
+## Config handling
+
+Resolve the org config once and reuse it on every command — see the `grepr:cli` skill.
+
 ## Quick Diagnosis
 
 ### Common Symptoms and Likely Causes
@@ -71,16 +75,23 @@ Let the user know what the result of your check is.
 
 The Grepr CLI can help you create a test job that has all the transformations, but with sinks replaced with a simple logs-sync-sink. This allows you to see exactly what data is being output at the end of the pipeline as well as at each intermediate step in the graph. Use the command `grepr job:to-test` to create a test job from your existing job. 
 
+For patchable pipeline edits, prefer the `job:plan` / `job:draft` /
+`job:apply` safety workflow used by `test-pipeline-change`. Use the
+manual `job:to-test` / `job:update` path only when the user explicitly asks
+for full-graph manual debugging.
+
 If there's data passing through the pipeline, the simplest test job to run would be one where we run a batch job querying data from the original source and passing through the same operations but outputting to a logs-sync-sink.
 
 ```bash
-grepr job:to-test <job-id> -o test-job.json --execution SYNCHRONOUS --processing BATCH --dataset-id <raw-dataset-id> --query '<source-query if needed>' --start '<start-time>' --end '<end-time>' --limit-records 100
+grepr job:get <job-id> --resolved -f raw -o current-<tag>.json
+grepr job:to-test current-<tag>.json -o test-job-<tag>.json --execution SYNCHRONOUS --processing BATCH --dataset-id <raw-dataset-id> --query '<source-query if needed>' --start '<start-time>' --end '<end-time>' --limit-records 100
 ```
 
 Alternatively, you can create a test job that uses a logs-values-source with sample log messages if you can get some representative log lines.
 
 ```bash
-grepr job:to-test <job-id> -o test-job.json --execution SYNCHRONOUS --processing BATCH --sample-data-file sample-logs.json
+grepr job:get <job-id> --resolved -f raw -o current-<tag>.json
+grepr job:to-test current-<tag>.json -o test-job-<tag>.json --execution SYNCHRONOUS --processing BATCH --sample-data-file sample-logs-<tag>.json
 ```
 
 The output from each vertex will be also go through a tagging action that tags the data with the original edge information using the `grepr.edge` tag key. For example, if the edge is from vertices `grok-parser` to `reducer`, the tag value will be `grok_parser_output_reducer_input`.
@@ -95,7 +106,8 @@ If logs appear but fields are missing or wrong:
 
 ```bash
 # Get a sample log message from the data
-grepr query --dataset-id <dataset> --limit 1 --format raw | jq -r '.[0].message'
+grepr query --dataset-id <dataset> --limit 1 -q --format raw -o parse-sample-<tag>.ndjson
+jq -r '.message // .data.message // empty' parse-sample-<tag>.ndjson
 
 # Test the grok pattern
 grepr grok:parse \
@@ -183,20 +195,24 @@ Once you've identified the issue:
 ### 1. Test the fix with sample data
 
 ```bash
-grepr job:create fixed-test.json
+grepr job:create fixed-test-<tag>.json
 ```
 
 ### 2. Test with live data (sync streaming)
 
 ```bash
-grepr job:create fixed-test-live.json
+grepr job:create fixed-test-live-<tag>.json
 ```
 
 ### 3. Update production pipeline
 
 ```bash
-grepr job:update <job-id> fixed-production.json
+grepr job:update <job-id> fixed-production-<tag>.json
 ```
+
+Use this manual full-graph update only after explicit user approval and
+only for a workflow that cannot be expressed as a patch through
+`job:plan` / `job:draft` / `job:apply`.
 
 ### 4. Verify the fix
 

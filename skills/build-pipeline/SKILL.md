@@ -14,6 +14,10 @@ trigger_keywords:
 
 This workflow guides you through creating a Grepr pipeline from requirements to production deployment.
 
+## Config handling
+
+Resolve the org config once and reuse it on every command — see the `grepr:cli` skill.
+
 ## Workflow Overview
 
 1. **Gather requirements** - Understand data source, processing needs, destinations
@@ -86,7 +90,7 @@ source → filter → json-processor → remapper → [custom parsing] → reduc
 **Source** (use `grepr:operations-reference`):
 - `datadog-log-agent-source` for Datadog
 - `splunk-log-agent-source` for Splunk
-- `otel-log-source` for OpenTelemetry
+- `otlp-log-agent-source` for OpenTelemetry
 
 **Processing chain:**
 1. `logs-filter` - Remove unwanted logs early
@@ -269,7 +273,7 @@ grepr job:get <job-id> --format table
 grepr query --dataset-id <output-dataset-id> --limit 10 --format table
 
 # Check for expected fields
-grepr query --dataset-id <output-dataset-id> --query "service:target-service" --limit 5 --format raw
+grepr query --dataset-id <output-dataset-id> --query "service:target-service" --limit 5 -q --format raw -o output-sample.ndjson
 ```
 
 **Validation checklist:**

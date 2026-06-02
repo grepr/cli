@@ -1,163 +1,125 @@
 ---
-description: Add, narrow, or remove reducer exceptions on a Grepr pipeline. Exceptions let specific log shapes bypass aggregation (e.g. errors, alerts, important traces). This skill helps tune which logs get the bypass without crippling reduction. Routes through test-pipeline-change.
-allowed-tools: Bash(grepr query), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr job:apply), Bash(grepr job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
-trigger_keywords:
-  - change exceptions
-  - add reducer exception
-  - narrow reducer exception
-  - bypass reduction for
-  - exception too broad
-  - exception missing
-  - logs being aggregated that shouldn't be
+description: Add or narrow reducer exceptions on a Grepr pipeline when errors/alerts/important traces are wrongly aggregated or a too-broad exception craters reduction — diagnoses volume, builds the patch, routes through test-pipeline-change.
+allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr --conf * query), Bash(grepr --conf * job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
 ---
 
 # Change Reducer Exceptions
 
-Use when:
-- An exception is too broad and lets too much traffic skip aggregation
-  (reduction tanks).
-- An exception is missing and important logs (errors, alerts, specific
-  trace IDs) are being aggregated when they shouldn't be.
-- A vendor-imported exception set is wrong for the customer's traffic mix.
+Reducer exceptions let specific log shapes bypass aggregation (errors, alerts,
+important trace IDs) so they reach the warehouse un-reduced. Tuning them is a
+balance: too narrow and important logs get deduped into summaries; too broad and
+most traffic skips the reducer, so reduction craters.
 
-Transform-only change — routes through `grepr:test-pipeline-change`.
+This is a transform-only change. Resolve the org config once and reuse it on
+every command — see the `grepr:cli` skill.
 
-## Step 1: Get Context
+## Step 1: Get context
 
-Run `grepr:describe-pipeline <JOB_ID>` and note:
-- The reducer vertex name (usually `log_reducer`).
-- The current `logReducerExceptions` predicates.
-- Any `integrationExceptionConfigs` (vendor-imported sets, often with
-  `autoSync: true`).
-- The raw dataset ID.
+Run `grepr:describe-pipeline <job-id>` and note the reducer vertex name (usually
+`log_reducer`), its current exception predicates, any vendor-imported exception
+sets (`autoSync: true`), and the raw dataset id.
 
-## Step 2: Diagnose Which Direction to Move
+For backend detection (template-backed vs raw job graph) and which ops each
+backend supports, see `grepr:describe-pipeline`. The backend decides whether you
+can narrow (template-only) or only add (raw graphs are add-only).
 
-### Direction A — Exception too broad
+## Step 2: Diagnose direction
 
-Symptom: reduction % is low because too many logs are bypassing the reducer.
+| Symptom | Direction | Fix |
+|---|---|---|
+| Reduction % is low; too much traffic bypasses the reducer | Too broad | Narrow an existing predicate (template-only) |
+| Errors/alerts/specific traces are being deduped into summaries | Missing | Add a new exception |
+| Vendor-imported set is wrong for this traffic mix | Wrong set | Narrow/remove that entry (template-only) |
 
-For each exception predicate, count matching volume in the raw dataset:
+### Estimate predicate volume first
+
+Every exception is a Datadog-query predicate
+`{"type":"datadog-query","query":"…"}`. Before adding or narrowing, sample how
+much traffic it matches in the raw dataset:
 
 ```bash
-grepr query --dataset-id <RAW_DS> --query "<predicate.query>" \
-  --start <T0> --end <T1> --limit 0 -f raw
+grepr query --dataset-id <raw-ds> --query "<predicate query>" \
+  --start <t0> --end <t1> --limit 1000 -q -f raw -o sample-<tag>.ndjson
 ```
 
-A single exception matching >20% of traffic is almost certainly too broad.
+`grepr query` has no exact count mode here. Compare a bounded sample of total
+traffic against the predicate-matched sample from the same window and report an
+estimate. Guidance:
+- An exception matching >20% of the sample is almost certainly too broad —
+  reduction will suffer.
+- When adding, if the predicate matches >5% of traffic, expect a measurable
+  reduction drop; confirm that is intended.
 
-Common offenders and the narrowing pattern:
-- `status:error` (matches everything labeled "error" even when severity is
-  actually INFO) → narrow to `status:error AND service:<critical-service>`
-- `severity:>=WARNING` (often half of all logs) → narrow to specific
-  alerting services
-- `*:* AND vendor:datadog` (broad capture) → narrow to a real intent
+Datadog query syntax: `tag:value`, `@attribute:value`, bare `word` (message
+text), `AND`/`OR`/`NOT`, `-tag:value` (exclude), `*` wildcard. A common miss is
+using a bare tag where the field is actually a message attribute (`@status`) or
+vice versa — the predicate then matches nothing or everything.
 
-### Direction B — Exception missing
+## Step 3: Build the patch
 
-Symptom: a class of logs is being aggregated and shouldn't be. The user
-will say "errors are getting deduped" or "alert-relevant logs are
-disappearing into summaries."
-
-Identify the predicate that captures the missing class. Examples:
-- Specific service errors: `service:checkout AND status:error`
-- Alerts by tag: `alert_active:true`
-- Sampling rule outputs: `_sample_reason:*`
-
-Sanity-check the predicate's volume before adding — if it matches >5% of
-traffic you'll hurt reduction.
-
-## Step 3: Build the Patch
-
-Exceptions live in `templateInputs.input.exceptions[]` as
-`TemplateException` entries. For predicate-driven exceptions (the most
-common case), the type is `query-exception` with a `predicate` field. The
-template translates these into reducer exceptions at expansion time.
-
-### To narrow an existing predicate
-
-Use `set-input-field` to rewrite the full `exceptions` array. Start from
-`describe-pipeline`'s output and replace just the offending entry:
+The op is `add-reducer-exception`; its only field is `predicate`. There is no
+`name` field. It is append-only and works on both backends.
 
 ```json
-{
-  "operations": [
-    {
-      "op": "set-input-field",
-      "path": "exceptions",
-      "value": [
-        { "type": "query-exception", "predicate": { "type": "datadog-query", "query": "status:error AND service:checkout" } },
-        { "type": "query-exception", "predicate": { "type": "datadog-query", "query": "severity:critical" } }
-      ]
-    }
-  ]
-}
+{ "operations": [
+  { "op": "add-reducer-exception",
+    "predicate": { "type": "datadog-query", "query": "service:checkout AND status:error" } }
+] }
 ```
 
-### To add a new exception
+### Add (both backends)
 
-Use `add-reducer-exception` — idempotent, doesn't disturb existing entries:
+Use `add-reducer-exception` to let a missing log class bypass aggregation. It
+does not disturb existing entries.
 
-```json
-{
-  "operations": [
-    {
-      "op": "add-reducer-exception",
-      "name": "checkout-errors",
-      "predicate": { "type": "datadog-query", "query": "service:checkout AND status:error" }
-    }
-  ]
-}
-```
+### Narrow an over-broad exception (template-backed only)
 
-The skill builds the `TemplateQueryException` wrapper automatically — you
-only pass the predicate.
+Narrowing means rewriting the offending entry to match less traffic. Use
+`set-input-field` on the `exceptions` array — this op is TEMPLATE-ONLY because it
+edits template inputs; it is rejected on raw job graphs (which have no template
+inputs). It is flagged in caps because applying it to a raw graph fails at plan
+time. Start from `describe-pipeline`'s current array, replace just the bad entry,
+and pass the full array back.
 
-### To remove all exceptions and start fresh
+Raw job graphs are add-only: there is no supported generic narrow/remove path.
+If a raw-graph exception is too broad, stop and surface that limitation rather
+than attempting a template-input patch.
 
-```json
-{
-  "operations": [
-    { "op": "unset-input-field", "path": "exceptions" }
-  ]
-}
-```
+See `examples.md` for full template-backed, raw-graph, and bad-predicate
+patches.
 
-(Rarely the right move — `unset-input-field` removes the key; you may want
-`set-input-field` with `value: []` instead. Confirm with the user first.)
+For the full op catalog and exact field names, see `grepr:operations-reference`.
 
-## Step 4: Hand Off to test-pipeline-change
+## Step 4: Validate and apply
 
-Invoke `grepr:test-pipeline-change` with `<JOB_ID>` and `patch.json`.
-
-### What to verify in the test output
+Hand the patch file to `grepr:test-pipeline-change`, which plans, drafts, gates
+on approval, and applies. Check the draft output:
 
 | What | Good sign |
-|------|-----------|
-| Total log count through reducer | Roughly same |
-| Reduction % | Higher (narrowing) or only mildly lower (adding) |
-| Exception-tagged output count | Matches the predicate's hit rate from step 2 |
-| Sample inspection | Logs that should bypass are bypassing; logs that shouldn't, aren't |
+|---|---|
+| Total log count through reducer | Roughly unchanged |
+| Reduction % | Higher after narrowing; only mildly lower after adding |
+| Exception-tagged output count | Matches the predicate's step-2 hit rate |
+| Sample inspection | Logs that should bypass do; logs that shouldn't, don't |
 
-If reduction tanks after the patch, the predicate is still too broad —
-iterate.
+If reduction tanks after the patch, the predicate is still too broad — re-run the
+step-2 estimate and tighten.
 
-## Common Failure Modes
+## Failure modes
 
-- **Adding an exception kills reduction**: predicate matches more traffic
-  than expected. Re-run the volume count from step 2.
-- **Narrowing didn't help**: the broad predicate isn't the main one
-  hurting reduction; something else is (empty messages, over-aggregation).
-  Route to `grepr:tune-reduction` for full diagnosis.
-- **Vendor-imported exceptions still firing**: vendor-imported exceptions
-  live as `integration-exception`-typed entries inside
-  `input.exceptions[]` (the template translates them into reducer
-  `integrationExceptionConfigs` at expansion time). To disable, identify
-  the integration-exception entry in `input.exceptions` and either remove
-  it from the array via `set-input-field path: exceptions` with a filtered
-  array, or modify its `autoSync` / `ids` fields.
+- **Adding an exception kills reduction**: the predicate matches far more than
+  expected. Re-run the step-2 sample estimate and add an `AND` to scope it.
+- **Narrowing didn't help**: the broad exception isn't the main reduction
+  problem (empty messages or over-aggregation may be) — route to
+  `grepr:tune-reduction` for full diagnosis.
+- **Raw-graph narrow/remove requested**: unsupported. Surface the add-only
+  limitation; do not fabricate a template-input patch.
 
-## Hand-off Boundary
+## Resources
 
-This skill **diagnoses and proposes**. Production writes happen only via
-`grepr:test-pipeline-change` after explicit user approval.
+- `examples.md` — ✅ add (template + raw), ✅ narrow (template-only), ❌ over-broad predicate, each with a why.
+- `grepr:cli` — org config resolution.
+- `grepr:describe-pipeline` — backend detection and per-backend op support.
+- `grepr:operations-reference` — full op catalog and field schemas.
+- `grepr:test-pipeline-change` — plan/draft/gate/apply harness.
+- `grepr:tune-reduction` — when exceptions aren't the real reduction problem.

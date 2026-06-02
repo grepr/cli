@@ -1,13 +1,5 @@
 ---
-description: Reference for available Grepr operations - sources, transforms, and sinks. Use this when you need to know what operations are available for job graphs.
-trigger_keywords:
-  - available operations
-  - what sources
-  - what sinks
-  - what transforms
-  - operation types
-  - grepr operations
-  - pipeline operations
+description: Canonical reference for Grepr pipeline operations — the JobPatch op catalog (exact op names and required fields) plus the available sources, transforms, and sinks. Use whenever you need to know what operations or fields are valid for a job graph or a job:plan patch.
 ---
 
 # Grepr Operations Reference
@@ -23,10 +15,9 @@ contract — a list of typed operations on disk:
 { "operations": [ { "op": "<operation-name>" } ] }
 ```
 
-The root key is `operations` (not `ops`). The commands `job:plan`,
-`job:draft`, and `job:apply` consume this patch shape: `job:plan` builds the
-plan (`--dry-run` previews the diff), `job:draft` validates it, `job:apply`
-writes to production. Backend support:
+The root key is `operations` (not `ops`). `job:plan` consumes this patch
+shape and writes a plan file (`--dry-run` previews the diff). `job:draft`
+and `job:apply` consume the generated plan file. Backend support:
 
 - Template-backed pipelines mutate `templateInputs.input`; the semantic
   edit surface is the canonical path.
@@ -36,15 +27,15 @@ writes to production. Backend support:
   UI-shaped log graphs. Non-UI raw DAGs reject with `unsupported raw job
   graph shape`.
 
-Operations (exact field names matter — a wrong field is rejected with a
-specific error):
+Operations (exact field names matter — field mistakes fail during
+`job:plan` with op-specific errors):
 
 | Op | Required fields | Purpose |
 |----|-----------------|---------|
 | `add-message-attribute` | `attributePath` | Add a remapper message reserved attribute/path. |
 | `add-group-by` | `attributePath` | Add a reducer partition/group-by attribute/path. Append-only (no `remove-group-by`). |
-| `add-aggregation-strategy` | `attributePath`, `strategies` | Add reducer aggregation strategies. `strategies` is an array of `sum`/`min`/`max`/`avg` (e.g. `["avg"]`) — not a scalar, not `"average"`. Append-only. |
-| `add-reducer-exception` | `name`, `predicate` | Add a reducer query exception (bypasses aggregation for matching logs). |
+| `add-aggregation-strategy` | `attributePath`, `strategies` | Add a reducer aggregation strategy. `strategies` is an array of `sum`/`min`/`max`/`avg` — not a scalar, not `"average"`. **One strategy per attribute path**: pass a single-element array (e.g. `["avg"]`). Passing `["min","max","avg"]` expands to three entries sharing the same path, which the backend rejects at draft/apply with `Duplicate attribute paths in merge strategies are not allowed`. Append-only. |
+| `add-reducer-exception` | `predicate` | Add a reducer exception (matching logs bypass aggregation). Only `predicate` is required — there is no `name` field. |
 | `add-grok-rule` | `pattern` (not `rule`); optional `parserName`, `extractAttribute` | Append a rule to a grok parser. `parserName` is required only when more than one grok parser exists; rejected if zero exist. |
 | `set-filter` / `clear-filter` | `phase` (not `stage`); `set` also needs `filter` | Set or clear a phase-slotted filter. Merges over the existing slot, so phase-specific fields (e.g. `maxLateEventTimestampDelta`, `inverted`) are preserved. `clear-filter` keeps the vertex but blanks the predicate query. |
 | `add-parser` / `remove-parser` | `parser` / `name` (not `parserName`) | Add or remove a parser. New parsers append before `pre_data_warehouse_filter`. |
@@ -64,9 +55,13 @@ the validation path.
 Draft behavior:
 
 - Template-backed drafts use server draft mode and per-stage `draftOutputs`.
-- Raw transform-only drafts use iceberg replay and `sink-source` stage tags.
-- Raw source/output-touching drafts preserve proposed sources, remove
-  production sinks, and add sync/tap outputs.
+- Raw job-graph drafts use source-preserving live draft for all
+  classifications. Data records are wrapped under `.data`; tap tags are
+  nested at `.data.tags["sink-source"][]`. Some untagged `.data` records
+  from direct sync outputs are expected. Bounded by `--sample-rate`
+  (default `10/sec/source`), `--sample-burst` (default `1000/source`), and
+  `--max-duration-seconds` (default `30s`); always pass
+  `--max-duration-seconds 30` explicitly.
 - Sink/data-lake output edits are graph/upstream verification only; external
   sink delivery is not verified by sync draft.
 
@@ -82,7 +77,7 @@ Sources have no inputs and produce log events as output.
 | `splunk-log-agent-source` | Receive logs from Splunk forwarders | `integrationId` |
 | `newrelic-log-agent-source` | Receive logs from New Relic agents | `integrationId` |
 | `sumologic-log-agent-source` | Receive logs from Sumo Logic collectors | `integrationId` |
-| `otel-log-source` | Receive logs via OpenTelemetry protocol | `integrationId` |
+| `otlp-log-agent-source` | Receive logs via OpenTelemetry protocol | `integrationId` |
 
 ### Data Lake Sources (Batch)
 
@@ -122,7 +117,7 @@ Transforms process log events and produce modified events.
 | Operation | Description | Key Properties |
 |-----------|-------------|----------------|
 | `log-attributes-remapper` | Remap attributes to tags or top-level fields | (auto-configured) |
-| `sql-transform` | Transform with SQL queries | `sqlQuery` |
+| `sql-operation` | Transform with SQL queries | `sqlQuery` |
 
 ### Aggregation & Reduction
 
@@ -320,15 +315,9 @@ Uses Datadog-like query syntax:
 
 ## Finding Schema Details
 
-For complete schema documentation, use:
-
-```bash
-grepr docs:search --type schema "<operation-name>"
-grepr docs:get "schema://<OperationName>"
-```
-
-Example:
-```bash
-grepr docs:search --type schema "grok-parser"
-grepr docs:get "schema://GrokParser"
-```
+Prefer this reference plus the CLI's `job:plan` validation errors. If you
+need an exact schema field that is not listed here, inspect the generated
+OpenAPI types in the CLI source or use `grepr docs:get schema://<TypeName>`
+only when the docs command is known to be available. Do not block a pipeline
+patch workflow on `docs:search`; some environments do not have the semantic
+docs index loaded.
