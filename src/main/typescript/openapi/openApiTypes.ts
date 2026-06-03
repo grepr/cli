@@ -3036,6 +3036,13 @@ export interface components {
     Condition: {
       actionRules: components["schemas"]["ActionRule"][];
     };
+    /** @description One conditional branch in the raw log if-else routing ladder. */
+    ConditionalDataLakeConfig: {
+      /** @description Target dataset ID for logs matching this branch's filter. */
+      datasetId: string;
+      filter: components["schemas"]["LogsFilter"];
+      rawSinkConfig?: components["schemas"]["RawLogsSinkConfig"];
+    };
     ConsoleSetupInfo: {
       /** @description The AWS account ID */
       awsAccountId: string;
@@ -5052,6 +5059,8 @@ export interface components {
      * @description Schema for the log reducer job graph.
      */
     LogReducerTemplateInput: {
+      /** @description Conditional routing of raw logs to datasets. Logs will match the filters in order, and once a log matches a filter, it will not attempt to match other filters in the list. If a log matches none of the filters, it is written to the default dataset. A default dataset must be set when conditional routing is configured. */
+      conditionalDatasets?: components["schemas"]["ConditionalDataLakeConfig"][];
       /** @description The unique identifier for the dataset. When absent, no raw logs will be stored. At least one of `datasetId` or `sinks` must be provided for non-draft pipelines. */
       datasetId?: string;
       /** @description A list of template-specific exceptions to apply in log reducer. */
@@ -9612,6 +9621,8 @@ export type SchemaCompleteSpan = components["schemas"]["CompleteSpan"];
 export type SchemaCompositeAttributesMergeStrategy =
   components["schemas"]["CompositeAttributesMergeStrategy"];
 export type SchemaCondition = components["schemas"]["Condition"];
+export type SchemaConditionalDataLakeConfig =
+  components["schemas"]["ConditionalDataLakeConfig"];
 export type SchemaConsoleSetupInfo = components["schemas"]["ConsoleSetupInfo"];
 export type SchemaConstantSampling = components["schemas"]["ConstantSampling"];
 export type SchemaCreateJob = components["schemas"]["CreateJob"];
