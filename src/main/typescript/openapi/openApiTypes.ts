@@ -4955,6 +4955,12 @@ export interface components {
        */
       delimiters: string[];
       /**
+       * Emit new-pattern signals
+       * @description Whether this operation emits LogPatternSignal events to the agent-service when new patterns are detected or replayed.
+       * @default false
+       */
+      emitNewPatternSignals?: boolean;
+      /**
        * Enabled masks
        * @description Masks that are enabled for tokenizing messages. These are specified as the names of the masks to use. The default enabled masks are: ipport, timestamp, uuid, number.
        * @default [
@@ -6298,6 +6304,12 @@ export interface components {
        * @description Characters to use for splitting tokens.
        */
       delimiters: string[];
+      /**
+       * Emit new-pattern signals
+       * @description Whether this operation emits LogPatternSignal events to the agent-service when new patterns are detected or replayed.
+       * @default false
+       */
+      emitNewPatternSignals?: boolean;
       /**
        * Enabled masks
        * @description Masks that are enabled for tokenizing messages.
