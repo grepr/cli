@@ -17087,6 +17087,7 @@ export enum PipelineStatusHealth {
 }
 export enum PlanType {
   TRIAL = "TRIAL",
+  FREE = "FREE",
   INVOICE = "INVOICE",
 }
 export enum PreserveAllAttributesMergeStrategyType {
