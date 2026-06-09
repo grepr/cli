@@ -4,7 +4,7 @@
 !`grepr dataset:create --help`
 
 ## When to Use
-Create a new dataset (Iceberg table) for storing processed logs. Datasets are targets for pipeline sinks and are sources for queries.
+Create a new dataset (Iceberg table) for storing logs. Datasets are targets for pipeline sinks and are sources for queries.
 
 ## Notes
 - Datasets require a storage integration first. Integrations need to be created in the UI at this point.
