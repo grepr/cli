@@ -19,11 +19,17 @@ import {
   SchemaReadNewRelic, SchemaReadOtlp, SchemaReadSplunk, SchemaReadSumo, SchemaOperation,
 } from './openapi/openApiTypes.js';
 
+export type AuthMethod = 'oauth' | 'client-credentials';
+
+/** Backing source for `grepr query`: athena (grepr-raw-log-source) or flink (logs-iceberg-table-source). */
+export type QueryEngine = 'athena' | 'flink';
+
 export interface CliOptions {
   orgName: string;
   apiBaseUrl?: string;
   authBaseUrl: string;
-  authMethod: 'oauth' | 'client-credentials';
+  authMethod: AuthMethod;
+  queryEngine?: QueryEngine;
   debug?: boolean;
   quiet?: boolean;
   clientId: string;
@@ -39,7 +45,7 @@ export interface SavedCliConfig {
   orgName?: string;
   apiBaseUrl?: string;
   authBaseUrl?: string;
-  authMethod?: 'oauth' | 'client-credentials';
+  authMethod?: AuthMethod;
   clientId?: string;
   clientSecret?: string;
   timezone?: string;
@@ -119,7 +125,7 @@ export interface ApiClientConfig {
   orgName: string;
   apiBaseUrl: string;
   authBaseUrl: string;
-  authMethod: 'oauth' | 'client-credentials';
+  authMethod: AuthMethod;
   clientId: string;
   clientSecret?: string;
   authCache: boolean;

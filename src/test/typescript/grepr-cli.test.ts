@@ -1,20 +1,88 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command } from 'commander';
+import { GreprQueryCLI } from '../../../src/main/typescript/grepr.js';
 import { createApiClient, ApiClientFactoryOptions } from '../../../src/main/typescript/lib/api-client-factory.js';
+import { parseAuthMethod, parseEnvUrl } from '../../../src/main/typescript/lib/option-parsers.js';
 
 // Mock the GreprApiClient
 vi.mock('../../../src/main/typescript/lib/api-client.js', () => ({
   GreprApiClient: vi.fn()
 }));
 
-// We need to test the GreprQueryCLI class, but it's not exported
-// So we'll create a test that imports the main module and tests the behavior
+function clearGreprEnvVars(): void {
+  delete process.env.GREPR_ORG_NAME;
+  delete process.env.GREPR_API_BASE_URL;
+  delete process.env.GREPR_CLIENT_ID;
+  delete process.env.GREPR_CLIENT_SECRET;
+  delete process.env.GREPR_AUTH_BASE_URL;
+  delete process.env.GREPR_AUTH_METHOD;
+  delete process.env.GREPR_QUERY_ENGINE;
+}
+
+/**
+ * Simulates the env-var fallback and default-resolution logic of
+ * mergeConfiguration in grepr.ts, routing values through the real
+ * option-parsers so validation behavior is exercised. (The saved-config merge
+ * step and query-engine env var are not modeled here.)
+ */
+function applyEnvFallbacksAndDefaults(
+  options: Record<string, string | boolean | number>
+): Record<string, string | boolean | number> {
+  const result = { ...options };
+
+  if (!result.orgName && process.env.GREPR_ORG_NAME) {
+    result.orgName = process.env.GREPR_ORG_NAME;
+  }
+  if (!result.apiBaseUrl && process.env.GREPR_API_BASE_URL) {
+    result.apiBaseUrl = parseEnvUrl('GREPR_API_BASE_URL', process.env.GREPR_API_BASE_URL);
+  }
+  if (!result.clientId && process.env.GREPR_CLIENT_ID) {
+    result.clientId = process.env.GREPR_CLIENT_ID;
+  }
+  if (!result.clientSecret && process.env.GREPR_CLIENT_SECRET) {
+    result.clientSecret = process.env.GREPR_CLIENT_SECRET;
+  }
+  if (!result.authBaseUrl && process.env.GREPR_AUTH_BASE_URL) {
+    result.authBaseUrl = parseEnvUrl('GREPR_AUTH_BASE_URL', process.env.GREPR_AUTH_BASE_URL);
+  }
+  const authMethodInput =
+    !result.authMethod && process.env.GREPR_AUTH_METHOD
+      ? process.env.GREPR_AUTH_METHOD
+      : result.authMethod;
+  const authMethod = parseAuthMethod(typeof authMethodInput === 'string' ? authMethodInput : undefined);
+  if (authMethod) {
+    result.authMethod = authMethod;
+  }
+
+  if (!result.orgName) {
+    throw new Error('--org-name is required');
+  }
+
+  if (!result.authBaseUrl) {
+    result.authBaseUrl = 'https://auth.grepr.ai';
+  }
+  if (!result.apiBaseUrl) {
+    result.apiBaseUrl = `https://${result.orgName}.app.grepr.ai/api`;
+  }
+  if (!result.clientId) {
+    result.clientId = '4XOD92WjzdfT4yxWeHpwh4J2u8t9qPtS';
+  }
+  if (!result.authMethod) {
+    result.authMethod = result.clientSecret ? 'client-credentials' : 'oauth';
+  }
+
+  return result;
+}
+
 describe('GreprQueryCLI Configuration Tests', () => {
+  const originalEnv = process.env;
   let originalArgv: string[];
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
   let processExitSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    process.env = { ...originalEnv };
+    clearGreprEnvVars();
     originalArgv = process.argv;
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     processExitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
@@ -24,6 +92,7 @@ describe('GreprQueryCLI Configuration Tests', () => {
 
   afterEach(() => {
     process.argv = originalArgv;
+    process.env = originalEnv;
     consoleErrorSpy.mockRestore();
     processExitSpy.mockRestore();
   });
@@ -301,7 +370,7 @@ describe('GreprQueryCLI Configuration Tests', () => {
         orgName: 'test-org',
         apiBaseUrl: 'https://test-org.app.grepr.ai/api',
         authBaseUrl: 'https://test-org.app.grepr.ai/auth',
-        authMethod: undefined,
+        authMethod: 'oauth',
         clientId: 'default-client-id',
         clientSecret: undefined,
         debug: false,
@@ -324,7 +393,7 @@ describe('GreprQueryCLI Configuration Tests', () => {
         orgName: 'test-org',
         apiBaseUrl: 'https://test-org.app.grepr.ai/api',
         authBaseUrl: 'https://test-org.app.grepr.ai/auth',
-        authMethod: undefined,
+        authMethod: 'oauth',
         clientId: 'default-client-id',
         clientSecret: undefined,
         debug: false,
@@ -347,7 +416,7 @@ describe('GreprQueryCLI Configuration Tests', () => {
         orgName: 'test-org',
         apiBaseUrl: 'https://test-org.app.grepr.ai/api',
         authBaseUrl: 'https://test-org.app.grepr.ai/auth',
-        authMethod: undefined,
+        authMethod: 'oauth',
         clientId: 'default-client-id',
         clientSecret: undefined,
         debug: false,
@@ -370,7 +439,7 @@ describe('GreprQueryCLI Configuration Tests', () => {
         orgName: 'test-org',
         apiBaseUrl: 'https://test-org.app.grepr.ai/api',
         authBaseUrl: 'https://test-org.app.grepr.ai/auth',
-        authMethod: undefined,
+        authMethod: 'oauth',
         clientId: 'default-client-id',
         clientSecret: undefined,
         debug: false,
@@ -393,7 +462,7 @@ describe('GreprQueryCLI Configuration Tests', () => {
         orgName: 'test-org',
         apiBaseUrl: 'https://test-org.app.grepr.ai/api',
         authBaseUrl: 'https://test-org.app.grepr.ai/auth',
-        authMethod: undefined,
+        authMethod: 'oauth',
         clientId: 'default-client-id',
         clientSecret: undefined,
         debug: false,
@@ -440,8 +509,8 @@ describe('GreprQueryCLI Configuration Tests', () => {
       program
         .option('--org-name <name>', 'Organization name')
         .option('--api-base-url <url>', 'API server base URL')
-        .option('--auth-base-url <url>', 'Auth0 base URL')
-        .option('--auth-method <method>', 'Authentication method', 'oauth')
+        .option('--auth-base-url <url>', 'OAuth issuer base URL')
+        .option('--auth-method <method>', 'Authentication method')
         .option('--client-id <id>', 'OAuth Client ID')
         .option('--client-secret <secret>', 'Client secret for client-credentials authentication')
         .option('--no-auth-cache', 'Force fresh authentication', true)
@@ -449,37 +518,9 @@ describe('GreprQueryCLI Configuration Tests', () => {
         .option('--debug', 'Enable debug output');
 
       program.parse(cliArgs);
-      const cliOptions = program.opts();
 
       // Step 2: Apply mergeConfiguration logic (including env var fallbacks)
-      const result = { ...cliOptions };
-
-      if (!result.orgName) {
-        throw new Error('--org-name is required');
-      }
-
-      // Env var fallbacks (same as grepr.ts mergeConfiguration)
-      if (!result.clientId && process.env.GREPR_CLIENT_ID) {
-        result.clientId = process.env.GREPR_CLIENT_ID;
-      }
-      if (!result.clientSecret && process.env.GREPR_CLIENT_SECRET) {
-        result.clientSecret = process.env.GREPR_CLIENT_SECRET;
-      }
-      if (!result.authBaseUrl && process.env.GREPR_AUTH_BASE_URL) {
-        result.authBaseUrl = process.env.GREPR_AUTH_BASE_URL;
-      }
-
-      if (!result.authBaseUrl) {
-        result.authBaseUrl = 'https://auth.grepr.ai';
-      }
-
-      if (!result.apiBaseUrl) {
-        result.apiBaseUrl = `https://${result.orgName}.app.grepr.ai/api`;
-      }
-
-      if (!result.clientId) {
-        result.clientId = '4XOD92WjzdfT4yxWeHpwh4J2u8t9qPtS';
-      }
+      const result = applyEnvFallbacksAndDefaults(program.opts());
 
       if (result.authCache === undefined) {
         result.authCache = true;
@@ -525,48 +566,28 @@ describe('GreprQueryCLI Configuration Tests', () => {
   });
 
   describe('Environment Variable Fallbacks', () => {
-    const originalEnv = process.env;
+    const simulateMergeWithEnvVars = applyEnvFallbacksAndDefaults;
 
-    beforeEach(() => {
-      process.env = { ...originalEnv };
-      delete process.env.GREPR_CLIENT_ID;
-      delete process.env.GREPR_CLIENT_SECRET;
-      delete process.env.GREPR_AUTH_BASE_URL;
+    it('should use GREPR_ORG_NAME env var when --org-name is not provided', async () => {
+      process.env.GREPR_ORG_NAME = 'env-org';
+
+      const result = await simulateMergeWithEnvVars({});
+      expect(result.orgName).toBe('env-org');
     });
 
-    afterEach(() => {
-      process.env = originalEnv;
+    it('should use GREPR_API_BASE_URL env var when --api-base-url is not provided', async () => {
+      process.env.GREPR_API_BASE_URL = 'https://test-org.app.grepr.ai/api';
+
+      const result = await simulateMergeWithEnvVars({ orgName: 'test-org' });
+      expect(result.apiBaseUrl).toBe('https://test-org.app.grepr.ai/api');
     });
 
-    async function simulateMergeWithEnvVars(options: Record<string, string | boolean | number>) {
-      const result = { ...options };
+    it('should include GREPR_API_BASE_URL in invalid API URL errors', async () => {
+      process.env.GREPR_API_BASE_URL = 'test-org.app.grepr.ai/api';
 
-      if (!result.orgName) {
-        throw new Error('--org-name is required');
-      }
-
-      if (!result.clientId && process.env.GREPR_CLIENT_ID) {
-        result.clientId = process.env.GREPR_CLIENT_ID;
-      }
-      if (!result.clientSecret && process.env.GREPR_CLIENT_SECRET) {
-        result.clientSecret = process.env.GREPR_CLIENT_SECRET;
-      }
-      if (!result.authBaseUrl && process.env.GREPR_AUTH_BASE_URL) {
-        result.authBaseUrl = process.env.GREPR_AUTH_BASE_URL;
-      }
-
-      if (!result.authBaseUrl) {
-        result.authBaseUrl = 'https://auth.grepr.ai';
-      }
-      if (!result.apiBaseUrl) {
-        result.apiBaseUrl = `https://${result.orgName}.app.grepr.ai/api`;
-      }
-      if (!result.clientId) {
-        result.clientId = '4XOD92WjzdfT4yxWeHpwh4J2u8t9qPtS';
-      }
-
-      return result;
-    }
+      await expect(new GreprQueryCLI().mergeConfiguration({ orgName: 'test-org' }))
+        .rejects.toThrow('GREPR_API_BASE_URL: Invalid URL: test-org.app.grepr.ai/api. Must start with http:// or https://');
+    });
 
     it('should use GREPR_CLIENT_ID env var when --client-id is not provided', async () => {
       process.env.GREPR_CLIENT_ID = 'env-client-id';
@@ -589,33 +610,70 @@ describe('GreprQueryCLI Configuration Tests', () => {
       expect(result.authBaseUrl).toBe('https://custom-auth.example.com');
     });
 
+    it('should include GREPR_AUTH_BASE_URL in invalid auth URL errors', async () => {
+      process.env.GREPR_AUTH_BASE_URL = 'custom-auth.example.com';
+
+      await expect(new GreprQueryCLI().mergeConfiguration({ orgName: 'test-org' }))
+        .rejects.toThrow('GREPR_AUTH_BASE_URL: Invalid URL: custom-auth.example.com. Must start with http:// or https://');
+    });
+
+    it('should use GREPR_AUTH_METHOD env var when --auth-method is not provided', async () => {
+      process.env.GREPR_AUTH_METHOD = 'client-credentials';
+
+      const result = await simulateMergeWithEnvVars({ orgName: 'test-org' });
+      expect(result.authMethod).toBe('client-credentials');
+    });
+
+    it('should infer client-credentials when a client secret is provided without an auth method', async () => {
+      process.env.GREPR_CLIENT_SECRET = 'env-secret';
+
+      const result = await simulateMergeWithEnvVars({ orgName: 'test-org' });
+      expect(result.authMethod).toBe('client-credentials');
+    });
+
+    it('should infer client-credentials in the real configuration merge when a client secret is provided', async () => {
+      process.env.GREPR_CLIENT_SECRET = 'env-secret';
+
+      const result = await new GreprQueryCLI().mergeConfiguration({ orgName: 'test-org' });
+      expect(result.authMethod).toBe('client-credentials');
+    });
+
     it('should prefer CLI args over env vars', async () => {
       process.env.GREPR_CLIENT_ID = 'env-client-id';
       process.env.GREPR_CLIENT_SECRET = 'env-secret';
       process.env.GREPR_AUTH_BASE_URL = 'https://env-auth.example.com';
+      process.env.GREPR_AUTH_METHOD = 'client-credentials';
 
       const result = await simulateMergeWithEnvVars({
         orgName: 'test-org',
         clientId: 'cli-client-id',
         clientSecret: 'cli-secret',
         authBaseUrl: 'https://cli-auth.example.com',
+        authMethod: 'oauth',
       });
 
       expect(result.clientId).toBe('cli-client-id');
       expect(result.clientSecret).toBe('cli-secret');
       expect(result.authBaseUrl).toBe('https://cli-auth.example.com');
+      expect(result.authMethod).toBe('oauth');
     });
 
     it('should use all env vars together for client-credentials auth', async () => {
+      process.env.GREPR_ORG_NAME = 'env-org';
+      process.env.GREPR_API_BASE_URL = 'https://test-org.app.grepr.ai/api';
       process.env.GREPR_CLIENT_ID = 'env-client-id';
       process.env.GREPR_CLIENT_SECRET = 'env-secret';
       process.env.GREPR_AUTH_BASE_URL = 'https://env-auth.example.com';
+      process.env.GREPR_AUTH_METHOD = 'client-credentials';
 
-      const result = await simulateMergeWithEnvVars({ orgName: 'test-org' });
+      const result = await simulateMergeWithEnvVars({});
 
+      expect(result.orgName).toBe('env-org');
+      expect(result.apiBaseUrl).toBe('https://test-org.app.grepr.ai/api');
       expect(result.clientId).toBe('env-client-id');
       expect(result.clientSecret).toBe('env-secret');
       expect(result.authBaseUrl).toBe('https://env-auth.example.com');
+      expect(result.authMethod).toBe('client-credentials');
     });
 
     it('should fall back to defaults when neither CLI args nor env vars are set', async () => {
@@ -624,6 +682,7 @@ describe('GreprQueryCLI Configuration Tests', () => {
       expect(result.clientId).toBe('4XOD92WjzdfT4yxWeHpwh4J2u8t9qPtS');
       expect(result.clientSecret).toBeUndefined();
       expect(result.authBaseUrl).toBe('https://auth.grepr.ai');
+      expect(result.authMethod).toBe('oauth');
     });
   });
 });

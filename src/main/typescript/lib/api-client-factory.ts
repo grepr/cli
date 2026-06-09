@@ -1,4 +1,5 @@
 import { GreprApiClient } from './api-client.js';
+import type { AuthMethod } from '../types.js';
 
 /**
  * Common interface for options needed to create an API client
@@ -7,7 +8,7 @@ export interface ApiClientFactoryOptions {
   orgName: string;
   apiBaseUrl?: string;
   authBaseUrl?: string;
-  authMethod?: 'oauth' | 'client-credentials';
+  authMethod?: AuthMethod;
   clientId?: string;
   clientSecret?: string;
   debug?: boolean;
@@ -24,7 +25,7 @@ export function createApiClient(options: ApiClientFactoryOptions): GreprApiClien
     orgName: options.orgName,
     apiBaseUrl: options.apiBaseUrl || `https://${options.orgName}.app.grepr.ai/api`,
     authBaseUrl: options.authBaseUrl || `https://${options.orgName}.app.grepr.ai/auth`,
-    authMethod: options.authMethod as 'oauth' | 'client-credentials',
+    authMethod: options.authMethod ?? 'oauth',
     clientId: options.clientId || 'default-client-id',
     clientSecret: options.clientSecret,
     debug: options.debug || false,

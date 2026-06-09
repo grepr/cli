@@ -190,14 +190,48 @@ describe('ClientCredentialsAuth', () => {
       expect(mockWriteJson).not.toHaveBeenCalled();
     });
 
-    it('test_getAuthHeaders_auth0Failure_shouldPropagateError', async () => {
+    it('test_getAuthHeaders_auth0BaseUrl_shouldExchangeJsonAtOauthTokenEndpoint', async () => {
+      const auth = new ClientCredentialsAuth({ ...BASE_CONFIG, authCache: false });
+
+      mockAuth0Success('auth0-token');
+
+      await auth.getAuthHeaders();
+
+      expect(mockAxiosPost).toHaveBeenCalledWith(
+        'https://auth.grepr.ai/oauth/token',
+        {
+          client_id: 'test-client-id',
+          client_secret: 'test-client-secret',
+          audience: 'service',
+          grant_type: 'client_credentials',
+        },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+    });
+
+    it('test_getAuthHeaders_auth0Failure_shouldPropagateErrorWithEndpoint', async () => {
       const auth = new ClientCredentialsAuth(BASE_CONFIG);
 
       mockDiskTokenMissing();
       mockAuth0Failure('invalid_client: client credentials are invalid');
 
       await expect(auth.getAuthHeaders()).rejects.toThrow(
-        'Client credentials token exchange failed: invalid_client: client credentials are invalid'
+        'Client credentials token exchange failed at https://auth.grepr.ai/oauth/token: ' +
+          'invalid_client: client credentials are invalid'
+      );
+    });
+
+    it('test_getAuthHeaders_auth0FailureWithStatusAndErrorCode_shouldIncludeBoth', async () => {
+      const auth = new ClientCredentialsAuth(BASE_CONFIG);
+
+      mockDiskTokenMissing();
+      mockAxiosPost.mockRejectedValueOnce({
+        response: { status: 401, data: { error: 'access_denied' } },
+        message: 'Request failed with status code 401',
+      });
+
+      await expect(auth.getAuthHeaders()).rejects.toThrow(
+        'Client credentials token exchange failed (HTTP 401) at https://auth.grepr.ai/oauth/token: access_denied'
       );
     });
 
@@ -208,7 +242,7 @@ describe('ClientCredentialsAuth', () => {
       mockAxiosPost.mockRejectedValueOnce(new Error('Network timeout'));
 
       await expect(auth.getAuthHeaders()).rejects.toThrow(
-        'Client credentials token exchange failed: Network timeout'
+        'Client credentials token exchange failed at https://auth.grepr.ai/oauth/token: Network timeout'
       );
     });
 

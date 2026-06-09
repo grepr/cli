@@ -159,8 +159,11 @@ export class ClientCredentialsAuth {
       return tokenData.access_token;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorData = (error as { response?: { data?: { error_description?: string } } })?.response?.data;
-      throw new Error(`Client credentials token exchange failed: ${errorData?.error_description || errorMessage}`);
+      const response =
+        (error as { response?: { status?: number; data?: { error?: string; error_description?: string } } })?.response;
+      const detail = response?.data?.error_description || response?.data?.error || errorMessage;
+      const status = response?.status ? ` (HTTP ${response.status})` : '';
+      throw new Error(`Client credentials token exchange failed${status} at ${tokenUrl}: ${detail}`);
     }
   }
 

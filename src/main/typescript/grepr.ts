@@ -2,7 +2,7 @@
 
 import { Command } from 'commander';
 import process from 'process';
-import { readFileSync } from 'fs';
+import { readFileSync, realpathSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { ConfigManager } from './lib/config.js';
@@ -20,6 +20,7 @@ import { GrokParseCommand } from './commands/grok-command.js';
 import { DocsSearchCommand } from './commands/docs-command.js';
 import { DocsGetCommand } from './commands/docs-get-command.js';
 import { CliOptions } from './types.js';
+import { parseAuthMethod, parseEnvUrl, parseQueryEngine, parseUrl } from './lib/option-parsers.js';
 
 /**
  * Type predicate that narrows a Partial<CliOptions> to a fully-resolved CliOptions.
@@ -70,7 +71,7 @@ function getVersion(): string {
 /**
  * Main CLI application for Grepr query tool using self-registering commands
  */
-class GreprQueryCLI {
+export class GreprQueryCLI {
   private program: Command;
   private commandRegistry: CommandRegistry;
 
@@ -80,25 +81,14 @@ class GreprQueryCLI {
   }
 
   /**
-   * Parse and validate URL
-   */
-  private parseUrl(url?: string): string | undefined {
-    if (!url) {
-      return url;
-    }
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
-
-    throw new Error(`Invalid API base URL: ${url}. Must start with http:// or https://`);
-  }
-
-  /**
    * Merge configuration with CLI options.
    * Priority order: CLI args > env vars > saved config > defaults
    */
   async mergeConfiguration(options: Partial<CliOptions>): Promise<CliOptions> {
     const configManager = new ConfigManager();
+    // Snapshot CLI args before the saved-config merge so the env-var fallbacks
+    // below can override saved config but still yield to explicit CLI args.
+    const cliOptions = { ...options };
 
     if (options.conf) {
       try {
@@ -128,17 +118,34 @@ class GreprQueryCLI {
       }
     }
 
-    // Apply environment variable fallbacks for client-credentials auth options.
-    // These are overridden by explicit CLI args but take priority over defaults.
-    if (!options.clientId && process.env.GREPR_CLIENT_ID) {
+    // Apply environment variable fallbacks. These are overridden by explicit
+    // CLI args but take priority over saved config.
+    if (!cliOptions.orgName && process.env.GREPR_ORG_NAME) {
+      options.orgName = process.env.GREPR_ORG_NAME;
+    }
+    if (!cliOptions.apiBaseUrl && process.env.GREPR_API_BASE_URL) {
+      options.apiBaseUrl = parseEnvUrl('GREPR_API_BASE_URL', process.env.GREPR_API_BASE_URL);
+    }
+    if (!cliOptions.clientId && process.env.GREPR_CLIENT_ID) {
       options.clientId = process.env.GREPR_CLIENT_ID;
     }
-    if (!options.clientSecret && process.env.GREPR_CLIENT_SECRET) {
+    if (!cliOptions.clientSecret && process.env.GREPR_CLIENT_SECRET) {
       options.clientSecret = process.env.GREPR_CLIENT_SECRET;
     }
-    if (!options.authBaseUrl && process.env.GREPR_AUTH_BASE_URL) {
-      options.authBaseUrl = process.env.GREPR_AUTH_BASE_URL;
+    if (!cliOptions.authBaseUrl && process.env.GREPR_AUTH_BASE_URL) {
+      options.authBaseUrl = parseEnvUrl('GREPR_AUTH_BASE_URL', process.env.GREPR_AUTH_BASE_URL);
     }
+    // Unlike the fallbacks above, the auth method is always validated, since
+    // it can also arrive via CLI arg or saved config.
+    const authMethodInput =
+      !cliOptions.authMethod && process.env.GREPR_AUTH_METHOD
+        ? process.env.GREPR_AUTH_METHOD
+        : options.authMethod;
+    options.authMethod = parseAuthMethod(authMethodInput);
+
+    // Query engine resolves from GREPR_QUERY_ENGINE only (no flag/saved config)
+    // and is validated here. Left undefined when unset; the query command defaults.
+    options.queryEngine = parseQueryEngine(process.env.GREPR_QUERY_ENGINE);
 
     if (!options.orgName) {
       console.error('Error: --org-name is required (unless using --conf with a saved configuration or a default configuration is set)');
@@ -164,7 +171,7 @@ class GreprQueryCLI {
     }
 
     if (!options.authMethod) {
-      options.authMethod = 'oauth';
+      options.authMethod = options.clientSecret ? 'client-credentials' : 'oauth';
     }
 
     if (!isResolvedCliOptions(options)) {
@@ -222,9 +229,9 @@ class GreprQueryCLI {
     this.program
       .option('--conf <name>', 'Use saved configuration from ~/.grepr/cli-config.json')
       .option('--org-name <name>', 'Organization name (required unless using --conf)')
-      .option('--api-base-url <url>', 'API server base URL (default: https://<orgName>.app.grepr.ai/api)', this.parseUrl)
-      .option('--auth-base-url <url>', 'Auth0 base URL', this.parseUrl)
-      .option('--auth-method <method>', 'Authentication method (oauth, client-credentials)', 'oauth')
+      .option('--api-base-url <url>', 'API server base URL (default: https://<orgName>.app.grepr.ai/api)', parseUrl)
+      .option('--auth-base-url <url>', 'Auth0 base URL', parseUrl)
+      .option('--auth-method <method>', 'Authentication method (oauth, client-credentials)')
       .option('--client-id <id>', 'OAuth Client ID (optional, defaults to Web Client ID)')
       .option('--client-secret <secret>', 'Client secret for client-credentials authentication (required when using --auth-method client-credentials)')
       .option('--no-auth-cache', 'Force fresh authentication by ignoring cached tokens', true)
@@ -242,6 +249,13 @@ class GreprQueryCLI {
   }
 }
 
-// Main execution - always run CLI when executed as main module
-const cli = new GreprQueryCLI();
-cli.setupCLI().parse();
+function isMainModule(): boolean {
+  const entryPoint = process.argv[1];
+  return entryPoint !== undefined
+    && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(entryPoint);
+}
+
+if (isMainModule()) {
+  const cli = new GreprQueryCLI();
+  cli.setupCLI().parse();
+}

@@ -14,6 +14,7 @@ import {
   DatadogQueryPredicateType,
   GreprLlmPromptResultsSourceSortOrder,
   GreprRawLogsSourceType,
+  LogsIcebergTableSourceType,
   LogsSynchronousSinkType,
   MessageLengthPredicateType,
   SchemaEventPredicate,
@@ -197,27 +198,28 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
 
   private async createJobDefinition(options: QueryCommandOptions, datasetId: string): Promise<SchemaCreateJob> {
     try {
-      // Only grepr-raw-log-source is supported for synchronous queries — the
-      // iceberg-table-source variant never signals completion under the sync
-      // sink and hangs the client. If/when that's fixed server-side, expose
-      // --query-engine again.
+      // Defaults to SchemaGreprRawLogsSource when unset.
       const sourceQuery = buildSourcePredicate(options);
+      const source: SchemaGreprRawLogsSource | SchemaLogsIcebergTableSource = {
+        type:
+          options.queryEngine === 'flink'
+            ? LogsIcebergTableSourceType.logs_iceberg_table_source
+            : GreprRawLogsSourceType.grepr_raw_log_source,
+        name: 'source',
+        datasetId: datasetId,
+        start: options.start || new Date(Date.now() - 10 * 60 * 1000).toISOString(), // Default: 10 minutes ago
+        end: options.end || new Date().toISOString(), // Default: now
+        query: sourceQuery,
+        sortOrder: options.sortOrder || GreprLlmPromptResultsSourceSortOrder.UNSORTED,
+        limit: options.limit || 100 // Default limit to stay under sync query limit
+      };
       return {
         name: `query_tool_job_${Date.now()}`,
         execution: JobExecution.SYNCHRONOUS,
         processing: JobProcessing.BATCH,
         jobGraph: {
           vertices: [
-            {
-              type: GreprRawLogsSourceType.grepr_raw_log_source,
-              name: 'source',
-              datasetId: datasetId,
-              start: options.start || new Date(Date.now() - 10 * 60 * 1000).toISOString(), // Default: 10 minutes ago
-              end: options.end || new Date().toISOString(), // Default: now
-              query: sourceQuery,
-              sortOrder: options.sortOrder || GreprLlmPromptResultsSourceSortOrder.UNSORTED,
-              limit: options.limit || 100 // Default limit to stay under sync query limit
-            } as SchemaGreprRawLogsSource | SchemaLogsIcebergTableSource,
+            source,
             {
               type: LogsSynchronousSinkType.logs_sync_sink,
               name: 'sink'
