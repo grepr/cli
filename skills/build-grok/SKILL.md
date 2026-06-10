@@ -19,7 +19,8 @@ Use `grepr:query-logs` to query raw log data from the data lake if needed to get
 
 # Notes
 - Don't confuse the `log-attributes-remapper` operation with the `GrokParser` or `grok-parser` operation. The former is used to remap existing fields in a Log Event's attributes to tags or other top-level fields, while the latter is used to parse unstructured log messages into attributes, tags, or top-level fields using Grok patterns. Use `grepr docs:get doc://transforms/remapper/page.mdx` to get for more info on the remapper if needed.
-- When getting outputs from the grepr cli commands, make sure to use `--format json` for the `grok:parser` command so you get the full data to verify the parsing results.
+- When getting outputs from the grepr cli commands, use `grepr grok:parse -f raw` so you get the full data to verify the parsing results.
+- The `grok:parse --samples-file <file>` flag expects one raw message per line (plain text), not NDJSON. Extract first with `jq -r '.message' samples.ndjson > msgs.txt`.
 - Remember that Grepr Grok patterns always a require a rule name for both the main pattern and any helper patterns.
 - If asking the user any questions as part of the flow, *always* give an option to "help me figure it out" so you can assist them in building the patterns or querying for sample messages, etc.
 - Make sure you understand the structure of the job graph you're updating if you're relying on later operations.

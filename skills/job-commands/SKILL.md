@@ -53,11 +53,15 @@ grepr job:create pipeline-config.json
 ```
 
 ### Update a pipeline
-Get the current config first to capture `version` for `fromVersion`, edit the file, then push it back.
+For patchable pipeline edits, prefer `job:plan` / `job:draft` /
+`job:apply`. Use `job:update` only for explicit manual full-graph update
+workflows after user approval. Get the current config first to capture
+`version` for `fromVersion`, edit a request-specific file, then push it
+back.
 ```bash
-grepr job:get <job-id> --quiet -o updated-config.json
-# ... edit updated-config.json ...
-grepr job:update <job-id> updated-config.json
+grepr job:get <job-id> --quiet -o updated-config-<tag>.json
+# ... edit updated-config-<tag>.json ...
+grepr job:update <job-id> updated-config-<tag>.json
 ```
 
 ### Delete a pipeline

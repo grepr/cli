@@ -1,15 +1,5 @@
 ---
 description: Core Grepr concepts - log events, jobs, job graphs, execution modes, processing types. Use this to understand Grepr fundamentals without needing docs:search.
-trigger_keywords:
-  - what is grepr
-  - how does grepr work
-  - log event
-  - event model
-  - job model
-  - execution mode
-  - processing mode
-  - pipeline vs job
-  - grepr concepts
 ---
 
 # Grepr Core Concepts

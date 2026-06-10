@@ -1,14 +1,5 @@
 ---
 description: Common job graph patterns and examples for building Grepr pipelines. Use this when you need to create or modify job configurations.
-trigger_keywords:
-  - pipeline example
-  - job example
-  - job graph
-  - how to build pipeline
-  - streaming pipeline
-  - batch query
-  - pipeline pattern
-  - job template
 ---
 
 # Job Graph Patterns
