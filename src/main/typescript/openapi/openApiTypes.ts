@@ -59,6 +59,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/billing/periods": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get reporting periods + customer display name
+     * @description Returns the customer display name plus reporting periods available for the authenticated user's organization. Returns 404 when no billing record exists for the customer or no eligible subscription has any closed orders.
+     */
+    get: operations["getPeriods"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/datasets": {
     parameters: {
       query?: never;
@@ -2888,6 +2908,13 @@ export interface components {
        * @enum {string}
        */
       type: BackfillJobActionType;
+    };
+    /** @description Static customer header data for the billing page: display name + selectable reporting periods. */
+    BillingPeriodsResponse: {
+      /** @description Customer display name (e.g. "ACME, Inc."). */
+      customerName: string;
+      /** @description Reporting periods available for this customer, newest first. */
+      periods: components["schemas"]["PeriodEntry"][];
     };
     BucketAccessResult: {
       accessible?: boolean;
@@ -6372,6 +6399,23 @@ export interface components {
       /** Format: int32 */
       order?: number;
     };
+    /** @description One reporting period — dropdown entry plus bounds for display. */
+    PeriodEntry: {
+      /** @description True if this entry's period contains today. */
+      current?: boolean;
+      /**
+       * Format: date
+       * @description Inclusive period end date — the last day in the period.
+       */
+      endDate: string;
+      /** @description Canonical period identifier used in the URL — "YYYY-MM" for annual periods, "YYYY-MM-DD" (the sub-period's start date) for monthly periods. */
+      id: string;
+      /**
+       * Format: date
+       * @description Inclusive period start date.
+       */
+      startDate: string;
+    };
     PhraseNode: {
       /**
        * @description The terms in a phrase to match
@@ -9619,6 +9663,8 @@ export type SchemaAverageAttributesMergeStrategy =
   components["schemas"]["AverageAttributesMergeStrategy"];
 export type SchemaBackfillJobAction =
   components["schemas"]["BackfillJobAction"];
+export type SchemaBillingPeriodsResponse =
+  components["schemas"]["BillingPeriodsResponse"];
 export type SchemaBucketAccessResult =
   components["schemas"]["BucketAccessResult"];
 export type SchemaChunkedOutputEventRecordReadableData =
@@ -9892,6 +9938,7 @@ export type SchemaPatternLookupIcebergTableSink =
 export type SchemaPatternMatcher = components["schemas"]["PatternMatcher"];
 export type SchemaPatternRuleConfig =
   components["schemas"]["PatternRuleConfig"];
+export type SchemaPeriodEntry = components["schemas"]["PeriodEntry"];
 export type SchemaPhraseNode = components["schemas"]["PhraseNode"];
 export type SchemaPipelineRef = components["schemas"]["PipelineRef"];
 export type SchemaPipelineStatus = components["schemas"]["PipelineStatus"];
@@ -10262,6 +10309,54 @@ export interface operations {
       };
       /** @description API key is invalid */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getPeriods: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Customer name + period list. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BillingPeriodsResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Internal Server Error */
+      500: {
         headers: {
           [name: string]: unknown;
         };
@@ -17172,6 +17267,7 @@ export enum ResourceFilterResourceType {
   ORGANIZATION_SETTINGS = "ORGANIZATION_SETTINGS",
   SERVICE_ACCOUNT = "SERVICE_ACCOUNT",
   ORGANIZATION = "ORGANIZATION",
+  BILLING = "BILLING",
 }
 export enum S3LogsFileSourceType {
   s3_file_source = "s3-file-source",
