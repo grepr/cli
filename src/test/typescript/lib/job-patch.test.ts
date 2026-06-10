@@ -12,6 +12,9 @@ import {
 import {
   SchemaReadJob,
   SchemaLogReducerTemplateInput,
+  SchemaLogReducer,
+  SchemaDatadogQueryPredicate,
+  SchemaAttributesMergeStrategyEntry,
   LogAttributesRemapperType,
   JsonLogProcessorType,
   GrokParserType,
@@ -19,6 +22,8 @@ import {
   LogsFilterType,
   TemplateOperationType,
   DatadogQueryPredicateType,
+  MinAttributesMergeStrategyType,
+  MaxAttributesMergeStrategyType,
   PathsV1JobsGetParametersQueryState,
 } from '@/openapi/openApiTypes.js';
 import {
@@ -49,6 +54,23 @@ const grokParser = (name = 'my_grok'): Record<string, unknown> => ({
   type: GrokParserType.grok_parser,
   name,
   grokParsingRules: ['MyRule %{INT:foo}'],
+});
+
+const jobGraphReducer = (overrides: Partial<SchemaLogReducer> = {}): SchemaLogReducer => ({
+  type: LogReducerType.log_reducer,
+  name: 'log_reducer',
+  delimiters: [' '],
+  enabledMasks: [],
+  masks: [],
+  ...overrides,
+});
+
+const makeJobGraphReducerJob = (reducerOverrides: Partial<SchemaLogReducer> = {}): SchemaReadJob =>
+  makeJobGraphJob({ vertices: [remapperParser(), jobGraphReducer(reducerOverrides)] });
+
+const datadogPredicate = (query: string): SchemaDatadogQueryPredicate => ({
+  type: DatadogQueryPredicateType.datadog_query,
+  query,
 });
 
 describe('parsePatch', () => {
@@ -879,7 +901,7 @@ describe('applyPatch (job-graph backend)', () => {
   it('test_jobGraph_addGrokRule_noGrokParser_shouldThrow', () => {
     const job = makeJobGraphJob();
     expect(() => applyPatch(job, { operations: [{ op: 'add-grok-rule', pattern: 'X' }] })).toThrow(
-      /no grok-parser vertex found/,
+      /no grok-parser vertex found.*Add a grok-parser vertex/,
     );
   });
 
@@ -1288,5 +1310,897 @@ describe('applyPatch — sink ops (job-graph backend)', () => {
     expect(() =>
       applyPatch(job, { operations: [{ op: 'set-raw-dataset', datasetId: 'd' }] }),
     ).toThrow(/found 2 raw data-lake sinks/);
+  });
+});
+
+// In-place vertex updates + per-entry reducer/remapper removals.
+
+describe('parsePatch — new ops', () => {
+  it('test_parsePatch_removeGroupByMissingAttributePath_shouldThrow', () => {
+    expect(() => parsePatch({ operations: [{ op: 'remove-group-by' }] })).toThrow(
+      /remove-group-by.*"attributePath" is required and must be a string/,
+    );
+  });
+
+  it('test_parsePatch_removeAggregationStrategyOptionalStrategies_shouldPass', () => {
+    // strategies is optional (omit = remove all for the path), so it must not be required.
+    const patch = parsePatch({ operations: [{ op: 'remove-aggregation-strategy', attributePath: 'x' }] });
+    expect(patch.operations).toHaveLength(1);
+  });
+
+  it('test_parsePatch_updateSinkMissingSink_shouldThrow', () => {
+    expect(() => parsePatch({ operations: [{ op: 'update-sink', target: 'vendor' }] })).toThrow(
+      /update-sink.*"sink" is required and must be an object/,
+    );
+  });
+});
+
+describe('classifyPatch — new ops', () => {
+  it('test_classify_updateSource_touchesSource', () => {
+    expect(
+      classifyPatch({ operations: [{ op: 'update-source', source: { type: 'datadog-log-agent-source', name: 's', integrationId: 'i' } as never }] }),
+    ).toBe('source');
+  });
+
+  it('test_classify_updateSink_touchesSink', () => {
+    expect(
+      classifyPatch({ operations: [{ op: 'update-sink', target: 'processed-logs', sink: { type: 'logs-iceberg-table-sink', name: 'p', datasetId: 'd' } as never }] }),
+    ).toBe('sink');
+  });
+
+  it('test_classify_reducerRemovals_transformOnly', () => {
+    // Each reducer-removal / parser op must classify transform on its own (not masked by a neighbour).
+    expect(classifyPatch({ operations: [{ op: 'remove-group-by', attributePath: 'svc' }] })).toBe('transform');
+    expect(classifyPatch({ operations: [{ op: 'remove-reducer-exception', predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'x' } }] })).toBe('transform');
+    expect(classifyPatch({ operations: [{ op: 'update-parser', parser: { type: 'grok-parser', name: 'g' } as never }] })).toBe('transform');
+  });
+});
+
+describe('applyPatch — per-entry removals (template)', () => {
+  it('test_removeMessageAttribute_singlePart', () => {
+    const job = makeTemplateJob({ parsers: [remapperParser() as never] });
+    const update = applyPatch(job, { operations: [{ op: 'remove-message-attribute', attributePath: 'msg' }] });
+    const remapper = readInputFromUpdate(update).parsers[0] as Record<string, unknown>;
+    expect(remapper['messageReservedAttributes']).toEqual(['message']);
+  });
+
+  it('test_removeMessageAttribute_multiPart', () => {
+    const job = makeTemplateJob({ parsers: [remapperParser() as never] });
+    const update = applyPatch(job, { operations: [{ op: 'remove-message-attribute', attributePath: 'body.message' }] });
+    const remapper = readInputFromUpdate(update).parsers[0] as Record<string, unknown>;
+    expect(remapper['messageReservedAttributePaths']).toEqual([]);
+  });
+
+  it('test_removeMessageAttribute_absent_shouldThrow', () => {
+    const job = makeTemplateJob({ parsers: [remapperParser() as never] });
+    expect(() => applyPatch(job, { operations: [{ op: 'remove-message-attribute', attributePath: 'nope' }] })).toThrow(
+      /message attribute "nope" not found/,
+    );
+  });
+
+  it('test_removeGroupBy_addThenRemove_leavesEmpty', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, {
+      operations: [
+        { op: 'add-group-by', attributePath: 'service' },
+        { op: 'remove-group-by', attributePath: 'service' },
+      ],
+    });
+    const reducer = readInputFromUpdate(update).reducer as unknown as Record<string, unknown>;
+    expect(reducer['partitionByAttributes']).toEqual([]);
+  });
+
+  it('test_removeGroupBy_absent_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    expect(() => applyPatch(job, { operations: [{ op: 'remove-group-by', attributePath: 'service' }] })).toThrow(
+      /group-by "service" not found/,
+    );
+  });
+
+  it('test_removeAggregation_specificStrategy_keepsOthers', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, {
+      operations: [
+        { op: 'add-aggregation-strategy', attributePath: 'request.duration', strategies: ['min', 'max'] },
+        { op: 'remove-aggregation-strategy', attributePath: 'request.duration', strategies: ['min'] },
+      ],
+    });
+    const reducer = readInputFromUpdate(update).reducer as unknown as Record<string, unknown>;
+    const entries = reducer['attributeMergeStrategyEntries'] as { strategy: { type: string } }[];
+    expect(entries.map(e => e.strategy.type)).toEqual(['max']);
+  });
+
+  it('test_removeAggregation_noStrategies_removesAllForPath', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, {
+      operations: [
+        { op: 'add-aggregation-strategy', attributePath: 'd', strategies: ['min', 'max'] },
+        { op: 'remove-aggregation-strategy', attributePath: 'd' },
+      ],
+    });
+    const reducer = readInputFromUpdate(update).reducer as unknown as Record<string, unknown>;
+    expect(reducer['attributeMergeStrategyEntries']).toEqual([]);
+  });
+
+  it('test_removeAggregation_absent_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    expect(() => applyPatch(job, { operations: [{ op: 'remove-aggregation-strategy', attributePath: 'd' }] })).toThrow(
+      /aggregation strategy for "d" not found/,
+    );
+  });
+
+  it('test_removeAggregation_emptyStrategies_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    expect(() =>
+      applyPatch(job, {
+        operations: [
+          { op: 'add-aggregation-strategy', attributePath: 'd', strategies: ['min'] },
+          { op: 'remove-aggregation-strategy', attributePath: 'd', strategies: [] },
+        ],
+      }),
+    ).toThrow(/strategies must be a non-empty array/);
+  });
+
+  it('test_removeAggregation_nonArrayStrategies_shouldThrow', () => {
+    // Simulates a malformed JSON patch; `strategies` is optional so parsePatch doesn't type-check it.
+    const malformedOp = { op: 'remove-aggregation-strategy', attributePath: 'd', strategies: 'min' } as unknown as JobPatchOp;
+    expect(() => applyPatch(makeTemplateJob({}), { operations: [malformedOp] })).toThrow(
+      /strategies must be a non-empty array/,
+    );
+  });
+
+  it('test_removeAggregation_namedStrategiesAbsent_errorNamesStrategies', () => {
+    const job = makeTemplateJob({});
+    expect(() =>
+      applyPatch(job, {
+        operations: [
+          { op: 'add-aggregation-strategy', attributePath: 'd', strategies: ['min'] },
+          { op: 'remove-aggregation-strategy', attributePath: 'd', strategies: ['max'] },
+        ],
+      }),
+    ).toThrow(/aggregation strategy \[max\] for "d" not found/);
+  });
+
+  it('test_removeAggregation_unknownStrategy_shouldThrow', () => {
+    const malformedOp = { op: 'remove-aggregation-strategy', attributePath: 'd', strategies: ['mean'] } as unknown as JobPatchOp;
+    expect(() => applyPatch(makeTemplateJob({}), { operations: [malformedOp] })).toThrow(
+      /Unknown aggregation strategy "mean"/,
+    );
+  });
+
+  it('test_removeReducerException_addThenRemove', () => {
+    const job = makeTemplateJob({});
+    const predicate = { type: DatadogQueryPredicateType.datadog_query, query: 'status:error' };
+    const update = applyPatch(job, {
+      operations: [
+        { op: 'add-reducer-exception', predicate },
+        { op: 'remove-reducer-exception', predicate },
+      ],
+    });
+    expect(readInputFromUpdate(update).exceptions).toEqual([]);
+  });
+
+  it('test_removeReducerException_absent_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'remove-reducer-exception', predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'x' } }] }),
+    ).toThrow(/matching reducer exception not found/);
+  });
+
+  it('test_removeGrokRule_removesPattern', () => {
+    const job = makeTemplateJob({ parsers: [grokParser() as never] });
+    const update = applyPatch(job, { operations: [{ op: 'remove-grok-rule', pattern: 'MyRule %{INT:foo}' }] });
+    const grok = readInputFromUpdate(update).parsers[0] as Record<string, unknown>;
+    expect(grok['grokParsingRules']).toEqual([]);
+  });
+
+  it('test_removeGrokRule_absent_shouldThrow', () => {
+    const job = makeTemplateJob({ parsers: [grokParser() as never] });
+    expect(() => applyPatch(job, { operations: [{ op: 'remove-grok-rule', pattern: 'NotThere' }] })).toThrow(
+      /grok rule "NotThere" not found/,
+    );
+  });
+
+  it('test_removeGrokRule_multipleParsersNoName_shouldThrow', () => {
+    const job = makeTemplateJob({ parsers: [grokParser('g1') as never, grokParser('g2') as never] });
+    expect(() => applyPatch(job, { operations: [{ op: 'remove-grok-rule', pattern: 'MyRule %{INT:foo}' }] })).toThrow(
+      /remove-grok-rule.*found 2 grok parsers/,
+    );
+  });
+
+  it('test_removeGrokRule_noGrokParser_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    expect(() => applyPatch(job, { operations: [{ op: 'remove-grok-rule', pattern: 'x' }] })).toThrow(
+      /no grok-parser found in input\.parsers/,
+    );
+  });
+});
+
+describe('applyPatch — in-place updates (template)', () => {
+  const ddSource = (integrationId: string): Record<string, unknown> => ({ type: 'datadog-log-agent-source', name: 'src', integrationId });
+  const vendorSink = (name = 'dd_sink', integrationId = 'int_1'): Record<string, unknown> => ({ type: 'datadog-log-sink', name, integrationId });
+  const icebergSink = (datasetId: string): Record<string, unknown> => ({ type: 'logs-iceberg-table-sink', name: 'processed', datasetId });
+  const filter = (query: string): Record<string, unknown> => ({ type: LogsFilterType.logs_filter, name: 'f', predicate: { type: DatadogQueryPredicateType.datadog_query, query } });
+
+  it('test_updateSource_replacesConfigInPlace', () => {
+    const job = makeTemplateJob({ sources: [ddSource('old') as never] });
+    const update = applyPatch(job, { operations: [{ op: 'update-source', source: ddSource('new') as never }] });
+    expect(readInputFromUpdate(update).sources).toEqual([ddSource('new')]);
+  });
+
+  it('test_updateSource_absent_shouldThrow', () => {
+    const job = makeTemplateJob({ sources: [ddSource('old') as never] });
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'update-source', source: { type: 'datadog-log-agent-source', name: 'other', integrationId: 'i' } as never }] }),
+    ).toThrow(/source "other" not found/);
+  });
+
+  it('test_updateParser_replacesConfigInPlace', () => {
+    const job = makeTemplateJob({ parsers: [grokParser('g1') as never] });
+    const replacement = { type: GrokParserType.grok_parser, name: 'g1', grokParsingRules: ['Brand %{WORD:x}'] };
+    const update = applyPatch(job, { operations: [{ op: 'update-parser', parser: replacement as never }] });
+    expect(readInputFromUpdate(update).parsers[0]).toEqual(replacement);
+  });
+
+  it('test_updateParser_absent_shouldThrow', () => {
+    const job = makeTemplateJob({ parsers: [grokParser('g1') as never] });
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'update-parser', parser: grokParser('g2') as never }] }),
+    ).toThrow(/parser "g2" not found/);
+  });
+
+  it('test_updateSink_vendor_replacesConfig', () => {
+    const job = makeTemplateJob({ sinks: [{ sink: vendorSink('dd_sink', 'old') } as never] });
+    const update = applyPatch(job, { operations: [{ op: 'update-sink', target: 'vendor', sink: vendorSink('dd_sink', 'new') as never }] });
+    const sinks = readInputFromUpdate(update).sinks ?? [];
+    expect(sinks[0]?.sink).toEqual(vendorSink('dd_sink', 'new'));
+  });
+
+  it('test_updateSink_vendor_omitFilter_preservesExisting', () => {
+    const job = makeTemplateJob({ sinks: [{ sink: vendorSink(), filter: filter('keep') } as never] });
+    const update = applyPatch(job, { operations: [{ op: 'update-sink', target: 'vendor', sink: vendorSink('dd_sink', 'new') as never }] });
+    const sinks = readInputFromUpdate(update).sinks ?? [];
+    expect((sinks[0] as { filter?: { predicate?: { query?: string } } }).filter?.predicate?.query).toBe('keep');
+  });
+
+  it('test_updateSink_vendor_withFilter_replacesGate', () => {
+    const job = makeTemplateJob({ sinks: [{ sink: vendorSink(), filter: filter('old') } as never] });
+    const update = applyPatch(job, {
+      operations: [{ op: 'update-sink', target: 'vendor', sink: vendorSink() as never, filter: filter('new') as never }],
+    });
+    const sinks = readInputFromUpdate(update).sinks ?? [];
+    expect((sinks[0] as { filter?: { predicate?: { query?: string } } }).filter?.predicate?.query).toBe('new');
+  });
+
+  it('test_updateSink_vendor_filterWithoutGate_shouldThrow', () => {
+    const job = makeTemplateJob({ sinks: [{ sink: vendorSink() } as never] });
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'update-sink', target: 'vendor', sink: vendorSink() as never, filter: filter('new') as never }] }),
+    ).toThrow(/has no gating filter to update/);
+  });
+
+  it('test_updateSink_vendor_absent_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'update-sink', target: 'vendor', sink: vendorSink() as never }] }),
+    ).toThrow(/sink "dd_sink" not found/);
+  });
+
+  it('test_updateSink_processedLogs_replacesSlot', () => {
+    const job = makeTemplateJob({ processedLogsSink: icebergSink('old') as never });
+    const update = applyPatch(job, { operations: [{ op: 'update-sink', target: 'processed-logs', sink: icebergSink('new') as never }] });
+    expect((readInputFromUpdate(update) as { processedLogsSink?: { datasetId?: string } }).processedLogsSink?.datasetId).toBe('new');
+  });
+
+  it('test_updateSink_processedLogs_unset_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'update-sink', target: 'processed-logs', sink: icebergSink('d') as never }] }),
+    ).toThrow(/no processedLogsSink set to update/);
+  });
+
+  it('test_updateSink_processedLogs_withFilter_shouldThrow', () => {
+    // The split union makes this illegal; the cast simulates a malformed JSON patch the
+    // shared guard must reject — and the error must be labeled for update-sink, not add-sink.
+    const illegalOp = { op: 'update-sink', target: 'processed-logs', sink: icebergSink('d'), filter: filter('x') } as unknown as JobPatchOp;
+    expect(() => applyPatch(makeTemplateJob({ processedLogsSink: icebergSink('old') as never }), { operations: [illegalOp] })).toThrow(
+      /update-sink.*filter is only supported for target "vendor"/,
+    );
+  });
+});
+
+describe('applyPatch — per-entry removals (job-graph backend)', () => {
+  it('test_jobGraph_removeMessageAttribute_removesFromRemapperVertex', () => {
+    const update = applyPatch(makeJobGraphJob(), { operations: [{ op: 'remove-message-attribute', attributePath: 'msg' }] });
+    expect(findJobGraphVertex(update, 'log_attributes_remapper')['messageReservedAttributes']).toEqual(['message']);
+  });
+
+  it('test_jobGraph_removeMessageAttribute_multiPart_removesFromRemapperVertex', () => {
+    const update = applyPatch(makeJobGraphReducerJob(), {
+      operations: [{ op: 'remove-message-attribute', attributePath: 'body.message' }],
+    });
+    expect(findJobGraphVertex(update, 'log_attributes_remapper')['messageReservedAttributePaths']).toEqual([]);
+  });
+
+  it('test_jobGraph_removeMessageAttribute_absent_shouldThrow', () => {
+    expect(() =>
+      applyPatch(makeJobGraphJob(), { operations: [{ op: 'remove-message-attribute', attributePath: 'nope' }] }),
+    ).toThrow(/message attribute "nope" not found/);
+  });
+
+  it('test_jobGraph_removeGroupBy_removesFromReducerVertex', () => {
+    const update = applyPatch(makeJobGraphReducerJob({ partitionByAttributes: ['service', 'env'] }), {
+      operations: [{ op: 'remove-group-by', attributePath: 'service' }],
+    });
+    expect(findJobGraphVertex(update, 'log_reducer')['partitionByAttributes']).toEqual(['env']);
+  });
+
+  it('test_jobGraph_removeGroupBy_absent_shouldThrow', () => {
+    expect(() =>
+      applyPatch(makeJobGraphJob(), { operations: [{ op: 'remove-group-by', attributePath: 'service' }] }),
+    ).toThrow(/group-by "service" not found/);
+  });
+
+  it('test_jobGraph_removeAggregation_specificStrategy_keepsOthers', () => {
+    const update = applyPatch(makeJobGraphReducerJob({
+      attributeMergeStrategyEntries: [
+        { attributePath: ['request', 'duration'], strategy: { type: MinAttributesMergeStrategyType.min } },
+        { attributePath: ['request', 'duration'], strategy: { type: MaxAttributesMergeStrategyType.max } },
+        { attributePath: ['other'], strategy: { type: MaxAttributesMergeStrategyType.max } },
+      ],
+    }), {
+      operations: [{ op: 'remove-aggregation-strategy', attributePath: 'request.duration', strategies: ['min'] }],
+    });
+    const entries = findJobGraphVertex(update, 'log_reducer')['attributeMergeStrategyEntries'] as SchemaAttributesMergeStrategyEntry[];
+    expect(entries.map(entry => `${entry.attributePath.join('.')}:${entry.strategy.type}`)).toEqual(['request.duration:max', 'other:max']);
+  });
+
+  it('test_jobGraph_removeAggregation_noStrategies_removesAllForPath', () => {
+    const update = applyPatch(makeJobGraphReducerJob({
+      attributeMergeStrategyEntries: [
+        { attributePath: ['d'], strategy: { type: MinAttributesMergeStrategyType.min } },
+        { attributePath: ['d'], strategy: { type: MaxAttributesMergeStrategyType.max } },
+        { attributePath: ['other'], strategy: { type: MaxAttributesMergeStrategyType.max } },
+      ],
+    }), {
+      operations: [{ op: 'remove-aggregation-strategy', attributePath: 'd' }],
+    });
+    const entries = findJobGraphVertex(update, 'log_reducer')['attributeMergeStrategyEntries'] as SchemaAttributesMergeStrategyEntry[];
+    expect(entries.map(entry => entry.attributePath.join('.'))).toEqual(['other']);
+  });
+
+  it('test_jobGraph_removeAggregation_absent_shouldThrow', () => {
+    expect(() =>
+      applyPatch(makeJobGraphJob(), { operations: [{ op: 'remove-aggregation-strategy', attributePath: 'request.duration' }] }),
+    ).toThrow(/aggregation strategy for "request.duration" not found/);
+  });
+
+  it('test_jobGraph_removeReducerException_addThenRemove', () => {
+    const predicate = datadogPredicate('status:error');
+    const update = applyPatch(makeJobGraphJob(), {
+      operations: [
+        { op: 'add-reducer-exception', predicate },
+        { op: 'remove-reducer-exception', predicate },
+      ],
+    });
+    expect(findJobGraphVertex(update, 'log_reducer')['logReducerExceptions']).toEqual([]);
+  });
+
+  it('test_jobGraph_removeReducerException_absent_shouldThrow', () => {
+    expect(() =>
+      applyPatch(makeJobGraphJob(), { operations: [{ op: 'remove-reducer-exception', predicate: datadogPredicate('x') }] }),
+    ).toThrow(/matching reducer exception not found/);
+  });
+
+  it('test_jobGraph_removeGrokRule_removesFromGrokVertex', () => {
+    const job = makeJobGraphJob({
+      vertices: [
+        { type: LogReducerType.log_reducer, name: 'log_reducer', delimiters: [' '], enabledMasks: [], masks: [] },
+        { type: GrokParserType.grok_parser, name: 'grok', grokParsingRules: ['A %{INT:n}', 'B %{WORD:w}'] },
+      ],
+    });
+    const update = applyPatch(job, { operations: [{ op: 'remove-grok-rule', pattern: 'A %{INT:n}', parserName: 'grok' }] });
+    expect(findJobGraphVertex(update, 'grok')['grokParsingRules']).toEqual(['B %{WORD:w}']);
+  });
+
+  it('test_jobGraph_removeGrokRule_absent_shouldThrow', () => {
+    const job = makeJobGraphJob({ vertices: [jobGraphReducer(), grokParser('grok')] });
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'remove-grok-rule', pattern: 'NotThere', parserName: 'grok' }] }),
+    ).toThrow(/grok rule "NotThere" not found/);
+  });
+
+  it('test_jobGraph_removeGrokRule_parserNameNotFound_shouldThrow', () => {
+    const job = makeJobGraphJob({ vertices: [jobGraphReducer(), grokParser('grok')] });
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'remove-grok-rule', pattern: 'MyRule %{INT:foo}', parserName: 'ghost' }] }),
+    ).toThrow(/grok-parser "ghost" not found/);
+  });
+
+  it('test_jobGraph_removeGroupBy_multipleReducers_shouldThrowAmbiguous', () => {
+    const job = makeJobGraphJob({
+      vertices: [
+        { type: LogReducerType.log_reducer, name: 'r1', delimiters: [' '], enabledMasks: [], masks: [], partitionByAttributes: ['svc'] },
+        { type: LogReducerType.log_reducer, name: 'r2', delimiters: [' '], enabledMasks: [], masks: [] },
+      ],
+    });
+    expect(() => applyPatch(job, { operations: [{ op: 'remove-group-by', attributePath: 'svc' }] })).toThrow(
+      /expected exactly one .* but found 2/,
+    );
+  });
+});
+
+describe('applyPatch — in-place updates (job-graph backend)', () => {
+  const vendorSink = (name = 'dd_sink', integrationId = 'int_1'): Record<string, unknown> => ({ type: 'datadog-log-sink', name, integrationId });
+  const filter = (query: string): Record<string, unknown> => ({ type: LogsFilterType.logs_filter, name: 'ignored', predicate: { type: DatadogQueryPredicateType.datadog_query, query } });
+
+  it('test_jobGraph_updateSource_replacesConfigPreservingEdges', () => {
+    const job = makeUiRawJobGraphJob();
+    const update = applyPatch(job, {
+      operations: [{ op: 'update-source', source: { type: 'datadog-log-agent-source', name: 'src', integrationId: 'int_9' } as never }],
+    });
+    expect(findJobGraphVertex(update, 'src')['type']).toBe('datadog-log-agent-source');
+    expect(findJobGraphVertex(update, 'src')['integrationId']).toBe('int_9');
+    expect(update.jobGraph.edges).toContain('src -> pre_parser_filter');
+  });
+
+  it('test_jobGraph_updateSource_notCanonical_shouldThrow', () => {
+    const job = makeJobGraphJob(); // no pre_parser_filter
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'update-source', source: { type: 'datadog-log-agent-source', name: 'log_reducer', integrationId: 'i' } as never }] }),
+    ).toThrow(/unsupported raw job graph shape/);
+  });
+
+  it('test_jobGraph_updateSource_absent_shouldThrow', () => {
+    const job = makeUiRawJobGraphJob();
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'update-source', source: { type: 'datadog-log-agent-source', name: 'ghost', integrationId: 'i' } as never }] }),
+    ).toThrow(/source "ghost" not found/);
+  });
+
+  it('test_jobGraph_updateParser_existingNotParserType_shouldThrow', () => {
+    const job = makeUiRawJobGraphJob();
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'update-parser', parser: { type: GrokParserType.grok_parser, name: 'log_reducer' } as never }] }),
+    ).toThrow(/vertex "log_reducer" is not a supported parser type/);
+  });
+
+  it('test_jobGraph_updateParser_replacementUnsupportedType_shouldThrow', () => {
+    const job = makeUiRawJobGraphJob();
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'update-parser', parser: { type: 'logs-sync-sink', name: 'json_log_processor' } as never }] }),
+    ).toThrow(/replacement parser type .* is not supported/);
+  });
+
+  it('test_jobGraph_updateParser_replacesConfigPreservingEdges', () => {
+    const job = makeUiRawJobGraphJob();
+    const replacement = { type: GrokParserType.grok_parser, name: 'json_log_processor', grokParsingRules: ['X %{INT:n}'] };
+    const update = applyPatch(job, { operations: [{ op: 'update-parser', parser: replacement as never }] });
+    expect(findJobGraphVertex(update, 'json_log_processor')['type']).toBe(GrokParserType.grok_parser);
+    expect(update.jobGraph.edges).toContain('pre_parser_filter -> json_log_processor');
+    expect(update.jobGraph.edges).toContain('json_log_processor -> log_attributes_remapper');
+  });
+
+  it('test_jobGraph_updateParser_absent_shouldThrow', () => {
+    const job = makeUiRawJobGraphJob();
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'update-parser', parser: { type: GrokParserType.grok_parser, name: 'ghost' } as never }] }),
+    ).toThrow(/parser "ghost" not found/);
+  });
+
+  it('test_jobGraph_updateSink_vendor_replacesConfig', () => {
+    const update = applyPatch(makeUiRawJobGraphJob(), {
+      operations: [
+        { op: 'add-sink', target: 'vendor', sink: vendorSink('dd_sink', 'old') as never },
+        { op: 'update-sink', target: 'vendor', sink: vendorSink('dd_sink', 'new') as never },
+      ],
+    });
+    expect(findJobGraphVertex(update, 'dd_sink')['integrationId']).toBe('new');
+    expect(update.jobGraph.edges).toContain('log_reducer -> dd_sink');
+  });
+
+  it('test_jobGraph_updateSink_vendor_withFilter_updatesGeneratedFilter', () => {
+    const update = applyPatch(makeUiRawJobGraphJob(), {
+      operations: [
+        { op: 'add-sink', target: 'vendor', sink: vendorSink() as never, filter: filter('old') as never },
+        { op: 'update-sink', target: 'vendor', sink: vendorSink() as never, filter: filter('new') as never },
+      ],
+    });
+    expect((findJobGraphVertex(update, 'dd_sink_filter') as { predicate?: { query?: string } }).predicate?.query).toBe('new');
+  });
+
+  it('test_jobGraph_updateSink_vendor_filterWithoutGeneratedGate_shouldThrow', () => {
+    expect(() =>
+      applyPatch(makeUiRawJobGraphJob(), {
+        operations: [
+          { op: 'add-sink', target: 'vendor', sink: vendorSink() as never },
+          { op: 'update-sink', target: 'vendor', sink: vendorSink() as never, filter: filter('x') as never },
+        ],
+      }),
+    ).toThrow(/no generated gating filter/);
+  });
+
+  it('test_jobGraph_updateSink_vendor_nonVendorVertex_shouldThrow', () => {
+    expect(() =>
+      applyPatch(makeUiRawJobGraphJob(), { operations: [{ op: 'update-sink', target: 'vendor', sink: vendorSink('log_reducer') as never }] }),
+    ).toThrow(/not a vendor sink/);
+  });
+
+  it('test_jobGraph_updateSink_processedLogs_replacesConfig', () => {
+    const job = makeJobGraphJob({
+      vertices: [
+        { type: LogReducerType.log_reducer, name: 'log_reducer', delimiters: [' '], enabledMasks: [], masks: [] },
+        { type: 'logs-iceberg-table-sink', name: 'processed_logs_p', datasetId: 'old' },
+      ],
+      edges: ['log_reducer -> processed_logs_p'],
+    });
+    const update = applyPatch(job, {
+      operations: [{ op: 'update-sink', target: 'processed-logs', sink: { type: 'logs-iceberg-table-sink', name: 'renamed_processed_logs', datasetId: 'new' } as never }],
+    });
+    expect(findJobGraphVertex(update, 'processed_logs_p')['datasetId']).toBe('new');
+    expect(update.jobGraph.edges).toContain('log_reducer -> processed_logs_p');
+    expect(update.jobGraph.vertices.some(vertex => vertex.name === 'renamed_processed_logs')).toBe(false);
+  });
+
+  it('test_jobGraph_updateSink_processedLogs_absent_shouldThrow', () => {
+    expect(() =>
+      applyPatch(makeJobGraphJob({ vertices: [jobGraphReducer()] }), {
+        operations: [{ op: 'update-sink', target: 'processed-logs', sink: { type: 'logs-iceberg-table-sink', name: 'processed_logs_p', datasetId: 'new' } as never }],
+      }),
+    ).toThrow(/found 0 processed-logs sinks/);
+  });
+});
+
+// In-place updates of individual reducer/remapper list entries (replace at position).
+
+describe('parsePatch / classifyPatch — reducer-list update ops', () => {
+  it('test_parsePatch_updateMessageAttributeMissingTo_shouldThrow', () => {
+    expect(() => parsePatch({ operations: [{ op: 'update-message-attribute', from: 'a' }] })).toThrow(
+      /update-message-attribute.*"to" is required and must be a string/,
+    );
+  });
+
+  it('test_parsePatch_updateReducerExceptionFromMustBeObject_shouldThrow', () => {
+    expect(() => parsePatch({ operations: [{ op: 'update-reducer-exception', from: 'x', to: {} }] })).toThrow(
+      /update-reducer-exception.*"from" is required and must be an object/,
+    );
+  });
+
+  it('test_classify_reducerListUpdates_transformOnly', () => {
+    expect(classifyPatch({ operations: [{ op: 'update-message-attribute', from: 'a', to: 'b' }] })).toBe('transform');
+    expect(classifyPatch({ operations: [{ op: 'update-group-by', from: 'a', to: 'b' }] })).toBe('transform');
+    expect(classifyPatch({ operations: [{ op: 'update-aggregation-strategy', attributePath: 'x', strategies: ['sum'] }] })).toBe('transform');
+    expect(classifyPatch({ operations: [{ op: 'update-reducer-exception', from: { type: DatadogQueryPredicateType.datadog_query, query: 'a' }, to: { type: DatadogQueryPredicateType.datadog_query, query: 'b' } }] })).toBe('transform');
+  });
+});
+
+describe('applyPatch — reducer-list in-place updates (template)', () => {
+  it('test_updateMessageAttribute_singlePart_replacesAtPosition', () => {
+    const job = makeTemplateJob({ parsers: [remapperParser() as never] });
+    const update = applyPatch(job, { operations: [{ op: 'update-message-attribute', from: 'msg', to: 'log' }] });
+    const remapper = readInputFromUpdate(update).parsers[0] as Record<string, unknown>;
+    expect(remapper['messageReservedAttributes']).toEqual(['message', 'log']); // position 1 preserved
+  });
+
+  it('test_updateMessageAttribute_multiPart_replacesAtPosition', () => {
+    const job = makeTemplateJob({ parsers: [remapperParser() as never] });
+    const update = applyPatch(job, {
+      operations: [
+        { op: 'add-message-attribute', attributePath: 'x.y' }, // -> [[body,message],[x,y]]
+        { op: 'update-message-attribute', from: 'body.message', to: 'body.text' },
+      ],
+    });
+    const remapper = readInputFromUpdate(update).parsers[0] as Record<string, unknown>;
+    expect(remapper['messageReservedAttributePaths']).toEqual([['body', 'text'], ['x', 'y']]); // index 0 preserved
+  });
+
+  it('test_updateMessageAttribute_noRemapperInParsers_shouldThrow', () => {
+    const job = makeTemplateJob({ parsers: [jsonProcessor() as never] });
+    expect(() => applyPatch(job, { operations: [{ op: 'update-message-attribute', from: 'a', to: 'b' }] })).toThrow(
+      /no log-attributes-remapper in input\.parsers/,
+    );
+  });
+
+  it('test_updateMessageAttribute_arityMismatch_shouldThrow', () => {
+    const job = makeTemplateJob({ parsers: [remapperParser() as never] });
+    expect(() => applyPatch(job, { operations: [{ op: 'update-message-attribute', from: 'msg', to: 'a.b' }] })).toThrow(
+      /single-part and multi-part paths are stored in different lists/,
+    );
+  });
+
+  it('test_updateMessageAttribute_absent_shouldThrow', () => {
+    const job = makeTemplateJob({ parsers: [remapperParser() as never] });
+    expect(() => applyPatch(job, { operations: [{ op: 'update-message-attribute', from: 'nope', to: 'x' }] })).toThrow(
+      /message attribute "nope" not found/,
+    );
+  });
+
+  it('test_updateMessageAttribute_toAlreadyExists_shouldThrow', () => {
+    // Remapper holds ['message', 'msg']; replacing 'msg' with 'message' would duplicate it.
+    const job = makeTemplateJob({ parsers: [remapperParser() as never] });
+    expect(() => applyPatch(job, { operations: [{ op: 'update-message-attribute', from: 'msg', to: 'message' }] })).toThrow(
+      /message attribute "message" already exists/,
+    );
+  });
+
+  it('test_updateMessageAttribute_sameFromAndTo_isNoOp', () => {
+    const job = makeTemplateJob({ parsers: [remapperParser() as never] });
+    const update = applyPatch(job, { operations: [{ op: 'update-message-attribute', from: 'msg', to: 'msg' }] });
+    const remapper = readInputFromUpdate(update).parsers[0] as Record<string, unknown>;
+    expect(remapper['messageReservedAttributes']).toEqual(['message', 'msg']);
+  });
+
+  it('test_updateGroupBy_replacesAtPosition', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, {
+      operations: [
+        { op: 'add-group-by', attributePath: 'a' },
+        { op: 'add-group-by', attributePath: 'b' },
+        { op: 'update-group-by', from: 'a', to: 'c' },
+      ],
+    });
+    const reducer = readInputFromUpdate(update).reducer as unknown as Record<string, unknown>;
+    expect(reducer['partitionByAttributes']).toEqual(['c', 'b']); // 'a'→'c' at index 0, order kept
+  });
+
+  it('test_updateGroupBy_absent_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    expect(() => applyPatch(job, { operations: [{ op: 'update-group-by', from: 'a', to: 'b' }] })).toThrow(
+      /group-by "a" not found/,
+    );
+  });
+
+  it('test_updateGroupBy_toAlreadyExists_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    expect(() =>
+      applyPatch(job, {
+        operations: [
+          { op: 'add-group-by', attributePath: 'a' },
+          { op: 'add-group-by', attributePath: 'b' },
+          { op: 'update-group-by', from: 'a', to: 'b' },
+        ],
+      }),
+    ).toThrow(/group-by "b" already exists/);
+  });
+
+  it('test_updateAggregation_replacesStrategySetAtPosition', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, {
+      operations: [
+        { op: 'add-aggregation-strategy', attributePath: 'x', strategies: ['min'] },
+        { op: 'add-aggregation-strategy', attributePath: 'y', strategies: ['max'] },
+        { op: 'update-aggregation-strategy', attributePath: 'x', strategies: ['avg', 'sum'] },
+      ],
+    });
+    const reducer = readInputFromUpdate(update).reducer as unknown as Record<string, unknown>;
+    const entries = reducer['attributeMergeStrategyEntries'] as { attributePath: string[]; strategy: { type: string } }[];
+    // x block replaced in place at index 0 (avg,sum), y untouched after it
+    expect(entries.map(e => `${e.attributePath.join('.')}:${e.strategy.type}`)).toEqual(['x:avg', 'x:sum', 'y:max']);
+  });
+
+  it('test_updateAggregation_anchorsAtFirstEntry_withLeadingNonPathEntry', () => {
+    // A non-path entry precedes the target: the replacement must land at the target's
+    // original index, not at the front (locks the "earlier entries survive the filter" invariant).
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, {
+      operations: [
+        { op: 'add-aggregation-strategy', attributePath: 'y', strategies: ['max'] },
+        { op: 'add-aggregation-strategy', attributePath: 'x', strategies: ['min'] },
+        { op: 'update-aggregation-strategy', attributePath: 'x', strategies: ['avg'] },
+      ],
+    });
+    const reducer = readInputFromUpdate(update).reducer as unknown as Record<string, unknown>;
+    const entries = reducer['attributeMergeStrategyEntries'] as { attributePath: string[]; strategy: { type: string } }[];
+    expect(entries.map(e => `${e.attributePath.join('.')}:${e.strategy.type}`)).toEqual(['y:max', 'x:avg']);
+  });
+
+  it('test_updateAggregation_dedupesStrategies', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, {
+      operations: [
+        { op: 'add-aggregation-strategy', attributePath: 'x', strategies: ['min'] },
+        { op: 'update-aggregation-strategy', attributePath: 'x', strategies: ['sum', 'sum', 'avg'] },
+      ],
+    });
+    const reducer = readInputFromUpdate(update).reducer as unknown as Record<string, unknown>;
+    const entries = reducer['attributeMergeStrategyEntries'] as { strategy: { type: string } }[];
+    expect(entries.map(e => e.strategy.type)).toEqual(['sum', 'avg']); // duplicate sum collapsed, order kept
+  });
+
+  it('test_updateAggregation_absent_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    expect(() => applyPatch(job, { operations: [{ op: 'update-aggregation-strategy', attributePath: 'x', strategies: ['avg'] }] })).toThrow(
+      /aggregation strategy for "x" not found/,
+    );
+  });
+
+  it('test_updateAggregation_emptyStrategies_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    expect(() =>
+      applyPatch(job, {
+        operations: [
+          { op: 'add-aggregation-strategy', attributePath: 'x', strategies: ['min'] },
+          { op: 'update-aggregation-strategy', attributePath: 'x', strategies: [] },
+        ],
+      }),
+    ).toThrow(/strategies array must not be empty/);
+  });
+
+  it('test_updateReducerException_replacesPredicate', () => {
+    const job = makeTemplateJob({});
+    const from = { type: DatadogQueryPredicateType.datadog_query, query: 'status:error' };
+    const to = { type: DatadogQueryPredicateType.datadog_query, query: 'status:warn' };
+    const update = applyPatch(job, {
+      operations: [
+        { op: 'add-reducer-exception', predicate: from },
+        { op: 'update-reducer-exception', from, to },
+      ],
+    });
+    const exceptions = readInputFromUpdate(update).exceptions as { type: string; predicate: unknown }[];
+    expect(exceptions).toHaveLength(1);
+    expect(exceptions[0]?.predicate).toEqual(to);
+  });
+
+  it('test_updateReducerException_absent_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    expect(() =>
+      applyPatch(job, {
+        operations: [{ op: 'update-reducer-exception', from: { type: DatadogQueryPredicateType.datadog_query, query: 'x' }, to: { type: DatadogQueryPredicateType.datadog_query, query: 'y' } }],
+      }),
+    ).toThrow(/matching reducer exception not found/);
+  });
+
+  it('test_updateReducerException_toAlreadyExists_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    const from = { type: DatadogQueryPredicateType.datadog_query, query: 'status:error' };
+    const to = { type: DatadogQueryPredicateType.datadog_query, query: 'status:warn' };
+    expect(() =>
+      applyPatch(job, {
+        operations: [
+          { op: 'add-reducer-exception', predicate: from },
+          { op: 'add-reducer-exception', predicate: to },
+          { op: 'update-reducer-exception', from, to },
+        ],
+      }),
+    ).toThrow(/an exception matching "to" already exists/);
+  });
+
+  it('test_updateReducerException_nonMatchingFrom_shouldThrow', () => {
+    // An exception exists, but `from` doesn't match it — must error, not silently target the wrong one.
+    const job = makeTemplateJob({});
+    expect(() =>
+      applyPatch(job, {
+        operations: [
+          { op: 'add-reducer-exception', predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'status:error' } },
+          { op: 'update-reducer-exception', from: { type: DatadogQueryPredicateType.datadog_query, query: 'status:warn' }, to: { type: DatadogQueryPredicateType.datadog_query, query: 'status:info' } },
+        ],
+      }),
+    ).toThrow(/matching reducer exception not found/);
+  });
+});
+
+describe('applyPatch — reducer-list in-place updates (job-graph backend)', () => {
+  it('test_jobGraph_updateMessageAttribute_replacesAtPosition', () => {
+    const update = applyPatch(makeJobGraphJob(), { operations: [{ op: 'update-message-attribute', from: 'msg', to: 'log' }] });
+    expect(findJobGraphVertex(update, 'log_attributes_remapper')['messageReservedAttributes']).toEqual(['message', 'log']);
+  });
+
+  it('test_jobGraph_updateMessageAttribute_multiPart_replacesAtPosition', () => {
+    const update = applyPatch(makeJobGraphReducerJob(), {
+      operations: [{ op: 'update-message-attribute', from: 'body.message', to: 'body.text' }],
+    });
+    expect(findJobGraphVertex(update, 'log_attributes_remapper')['messageReservedAttributePaths']).toEqual([['body', 'text']]);
+  });
+
+  it('test_jobGraph_updateMessageAttribute_arityMismatch_shouldThrow', () => {
+    expect(() =>
+      applyPatch(makeJobGraphJob(), { operations: [{ op: 'update-message-attribute', from: 'msg', to: 'body.text' }] }),
+    ).toThrow(/single-part and multi-part paths are stored in different lists/);
+  });
+
+  it('test_jobGraph_updateMessageAttribute_absent_shouldThrow', () => {
+    expect(() =>
+      applyPatch(makeJobGraphJob(), { operations: [{ op: 'update-message-attribute', from: 'nope', to: 'log' }] }),
+    ).toThrow(/message attribute "nope" not found/);
+  });
+
+  it('test_jobGraph_updateReducerException_replacesPredicate', () => {
+    const from = datadogPredicate('status:error');
+    const to = datadogPredicate('status:warn');
+    const update = applyPatch(makeJobGraphJob(), {
+      operations: [
+        { op: 'add-reducer-exception', predicate: from },
+        { op: 'update-reducer-exception', from, to },
+      ],
+    });
+    expect(findJobGraphVertex(update, 'log_reducer')['logReducerExceptions']).toEqual([to]);
+  });
+
+  it('test_jobGraph_updateReducerException_absent_shouldThrow', () => {
+    expect(() =>
+      applyPatch(makeJobGraphJob(), {
+        operations: [{ op: 'update-reducer-exception', from: datadogPredicate('status:error'), to: datadogPredicate('status:warn') }],
+      }),
+    ).toThrow(/matching reducer exception not found/);
+  });
+
+  it('test_jobGraph_updateGroupBy_replacesAtPosition', () => {
+    const update = applyPatch(makeJobGraphReducerJob({ partitionByAttributes: ['a', 'b'] }), {
+      operations: [{ op: 'update-group-by', from: 'a', to: 'c' }],
+    });
+    expect(findJobGraphVertex(update, 'log_reducer')['partitionByAttributes']).toEqual(['c', 'b']);
+  });
+
+  it('test_jobGraph_updateGroupBy_absent_shouldThrow', () => {
+    expect(() =>
+      applyPatch(makeJobGraphJob(), { operations: [{ op: 'update-group-by', from: 'a', to: 'b' }] }),
+    ).toThrow(/group-by "a" not found/);
+  });
+
+  it('test_jobGraph_updateReducerException_toAlreadyExists_shouldThrow', () => {
+    const from = datadogPredicate('status:error');
+    const to = datadogPredicate('status:warn');
+    expect(() =>
+      applyPatch(makeJobGraphJob(), {
+        operations: [
+          { op: 'add-reducer-exception', predicate: from },
+          { op: 'add-reducer-exception', predicate: to },
+          { op: 'update-reducer-exception', from, to },
+        ],
+      }),
+    ).toThrow(/an exception matching "to" already exists/);
+  });
+
+  it('test_jobGraph_updateAggregation_replacesStrategySetAtPosition', () => {
+    const update = applyPatch(makeJobGraphReducerJob({
+      attributeMergeStrategyEntries: [
+        { attributePath: ['y'], strategy: { type: MaxAttributesMergeStrategyType.max } },
+        { attributePath: ['x'], strategy: { type: MinAttributesMergeStrategyType.min } },
+      ],
+    }), {
+      operations: [{ op: 'update-aggregation-strategy', attributePath: 'x', strategies: ['avg', 'sum'] }],
+    });
+    const entries = findJobGraphVertex(update, 'log_reducer')['attributeMergeStrategyEntries'] as SchemaAttributesMergeStrategyEntry[];
+    expect(entries.map(entry => `${entry.attributePath.join('.')}:${entry.strategy.type}`)).toEqual(['y:max', 'x:avg', 'x:sum']);
+  });
+
+  it('test_jobGraph_updateAggregation_absent_shouldThrow', () => {
+    expect(() =>
+      applyPatch(makeJobGraphJob(), { operations: [{ op: 'update-aggregation-strategy', attributePath: 'x', strategies: ['avg'] }] }),
+    ).toThrow(/aggregation strategy for "x" not found/);
+  });
+
+  it('test_jobGraph_updateAggregation_emptyStrategies_shouldThrow', () => {
+    expect(() =>
+      applyPatch(makeJobGraphReducerJob({ attributeMergeStrategyEntries: [{ attributePath: ['x'], strategy: { type: MinAttributesMergeStrategyType.min } }] }), {
+        operations: [{ op: 'update-aggregation-strategy', attributePath: 'x', strategies: [] }],
+      }),
+    ).toThrow(/strategies array must not be empty/);
+  });
+
+  it('test_jobGraph_updateGroupBy_multipleReducers_shouldThrowAmbiguous', () => {
+    const job = makeJobGraphJob({
+      vertices: [
+        { type: LogReducerType.log_reducer, name: 'r1', delimiters: [' '], enabledMasks: [], masks: [], partitionByAttributes: ['a'] },
+        { type: LogReducerType.log_reducer, name: 'r2', delimiters: [' '], enabledMasks: [], masks: [] },
+      ],
+    });
+    expect(() => applyPatch(job, { operations: [{ op: 'update-group-by', from: 'a', to: 'b' }] })).toThrow(
+      /expected exactly one .* but found 2/,
+    );
+  });
+
+  it('test_jobGraph_updateMessageAttribute_multipleRemappers_shouldThrowAmbiguous', () => {
+    // update-message-attribute anchors on the remapper (distinct resolver from the reducer ops).
+    const job = makeJobGraphJob({
+      vertices: [
+        { type: LogAttributesRemapperType.log_attributes_remapper, name: 'r1', messageReservedAttributes: ['msg'] },
+        { type: LogAttributesRemapperType.log_attributes_remapper, name: 'r2' },
+        { type: LogReducerType.log_reducer, name: 'log_reducer', delimiters: [' '], enabledMasks: [], masks: [] },
+      ],
+    });
+    expect(() => applyPatch(job, { operations: [{ op: 'update-message-attribute', from: 'msg', to: 'log' }] })).toThrow(
+      /expected exactly one .* but found 2/,
+    );
   });
 });
