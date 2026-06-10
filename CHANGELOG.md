@@ -1,11 +1,23 @@
 # Changelog
 
-All notable changes to the Grepr Claude Code plugin will be documented in this file.
+All notable changes to the Grepr agent plugins will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.2.0] - 2026-06-10
+
+### Added
+
+- Added Codex plugin metadata and Agents marketplace metadata so Grepr skills can be distributed to Codex users.
+- Eight new pipeline-editing workflow skills:
+  - `describe-pipeline`, `test-pipeline-change` - inspect pipeline structure and validate patches through plan, diff, draft, metrics, and apply gates.
+  - `tune-reduction`, `tune-grok` - diagnose poor reduction or parsing gaps and guide reducer/grok fixes.
+  - `change-exceptions`, `change-filtering` - adjust reducer exceptions and pipeline filters.
+  - `change-source`, `change-sink` - add, remove, replace, or repoint pipeline inputs and outputs.
+- Examples and reference docs for the new pipeline-editing workflows.
 
 ### Fixed
 
@@ -13,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `dataset-commands/SKILL.md` referenced a `dataset:list --job-id <id>` filter that doesn't exist. Replaced with the supported workaround (inspect `job:get`'s vertices for `datasetId`).
 - `dataset-commands/dataset-create.md` documented an inline `--name "..."` example that the CLI rejects. Replaced with a JSON-file example matching the actual `DatasetCreate` schema.
 
-## [0.1.0] — 2026-05-12
+## [0.1.0] - 2026-05-12
 
 ### Added
 
