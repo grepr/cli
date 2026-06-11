@@ -987,6 +987,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/otlp/{id}/token": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Retrieve OTLP integration token in clear text
+     * @description Retrieves the plain-text authentication token for an OTLP integration.
+     */
+    get: operations["getToken"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/integrations/pagerduty-mcp": {
     parameters: {
       query?: never;
@@ -2926,6 +2946,9 @@ export interface components {
       type?: {
         typeName?: string;
       };
+    };
+    ClearSecret: {
+      value?: string;
     };
     CloudFormationSetupInfo: {
       /** @description The AWS account ID */
@@ -9669,6 +9692,7 @@ export type SchemaBucketAccessResult =
   components["schemas"]["BucketAccessResult"];
 export type SchemaChunkedOutputEventRecordReadableData =
   components["schemas"]["ChunkedOutputEventRecordReadableData"];
+export type SchemaClearSecret = components["schemas"]["ClearSecret"];
 export type SchemaCloudFormationSetupInfo =
   components["schemas"]["CloudFormationSetupInfo"];
 export type SchemaCloudTrailLogsFileSource =
@@ -12903,6 +12927,42 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getToken: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Token retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ClearSecret"];
+        };
       };
       /** @description Unauthorized */
       401: {
