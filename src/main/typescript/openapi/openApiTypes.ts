@@ -59,6 +59,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/billing/daily-table": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get daily-usage table (JSON or CSV)
+     * @description Returns the daily-usage table for the requested reporting period.
+     */
+    get: operations["getDailyTable"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/billing/periods": {
     parameters: {
       query?: never;
@@ -71,6 +91,26 @@ export interface paths {
      * @description Returns the customer display name plus reporting periods available for the authenticated user's organization. Returns 404 when no billing record exists for the customer or no eligible subscription has any closed orders.
      */
     get: operations["getPeriods"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/billing/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get billing summary for one reporting period
+     * @description Returns the per-period payload — contract bounds, reporting-period descriptor, and plan-specific commitment summary — for the authenticated user's organization. When no period is supplied, defaults to the period containing today.
+     */
+    get: operations["getSummary"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2620,6 +2660,40 @@ export interface components {
        */
       type: AndQueryNodeType;
     };
+    /** @description Commitment summary for Annual - Credit Pool plans. */
+    AnnualCreditPoolSummary: {
+      /** @description Yearly committed dollar amount. */
+      annualCommitment: number;
+      /** @description Cumulative dollar value of consumption since contract start. */
+      usedCumulative: number;
+      /** @description Dollar value of consumption during this reporting period. */
+      usedThisPeriod: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: AnnualCreditPoolSummaryType;
+    };
+    /** @description Commitment summary for Annual - Data Processing plans. */
+    AnnualDataProcessingSummary: {
+      /** @description One row per metric the customer is pre-committed on (e.g. Data Processing GB, Compute Units). */
+      rows: components["schemas"]["MeteredDimensionCommitment"][];
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: AnnualDataProcessingSummaryType;
+    };
+    /** @description Pre-commitment summary for Annual + SaaS plans. */
+    AnnualSaasPreCommitmentSummary: {
+      /** @description One row per metric the customer is pre-committed on, ordered by the configured displayed brick id list. */
+      rows: components["schemas"]["MeteredDimensionCommitment"][];
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: AnnualSaasPreCommitmentSummaryType;
+    };
     /** @description One anomaly rule. */
     AnomalyConfig: {
       /**
@@ -2936,6 +3010,22 @@ export interface components {
       /** @description Reporting periods available for this customer, newest first. */
       periods: components["schemas"]["PeriodEntry"][];
     };
+    /** @description Plan-specific usage summary. */
+    BillingSummary: {
+      type: string;
+    } & (
+      | components["schemas"]["PaygSummary"]
+      | components["schemas"]["MonthlyCreditPoolSummary"]
+      | components["schemas"]["AnnualCreditPoolSummary"]
+      | components["schemas"]["AnnualDataProcessingSummary"]
+      | components["schemas"]["AnnualSaasPreCommitmentSummary"]
+    );
+    /** @description Per-period billing summary: contract bounds, period, summary. */
+    BillingSummaryResponse: {
+      contract: components["schemas"]["Contract"];
+      period: components["schemas"]["PeriodEntry"];
+      summary: components["schemas"]["BillingSummary"];
+    };
     BucketAccessResult: {
       accessible?: boolean;
       message?: string;
@@ -3112,6 +3202,19 @@ export interface components {
        */
       type: ConstantSamplingType;
     };
+    /** @description Metadata about the contract. */
+    Contract: {
+      /**
+       * Format: date
+       * @description Inclusive contract end date — the last day this contract covers. For renewed or recast contracts, this is the day before the next contract's start.
+       */
+      endDate: string;
+      /**
+       * Format: date
+       * @description Inclusive contract start date.
+       */
+      startDate: string;
+    };
     /** @description Attributes of the Grepr Job to create */
     CreateJob: {
       /**
@@ -3191,6 +3294,13 @@ export interface components {
        *     ]
        */
       roleIds: string[];
+    };
+    /** @description Daily-usage table. */
+    DailyTable: {
+      /** @description The reporting period's days in ascending order. */
+      days: string[];
+      /** @description One usage series per metered dimension, in display order. Bricks absent from the configured displayed-brick list are skipped. */
+      metrics: components["schemas"]["MeteredDimensionUsage"][];
     };
     Data: {
       resultType: string;
@@ -5582,6 +5692,30 @@ export interface components {
        */
       wildcard: string;
     };
+    /** @description One metric row in a per-metric pre-commitment summary table. */
+    MeteredDimensionCommitment: {
+      /** @description Annually committed quantity for this metric. */
+      annualCommitment: number;
+      /** @description Metric name (e.g. "Data Processing GB", "Compute Units"). */
+      metric: string;
+      /** @description Quantity consumed cumulatively since the contract started. */
+      usedCumulative: number;
+      /** @description Quantity consumed during the reporting period. */
+      usedThisPeriod: number;
+    };
+    /** @description One metered dimension's daily usage and period totals. */
+    MeteredDimensionUsage: {
+      /** @description Per-day usage counts. */
+      dailyValues: number[];
+      /** @description Display label for the metered dimension. */
+      label: string;
+      /** @description This column's total for the prior calendar month; null when no prior-month comparison applies (a partial billing cycle, or no prior month before the contract start). Consumers derive the delta and percent change from this value and {@link #getTotal()}. */
+      previousMonthTotal?: number;
+      /** @description Sum of the daily values over the reporting period. */
+      total: number;
+      /** @description Billed dollar amount for the period; null when this column has no unit price. */
+      totalDollars?: number;
+    };
     /** @description The metrics aggregation to apply to the source data. */
     MetricAggSpec: {
       /**
@@ -5879,6 +6013,18 @@ export interface components {
        * @enum {string}
        */
       type: MinAttributesMergeStrategyType;
+    };
+    /** @description Commitment summary for Monthly + Credit Pool plans. */
+    MonthlyCreditPoolSummary: {
+      /** @description Monthly recurring committed dollar amount. */
+      credits: number;
+      /** @description Gross consumption in dollars for this reporting period. */
+      total: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: MonthlyCreditPoolSummaryType;
     };
     /** @description The payload containing integration data. */
     NewRelic: {
@@ -6421,6 +6567,16 @@ export interface components {
       enabled?: boolean;
       /** Format: int32 */
       order?: number;
+    };
+    /** @description Commitment summary for Monthly + PAYG plans. */
+    PaygSummary: {
+      /** @description Invoice total for this reporting period. */
+      chargedThisPeriod?: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: PaygSummaryType;
     };
     /** @description One reporting period — dropdown entry plus bounds for display. */
     PeriodEntry: {
@@ -9657,6 +9813,12 @@ export type SchemaAllQueryNode = components["schemas"]["AllQueryNode"];
 export type SchemaAndEventPredicate =
   components["schemas"]["AndEventPredicate"];
 export type SchemaAndQueryNode = components["schemas"]["AndQueryNode"];
+export type SchemaAnnualCreditPoolSummary =
+  components["schemas"]["AnnualCreditPoolSummary"];
+export type SchemaAnnualDataProcessingSummary =
+  components["schemas"]["AnnualDataProcessingSummary"];
+export type SchemaAnnualSaasPreCommitmentSummary =
+  components["schemas"]["AnnualSaasPreCommitmentSummary"];
 export type SchemaAnomalyConfig = components["schemas"]["AnomalyConfig"];
 export type SchemaAnthropic = components["schemas"]["Anthropic"];
 export type SchemaAny = components["schemas"]["Any"];
@@ -9688,6 +9850,9 @@ export type SchemaBackfillJobAction =
   components["schemas"]["BackfillJobAction"];
 export type SchemaBillingPeriodsResponse =
   components["schemas"]["BillingPeriodsResponse"];
+export type SchemaBillingSummary = components["schemas"]["BillingSummary"];
+export type SchemaBillingSummaryResponse =
+  components["schemas"]["BillingSummaryResponse"];
 export type SchemaBucketAccessResult =
   components["schemas"]["BucketAccessResult"];
 export type SchemaChunkedOutputEventRecordReadableData =
@@ -9707,11 +9872,13 @@ export type SchemaConditionalDataLakeConfig =
   components["schemas"]["ConditionalDataLakeConfig"];
 export type SchemaConsoleSetupInfo = components["schemas"]["ConsoleSetupInfo"];
 export type SchemaConstantSampling = components["schemas"]["ConstantSampling"];
+export type SchemaContract = components["schemas"]["Contract"];
 export type SchemaCreateJob = components["schemas"]["CreateJob"];
 export type SchemaCreateRole = components["schemas"]["CreateRole"];
 export type SchemaCreateServiceAccount =
   components["schemas"]["CreateServiceAccount"];
 export type SchemaCreateUser = components["schemas"]["CreateUser"];
+export type SchemaDailyTable = components["schemas"]["DailyTable"];
 export type SchemaData = components["schemas"]["Data"];
 export type SchemaDataWarehouse = components["schemas"]["DataWarehouse"];
 export type SchemaDatabaseUserInfo = components["schemas"]["DatabaseUserInfo"];
@@ -9912,6 +10079,10 @@ export type SchemaMessagePrefixNode =
 export type SchemaMessageRe2Node = components["schemas"]["MessageRe2Node"];
 export type SchemaMessageWildcardNode =
   components["schemas"]["MessageWildcardNode"];
+export type SchemaMeteredDimensionCommitment =
+  components["schemas"]["MeteredDimensionCommitment"];
+export type SchemaMeteredDimensionUsage =
+  components["schemas"]["MeteredDimensionUsage"];
 export type SchemaMetricAggSpec = components["schemas"]["MetricAggSpec"];
 export type SchemaMetricAggregation =
   components["schemas"]["MetricAggregation"];
@@ -9929,6 +10100,8 @@ export type SchemaMetricsSynchronousSink =
   components["schemas"]["MetricsSynchronousSink"];
 export type SchemaMinAttributesMergeStrategy =
   components["schemas"]["MinAttributesMergeStrategy"];
+export type SchemaMonthlyCreditPoolSummary =
+  components["schemas"]["MonthlyCreditPoolSummary"];
 export type SchemaNewRelic = components["schemas"]["NewRelic"];
 export type SchemaNewRelicLogAgentSource =
   components["schemas"]["NewRelicLogAgentSource"];
@@ -9962,6 +10135,7 @@ export type SchemaPatternLookupIcebergTableSink =
 export type SchemaPatternMatcher = components["schemas"]["PatternMatcher"];
 export type SchemaPatternRuleConfig =
   components["schemas"]["PatternRuleConfig"];
+export type SchemaPaygSummary = components["schemas"]["PaygSummary"];
 export type SchemaPeriodEntry = components["schemas"]["PeriodEntry"];
 export type SchemaPhraseNode = components["schemas"]["PhraseNode"];
 export type SchemaPipelineRef = components["schemas"]["PipelineRef"];
@@ -10340,6 +10514,58 @@ export interface operations {
       };
     };
   };
+  getDailyTable: {
+    parameters: {
+      query?: {
+        /** @description Canonical period id: "YYYY-MM" for annual periods, "YYYY-MM-DD" (the sub-period start date) for monthly periods. Defaults to the period containing today when omitted. */
+        period?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Daily-usage table. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DailyTable"];
+          "text/csv": components["schemas"]["DailyTable"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   getPeriods: {
     parameters: {
       query?: never;
@@ -10373,6 +10599,57 @@ export interface operations {
         content?: never;
       };
       /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getSummary: {
+    parameters: {
+      query?: {
+        /** @description Canonical period id: "YYYY-MM" for annual periods, "YYYY-MM-DD" (the sub-period start date) for monthly periods. Defaults to the period containing today when omitted. */
+        period?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Contract + reporting period + plan summary. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BillingSummaryResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No billing record exists, no eligible subscription owns the requested period, or the subscription's plan template is unrecognized. */
       404: {
         headers: {
           [name: string]: unknown;
@@ -16889,6 +17166,15 @@ export enum AndEventPredicateType {
 export enum AndQueryNodeType {
   and_query_node = "and-query-node",
 }
+export enum AnnualCreditPoolSummaryType {
+  annual_credit_pool = "annual-credit-pool",
+}
+export enum AnnualDataProcessingSummaryType {
+  annual_data_processing = "annual-data-processing",
+}
+export enum AnnualSaasPreCommitmentSummaryType {
+  annual_saas_pre_commitment = "annual-saas-pre-commitment",
+}
 export enum AttributeKeyTermNodeType {
   attribute_key_term_node = "attribute-key-term-node",
 }
@@ -17195,6 +17481,9 @@ export enum MetricsSynchronousSinkType {
 export enum MinAttributesMergeStrategyType {
   min = "min",
 }
+export enum MonthlyCreditPoolSummaryType {
+  monthly_credit_pool = "monthly-credit-pool",
+}
 export enum NewRelicLogAgentSourceType {
   newrelic_log_agent_source = "newrelic-log-agent-source",
 }
@@ -17230,6 +17519,9 @@ export enum PatternLookupIcebergTableSinkType {
 }
 export enum PatternMatcherType {
   pattern_matcher = "pattern-matcher",
+}
+export enum PaygSummaryType {
+  monthly_payg = "monthly-payg",
 }
 export enum PhraseNodeType {
   phrase_node = "phrase-node",
