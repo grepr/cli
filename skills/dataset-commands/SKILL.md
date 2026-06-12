@@ -64,9 +64,9 @@ EOF
 grepr dataset:create dataset.json
 ```
 
-### Delete a dataset and its files
+### Delete a dataset
 ```bash
-grepr dataset:delete <dataset-id> --delete-files
+grepr dataset:delete <dataset-id>
 ```
 
 ## Command Details

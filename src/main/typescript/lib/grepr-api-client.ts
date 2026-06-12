@@ -277,11 +277,10 @@ export class GreprApiClient {
     return data;
   }
 
-  async deleteDataset(id: string, deleteFiles = false): Promise<void> {
+  async deleteDataset(id: string): Promise<void> {
     const { error } = await this.client.DELETE('/v1/datasets/{id}', {
       params: {
         path: { id },
-        query: { deleteFiles },
       },
     });
 

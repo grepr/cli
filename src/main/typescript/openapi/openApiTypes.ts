@@ -10773,9 +10773,7 @@ export interface operations {
   };
   deleteDataset: {
     parameters: {
-      query?: {
-        deleteFiles?: boolean;
-      };
+      query?: never;
       header?: never;
       path: {
         id: string;

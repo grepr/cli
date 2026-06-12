@@ -1,8 +1,7 @@
-import { Command } from 'commander';
 import { ListCommand, ListCommandOptions } from './list-command.js';
 import { CrudCommand, CrudCommandOptions, CrudCreateUpdateOptions } from './crud-command.js';
 import { logHumanFooter } from '../lib/output-format.js';
-import { CommandOption, MergeConfiguration } from '../types.js';
+import { CommandOption } from '../types.js';
 import { SchemaDatasetCreate, SchemaDatasetUpdate } from '../openapi/openApiTypes.js';
 
 // Dataset-specific interfaces extending the base interfaces
@@ -11,10 +10,6 @@ export type DatasetListCommandOptions = ListCommandOptions;
 export type DatasetCrudCommandOptions = CrudCommandOptions;
 
 export type DatasetCreateUpdateOptions = CrudCreateUpdateOptions;
-
-export interface DatasetDeleteOptions extends DatasetCrudCommandOptions {
-  deleteFiles?: boolean;
-}
 
 /**
  * Dataset list command implementation using the new architecture
@@ -77,16 +72,6 @@ export class DatasetCrudCommand extends CrudCommand<DatasetCrudCommandOptions> {
 
   protected supportsDelete(): boolean {
     return true;
-  }
-
-  protected getDeleteOptions(): CommandOption[] {
-    return [
-      {
-        flags: '--delete-files',
-        description: 'Also delete associated data files',
-        defaultValue: false
-      }
-    ];
   }
 
   async executeGet(datasetId: string, options: DatasetCrudCommandOptions): Promise<void> {
@@ -154,39 +139,17 @@ export class DatasetCrudCommand extends CrudCommand<DatasetCrudCommandOptions> {
     }
   }
 
-  async executeDelete(datasetId: string, options: DatasetDeleteOptions): Promise<void> {
+  async executeDelete(datasetId: string, options: DatasetCrudCommandOptions): Promise<void> {
     try {
       this.apiClient = this.createApiClient(options);
 
-      await this.apiClient.deleteDataset(datasetId, options.deleteFiles || false);
+      await this.apiClient.deleteDataset(datasetId);
 
       this.showDeleteSuccess(datasetId, options);
 
     } catch (error) {
       console.error(`Error deleting dataset ${datasetId}:`, (error as Error).message);
       process.exit(1);
-    }
-  }
-
-  /**
-   * Override addToProgram to add custom delete options
-   */
-  addToProgram(
-    program: Command,
-    mergeConfiguration: MergeConfiguration
-  ): void {
-    // Call the parent implementation first
-    super.addToProgram(program, mergeConfiguration);
-
-    // Find the delete command and add the delete-files option
-    const deleteCommand = program.commands.find((cmd: Command) =>
-      cmd.name() === `${this.getCommandPrefix()}:delete`
-    );
-
-    if (deleteCommand) {
-      this.getDeleteOptions().forEach(option => {
-        deleteCommand.option(option.flags, option.description, option.defaultValue);
-      });
     }
   }
 }

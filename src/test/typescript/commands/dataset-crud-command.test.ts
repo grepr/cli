@@ -104,16 +104,6 @@ describe('DatasetCrudCommand', () => {
       expect(result).toBe(true);
     });
 
-    it('test_getDeleteOptions_shouldReturnDeleteFilesOption', () => {
-      const result = (command as any).getDeleteOptions();
-      expect(result).toEqual([
-        {
-          flags: '--delete-files',
-          description: 'Also delete associated data files',
-          defaultValue: false
-        }
-      ]);
-    });
   });
 
   describe('executeGet Method', () => {
@@ -417,33 +407,13 @@ describe('DatasetCrudCommand', () => {
       browser: true
     };
 
-    it('test_executeDelete_withoutDeleteFiles_shouldDeleteDatasetOnly', async () => {
+    it('test_executeDelete_shouldDeleteDataset', async () => {
       mockApiClient.deleteDataset.mockResolvedValue(undefined);
 
       await command.executeDelete('123', mockOptions);
 
-      expect(mockApiClient.deleteDataset).toHaveBeenCalledWith('123', false);
+      expect(mockApiClient.deleteDataset).toHaveBeenCalledWith('123');
       expect((command as any).showDeleteSuccess).toHaveBeenCalledWith('123', mockOptions);
-    });
-
-    it('test_executeDelete_withDeleteFiles_shouldDeleteDatasetAndFiles', async () => {
-      const deleteOptionsWithFiles = { ...mockOptions, deleteFiles: true };
-      mockApiClient.deleteDataset.mockResolvedValue(undefined);
-
-      await command.executeDelete('123', deleteOptionsWithFiles);
-
-      expect(mockApiClient.deleteDataset).toHaveBeenCalledWith('123', true);
-      expect((command as any).showDeleteSuccess).toHaveBeenCalledWith('123', deleteOptionsWithFiles);
-    });
-
-    it('test_executeDelete_deleteFilesFalse_shouldDeleteDatasetOnly', async () => {
-      const deleteOptionsWithFiles = { ...mockOptions, deleteFiles: false };
-      mockApiClient.deleteDataset.mockResolvedValue(undefined);
-
-      await command.executeDelete('123', deleteOptionsWithFiles);
-
-      expect(mockApiClient.deleteDataset).toHaveBeenCalledWith('123', false);
-      expect((command as any).showDeleteSuccess).toHaveBeenCalledWith('123', deleteOptionsWithFiles);
     });
 
     it('test_executeDelete_apiDeleteFails_shouldLogErrorAndExit', async () => {
