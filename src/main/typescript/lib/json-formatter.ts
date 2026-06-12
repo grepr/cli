@@ -76,16 +76,18 @@ export class JsonFormatter {
     }
 
     this.reset();
+    const sortedData =
+      this.options.format === 'table' || !this.options.sortBy ? data : this.sortData(data, this.flattenRows(data));
 
     switch (this.options.format) {
       case 'table':
         // Accumulate all data then render
-        data.forEach(obj => this.addToTable(obj));
+        sortedData.forEach(obj => this.addToTable(obj));
         return this.renderTable();
 
       case 'csv': {
         // First pass: collect all headers from all objects
-        data.forEach(obj => {
+        sortedData.forEach(obj => {
           const flattenedRow = this.flattenObject(obj);
           const newKeys = Object.keys(flattenedRow);
           if (this.csvHeaders.length === 0) {
@@ -98,7 +100,7 @@ export class JsonFormatter {
 
         // Second pass: generate CSV rows with consistent headers
         const csvRows: string[] = [];
-        data.forEach(obj => {
+        sortedData.forEach(obj => {
           const csvRow = this.addToCsv(obj);
           if (csvRow) {
             csvRows.push(csvRow);
@@ -108,16 +110,16 @@ export class JsonFormatter {
       }
 
       case 'pretty':
-        return data.map(obj => this.formatPrettyJson(obj)).join('\n\n');
+        return sortedData.map(obj => this.formatPrettyJson(obj)).join('\n\n');
 
       case 'raw':
-        return data.map(obj => JSON.stringify(obj)).join('\n');
+        return sortedData.map(obj => JSON.stringify(obj)).join('\n');
 
       case 'compact':
-        return data.map(obj => JSON.stringify(obj, null, 0)).join('\n');
+        return sortedData.map(obj => JSON.stringify(obj, null, 0)).join('\n');
 
       default:
-        return JSON.stringify(data, null, 2);
+        return JSON.stringify(sortedData, null, 2);
     }
   }
 
@@ -376,7 +378,7 @@ export class JsonFormatter {
   /**
    * Sort data based on the sortBy option
    */
-  private sortData(data: Record<string, unknown>[]): Record<string, unknown>[] {
+  private sortData(data: Record<string, unknown>[], sortRows = data): Record<string, unknown>[] {
     if (!this.options.sortBy || data.length <= 1) {
       return data;
     }
@@ -385,69 +387,92 @@ export class JsonFormatter {
     const isAscending = sortOrder.toLowerCase() === 'asc';
 
     // Find the actual column name (case-insensitive)
-    const actualColumn = this.findActualColumnName(sortColumn || '');
+    const actualColumn = this.findActualColumnName(sortColumn || '', this.collectColumnNames(sortRows));
     if (!actualColumn) {
       console.warn(`Warning: Sort column '${sortColumn}' not found in data`);
       return data;
     }
 
-    return [...data].sort((a, b) => {
-      const valueA = a[actualColumn];
-      const valueB = b[actualColumn];
+    return data
+      .map((row, index) => {
+        const sortRow = sortRows[index];
+        if (sortRow === undefined) {
+          throw new Error('Sort row missing for data row');
+        }
+        return { row, sortRow };
+      })
+      .sort((a, b) => {
+        const valueA = a.sortRow[actualColumn];
+        const valueB = b.sortRow[actualColumn];
 
-      // Handle null/undefined values
-      if (valueA == null && valueB == null) return 0;
-      if (valueA == null) return isAscending ? -1 : 1;
-      if (valueB == null) return isAscending ? 1 : -1;
+        // Handle null/undefined values
+        if (valueA == null && valueB == null) return 0;
+        if (valueA == null) return isAscending ? -1 : 1;
+        if (valueB == null) return isAscending ? 1 : -1;
 
-      // Try to parse as timestamps first for timestamp columns
-      if (this.isTimestampColumn(actualColumn)) {
-        const timestampA = this.parseTimestamp(valueA);
-        const timestampB = this.parseTimestamp(valueB);
+        // Try to parse as timestamps first for timestamp columns
+        if (this.isTimestampColumn(actualColumn)) {
+          const timestampA = this.parseTimestamp(valueA);
+          const timestampB = this.parseTimestamp(valueB);
 
-        if (timestampA !== null && timestampB !== null) {
-          const result = timestampA - timestampB;
+          if (timestampA !== null && timestampB !== null) {
+            const result = timestampA - timestampB;
+            return isAscending ? result : -result;
+          }
+        }
+
+        // Try numeric comparison first
+        const numA = parseFloat(String(valueA));
+        const numB = parseFloat(String(valueB));
+
+        if (!isNaN(numA) && !isNaN(numB)) {
+          const result = numA - numB;
           return isAscending ? result : -result;
         }
-      }
 
-      // Try numeric comparison first
-      const numA = parseFloat(String(valueA));
-      const numB = parseFloat(String(valueB));
-
-      if (!isNaN(numA) && !isNaN(numB)) {
-        const result = numA - numB;
+        // Fall back to string comparison
+        const strA = String(valueA).toLowerCase();
+        const strB = String(valueB).toLowerCase();
+        const result = strA.localeCompare(strB);
         return isAscending ? result : -result;
-      }
+      })
+      .map(({ row }) => row);
+  }
 
-      // Fall back to string comparison
-      const strA = String(valueA).toLowerCase();
-      const strB = String(valueB).toLowerCase();
-      const result = strA.localeCompare(strB);
-      return isAscending ? result : -result;
-    });
+  private flattenRows(data: Record<string, unknown>[]): Record<string, unknown>[] {
+    return data.map(row => this.flattenObject(row));
+  }
+
+  private collectColumnNames(data: Record<string, unknown>[]): string[] {
+    const columnSet = data.reduce<Set<string>>((columns, row) => {
+      Object.keys(row).forEach(key => {
+        columns.add(key);
+      });
+      return columns;
+    }, new Set<string>());
+    return [...columnSet];
   }
 
   /**
    * Find the actual column name in the data (case-insensitive search)
    */
-  private findActualColumnName(searchColumn: string): string | null {
-    if (!this.tableHeaders) return null;
+  private findActualColumnName(searchColumn: string, columns = this.tableHeaders): string | null {
+    if (!columns) return null;
 
     const lowerSearchColumn = searchColumn.toLowerCase();
 
     // Exact match first
-    const exactMatch = this.tableHeaders.find(header => header === searchColumn);
+    const exactMatch = columns.find(header => header === searchColumn);
     if (exactMatch) return exactMatch;
 
     // Case-insensitive match
-    const caseInsensitiveMatch = this.tableHeaders.find(header =>
+    const caseInsensitiveMatch = columns.find(header =>
       header.toLowerCase() === lowerSearchColumn
     );
     if (caseInsensitiveMatch) return caseInsensitiveMatch;
 
     // Partial match for common variations
-    const partialMatch = this.tableHeaders.find(header =>
+    const partialMatch = columns.find(header =>
       header.toLowerCase().includes(lowerSearchColumn) ||
       lowerSearchColumn.includes(header.toLowerCase())
     );

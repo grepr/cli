@@ -369,6 +369,40 @@ describe('JsonFormatter', () => {
   });
 
   describe('Sorting', () => {
+    it.each(['table', 'csv', 'pretty', 'raw', 'compact'] as const)(
+      'should sort multi-object %s output by specified column',
+      format => {
+        const sortFormatter = new JsonFormatter({ ...defaultOptions, format, sortBy: 'name:asc' });
+        const data = [
+          { id: '1', name: 'zebra' },
+          { id: '2', name: 'alpha' },
+          { id: '3', name: 'beta' }
+        ];
+
+        const result = sortFormatter.formatObjects(data);
+
+        expect(result.indexOf('alpha')).toBeLessThan(result.indexOf('beta'));
+        expect(result.indexOf('beta')).toBeLessThan(result.indexOf('zebra'));
+      }
+    );
+
+    it.each(['table', 'csv', 'pretty', 'raw', 'compact'] as const)(
+      'should sort multi-object %s output by flattened column',
+      format => {
+        const sortFormatter = new JsonFormatter({ ...defaultOptions, format, maxDepth: 2, sortBy: 'metadata.priority:asc' });
+        const data = [
+          { id: '1', name: 'slow', metadata: { priority: 3 } },
+          { id: '2', name: 'fast', metadata: { priority: 1 } },
+          { id: '3', name: 'medium', metadata: { priority: 2 } }
+        ];
+
+        const result = sortFormatter.formatObjects(data);
+
+        expect(result.indexOf('fast')).toBeLessThan(result.indexOf('medium'));
+        expect(result.indexOf('medium')).toBeLessThan(result.indexOf('slow'));
+      }
+    );
+
     it('should sort data by specified column', () => {
       const sortFormatter = new JsonFormatter({ ...defaultOptions, sortBy: 'name:asc' });
       const data = [
