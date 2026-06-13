@@ -3297,6 +3297,8 @@ export interface components {
     };
     /** @description Daily-usage table. */
     DailyTable: {
+      /** @description True when the reporting period contains today. Same semantic as PeriodEntry.current — the last entry of days[] represents an incomplete day, so consumers should mark it as in-progress. */
+      current?: boolean;
       /** @description The reporting period's days in ascending order. */
       days: string[];
       /** @description One usage series per metered dimension, in display order. Bricks absent from the configured displayed-brick list are skipped. */
@@ -6587,7 +6589,7 @@ export interface components {
        * @description Inclusive period end date — the last day in the period.
        */
       endDate: string;
-      /** @description Canonical period identifier used in the URL — "YYYY-MM" for annual periods, "YYYY-MM-DD" (the sub-period's start date) for monthly periods. */
+      /** @description Canonical period identifier used in the URL — "YYYY-MM-DD" (the period's start date) for both monthly and annual plans. */
       id: string;
       /**
        * Format: date
@@ -10517,7 +10519,7 @@ export interface operations {
   getDailyTable: {
     parameters: {
       query?: {
-        /** @description Canonical period id: "YYYY-MM" for annual periods, "YYYY-MM-DD" (the sub-period start date) for monthly periods. Defaults to the period containing today when omitted. */
+        /** @description Canonical period id ("YYYY-MM-DD", the period's start date) for both monthly and annual plans. Defaults to the period containing today when omitted. */
         period?: string;
       };
       header?: never;
@@ -10617,7 +10619,7 @@ export interface operations {
   getSummary: {
     parameters: {
       query?: {
-        /** @description Canonical period id: "YYYY-MM" for annual periods, "YYYY-MM-DD" (the sub-period start date) for monthly periods. Defaults to the period containing today when omitted. */
+        /** @description Canonical period id ("YYYY-MM-DD", the period's start date) for both monthly and annual plans. Defaults to the period containing today when omitted. */
         period?: string;
       };
       header?: never;
