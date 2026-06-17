@@ -199,6 +199,34 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/datasets/{id}/{tableKey}/config": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get a dataset table config
+     * @description Returns the configuration for one of the dataset's tables (e.g. logs_raw), including the system-controlled effective partition spec. Body's user fields are empty when no override has been configured.
+     */
+    get: operations["getTableConfig"];
+    /**
+     * Replace a dataset table config
+     * @description Replaces the configuration override for one of the dataset's tables. Applies the resulting schema and partition-spec changes to the live Iceberg table. 409 if any pipeline currently references the dataset.
+     */
+    put: operations["putTableConfig"];
+    post?: never;
+    /**
+     * Remove a dataset table config
+     * @description Removes the user override and reverts the table to defaults. Idempotent.
+     */
+    delete: operations["deleteTableConfig"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/files/upload/presigned-url": {
     parameters: {
       query?: never;
@@ -3031,6 +3059,22 @@ export interface components {
       message?: string;
       retryable?: boolean;
     };
+    BucketPartitionTransform: Omit<
+      components["schemas"]["PartitionTransform"],
+      "type"
+    > & {
+      /**
+       * Format: int32
+       * @description Number of hash buckets.
+       */
+      numBuckets: number;
+    } & {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: BucketPartitionTransformType;
+    };
     ChunkedOutputEventRecordReadableData: {
       closed?: boolean;
       type?: {
@@ -3627,11 +3671,19 @@ export interface components {
       integrationId: string;
       name: string;
       organizationId: string;
+      /** @description Per-table configuration overrides, keyed by table key (e.g. logs_raw). Absent entries use system defaults. */
+      tables?: {
+        [key: string]: components["schemas"]["TableConfig"];
+      };
       /** @description The team IDs that this dataset is associated with. */
       teamIds?: string[];
     };
     DatasetUpdate: {
       name: string;
+      /** @description Per-table configuration overrides. Read-only here; use /datasets/{id}/{tableKey}/config to mutate. */
+      tables?: {
+        [key: string]: components["schemas"]["TableConfig"];
+      };
       /** @description The team IDs that this dataset is associated with. */
       teamIds?: string[];
     };
@@ -3671,6 +3723,14 @@ export interface components {
     EarliestReadingStrategy: {
       type: "EarliestReadingStrategy";
     } & Omit<components["schemas"]["FileReadingStrategy"], "type">;
+    /** @description Full effective partition spec, including system-controlled rows. */
+    EffectivePartitionField: {
+      /** @description Logical column the row partitions by (built-in name or bare tag key). */
+      column: string;
+      /** @description Whether this row is system-controlled and cannot be edited. */
+      systemControlled: boolean;
+      transform?: components["schemas"]["PartitionTransform"];
+    };
     /** @description Configuration for an embedding model. The 'type' field determines the provider. */
     EmbeddingConfig: {
       /** Format: int32 */
@@ -6485,6 +6545,25 @@ export interface components {
     ParsedQueryTree: {
       root?: components["schemas"]["ParsedQueryNode"];
     };
+    /** @description User-chosen partition layout. */
+    PartitionConfig: {
+      /** @description User-chosen partition fields applied in order. */
+      fields: components["schemas"]["PartitionFieldConfig"][];
+    };
+    /** @description User-chosen partition fields applied in order. */
+    PartitionFieldConfig: {
+      /**
+       * Format: int32
+       * @description Number of buckets to hash this column into.
+       */
+      buckets: number;
+      /** @description Built-in column (service/host) or a promoted tag key to partition by. */
+      column: string;
+    };
+    /** @description An Iceberg partition transform applied to a column: a time transform (hour/day/month/year) or a hash bucket transform with a fixed bucket count. Discriminated by the 'type' property (time/bucket). */
+    PartitionTransform: {
+      type: string;
+    };
     PatternLookupIcebergTableSink: {
       /** @description The id of the dataset to write to */
       datasetId: string;
@@ -8376,6 +8455,18 @@ export interface components {
        */
       type: SumoLogSourceType;
     };
+    /** @description Per-table configuration overrides. Read-only here; use /datasets/{id}/{tableKey}/config to mutate. */
+    TableConfig: {
+      partitionConfig?: components["schemas"]["PartitionConfig"];
+      /** @description Bare tag keys to promote to top-level columns. */
+      promotedTagKeys?: string[];
+    };
+    TableConfigRead: {
+      /** @description Full effective partition spec, including system-controlled rows. */
+      effectiveSpec: components["schemas"]["EffectivePartitionField"][];
+      /** @description Bare tag keys promoted to top-level columns. */
+      promotedTagKeys?: string[];
+    };
     TagAction: {
       /**
        * @description Modification actions on tag values.
@@ -8977,6 +9068,22 @@ export interface components {
        * @example PT20.345S
        */
       duration: string;
+    };
+    TimePartitionTransform: Omit<
+      components["schemas"]["PartitionTransform"],
+      "type"
+    > & {
+      /**
+       * @description Time granularity of the transform.
+       * @enum {string}
+       */
+      partitionBy: TimePartitionTransformPartitionBy;
+    } & {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: TimePartitionTransformType;
     };
     /** @description Time-series rule that detects spikes by comparing short-term to long-term EWMA. */
     TimeSeriesRuleConfig: Omit<
@@ -9857,6 +9964,8 @@ export type SchemaBillingSummaryResponse =
   components["schemas"]["BillingSummaryResponse"];
 export type SchemaBucketAccessResult =
   components["schemas"]["BucketAccessResult"];
+export type SchemaBucketPartitionTransform =
+  components["schemas"]["BucketPartitionTransform"];
 export type SchemaChunkedOutputEventRecordReadableData =
   components["schemas"]["ChunkedOutputEventRecordReadableData"];
 export type SchemaClearSecret = components["schemas"]["ClearSecret"];
@@ -9910,6 +10019,8 @@ export type SchemaDoubleDatapoint = components["schemas"]["DoubleDatapoint"];
 export type SchemaDropRule = components["schemas"]["DropRule"];
 export type SchemaEarliestReadingStrategy =
   components["schemas"]["EarliestReadingStrategy"];
+export type SchemaEffectivePartitionField =
+  components["schemas"]["EffectivePartitionField"];
 export type SchemaEmbeddingConfig = components["schemas"]["EmbeddingConfig"];
 export type SchemaEntityContextAggregation =
   components["schemas"]["EntityContextAggregation"];
@@ -10132,6 +10243,11 @@ export type SchemaParseQueryResponse =
 export type SchemaParseResult = components["schemas"]["ParseResult"];
 export type SchemaParsedQueryNode = components["schemas"]["ParsedQueryNode"];
 export type SchemaParsedQueryTree = components["schemas"]["ParsedQueryTree"];
+export type SchemaPartitionConfig = components["schemas"]["PartitionConfig"];
+export type SchemaPartitionFieldConfig =
+  components["schemas"]["PartitionFieldConfig"];
+export type SchemaPartitionTransform =
+  components["schemas"]["PartitionTransform"];
 export type SchemaPatternLookupIcebergTableSink =
   components["schemas"]["PatternLookupIcebergTableSink"];
 export type SchemaPatternMatcher = components["schemas"]["PatternMatcher"];
@@ -10255,6 +10371,8 @@ export type SchemaSumAttributesMergeStrategy =
 export type SchemaSumo = components["schemas"]["Sumo"];
 export type SchemaSumoLogSink = components["schemas"]["SumoLogSink"];
 export type SchemaSumoLogSource = components["schemas"]["SumoLogSource"];
+export type SchemaTableConfig = components["schemas"]["TableConfig"];
+export type SchemaTableConfigRead = components["schemas"]["TableConfigRead"];
 export type SchemaTagAction = components["schemas"]["TagAction"];
 export type SchemaTagKeyNode = components["schemas"]["TagKeyNode"];
 export type SchemaTagKeyPrefixNode = components["schemas"]["TagKeyPrefixNode"];
@@ -10293,6 +10411,8 @@ export type SchemaTemplateSqlOperation =
 export type SchemaTemplateTraceSamplerException =
   components["schemas"]["TemplateTraceSamplerException"];
 export type SchemaTimeGranularity = components["schemas"]["TimeGranularity"];
+export type SchemaTimePartitionTransform =
+  components["schemas"]["TimePartitionTransform"];
 export type SchemaTimeSeriesRuleConfig =
   components["schemas"]["TimeSeriesRuleConfig"];
 export type SchemaTimestampReadingStrategy =
@@ -10908,6 +11028,133 @@ export interface operations {
       };
       /** @description No configuration found for this dataset. */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getTableConfig: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tableKey: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The table config, with effectiveSpec always populated. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TableConfigRead"];
+        };
+      };
+      /** @description Unsupported table key. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Dataset not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  putTableConfig: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tableKey: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["TableConfig"];
+      };
+    };
+    responses: {
+      /** @description The persisted table config. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TableConfigRead"];
+        };
+      };
+      /** @description Invalid config or unsupported key. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Dataset not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Dataset has linked jobs; stop them before changing config. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  deleteTableConfig: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tableKey: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Override removed (or never set). */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unsupported table key. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Dataset not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Dataset has linked jobs; stop them before changing config. */
+      409: {
         headers: {
           [name: string]: unknown;
         };
@@ -17207,6 +17454,9 @@ export enum AverageAttributesMergeStrategyType {
 export enum BackfillJobActionType {
   backfill_job_action = "backfill-job-action",
 }
+export enum BucketPartitionTransformType {
+  bucket = "bucket",
+}
 export enum CloudTrailLogsFileSourceRegions {
   US_EAST_1 = "US_EAST_1",
   US_EAST_2 = "US_EAST_2",
@@ -17562,6 +17812,7 @@ export enum ReadFeatureFlags {
   ICEBERG_LOG_SOURCE = "ICEBERG_LOG_SOURCE",
   QUERY_JOBS = "QUERY_JOBS",
   AUTH0_SSO_CONNECTION = "AUTH0_SSO_CONNECTION",
+  DATASET_TABLE_CONFIG = "DATASET_TABLE_CONFIG",
   UNKNOWN = "UNKNOWN",
 }
 export enum ReadAnthropicType {
@@ -17753,6 +18004,15 @@ export enum TemplateSqlOperationSqlMode {
 }
 export enum TemplateTraceSamplerExceptionType {
   trace_sampler_exception = "trace-sampler-exception",
+}
+export enum TimePartitionTransformPartitionBy {
+  HOUR = "HOUR",
+  DAY = "DAY",
+  MONTH = "MONTH",
+  YEAR = "YEAR",
+}
+export enum TimePartitionTransformType {
+  time = "time",
 }
 export enum TimeSeriesRuleConfigType {
   time_series = "time-series",
