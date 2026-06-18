@@ -27,11 +27,11 @@ were over-aggregating into one pattern, and summarize latency.
 ```json
 {
   "operations": [
-    { "op": "add-message-attribute", "attributePath": "attributes.http.route" },
+    { "op": "add-message-attribute", "attributePath": "http.route" },
     { "op": "add-message-attribute", "attributePath": "msg.request.query" },
-    { "op": "add-group-by", "attributePath": "attributes.request.method" },
-    { "op": "add-group-by", "attributePath": "attributes.request.status_code" },
-    { "op": "add-aggregation-strategy", "attributePath": "attributes.request.duration_ms", "strategies": ["avg"] }
+    { "op": "add-group-by", "attributePath": "request.method" },
+    { "op": "add-group-by", "attributePath": "request.status_code" },
+    { "op": "add-aggregation-strategy", "attributePath": "request.duration_ms", "strategies": ["avg"] }
   ]
 }
 ```

@@ -69,12 +69,25 @@ shape and missing the others. For candidate-field selection (which path becomes
 `message`, group-by, aggregation) and the empty-`""`-vs-absent behavior, see
 [reference.md](reference.md).
 
+When creating `attributePath` values for `add-message-attribute`,
+`add-group-by`, and `add-aggregation-strategy`, use paths relative to the log's
+`attributes` object. The CLI output wraps log attributes under a top-level
+`attributes` key, but the patch path omits that wrapper. For example, if a
+sample row shows `attributes.additionalProperties.event_detail`, use
+`additionalProperties.event_detail`.
+
 Build ONE patch covering all shapes:
 - Each message candidate → `add-message-attribute` (`attributePath`).
   `messageReservedAttributePaths` accepts many paths and picks the first present.
 - Medium-cardinality splitters → `add-group-by` (`attributePath`).
 - Numeric measurements → `add-aggregation-strategy` (`attributePath`,
   single-element `strategies`: `sum`|`min`|`max`|`avg`). One strategy per path.
+
+For an empty-message fix, keep the first patch minimal unless you observed a
+separate over-aggregation problem. Do not add a group-by just because a field is
+present in the sample. Low-cardinality fields such as `status`/`result` are
+useful group-bys only when they preserve meaning for the chosen message
+candidate (for example HTTP route + method + status), not as a default add-on.
 
 See [examples.md](examples.md) for full patches. For exact field schemas, see
 `grepr:operations-reference`.

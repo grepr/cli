@@ -23,6 +23,11 @@ Fields often live under `.attributes` (`attributes.path`, `attributes.method`,
 `attributes.status_code`), not at the top level. Use the path that actually
 exists in the sampled records.
 
+Patch operation paths are relative to the log's `attributes` object. Strip the
+top-level `attributes.` wrapper shown by `grepr query` output. Example:
+`attributes.additionalProperties.event_detail` in a sampled record becomes
+`additionalProperties.event_detail` in `add-message-attribute`.
+
 ## Per-shape defaults
 
 For each empty-message shape, infer three things: the **message attribute**
