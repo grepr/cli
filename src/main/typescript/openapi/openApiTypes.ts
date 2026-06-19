@@ -7935,17 +7935,17 @@ export interface components {
        */
       operationName?: string;
       /**
-       * Format: int64
-       * @description 8-byte parent span identifier as long. Returns 0 for root spans.
+       * @description 64-bit parent span identifier as a 16-character hex string; null for root spans.
+       * @example 1a2b3c4d5e6f7081
        */
-      parentSpanId?: number;
+      parentSpanId?: string;
       /** @description True if this is a root span (no parent). */
       root?: boolean;
       /**
-       * Format: int64
-       * @description 8-byte span identifier as long.
+       * @description 64-bit span identifier as a 16-character hex string.
+       * @example 7f7e8d9a0b1c2d3e
        */
-      spanId?: number;
+      spanId?: string;
       /**
        * @description The type of span
        * @example SERVER
@@ -7959,15 +7959,10 @@ export interface components {
       startTimeNanos?: number;
       status?: components["schemas"]["Status"];
       /**
-       * Format: int64
-       * @description High 8 bytes of 16-byte trace identifier.
+       * @description 128-bit trace identifier as a 32-character hex string.
+       * @example 6a33267c000000001001119764423b8d
        */
-      traceIdHigh?: number;
-      /**
-       * Format: int64
-       * @description Low 8 bytes of 16-byte trace identifier.
-       */
-      traceIdLow?: number;
+      traceId?: string;
       /**
        * @description Trace state information in W3C format.
        * @example rojo=00f067aa0ba902b7,congo=t61rcWkgMzE
@@ -8032,20 +8027,15 @@ export interface components {
        */
       flags?: number;
       /**
-       * Format: int64
-       * @description 8-byte span identifier of the linked span as long.
+       * @description 64-bit span identifier of the linked span as a 16-character hex string.
+       * @example 7f7e8d9a0b1c2d3e
        */
-      spanId?: number;
+      spanId?: string;
       /**
-       * Format: int64
-       * @description High 8 bytes of 16-byte trace identifier of the linked span.
+       * @description 128-bit trace identifier of the linked span as a 32-character hex string.
+       * @example 6a33267c000000001001119764423b8d
        */
-      traceIdHigh?: number;
-      /**
-       * Format: int64
-       * @description Low 8 bytes of 16-byte trace identifier of the linked span.
-       */
-      traceIdLow?: number;
+      traceId?: string;
       /**
        * @description Optional trace state information.
        * @example rojo=00f067aa0ba902b7,congo=t61rcWkgMzE
@@ -8062,11 +8052,33 @@ export interface components {
        */
       end: string;
       /**
+       * @description Filter by error status
+       * @example true
+       */
+      hasError?: boolean;
+      /**
+       * @description Filter by parent span ID (null for root spans only)
+       * @example true
+       */
+      isRootSpan?: boolean;
+      /**
        * Format: int32
        * @description The maximum number of rows to process
        * @default 2500
        */
       limit?: number;
+      /**
+       * Format: int64
+       * @description Filter by maximum duration in nanoseconds
+       * @example 5000000000
+       */
+      maxDuration?: number;
+      /**
+       * Format: int64
+       * @description Filter by minimum duration in nanoseconds
+       * @example 1000000000
+       */
+      minDuration?: number;
       /** @example operation_name */
       name: string;
       /**
@@ -8075,7 +8087,23 @@ export interface components {
        * @default 0
        */
       offset?: number;
+      /**
+       * @description Filter by operation names (exact match)
+       * @example [
+       *       "process-payment",
+       *       "validate-user"
+       *     ]
+       */
+      operationNames?: string[];
       query: components["schemas"]["query"];
+      /**
+       * @description Filter by service names (exact match)
+       * @example [
+       *       "checkout-service",
+       *       "user-service"
+       *     ]
+       */
+      serviceNames?: string[];
       /**
        * @description The order in which the rows should be sorted by
        * @enum {string}
@@ -8087,6 +8115,21 @@ export interface components {
        * @example 2023-01-01T00:00:00Z
        */
       start: string;
+      /**
+       * @description Filter by trace IDs (32-character hex format)
+       * @example [
+       *       "6a33267c000000001001119764423b8d"
+       *     ]
+       */
+      traceIds?: string[];
+      /**
+       * @description Filter by trace signatures (supports wildcards with *)
+       * @example [
+       *       "user-login-*",
+       *       "checkout-*"
+       *     ]
+       */
+      traceSignatures?: string[];
       /**
        * @description Reads spans from an Iceberg table for backfill, skipping spans already sent to the given vendor sinks (idempotent backfill source). (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -9275,11 +9318,33 @@ export interface components {
        */
       end: string;
       /**
+       * @description Filter by error status
+       * @example true
+       */
+      hasError?: boolean;
+      /**
+       * @description Filter by parent span ID (null for root spans only)
+       * @example true
+       */
+      isRootSpan?: boolean;
+      /**
        * Format: int32
        * @description The maximum number of rows to process
        * @default 2500
        */
       limit?: number;
+      /**
+       * Format: int64
+       * @description Filter by maximum duration in nanoseconds
+       * @example 5000000000
+       */
+      maxDuration?: number;
+      /**
+       * Format: int64
+       * @description Filter by minimum duration in nanoseconds
+       * @example 1000000000
+       */
+      minDuration?: number;
       /** @example operation_name */
       name: string;
       /**
@@ -9288,7 +9353,23 @@ export interface components {
        * @default 0
        */
       offset?: number;
+      /**
+       * @description Filter by operation names (exact match)
+       * @example [
+       *       "process-payment",
+       *       "validate-user"
+       *     ]
+       */
+      operationNames?: string[];
       query: components["schemas"]["query"];
+      /**
+       * @description Filter by service names (exact match)
+       * @example [
+       *       "checkout-service",
+       *       "user-service"
+       *     ]
+       */
+      serviceNames?: string[];
       /**
        * @description The order in which the rows should be sorted by
        * @enum {string}
@@ -9300,6 +9381,21 @@ export interface components {
        * @example 2023-01-01T00:00:00Z
        */
       start: string;
+      /**
+       * @description Filter by trace IDs (32-character hex format)
+       * @example [
+       *       "6a33267c000000001001119764423b8d"
+       *     ]
+       */
+      traceIds?: string[];
+      /**
+       * @description Filter by trace signatures (supports wildcards with *)
+       * @example [
+       *       "user-login-*",
+       *       "checkout-*"
+       *     ]
+       */
+      traceSignatures?: string[];
       /**
        * @description Reads traces out of an Iceberg Table for processing. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -17808,7 +17904,7 @@ export enum ReadFeatureFlags {
   S3_LOGS_FILE_SOURCE = "S3_LOGS_FILE_SOURCE",
   PIPELINE_TEMPLATES = "PIPELINE_TEMPLATES",
   AI_WORKFLOWS = "AI_WORKFLOWS",
-  ICEBERG_LOG_SOURCE = "ICEBERG_LOG_SOURCE",
+  SEARCH_ICEBERG_SOURCE = "SEARCH_ICEBERG_SOURCE",
   QUERY_JOBS = "QUERY_JOBS",
   AUTH0_SSO_CONNECTION = "AUTH0_SSO_CONNECTION",
   DATASET_TABLE_CONFIG = "DATASET_TABLE_CONFIG",
