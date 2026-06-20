@@ -2619,7 +2619,7 @@ export interface components {
     AggregationDecl: {
       /** @description Function arguments. Heterogeneous; validated at pipeline construction. */
       args?: Record<string, never>[];
-      /** @description Output suffix. Omitted = preserve source metric name. */
+      /** @description Output suffix. Omitted = preserve source metric name; in rule conditions the output is addressed as `<alias>.val` (at most one as-less aggregation per block). */
       as?: string;
       /**
        * @description Aggregation function.
@@ -3155,6 +3155,13 @@ export interface components {
       identifyingAttributes?: string[];
       /** @description Level-prefixed attribute keys describing cohorts. */
       metadataAttributes?: string[];
+      /**
+       * Format: int32
+       * @description Parallelism multiplier for cohort outputs (anomaly rules ignore this). Splits each cohort across 2^n CohortCalc instances by the low n bits of tsIdLo, trading parallelism for partial per-shard aggregation. 0 = one instance per cohort.
+       * @default 0
+       * @example 4
+       */
+      numShardBits?: number;
       /** @description Ordered cohort-output entries (first-match-wins). */
       outputs?: components["schemas"]["CohortOutputDecl"][];
     };
@@ -5820,7 +5827,7 @@ export interface components {
        *     ]
        */
       groupBy: string[];
-      /** @description Metric name or nested-aggregation alias. Null for dimension views. */
+      /** @description Exact metric name or nested-aggregation alias. Mutually exclusive with filters.metricName. Null for dimension views (when filters is also unset). */
       source?: string;
       /**
        * Format: ISO-8601
@@ -5911,90 +5918,6 @@ export interface components {
        * @enum {string}
        */
       type: MetricReducerType;
-    };
-    /** @description SQL-based metric reducer that reduces metric volume through time and space aggregation while preserving anomaly fidelity. */
-    MetricReducerSql: {
-      /**
-       * Format: ISO-8601
-       * @description Time alignment window for aggregation.
-       * @default PT20S
-       * @example PT20.345S
-       */
-      alignmentWindow?: string;
-      /**
-       * @description Attribute value filters with glob pattern support. Each key must be prefixed with its OTLP level ('resource.', 'scope.', 'series.'). Values support wildcard patterns: 'prefix*', '*suffix', '*infix*', 'prefix*suffix', or exact match. All filters must match for the metric to be processed.
-       * @example {
-       *       "resource.env": "production"
-       *     }
-       */
-      attributeFilters?: {
-        [key: string]: string;
-      };
-      /**
-       * @description Attribute keys that group objects into cohorts. Each key must be prefixed with its OTLP level. Must be disjoint from identifying attributes.
-       * @example [
-       *       "resource.cluster",
-       *       "resource.region"
-       *     ]
-       */
-      cohortAttributes?: string[];
-      /** @description Attribute keys that describe cohorts but may change. */
-      cohortMetadataAttributes?: string[];
-      /**
-       * Format: ISO-8601
-       * @description Batching interval for sending data out.
-       * @default PT20S
-       * @example PT20.345S
-       */
-      emitInterval?: string;
-      /**
-       * @description Attribute keys that uniquely identify an individual object. Each key must be prefixed with its OTLP level: 'resource.', 'scope.', or 'series.'.
-       * @example [
-       *       "resource.host"
-       *     ]
-       */
-      identifyingAttributes: string[];
-      /**
-       * Format: ISO-8601
-       * @description Amount of time to wait for late data. This delays emitting the data to make sure all data arrives before emitting an aggregation.
-       * @default PT10S
-       * @example PT20.345S
-       */
-      lateArrivalWaitDuration?: string;
-      /**
-       * @description Attribute keys that describe the object but may change. Each key must be prefixed with its OTLP level.
-       * @example [
-       *       "resource.os.version"
-       *     ]
-       */
-      metadataAttributes?: string[];
-      /** @description Metric name patterns to include. If empty, all metrics matching the attribute filters are included. */
-      metricFilters?: string[];
-      /** @example operation_name */
-      name: string;
-      /**
-       * @description Per-metric-name overrides for space aggregation type. Values use reducer agg type constants: 0=LATEST, 1=SUM, 2=AVG.
-       * @example {
-       *       "system.cpu.utilization": 2
-       *     }
-       */
-      spaceAggTypeOverrides?: {
-        [key: string]: string;
-      };
-      /**
-       * @description Per-metric-name overrides for time aggregation type. Values use reducer agg type constants: 0=LATEST, 1=SUM, 2=AVG.
-       * @example {
-       *       "system.cpu.utilization": 2
-       *     }
-       */
-      timeAggTypeOverrides?: {
-        [key: string]: string;
-      };
-      /**
-       * @description SQL-based metric reducer. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: MetricReducerSqlType;
     };
     MetricsIcebergTableSink: {
       /** @description The id of the dataset to write to */
@@ -6318,7 +6241,6 @@ export interface components {
       | components["schemas"]["TemplateOperation"]
       | components["schemas"]["SqlOperation"]
       | components["schemas"]["TraceReducer"]
-      | components["schemas"]["MetricReducerSql"]
       | components["schemas"]["MetricReducer"]
       | components["schemas"]["DatadogStatsSink"]
       | components["schemas"]["LogsValuesSource"]
@@ -10300,7 +10222,6 @@ export type SchemaMetricEventPredicate =
   components["schemas"]["MetricEventPredicate"];
 export type SchemaMetricNameFilter = components["schemas"]["MetricNameFilter"];
 export type SchemaMetricReducer = components["schemas"]["MetricReducer"];
-export type SchemaMetricReducerSql = components["schemas"]["MetricReducerSql"];
 export type SchemaMetricsIcebergTableSink =
   components["schemas"]["MetricsIcebergTableSink"];
 export type SchemaMetricsIcebergTableSource =
@@ -17811,9 +17732,6 @@ export enum MetricEventPredicateType {
 }
 export enum MetricReducerType {
   metric_reducer = "metric-reducer",
-}
-export enum MetricReducerSqlType {
-  metric_reducer_sql = "metric-reducer-sql",
 }
 export enum MetricsIcebergTableSinkType {
   metrics_iceberg_table_sink = "metrics-iceberg-table-sink",
