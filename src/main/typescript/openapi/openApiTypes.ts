@@ -2722,6 +2722,10 @@ export interface components {
        */
       type: AnnualSaasPreCommitmentSummaryType;
     };
+    /** @description Actions applied when an object is flagged anomalous. */
+    AnomalyActions: {
+      objectMetricsPassthrough?: components["schemas"]["ObjectMetricsPassthrough"];
+    };
     /** @description One anomaly rule. */
     AnomalyConfig: {
       /**
@@ -5892,6 +5896,7 @@ export interface components {
     MetricReducer: {
       /** @description Anomaly rules. */
       anomalies?: components["schemas"]["AnomalyConfig"][];
+      anomalyActions?: components["schemas"]["AnomalyActions"];
       cohorts?: components["schemas"]["CohortsConfig"];
       /** @description Drop rules — matching series are discarded outright. */
       dropRules?: components["schemas"]["DropRule"][];
@@ -6124,6 +6129,20 @@ export interface components {
        * @enum {string}
        */
       type: NrqlQueryPredicateType;
+    };
+    /** @description When an object is anomalous, de-aggregate its raw datapoints alongside the per-cohort aggregate output, under a suffixed metric name. */
+    ObjectMetricsPassthrough: {
+      /**
+       * @description Whether anomalous objects are de-aggregated (passed through).
+       * @default true
+       */
+      enabled?: boolean;
+      /**
+       * @description Suffix appended to passthrough emits' metric names (e.g. 'cpu.usage' becomes 'cpu.usage.detail'). May be empty to keep the original metric name. Must not collide with any aggregation 'as' suffix on the same cohort calc.
+       * @default .detail
+       * @example .detail
+       */
+      metricSuffix: string;
     };
     /** @description Object-identity configuration. */
     ObjectsConfig: {
@@ -9946,6 +9965,7 @@ export type SchemaAnnualDataProcessingSummary =
   components["schemas"]["AnnualDataProcessingSummary"];
 export type SchemaAnnualSaasPreCommitmentSummary =
   components["schemas"]["AnnualSaasPreCommitmentSummary"];
+export type SchemaAnomalyActions = components["schemas"]["AnomalyActions"];
 export type SchemaAnomalyConfig = components["schemas"]["AnomalyConfig"];
 export type SchemaAnthropic = components["schemas"]["Anthropic"];
 export type SchemaAny = components["schemas"]["Any"];
@@ -10241,6 +10261,8 @@ export type SchemaNewRelicQueryPredicate =
 export type SchemaNotQueryNode = components["schemas"]["NotQueryNode"];
 export type SchemaNrqlQueryPredicate =
   components["schemas"]["NrqlQueryPredicate"];
+export type SchemaObjectMetricsPassthrough =
+  components["schemas"]["ObjectMetricsPassthrough"];
 export type SchemaObjectsConfig = components["schemas"]["ObjectsConfig"];
 export type SchemaOpenAi = components["schemas"]["OpenAi"];
 export type SchemaOperation = components["schemas"]["Operation"];
