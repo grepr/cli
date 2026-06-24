@@ -3698,6 +3698,16 @@ export interface components {
       /** @description The team IDs that this dataset is associated with. */
       teamIds?: string[];
     };
+    /** @description Sink that discards all of its input. */
+    DiscardingSink: {
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Sink that discards all of its input. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: DiscardingSinkType;
+    };
     DoubleDatapoint: {
       metricName?: string;
       /** @enum {string} */
@@ -6244,6 +6254,7 @@ export interface components {
       | components["schemas"]["MetricsSynchronousSink"]
       | components["schemas"]["VariantSynchronousSink"]
       | components["schemas"]["SpansSynchronousSink"]
+      | components["schemas"]["DiscardingSink"]
       | components["schemas"]["DatadogMetricsSink"]
       | components["schemas"]["GreprReducerLogSource"]
       | components["schemas"]["GreprRawLogsSource"]
@@ -10053,6 +10064,7 @@ export type SchemaDatasetEstimationConfig =
   components["schemas"]["DatasetEstimationConfig"];
 export type SchemaDatasetRead = components["schemas"]["DatasetRead"];
 export type SchemaDatasetUpdate = components["schemas"]["DatasetUpdate"];
+export type SchemaDiscardingSink = components["schemas"]["DiscardingSink"];
 export type SchemaDoubleDatapoint = components["schemas"]["DoubleDatapoint"];
 export type SchemaDropRule = components["schemas"]["DropRule"];
 export type SchemaEarliestReadingStrategy =
@@ -17572,6 +17584,9 @@ export enum DatadogTraceAgentSourceType {
 export enum DatadogTraceSinkType {
   datadog_trace_sink = "datadog-trace-sink",
 }
+export enum DiscardingSinkType {
+  discarding_sink = "discarding-sink",
+}
 export enum DoubleDatapointMetricType {
   UNSPECIFIED_DOUBLE = "UNSPECIFIED_DOUBLE",
   GAUGE_DOUBLE = "GAUGE_DOUBLE",
@@ -18143,6 +18158,7 @@ export const SINK_TYPES = new Set<string>([
   'datadog-metrics-sink',
   'datadog-stats-sink',
   'datadog-trace-sink',
+  'discarding-sink',
   'event-dedup-iceberg-table-sink',
   'llm-prompt-results-iceberg-table-sink',
   'logs-iceberg-table-sink',
