@@ -1,6 +1,6 @@
 {
   "name": "@grepr/cli",
-  "version": "1.6.16",
+  "version": "1.6.21-c273e76",
   "description": "Official Grepr CLI tool for submitting synchronous batch jobs with OAuth authentication",
   "main": "build/dist/grepr.js",
   "type": "module",
@@ -54,7 +54,7 @@
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vitest/coverage-v8": "^4.0.5",
-    "esbuild": "^0.27.3",
+    "esbuild": "^0.28.1",
     "eslint": "^8.57.0",
     "glob": "^10.3.0",
     "mdx-bundler": "^10.1.1",
@@ -72,16 +72,22 @@
     "vitest": "^4.0.5"
   },
   "resolutions": {
-    "tar": "^7.5.11",
+    "tar": "^7.5.16",
     "axios": "^1.15.2",
     "minimatch": "^10.0.1",
     "flatted": "^3.4.2",
-    "undici": "^7.24.0",
-    "protobufjs": "^7.5.6",
+    "undici": "^7.28.0",
+    "protobufjs": "^7.6.3",
     "@protobufjs/utf8": "^1.1.1",
-    "vite": "^8.0.5",
+    "vite": "^8.0.16",
     "postcss": "^8.5.10",
-    "follow-redirects": "^1.16.0"
+    "follow-redirects": "^1.16.0",
+    "esbuild": "^0.28.1",
+    "form-data": "^4.0.6",
+    "tmp": "^0.2.6",
+    "uuid": "^11.1.1",
+    "eslint/js-yaml": "^4.2.0",
+    "@eslint/eslintrc/js-yaml": "^4.2.0"
   },
   "engines": {
     "node": ">=20.0.0"
