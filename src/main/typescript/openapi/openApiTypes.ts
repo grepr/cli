@@ -2609,6 +2609,11 @@ export interface components {
       type: AddToListAttributeActionType;
       value: components["schemas"]["Any"];
     };
+    /**
+     * @description Aggregation function.
+     * @enum {string}
+     */
+    AggType: AggType;
     AggregationAccumulator: {
       /** @enum {string} */
       accumulatorType?: AggregationAccumulatorAccumulatorType;
@@ -2621,11 +2626,7 @@ export interface components {
       args?: Record<string, never>[];
       /** @description Output suffix. Omitted = preserve source metric name; in rule conditions the output is addressed as `<alias>.val` (at most one as-less aggregation per block). */
       as?: string;
-      /**
-       * @description Aggregation function.
-       * @enum {string}
-       */
-      fn: AggregationDeclFn;
+      fn: components["schemas"]["AggType"];
     };
     /**
      * AI Pipeline Inputs Schema
@@ -5952,6 +5953,15 @@ export interface components {
       /** @example operation_name */
       name: string;
       objects: components["schemas"]["ObjectsConfig"];
+      /**
+       * @description Per-metric-name overrides for space (cross-object) aggregation.
+       * @example {
+       *       "system.cpu.utilization": "AVG"
+       *     }
+       */
+      spaceAggOverrides?: {
+        [key: string]: components["schemas"]["AggType"];
+      };
       timeGranularity: components["schemas"]["TimeGranularity"];
       /**
        * @description Metric reducer. (enum property replaced by openapi-typescript)
@@ -9079,7 +9089,7 @@ export interface components {
        *     }
        */
       aggFnOverrides?: {
-        [key: string]: AggregationDeclFn;
+        [key: string]: components["schemas"]["AggType"];
       };
       /**
        * Format: ISO-8601
@@ -17471,19 +17481,20 @@ export enum ActivityLogsSearchStatuses {
 export enum AddToListAttributeActionType {
   attribute_add_action = "attribute-add-action",
 }
-export enum AggregationAccumulatorAccumulatorType {
-  AVERAGE = "AVERAGE",
-}
-export enum AggregationDeclFn {
+export enum AggType {
   LATEST = "LATEST",
   SUM = "SUM",
   AVG = "AVG",
   CUMULATIVE = "CUMULATIVE",
+  CUMULATIVE_UPDOWN = "CUMULATIVE_UPDOWN",
   DEFAULT = "DEFAULT",
   PERCENTILE = "PERCENTILE",
   SLOPE = "SLOPE",
   MAX = "MAX",
   MIN = "MIN",
+}
+export enum AggregationAccumulatorAccumulatorType {
+  AVERAGE = "AVERAGE",
 }
 export enum AllQueryNodeType {
   all_query_node = "all-query-node",
