@@ -17482,6 +17482,8 @@ export enum AggregationDeclFn {
   DEFAULT = "DEFAULT",
   PERCENTILE = "PERCENTILE",
   SLOPE = "SLOPE",
+  MAX = "MAX",
+  MIN = "MIN",
 }
 export enum AllQueryNodeType {
   all_query_node = "all-query-node",
