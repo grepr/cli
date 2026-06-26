@@ -4770,6 +4770,24 @@ export interface components {
     LatestReadingStrategy: {
       type: "LatestReadingStrategy";
     } & Omit<components["schemas"]["FileReadingStrategy"], "type">;
+    LegacyDatadogMetricsSink: {
+      /**
+       * @description Additional tags to add to the metrics when writing to Datadog. Gets combined with the integration's additionalTags.
+       * @example [
+       *       "env:dev"
+       *     ]
+       */
+      additionalTags?: string[];
+      /** @description The Datadog integration id. */
+      integrationId: string;
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Writes processed metrics (flat MetricDatapoint model) to Datadog. Transitional; use datadog-metrics-sink for new pipelines. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: LegacyDatadogMetricsSinkType;
+    };
     /** @description Configuration for the LLM provider and model. */
     LlmConfig: {
       /**
@@ -6291,6 +6309,7 @@ export interface components {
       | components["schemas"]["SpansSynchronousSink"]
       | components["schemas"]["DiscardingSink"]
       | components["schemas"]["DatadogMetricsSink"]
+      | components["schemas"]["LegacyDatadogMetricsSink"]
       | components["schemas"]["GreprReducerLogSource"]
       | components["schemas"]["GreprRawLogsSource"]
       | components["schemas"]["GreprLlmPromptResultsSource"]
@@ -10232,6 +10251,8 @@ export type SchemaJsonLogEventMapper =
 export type SchemaJsonLogProcessor = components["schemas"]["JsonLogProcessor"];
 export type SchemaLatestReadingStrategy =
   components["schemas"]["LatestReadingStrategy"];
+export type SchemaLegacyDatadogMetricsSink =
+  components["schemas"]["LegacyDatadogMetricsSink"];
 export type SchemaLlmConfig = components["schemas"]["LlmConfig"];
 export type SchemaLlmPrompt = components["schemas"]["LlmPrompt"];
 export type SchemaLlmPromptResultsIcebergTableSource =
@@ -17718,6 +17739,9 @@ export enum JobActionRuleType {
 export enum JsonLogProcessorType {
   json_log_processor = "json-log-processor",
 }
+export enum LegacyDatadogMetricsSinkType {
+  legacy_datadog_metrics_sink = "legacy-datadog-metrics-sink",
+}
 export enum LlmPromptOutputActions {
   FORWARD_TO_SINKS = "FORWARD_TO_SINKS",
 }
@@ -18023,6 +18047,7 @@ export enum SqlOperationInputs {
   LOG_EVENT = "LOG_EVENT",
   COMPLETE_SPAN = "COMPLETE_SPAN",
   METRIC_DATA = "METRIC_DATA",
+  WIDE_METRIC_DATA = "WIDE_METRIC_DATA",
 }
 export enum SqlOperationType {
   sql_operation = "sql-operation",
@@ -18212,6 +18237,7 @@ export const SINK_TYPES = new Set<string>([
   'datadog-trace-sink',
   'discarding-sink',
   'event-dedup-iceberg-table-sink',
+  'legacy-datadog-metrics-sink',
   'llm-prompt-results-iceberg-table-sink',
   'logs-iceberg-table-sink',
   'logs-predicates-counter',
