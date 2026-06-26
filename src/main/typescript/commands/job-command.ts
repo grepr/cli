@@ -32,7 +32,7 @@ export interface JobCreateUpdateOptions extends CrudCreateUpdateOptions {
 
 /**
  * Job list command implementation using the new architecture
- * Shows smart defaults: PENDING + RUNNING + FINISHED jobs since 6 hours ago
+ * Shows smart defaults: active, stopped, and recently finished or failed jobs since 6 hours ago
  */
 export class JobListCommand extends ListCommand<JobListCommandOptions> {
   getCommandName(): string {
@@ -40,7 +40,7 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
   }
 
   getCommandDescription(): string {
-    return 'List jobs with optional filtering (defaults: PENDING + RUNNING + FINISHED since 6h ago)';
+    return 'List jobs with optional filtering (defaults: active, stopped, and recently finished or failed jobs since 6h ago)';
   }
 
   getCommandOptions(): CommandOption[] {
@@ -60,7 +60,7 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
       },
       {
         flags: '--state <states...>',
-        description: 'Filter by job states (CREATED, PENDING, RUNNING, etc.). Defaults to PENDING,RUNNING,FINISHED unless --all is set.'
+        description: 'Filter by job states (CREATED, PENDING, RUNNING, etc.). Defaults to active, stopped, and recently finished or failed states unless --all is set.'
       },
       {
         flags: '--name <names...>',
@@ -105,7 +105,7 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
 
     // Without --all, fall back to common "what's happening recently" filters.
     // With --all, no state/since filter is applied unless the user provides one explicitly.
-    const effectiveState = options.state ?? (options.all ? undefined : ['PENDING', 'RUNNING', 'FINISHED']);
+    const effectiveState = options.state ?? (options.all ? undefined : ['PENDING', 'STARTING', 'RUNNING', 'UPDATING', 'RESTARTING', 'STOPPING', 'STOPPED', 'DELETING', 'FINISHED', 'FAILED']);
     const effectiveSince = options.since ?? (options.all ? undefined : 'PT6H');
 
     if (effectiveSince) params.since = parseSinceOption(effectiveSince);
@@ -132,7 +132,7 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
     if (options.name) filters.push(`name=${options.name.join(',')}`);
     if (options.sort) filters.push(`sort=${options.sort}`);
 
-    const filterStr = filters.length > 0 ? filters.join(', ') : 'defaults (PENDING,RUNNING,FINISHED since 6h)';
+    const filterStr = filters.length > 0 ? filters.join(', ') : 'defaults (active/stopped/finished/failed since 6h)';
 
     return [
       '',

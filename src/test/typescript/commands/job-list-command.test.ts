@@ -57,7 +57,7 @@ describe('JobListCommand', () => {
 
     it('test_getCommandDescription_shouldReturnCorrectDescription', () => {
       const result = command.getCommandDescription();
-      expect(result).toBe('List jobs with optional filtering (defaults: PENDING + RUNNING + FINISHED since 6h ago)');
+      expect(result).toBe('List jobs with optional filtering (defaults: active, stopped, and recently finished or failed jobs since 6h ago)');
     });
 
     it('test_getCommandOptions_shouldReturnJobSpecificOptions', () => {

@@ -126,7 +126,6 @@ batchFlinkConfiguration:
     provider: aws
 
 jobs:
-  asyncStreamingJobStateReconciler: 1s
   asyncBatchJobScheduler: 1s
 
 jobDeploymentConfigs:
