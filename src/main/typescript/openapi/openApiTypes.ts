@@ -8316,7 +8316,7 @@ export interface components {
       materialized?: boolean;
       /**
        * @description The SQL query to execute. Can reference tables created by previous statements by their tableName, as well as the 'traces' input table and available datasets.
-       * @example SELECT * FROM traces WHERE durationNanos > 1000000
+       * @example SELECT * FROM traces WHERE duration > 1000000
        */
       sqlQuery: string;
       /**
@@ -8336,7 +8336,7 @@ export interface components {
        * @example PT20.345S
        */
       globalStateTtl?: string;
-      /** @description Input table names that can be referenced in SQL statements. Each input table corresponds to an input stream that is connected to this operation in the job graph. All connected input types must be compatible with the SQL operations. Each type specifies what the schema of the resulting table that is available for the SQL statements looks like. */
+      /** @description Input table names that can be referenced in SQL statements. Each input table corresponds to an input stream that is connected to this operation in the job graph. All connected input types must be compatible with the SQL operations. Each type specifies what the schema of the resulting table that is available for the SQL statements looks like. For `COMPLETE_SPAN`, the table schema uses SQL row field names, which differ from the REST JSON property names in the `CompleteSpan` schema. */
       inputs?: {
         [key: string]: SqlOperationInputs;
       };
@@ -8373,14 +8373,14 @@ export interface components {
        */
       outputName: string;
       /**
-       * @description Data types that are acceptable as inputs and outputs to SQL operations.
+       * @description Data types that are acceptable as inputs and outputs to SQL operations. See [SQL transform supported data types](/transforms/sql-transform/data-types) for the SQL row schemas. The `COMPLETE_SPAN` SQL row schema uses SQL field names that differ from the REST JSON property names documented in [CompleteSpan](/apis/api-spec#schema/CompleteSpan).
        * @example VARIANT
        * @enum {string}
        */
       outputType: SqlOperationInputs;
       /**
        * @description The SQL query to execute. Can reference tables created by previous statements by their tableName, as well as the 'traces' input table and available datasets.
-       * @example SELECT * FROM traces WHERE durationNanos > 1000000
+       * @example SELECT * FROM traces WHERE duration > 1000000
        */
       sqlQuery: string;
       /**
@@ -8406,7 +8406,7 @@ export interface components {
       materialized?: boolean;
       /**
        * @description The SQL query to execute. Can reference tables created by previous statements by their tableName, as well as the 'traces' input table and available datasets.
-       * @example SELECT * FROM traces WHERE durationNanos > 1000000
+       * @example SELECT * FROM traces WHERE duration > 1000000
        */
       sqlQuery: string;
       /**
