@@ -24,6 +24,118 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/agents": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List agents
+     * @description Returns every agent configured for your organization, newest first.
+     */
+    get: operations["list"];
+    put?: never;
+    /**
+     * Create an agent
+     * @description Creates an agent with the given model configuration, tools and prompt.
+     */
+    post: operations["create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agents/tools": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List available agent tools
+     * @description Returns the catalog of tools that can be enabled on an agent.
+     */
+    get: operations["tools"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agents/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get an agent
+     * @description Returns a single agent by id.
+     */
+    get: operations["get"];
+    /**
+     * Update an agent
+     * @description Updates an agent. The version must match the version the client most recently observed, else a 409 Conflict is returned.
+     */
+    put: operations["update"];
+    post?: never;
+    /**
+     * Delete an agent
+     * @description Soft-deletes an agent. Returns 409 if the agent still has a signal integration; delete that first.
+     */
+    delete: operations["delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agents/{id}/investigations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List an agent's investigations
+     * @description Returns the investigations the agent has run, newest first.
+     */
+    get: operations["investigations"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agents/{id}/subscriptions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List an agent's subscriptions
+     * @description Returns the pipeline ids the agent is subscribed to via its signal integration.
+     */
+    get: operations["subscriptions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/anomalies/{jobId}/{ruleEngineName}": {
     parameters: {
       query?: never;
@@ -298,13 +410,13 @@ export interface paths {
      * List all Anthropic integrations
      * @description Get all Anthropic integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list"];
+    get: operations["list_1"];
     put?: never;
     /**
      * Create an Anthropic integration
      * @description Creates an integration to connect to Anthropic.
      */
-    post: operations["create"];
+    post: operations["create_1"];
     delete?: never;
     options?: never;
     head?: never;
@@ -322,18 +434,18 @@ export interface paths {
      * Get an Anthropic integration
      * @description Get an Anthropic integration by ID.
      */
-    get: operations["get"];
+    get: operations["get_1"];
     /**
      * Update an Anthropic integration.
      * @description Updates an Anthropic integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update"];
+    put: operations["update_1"];
     post?: never;
     /**
      * Delete an Anthropic integration
      * @description Deletes an Anthropic integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete"];
+    delete: operations["delete_1"];
     options?: never;
     head?: never;
     patch?: never;
@@ -370,13 +482,13 @@ export interface paths {
      * List all Data Warehouse integrations
      * @description Retrieves all Data Warehouse integrations for the organization.
      */
-    get: operations["list_2"];
+    get: operations["list_3"];
     put?: never;
     /**
      * Create a Data Warehouse integration
      * @description Creates a new Data Warehouse integration for connecting to Grepr S3 bucket.
      */
-    post: operations["create_2"];
+    post: operations["create_3"];
     delete?: never;
     options?: never;
     head?: never;
@@ -394,18 +506,18 @@ export interface paths {
      * Get a Data Warehouse integration
      * @description Retrieves a Data Warehouse integration.
      */
-    get: operations["get_2"];
+    get: operations["get_3"];
     /**
      * Update a Data Warehouse integration
      * @description Updates an existing Data Warehouse integration.
      */
-    put: operations["update_2"];
+    put: operations["update_3"];
     post?: never;
     /**
      * Delete a Data Warehouse integration
      * @description Deletes a Data Warehouse integration if it exists. No-op otherwise.
      */
-    delete: operations["delete_2"];
+    delete: operations["delete_3"];
     options?: never;
     head?: never;
     patch?: never;
@@ -422,13 +534,13 @@ export interface paths {
      * List all Datadog integrations
      * @description Get all Datadog integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_1"];
+    get: operations["list_2"];
     put?: never;
     /**
      * Create a Datadog integration
      * @description Creates an integration to connect to Datadog.
      */
-    post: operations["create_1"];
+    post: operations["create_2"];
     delete?: never;
     options?: never;
     head?: never;
@@ -446,13 +558,13 @@ export interface paths {
      * List all Datadog MCP integrations
      * @description Get all Datadog MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_5"];
+    get: operations["list_6"];
     put?: never;
     /**
      * Create a Datadog MCP integration
      * @description Creates an integration to connect to a Datadog MCP server.
      */
-    post: operations["create_5"];
+    post: operations["create_6"];
     delete?: never;
     options?: never;
     head?: never;
@@ -470,18 +582,18 @@ export interface paths {
      * Get a Datadog MCP integration
      * @description Get a Datadog MCP integration by ID.
      */
-    get: operations["get_5"];
+    get: operations["get_6"];
     /**
      * Update a Datadog MCP integration.
      * @description Updates a Datadog MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_5"];
+    put: operations["update_6"];
     post?: never;
     /**
      * Delete a Datadog MCP integration
      * @description Deletes a Datadog MCP integration. This will delete the associated API keys as well. No-op if already deleted.
      */
-    delete: operations["delete_5"];
+    delete: operations["delete_6"];
     options?: never;
     head?: never;
     patch?: never;
@@ -558,18 +670,18 @@ export interface paths {
      * Get a Datadog integration
      * @description Get an integration to connect to Datadog.
      */
-    get: operations["get_1"];
+    get: operations["get_2"];
     /**
      * Update a Datadog integration.
      * @description Updates an integration to connect to Datadog. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_1"];
+    put: operations["update_2"];
     post?: never;
     /**
      * Delete a Datadog integration
      * @description Deletes an integration to connect to Datadog. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_1"];
+    delete: operations["delete_2"];
     options?: never;
     head?: never;
     patch?: never;
@@ -694,13 +806,13 @@ export interface paths {
      * List all Gemini integrations
      * @description Get all Google Gemini integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_4"];
+    get: operations["list_5"];
     put?: never;
     /**
      * Create a Gemini integration
      * @description Creates an integration to connect to Google Gemini.
      */
-    post: operations["create_4"];
+    post: operations["create_5"];
     delete?: never;
     options?: never;
     head?: never;
@@ -718,18 +830,18 @@ export interface paths {
      * Get a Gemini integration
      * @description Get a Gemini integration by ID.
      */
-    get: operations["get_4"];
+    get: operations["get_5"];
     /**
      * Update a Gemini integration.
      * @description Updates a Gemini integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_4"];
+    put: operations["update_5"];
     post?: never;
     /**
      * Delete a Gemini integration
      * @description Deletes a Gemini integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_4"];
+    delete: operations["delete_5"];
     options?: never;
     head?: never;
     patch?: never;
@@ -766,13 +878,13 @@ export interface paths {
      * List all NewRelic integrations
      * @description Get all NewRelic integrations.
      */
-    get: operations["list_7"];
+    get: operations["list_8"];
     put?: never;
     /**
      * Create a NewRelic integration
      * @description Creates an integration to connect to NewRelic.
      */
-    post: operations["create_7"];
+    post: operations["create_8"];
     delete?: never;
     options?: never;
     head?: never;
@@ -810,18 +922,18 @@ export interface paths {
      * Get a NewRelic integration
      * @description Get an integration to connect to NewRelic.
      */
-    get: operations["get_7"];
+    get: operations["get_8"];
     /**
      * Update a NewRelic integration.
      * @description Updates an integration to connect to NewRelic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_7"];
+    put: operations["update_8"];
     post?: never;
     /**
      * Delete a NewRelic integration
      * @description Deletes an integration to connect to NewRelic. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_7"];
+    delete: operations["delete_8"];
     options?: never;
     head?: never;
     patch?: never;
@@ -918,13 +1030,13 @@ export interface paths {
      * List all OpenAI integrations
      * @description Get all OpenAI integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_8"];
+    get: operations["list_9"];
     put?: never;
     /**
      * Create an OpenAI integration
      * @description Creates an integration to connect to OpenAI.
      */
-    post: operations["create_8"];
+    post: operations["create_9"];
     delete?: never;
     options?: never;
     head?: never;
@@ -942,18 +1054,18 @@ export interface paths {
      * Get an OpenAI integration
      * @description Get an OpenAI integration by ID.
      */
-    get: operations["get_8"];
+    get: operations["get_9"];
     /**
      * Update an OpenAI integration.
      * @description Updates an OpenAI integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_8"];
+    put: operations["update_9"];
     post?: never;
     /**
      * Delete an OpenAI integration
      * @description Deletes an OpenAI integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_8"];
+    delete: operations["delete_9"];
     options?: never;
     head?: never;
     patch?: never;
@@ -990,13 +1102,13 @@ export interface paths {
      * List all OTLP integrations
      * @description Get all OTLP integrations.
      */
-    get: operations["list_9"];
+    get: operations["list_10"];
     put?: never;
     /**
      * Create an OTLP integration
      * @description Creates an integration to connect to OTLP.
      */
-    post: operations["create_9"];
+    post: operations["create_10"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1014,18 +1126,18 @@ export interface paths {
      * Get a OTLP integration
      * @description Get an integration to connect to OTLP.
      */
-    get: operations["get_9"];
+    get: operations["get_10"];
     /**
      * Update a OTLP integration.
      * @description Updates an integration to connect to OTLP. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_9"];
+    put: operations["update_10"];
     post?: never;
     /**
      * Delete a OTLP integration
      * @description Deletes an integration to connect to OTLP. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_9"];
+    delete: operations["delete_10"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1086,13 +1198,13 @@ export interface paths {
      * List all PagerDuty MCP integrations
      * @description Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_6"];
+    get: operations["list_7"];
     put?: never;
     /**
      * Create a PagerDuty MCP integration
      * @description Creates an integration to connect to a PagerDuty MCP server.
      */
-    post: operations["create_6"];
+    post: operations["create_7"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1110,18 +1222,18 @@ export interface paths {
      * Get a PagerDuty MCP integration
      * @description Get a PagerDuty MCP integration by ID.
      */
-    get: operations["get_6"];
+    get: operations["get_7"];
     /**
      * Update a PagerDuty MCP integration.
      * @description Updates a PagerDuty MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_6"];
+    put: operations["update_7"];
     post?: never;
     /**
      * Delete a PagerDuty MCP integration
      * @description Deletes a PagerDuty MCP integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_6"];
+    delete: operations["delete_7"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1147,6 +1259,50 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/pipeline-signal": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List PipelineSignal integrations
+     * @description Returns the PipelineSignal integrations for your organization.
+     */
+    get: operations["list_11"];
+    put?: never;
+    /**
+     * Create a PipelineSignal integration
+     * @description Creates the PipelineSignal integration for an agent so it can subscribe to pipelines.
+     */
+    post: operations["create_11"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/pipeline-signal/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a PipelineSignal integration
+     * @description Deletes a PipelineSignal integration. Blocked while it is linked to a pipeline.
+     */
+    delete: operations["delete_11"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/integrations/s3-data-warehouse": {
     parameters: {
       query?: never;
@@ -1155,13 +1311,13 @@ export interface paths {
       cookie?: never;
     };
     /** List all S3 Data Warehouse integrations */
-    get: operations["list_3"];
+    get: operations["list_4"];
     put?: never;
     /**
      * Create a S3 Data Warehouse integration
      * @description Creates an external S3 Data Warehouse integration
      */
-    post: operations["create_3"];
+    post: operations["create_4"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1239,18 +1395,18 @@ export interface paths {
      * Get a S3 Data Warehouse integration
      * @description Gets an external S3 Data Warehouse integration
      */
-    get: operations["get_3"];
+    get: operations["get_4"];
     /**
      * Update a S3 Data Warehouse integration
      * @description Updates an external S3 Data Warehouse integration
      */
-    put: operations["update_3"];
+    put: operations["update_4"];
     post?: never;
     /**
      * Delete a S3 Data Warehouse integration
      * @description Deletes an external S3 Data Warehouse integration if it exists. No-op otherwise.
      */
-    delete: operations["delete_3"];
+    delete: operations["delete_4"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1267,13 +1423,13 @@ export interface paths {
      * List all S3 Vector Index integrations
      * @description Retrieves all S3 Vector Index integrations for the organization.
      */
-    get: operations["list_10"];
+    get: operations["list_12"];
     put?: never;
     /**
      * Create an S3 Vector Index integration
      * @description Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.
      */
-    post: operations["create_10"];
+    post: operations["create_12"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1291,18 +1447,18 @@ export interface paths {
      * Get an S3 Vector Index integration
      * @description Retrieves an S3 Vector Index integration.
      */
-    get: operations["get_10"];
+    get: operations["get_11"];
     /**
      * Update an S3 Vector Index integration
      * @description Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.
      */
-    put: operations["update_10"];
+    put: operations["update_11"];
     post?: never;
     /**
      * Delete an S3 Vector Index integration
      * @description Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn't exist.
      */
-    delete: operations["delete_10"];
+    delete: operations["delete_12"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1319,13 +1475,13 @@ export interface paths {
      * List all Splunk integrations
      * @description Get all Splunk integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_11"];
+    get: operations["list_13"];
     put?: never;
     /**
      * Create a Splunk integration
      * @description Creates an integration to connect to Splunk.
      */
-    post: operations["create_11"];
+    post: operations["create_13"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1343,18 +1499,18 @@ export interface paths {
      * Get a Splunk integration
      * @description Get an integration to connect to Splunk.
      */
-    get: operations["get_11"];
+    get: operations["get_12"];
     /**
      * Update a Splunk integration.
      * @description Updates an integration to connect to Splunk. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_11"];
+    put: operations["update_12"];
     post?: never;
     /**
      * Delete a Splunk integration
      * @description Deletes an integration to connect to Splunk. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_11"];
+    delete: operations["delete_13"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1451,13 +1607,13 @@ export interface paths {
      * List all SumoLogic integrations
      * @description Get all SumoLogic integrations.
      */
-    get: operations["list_12"];
+    get: operations["list_14"];
     put?: never;
     /**
      * Create a SumoLogic integration
      * @description Creates an integration to connect to SumoLogic.
      */
-    post: operations["create_12"];
+    post: operations["create_14"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1475,18 +1631,18 @@ export interface paths {
      * Get a SumoLogic integration
      * @description Get an integration to connect to SumoLogic.
      */
-    get: operations["get_12"];
+    get: operations["get_13"];
     /**
      * Update a SumoLogic integration.
      * @description Updates an integration to connect to SumoLogic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_12"];
+    put: operations["update_13"];
     post?: never;
     /**
      * Delete a SumoLogic integration
      * @description Deletes an integration to connect to SumoLogic. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_12"];
+    delete: operations["delete_14"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1524,6 +1680,46 @@ export interface paths {
      * @description Returns datasets that are sinks of the integration's non-deleted pipelines, each with the pipelines that wire the integration to that dataset and the dataset's current estimation configuration (or null when not opted in). The estimation configuration is per-dataset and shared across every integration whose pipelines target the same dataset.
      */
     get: operations["getEstimationDatasets"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/investigations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Start an investigation
+     * @description Triggers an agent investigation with optional free-form context and returns the new investigation id. The investigation runs asynchronously.
+     */
+    post: operations["start"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/investigations/{investigationId}/transcript": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get an investigation transcript
+     * @description Returns the investigation's status and its turn-by-turn transcript of model messages, tool calls and tool results.
+     */
+    get: operations["transcript"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2440,7 +2636,7 @@ export interface paths {
      * List all users
      * @description Get all users in the system.
      */
-    get: operations["list_13"];
+    get: operations["list_15"];
     put?: never;
     /**
      * Create a new user
@@ -2514,6 +2710,7 @@ export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
     AccessConfig: {
+      /** @default true */
       autoSignupEnabled?: boolean;
     };
     /** @description Base class of all Action Rules */
@@ -2536,6 +2733,7 @@ export interface components {
       limit?: number;
       /**
        * @description Optional filter by log types. If null or empty, matches all log types.
+       * @default []
        * @example [
        *       "INTEGRATION_IMPORT",
        *       "JOB_EXECUTION"
@@ -2550,6 +2748,7 @@ export interface components {
       offset?: number;
       /**
        * @description Optional resource filters. Multiple filters use OR logic. If null or empty, matches all resources the user has access to (requires system logs permission if no filters specified).
+       * @default []
        * @example [
        *       {
        *         "resourceId": "int-123",
@@ -2575,6 +2774,7 @@ export interface components {
       startTime?: string;
       /**
        * @description Optional filter by log statuses. If null or empty, matches all log statuses.
+       * @default []
        * @example [
        *       "INFO",
        *       "ERROR"
@@ -2583,6 +2783,7 @@ export interface components {
       statuses?: ActivityLogsSearchStatuses[];
       /**
        * @description Optional filter by user IDs who triggered the activity. If null or empty, matches all users.
+       * @default []
        * @example [
        *       "user123",
        *       "user456"
@@ -2609,6 +2810,82 @@ export interface components {
       type: AddToListAttributeActionType;
       value: components["schemas"]["Any"];
     };
+    AgentConfig: {
+      /** Format: date-time */
+      createdAt: string;
+      id: string;
+      name: string;
+      organizationId: string;
+      payload: components["schemas"]["AgentConfigPayload"];
+      /** Format: date-time */
+      updatedAt: string;
+      /** Format: int32 */
+      version?: number;
+    };
+    AgentConfigCreate: {
+      enabledMcpIntegrations: components["schemas"]["AgentMcpIntegrations"][];
+      enabledSkills: string[];
+      enabledTools: string[];
+      /** Format: int32 */
+      maxTurns?: number;
+      modelConfiguration: components["schemas"]["ModelConfiguration"];
+      name: string;
+      systemPrompt: string;
+    };
+    AgentConfigPayload: {
+      enabledMcpIntegrations: components["schemas"]["AgentMcpIntegrations"][];
+      enabledSkills: string[];
+      enabledTools: string[];
+      /** Format: int32 */
+      maxTurns?: number;
+      modelConfiguration: components["schemas"]["ModelConfiguration"];
+      systemPrompt: string;
+    };
+    AgentConfigUpdate: {
+      enabledMcpIntegrations: components["schemas"]["AgentMcpIntegrations"][];
+      enabledSkills: string[];
+      enabledTools: string[];
+      /** Format: int32 */
+      maxTurns?: number;
+      modelConfiguration: components["schemas"]["ModelConfiguration"];
+      name: string;
+      systemPrompt: string;
+      /** Format: int32 */
+      version?: number;
+    };
+    AgentDetail: {
+      agent?: components["schemas"]["AgentConfig"];
+      metrics?: components["schemas"]["AgentInvestigationMetrics"];
+    };
+    AgentInvestigationMetrics: {
+      /** Format: int64 */
+      avgDurationMs?: number;
+      /** Format: int32 */
+      completed?: number;
+      /** Format: int32 */
+      failed?: number;
+      /** Format: int32 */
+      total?: number;
+    };
+    AgentMcpIntegrations: {
+      allowedTools?: string[];
+      integrationId: string;
+    };
+    AgentRecentHealth: {
+      /** Format: int32 */
+      completed?: number;
+      /** Format: int32 */
+      failed?: number;
+    };
+    AgentSubscriptionCounts: {
+      /** Format: int32 */
+      pipelines?: number;
+    };
+    AgentSummary: {
+      agent?: components["schemas"]["AgentConfig"];
+      recentHealth?: components["schemas"]["AgentRecentHealth"];
+      subscriptionCounts?: components["schemas"]["AgentSubscriptionCounts"];
+    };
     /**
      * @description Aggregation function.
      * @enum {string}
@@ -2622,7 +2899,10 @@ export interface components {
     };
     /** @description One aggregation function declaration. */
     AggregationDecl: {
-      /** @description Function arguments. Heterogeneous; validated at pipeline construction. */
+      /**
+       * @description Function arguments. Heterogeneous; validated at pipeline construction.
+       * @default []
+       */
       args?: Record<string, never>[];
       /** @description Output suffix. Omitted = preserve source metric name; in rule conditions the output is addressed as `<alias>.val` (at most one as-less aggregation per block). */
       as?: string;
@@ -2666,6 +2946,7 @@ export interface components {
       /**
        * Child predicates
        * @description List of predicates that must all match for this predicate to match.
+       * @default []
        */
       queries: components["schemas"]["EventPredicate"][];
       /**
@@ -2677,6 +2958,7 @@ export interface components {
     AndQueryNode: {
       /**
        * @description The and query node. This is a list of expressions that are combined with an AND operator.
+       * @default []
        * @example [
        *       "attribute",
        *       "index=main"
@@ -2705,7 +2987,10 @@ export interface components {
     };
     /** @description Commitment summary for Annual - Data Processing plans. */
     AnnualDataProcessingSummary: {
-      /** @description One row per metric the customer is pre-committed on (e.g. Data Processing GB, Compute Units). */
+      /**
+       * @description One row per metric the customer is pre-committed on (e.g. Data Processing GB, Compute Units).
+       * @default []
+       */
       rows: components["schemas"]["MeteredDimensionCommitment"][];
       /**
        * @description discriminator enum property added by openapi-typescript
@@ -2715,7 +3000,10 @@ export interface components {
     };
     /** @description Pre-commitment summary for Annual + SaaS plans. */
     AnnualSaasPreCommitmentSummary: {
-      /** @description One row per metric the customer is pre-committed on, ordered by the configured displayed brick id list. */
+      /**
+       * @description One row per metric the customer is pre-committed on, ordered by the configured displayed brick id list.
+       * @default []
+       */
       rows: components["schemas"]["MeteredDimensionCommitment"][];
       /**
        * @description discriminator enum property added by openapi-typescript
@@ -2740,11 +3028,17 @@ export interface components {
        * @example obj.avg > coh.p90
        */
       condition: string;
-      /** @description Alias → aggregation declaration. */
+      /**
+       * @description Alias → aggregation declaration.
+       * @default {}
+       */
       from: {
         [key: string]: components["schemas"]["MetricAggregation"];
       };
-      /** @description Join expressions linking aliases (Calcite-parsed SQL). */
+      /**
+       * @description Join expressions linking aliases (Calcite-parsed SQL).
+       * @default []
+       */
       joinOn?: string[];
       /**
        * @description Unique rule name.
@@ -2815,6 +3109,7 @@ export interface components {
     AttributeKeyTermNode: {
       /**
        * @description The string that is matched against the attribute key.
+       * @default
        * @example "app"
        */
       attribute: string;
@@ -2827,11 +3122,13 @@ export interface components {
     AttributeNode: {
       /**
        * @description The attribute name
+       * @default
        * @example "service"
        */
       attribute: string;
       /**
        * @description The term to match. This is a string that is matched against the attribute.
+       * @default
        * @example "grepr-service-1"
        */
       term: string;
@@ -2844,11 +3141,13 @@ export interface components {
     AttributePrefixNode: {
       /**
        * @description The attribute name
+       * @default
        * @example "service"
        */
       attribute: string;
       /**
        * @description The prefix to match in the attribute.
+       * @default
        * @example "grepr-service"
        */
       prefix: string;
@@ -2861,11 +3160,13 @@ export interface components {
     AttributeRe2Node: {
       /**
        * @description This is the attribute that is matched against the value of the regex field.
+       * @default
        * @example "appName"
        */
       attribute: string;
       /**
        * @description The regex to match. This is a regex string that is matched against the value of the attribute field.
+       * @default
        * @example "grepr-service-1.*"
        */
       regex: string;
@@ -2897,6 +3198,7 @@ export interface components {
     AttributeWildcardNode: {
       /**
        * @description The attribute name
+       * @default
        * @example "service"
        */
       attribute: string;
@@ -2907,6 +3209,7 @@ export interface components {
       type: AttributeWildcardNodeType;
       /**
        * @description The term to match. This is a wildcard string that contains wildcards
+       * @default
        * @example "grepr-service*"
        */
       wildcard: string;
@@ -2914,17 +3217,20 @@ export interface components {
     AttributeWithComparatorNode: {
       /**
        * @description The attribute name
+       * @default
        * @example "service"
        */
       attribute: string;
       /**
        * @description The comparator to use for the match.
+       * @default EQUAL
        * @example "EQUALS"
        * @enum {string}
        */
       comparator: AttributeWithComparatorNodeComparator;
       /**
        * @description The term to match. This is a string that is matched against the attribute.
+       * @default
        * @example "grepr-service-1"
        */
       term: string;
@@ -2976,7 +3282,10 @@ export interface components {
     AvailablePermission: {
       /** @description Action being permitted (e.g., view, edit) */
       action: string;
-      /** @description The category that the permission belongs to */
+      /**
+       * @description The category that the permission belongs to
+       * @default Other
+       */
       category: string;
       /** @description Human-readable description of what this permission allows */
       description: string;
@@ -3014,6 +3323,7 @@ export interface components {
       /**
        * Format: int32
        * @description Maximum number of logs to backfill. Default and max is 500,000.
+       * @default 500000
        * @example 100000
        */
       limit?: number;
@@ -3028,7 +3338,10 @@ export interface components {
        * @example 1
        */
       order?: number;
-      /** @description Specifies the sinks that should be used for the backfill job. */
+      /**
+       * @description Specifies the sinks that should be used for the backfill job.
+       * @default []
+       */
       sinkOperations: components["schemas"]["Operation"][];
       /**
        * @description Backfills data from the raw logs to the configured sink. This action runs an asynch batch job to backfill data from the raw logs table to the configured sink. The back-filled data is also added to the processed logs table to ensure that the same log is not backfilled twice leading to duplicates. The context on what needs to be backfilled is provided by the 'backfillQuery' which will filter logs that will be backfilled. (enum property replaced by openapi-typescript)
@@ -3040,7 +3353,10 @@ export interface components {
     BillingPeriodsResponse: {
       /** @description Customer display name (e.g. "ACME, Inc."). */
       customerName: string;
-      /** @description Reporting periods available for this customer, newest first. */
+      /**
+       * @description Reporting periods available for this customer, newest first.
+       * @default []
+       */
       periods: components["schemas"]["PeriodEntry"][];
     };
     /** @description Plan-specific usage summary. */
@@ -3104,6 +3420,7 @@ export interface components {
     CloudTrailLogsFileSource: {
       /**
        * @description The list of account IDs from which to read logs.
+       * @default []
        * @example [
        *       "123456789012",
        *       "987654321098"
@@ -3116,11 +3433,44 @@ export interface components {
       name: string;
       /**
        * @description The s3 path under the provided bucket to monitor. Optional.In the case of CloudTrail logs, this is the path to the AWSLogs/ directory.
+       * @default
        * @example path/to/monitor
        */
       pathPrefix?: string;
       /**
        * @description The list of regions from which to read logs from. If empty or null, reads logs from all regions.
+       * @default [
+       *       "US_EAST_1",
+       *       "US_EAST_2",
+       *       "US_WEST_1",
+       *       "US_WEST_2",
+       *       "AF_SOUTH_1",
+       *       "AP_EAST_1",
+       *       "AP_SOUTH_1",
+       *       "AP_SOUTH_2",
+       *       "AP_SOUTHEAST_1",
+       *       "AP_SOUTHEAST_2",
+       *       "AP_SOUTHEAST_3",
+       *       "AP_SOUTHEAST_4",
+       *       "AP_NORTHEAST_1",
+       *       "AP_NORTHEAST_2",
+       *       "AP_NORTHEAST_3",
+       *       "CA_CENTRAL_1",
+       *       "CN_NORTH_1",
+       *       "CN_NORTHWEST_1",
+       *       "EU_CENTRAL_1",
+       *       "EU_CENTRAL_2",
+       *       "EU_WEST_1",
+       *       "EU_WEST_2",
+       *       "EU_WEST_3",
+       *       "EU_NORTH_1",
+       *       "EU_SOUTH_1",
+       *       "EU_SOUTH_2",
+       *       "IL_CENTRAL_1",
+       *       "ME_CENTRAL_1",
+       *       "ME_SOUTH_1",
+       *       "SA_EAST_1"
+       *     ]
        * @example [
        *       "us-east-1",
        *       "us-west-2"
@@ -3144,7 +3494,10 @@ export interface components {
     };
     /** @description One cohort-output entry. */
     CohortOutputDecl: {
-      /** @description Aggregations to emit. Null = [{ fn: DEFAULT }]. */
+      /**
+       * @description Aggregations to emit. Null = [{ fn: DEFAULT }].
+       * @default []
+       */
       aggregations?: components["schemas"]["AggregationDecl"][];
       selectors?: components["schemas"]["FilterPrimitive"];
     };
@@ -3152,13 +3505,17 @@ export interface components {
     CohortsConfig: {
       /**
        * @description Level-prefixed attribute keys that group objects into cohorts.
+       * @default []
        * @example [
        *       "resource.cluster",
        *       "resource.region"
        *     ]
        */
       identifyingAttributes?: string[];
-      /** @description Level-prefixed attribute keys describing cohorts. */
+      /**
+       * @description Level-prefixed attribute keys describing cohorts.
+       * @default []
+       */
       metadataAttributes?: string[];
       /**
        * Format: int32
@@ -3167,7 +3524,10 @@ export interface components {
        * @example 4
        */
       numShardBits?: number;
-      /** @description Ordered cohort-output entries (first-match-wins). */
+      /**
+       * @description Ordered cohort-output entries (first-match-wins).
+       * @default []
+       */
       outputs?: components["schemas"]["CohortOutputDecl"][];
     };
     /** @description A complete span with its resource and instrumentation scope context. */
@@ -3198,6 +3558,7 @@ export interface components {
       type: CompleteSpanType;
     };
     CompositeAttributesMergeStrategy: {
+      /** @default [] */
       strategies: components["schemas"]["AttributesMergeStrategy"][];
       /**
        * @description CompositeAttributesMergeStrategy: Applies multiple merge strategies to produce multiple output attributes with suffixed keys. (enum property replaced by openapi-typescript)
@@ -3234,6 +3595,7 @@ export interface components {
      *     }
      */
     Condition: {
+      /** @default [] */
       actionRules: components["schemas"]["ActionRule"][];
     };
     /** @description One conditional branch in the raw log if-else routing ladder. */
@@ -3279,6 +3641,7 @@ export interface components {
     CreateJob: {
       /**
        * @description Execution mode of the job
+       * @default ASYNCHRONOUS
        * @example ASYNCHRONOUS
        * @enum {string}
        */
@@ -3291,12 +3654,14 @@ export interface components {
       name: string;
       /**
        * @description Processing method of the job
+       * @default STREAMING
        * @example STREAMING
        * @enum {string}
        */
       processing: PathsV1JobsGetParametersQueryProcessing;
       /**
        * @description Custom tags added to the job for ease of search
+       * @default {}
        * @example {
        *       "env": "dev",
        *       "type": "logs"
@@ -3305,7 +3670,10 @@ export interface components {
       tags?: {
         [key: string]: string;
       };
-      /** @description The team IDs that this job is associated with. */
+      /**
+       * @description The team IDs that this job is associated with.
+       * @default []
+       */
       teamIds?: string[];
     };
     CreateRole: {
@@ -3315,6 +3683,7 @@ export interface components {
       name: string;
       /**
        * @description Permission IDs to assign to this role
+       * @default []
        * @example [
        *       "perm_001",
        *       "perm_002"
@@ -3331,6 +3700,7 @@ export interface components {
       name: string;
       /**
        * @description List of role IDs to assign to the service account
+       * @default []
        * @example [
        *       "rol_AlphaNum1234",
        *       "rol_alphaNum5678"
@@ -3380,9 +3750,15 @@ export interface components {
     DailyTable: {
       /** @description True when the reporting period contains today. Same semantic as PeriodEntry.current — the last entry of days[] represents an incomplete day, so consumers should mark it as in-progress. */
       current?: boolean;
-      /** @description The reporting period's days in ascending order. */
+      /**
+       * @description The reporting period's days in ascending order.
+       * @default []
+       */
       days: string[];
-      /** @description One usage series per metered dimension, in display order. Bricks absent from the configured displayed-brick list are skipped. */
+      /**
+       * @description One usage series per metered dimension, in display order. Bricks absent from the configured displayed-brick list are skipped.
+       * @default []
+       */
       metrics: components["schemas"]["MeteredDimensionUsage"][];
     };
     Data: {
@@ -3404,6 +3780,7 @@ export interface components {
     Datadog: {
       /**
        * @description Tags to add when writing data to Datadog
+       * @default []
        * @example [
        *       "tag1:value1",
        *       "tag2:value2"
@@ -3431,6 +3808,7 @@ export interface components {
       };
       /**
        * @description Filter to apply when reading any data from the Datadog API
+       * @default
        * @example service:my-service
        */
       filterQuery: string;
@@ -3453,6 +3831,7 @@ export interface components {
       validateKeysOnSave?: boolean;
     };
     DatadogLogAgentSource: {
+      /** @default false */
       hostEnrichmentEnabled?: boolean;
       /** @description The integration id for the observability vendor. */
       integrationId: string;
@@ -3473,6 +3852,7 @@ export interface components {
     DatadogLogCloudSource: {
       /**
        * @description The Datadog query filter to use when reading logs from Datadog. This is concatenated with the one from the integration.
+       * @default
        * @example tag1,tag2
        */
       filterQuery?: string;
@@ -3489,6 +3869,7 @@ export interface components {
     DatadogLogSink: {
       /**
        * @description Additional tags to add to the logs when writing to Datadog. Gets combined with the integration's additionalTags.
+       * @default []
        * @example [
        *       "additional_tag"
        *     ]
@@ -3496,6 +3877,7 @@ export interface components {
       additionalTags?: string[];
       /**
        * @description Group by attributes to use when writing logs to Datadog browser intake.Defaults to ["http.useragent", "network.client.ip"].
+       * @default []
        * @example [
        *       "http.useragent",
        *       "network.client.ip"
@@ -3533,6 +3915,7 @@ export interface components {
     DatadogMetricsSink: {
       /**
        * @description Additional tags to add to the logs when writing to Datadog. Gets combined with the integration's additionalTags.
+       * @default []
        * @example [
        *       "env:dev"
        *     ]
@@ -3551,6 +3934,7 @@ export interface components {
     DatadogQueryPredicate: {
       /**
        * @description The datadog query used by the predicate. See https://docs.datadoghq.com/tracing/trace_explorer/query_syntax
+       * @default
        * @example service:grepr-service-1
        */
       query: string;
@@ -3579,6 +3963,8 @@ export interface components {
       baselineRate?: number;
       /** Format: double */
       effectiveThreshold?: number;
+      /** @default true */
+      enabled?: boolean;
       /** @description Name of the LLM prompt operator that created this rule. Used to route trigger actions back to the originating prompt. */
       originatingLlmPromptOperatorName?: string;
       /**
@@ -3589,6 +3975,7 @@ export interface components {
       /**
        * Format: double
        * @description Rate threshold (events/min) above which the rule triggers. If baselineMultiplier and baselineRate are both set, the effective threshold is baselineRate * baselineMultiplier instead.
+       * @default 10
        * @example 10
        */
       rateThreshold?: number;
@@ -3605,6 +3992,7 @@ export interface components {
     DatadogStatsSink: {
       /**
        * @description Additional tags to add to stats when writing to Datadog. Gets combined with the integration's and global additionalTags.
+       * @default {}
        * @example {
        *       "env": "prod",
        *       "team": "platform"
@@ -3649,6 +4037,7 @@ export interface components {
     DatadogTraceSink: {
       /**
        * @description Additional attributes to add to traces when writing to Datadog. Gets combined with the integration's additionalAttributes.
+       * @default {}
        * @example {
        *       "env": "prod",
        *       "team": "platform"
@@ -3670,7 +4059,10 @@ export interface components {
     DatasetCreate: {
       integrationId: string;
       name: string;
-      /** @description The team IDs that this dataset is associated with. */
+      /**
+       * @description The team IDs that this dataset is associated with.
+       * @default []
+       */
       teamIds?: string[];
     };
     DatasetEstimationConfig: {
@@ -3696,7 +4088,7 @@ export interface components {
       /**
        * Format: ISO-8601
        * @description How often to recalculate impact percentages. ISO-8601 duration format.
-       * @default P7D
+       * @default PT168H
        * @example PT20.345S
        */
       refreshPeriod: string;
@@ -3708,20 +4100,32 @@ export interface components {
       integrationId: string;
       name: string;
       organizationId: string;
-      /** @description Per-table configuration overrides, keyed by table key (e.g. logs_raw). Absent entries use system defaults. */
+      /**
+       * @description Per-table configuration overrides, keyed by table key (e.g. logs_raw). Absent entries use system defaults.
+       * @default {}
+       */
       tables?: {
         [key: string]: components["schemas"]["TableConfig"];
       };
-      /** @description The team IDs that this dataset is associated with. */
+      /**
+       * @description The team IDs that this dataset is associated with.
+       * @default []
+       */
       teamIds?: string[];
     };
     DatasetUpdate: {
       name: string;
-      /** @description Per-table configuration overrides. Read-only here; use /datasets/{id}/{tableKey}/config to mutate. */
+      /**
+       * @description Per-table configuration overrides. Read-only here; use /datasets/{id}/{tableKey}/config to mutate.
+       * @default {}
+       */
       tables?: {
         [key: string]: components["schemas"]["TableConfig"];
       };
-      /** @description The team IDs that this dataset is associated with. */
+      /**
+       * @description The team IDs that this dataset is associated with.
+       * @default []
+       */
       teamIds?: string[];
     };
     /** @description Sink that discards all of its input. */
@@ -3757,6 +4161,7 @@ export interface components {
     DropRule: {
       /**
        * @description Level-prefixed attribute key → glob pattern. All entries must match.
+       * @default {}
        * @example {
        *       "resource.test": "true"
        *     }
@@ -3793,7 +4198,9 @@ export interface components {
        * @example 50
        */
       capacity?: number;
+      /** @default [] */
       entityAttributes?: string[];
+      /** @default [] */
       entityTags?: string[];
       /**
        * @description The LLM integration ID (Gemini or OpenAI).
@@ -3877,6 +4284,7 @@ export interface components {
        * @example logs-prod
        */
       datasetName: string;
+      /** @default [] */
       pipelines: components["schemas"]["PipelineRef"][];
     };
     /** @description Base class of all Event Actions */
@@ -3893,6 +4301,7 @@ export interface components {
       actionPredicate: components["schemas"]["EventPredicate"];
       /**
        * @description Actions to take on a matching event.
+       * @default []
        * @example [
        *       {
        *         "tagKey": "hosts",
@@ -3944,6 +4353,7 @@ export interface components {
     EventPredicateTrigger: {
       /**
        * @description The ids for the conditions that are activated by this trigger.
+       * @default []
        * @example [
        *       "condition-1",
        *       "condition-2"
@@ -3964,6 +4374,7 @@ export interface components {
       type: EventPredicateTriggerType;
       /**
        * @description Map from variable names to paths for variables to extract from a matching event. If starting with '@', the path indicates an attribute. Otherwise, it's a tag. The variable names must start with '__' and be unique. Note that __timestamp (and __severity for logs) variable is automatically extracted from the respective top level fields of the matching event.
+       * @default {}
        * @example {
        *       "__variable1": "tag1",
        *       "__variable2": "@attribute1"
@@ -3994,6 +4405,7 @@ export interface components {
     ExternalSourceTrigger: {
       /**
        * @description The ids for the conditions that are activated by this trigger.
+       * @default []
        * @example [
        *       "condition-1, condition-2"
        *     ]
@@ -4055,6 +4467,7 @@ export interface components {
     FilterPrimitive: {
       /**
        * @description Level-prefixed attribute key → glob pattern. All entries must match.
+       * @default {}
        * @example {
        *       "resource.env": "prod"
        *     }
@@ -4084,6 +4497,7 @@ export interface components {
     GreprJobGraph: {
       /**
        * @description Edges that connect the vertices of the Grepr job graph
+       * @default []
        * @example [
        *       "source -> sink"
        *     ]
@@ -4091,6 +4505,7 @@ export interface components {
       edges: string[];
       /**
        * @description Operations that make up the vertices of the Grepr job graph
+       * @default []
        * @example [
        *       {
        *         "end": "2024-08-07T22:05:07Z",
@@ -4139,6 +4554,7 @@ export interface components {
       query: components["schemas"]["query"];
       /**
        * @description The order in which the rows should be sorted by
+       * @default ASCENDING
        * @enum {string}
        */
       sortOrder?: GreprLlmPromptResultsSourceSortOrder;
@@ -4178,7 +4594,10 @@ export interface components {
       additionalTags?: {
         [key: string]: string[];
       };
-      /** @description The list of metrics to load. Will load all possible metrics if nothing is specified */
+      /**
+       * @description The list of metrics to load. Will load all possible metrics if nothing is specified
+       * @default []
+       */
       metrics?: GreprMetricsSourceMetrics[];
       /** @example operation_name */
       name: string;
@@ -4214,6 +4633,7 @@ export interface components {
       query: components["schemas"]["query"];
       /**
        * @description The order in which the rows should be sorted by
+       * @default ASCENDING
        * @enum {string}
        */
       sortOrder?: GreprLlmPromptResultsSourceSortOrder;
@@ -4272,11 +4692,13 @@ export interface components {
       /**
        * Format: ISO-8601
        * @description The interval used by the Log Reducer for the query. Uses ISO 8601 format for intervals.
+       * @default PT2M
        * @example PT20.345S
        */
       reductionInterval: string;
       /**
        * @description The order in which the rows should be sorted by
+       * @default ASCENDING
        * @enum {string}
        */
       sortOrder?: GreprLlmPromptResultsSourceSortOrder;
@@ -4333,6 +4755,7 @@ export interface components {
       grokParser: components["schemas"]["GrokParser"];
       /**
        * @description Log sample to parse using the provided Grok rules.
+       * @default []
        * @example john id:12345 connected on 11/08/2017 on server XYZ in production
        */
       logSamples: string[];
@@ -4341,6 +4764,7 @@ export interface components {
       results?: components["schemas"]["GrokParseResponse"][];
     };
     GrokParseErrors: {
+      /** @default [] */
       errors: components["schemas"]["GrokRuleErrors"][];
     };
     GrokParseRequest: {
@@ -4403,6 +4827,7 @@ export interface components {
       /** @description Optional attribute to extract. Does nothing if it does not refer to a string attribute */
       extractAttribute?: string;
       /**
+       * @default []
        * @example [
        *       "user %{word:user.name} id:%{integer:user.id}",
        *       "connection connected on %{date(\"MM/dd/yyyy\"):connect_date}",
@@ -4412,6 +4837,7 @@ export interface components {
       grokHelperRules?: string[];
       /**
        * @description The Grok parser enriches log events by parsing unstructured text into structured attributes.
+       * @default []
        * @example [
        *       "MyParsingRule %{user} %{connection} %{server}"
        *     ]
@@ -4427,12 +4853,15 @@ export interface components {
       type: GrokParserType;
     };
     GrokRuleError: {
+      /** @default  */
       message?: string;
       /** Format: int32 */
       position?: number;
     };
     GrokRuleErrors: {
+      /** @default  */
       rule?: string;
+      /** @default [] */
       ruleErrors?: components["schemas"]["GrokRuleError"][];
     };
     /** @description Predicate that determines whether a span matches a head sampling rule. */
@@ -4494,6 +4923,7 @@ export interface components {
       query: components["schemas"]["query"];
       /**
        * @description The order in which the rows should be sorted by
+       * @default ASCENDING
        * @enum {string}
        */
       sortOrder?: GreprLlmPromptResultsSourceSortOrder;
@@ -4566,6 +4996,7 @@ export interface components {
        * @example 0n1fhg95fhgp2
        */
       datasetId?: string;
+      /** @default [] */
       ids?: string[];
       /**
        * Integration ID
@@ -4590,6 +5021,42 @@ export interface components {
        */
       pageSize?: number;
     };
+    InvestigationAction: {
+      description?: string;
+      toolCallId?: string;
+      toolName?: string;
+      url?: string;
+    };
+    InvestigationSummary: {
+      actions?: components["schemas"]["InvestigationAction"][];
+      agentId?: string;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      endedAt?: string;
+      /** Format: int32 */
+      inputTokens?: number;
+      investigationId?: string;
+      /** Format: int32 */
+      outputTokens?: number;
+      /** @enum {string} */
+      status?: InvestigationSummaryStatus;
+      summary?: string;
+      triggerSignals?: components["schemas"]["TriggerSignal"][];
+    };
+    InvestigationTranscript: {
+      actions?: components["schemas"]["InvestigationAction"][];
+      agentId?: string;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      endedAt?: string;
+      investigationId?: string;
+      /** @enum {string} */
+      status?: InvestigationSummaryStatus;
+      summary?: string;
+      turns?: components["schemas"]["TranscriptTurn"][];
+    };
     InvitationsList: {
       invitations?: components["schemas"]["ItemsCollectionReadInvitation"];
       /** Format: int32 */
@@ -4599,70 +5066,99 @@ export interface components {
     };
     Invitee: {
       email?: string;
-      /** @description Role IDs assigned to the invitation */
+      /**
+       * @description Role IDs assigned to the invitation
+       * @default []
+       */
       roleIds?: string[];
-      /** @description Team-specific role assignments */
+      /**
+       * @description Team-specific role assignments
+       * @default []
+       */
       teamAssignments?: components["schemas"]["TeamAssignment"][];
     };
     ItemsCollectionLogEvent: {
+      /** @default [] */
       items?: components["schemas"]["LogEvent"][];
     };
     ItemsCollectionReadAnthropic: {
+      /** @default [] */
       items?: components["schemas"]["ReadAnthropic"][];
     };
     ItemsCollectionReadDataWarehouse: {
+      /** @default [] */
       items?: components["schemas"]["ReadDataWarehouse"][];
     };
     ItemsCollectionReadDatadog: {
+      /** @default [] */
       items?: components["schemas"]["ReadDatadog"][];
     };
     ItemsCollectionReadDatadogMcp: {
+      /** @default [] */
       items?: components["schemas"]["ReadDatadogMcp"][];
     };
     ItemsCollectionReadGemini: {
+      /** @default [] */
       items?: components["schemas"]["ReadGemini"][];
     };
     ItemsCollectionReadInvitation: {
+      /** @default [] */
       items?: components["schemas"]["ReadInvitation"][];
     };
     ItemsCollectionReadJob: {
       items?: components["schemas"]["ReadJob"][];
     };
+    ItemsCollectionReadJobSignal: {
+      /** @default [] */
+      items?: components["schemas"]["ReadJobSignal"][];
+    };
     ItemsCollectionReadNewRelic: {
+      /** @default [] */
       items?: components["schemas"]["ReadNewRelic"][];
     };
     ItemsCollectionReadOpenAi: {
+      /** @default [] */
       items?: components["schemas"]["ReadOpenAi"][];
     };
     ItemsCollectionReadOtlp: {
+      /** @default [] */
       items?: components["schemas"]["ReadOtlp"][];
     };
     ItemsCollectionReadPagerDutyMcp: {
+      /** @default [] */
       items?: components["schemas"]["ReadPagerDutyMcp"][];
     };
     ItemsCollectionReadS3DataWarehouse: {
+      /** @default [] */
       items?: components["schemas"]["ReadS3DataWarehouse"][];
     };
     ItemsCollectionReadS3VectorIndex: {
+      /** @default [] */
       items?: components["schemas"]["ReadS3VectorIndex"][];
     };
     ItemsCollectionReadSplunk: {
+      /** @default [] */
       items?: components["schemas"]["ReadSplunk"][];
     };
     ItemsCollectionReadSumo: {
+      /** @default [] */
       items?: components["schemas"]["ReadSumo"][];
     };
     ItemsCollectionReadUser: {
+      /** @default [] */
       items?: components["schemas"]["ReadUser"][];
     };
     ItemsCollectionServiceAccountRead: {
+      /** @default [] */
       items?: components["schemas"]["ServiceAccountRead"][];
     };
     ItemsCollectionTemplate: {
+      /** @default [] */
       items?: components["schemas"]["Template"][];
     };
     /** @description Collection of vendor imported exceptions */
     ItemsCollectionVendorImportedException: {
+      /** @default [] */
       items?: components["schemas"]["VendorImportedException"][];
     };
     /** @description Base class of all Job Actions */
@@ -4672,6 +5168,7 @@ export interface components {
       order?: number;
     } & components["schemas"]["BackfillJobAction"];
     JobActionRule: {
+      /** @default [] */
       actions?: components["schemas"]["JobAction"][];
       /**
        * @description This takes job actions when the rule is triggered. (enum property replaced by openapi-typescript)
@@ -4696,6 +5193,10 @@ export interface components {
       lowerPart?: number;
       /** Format: int64 */
       upperPart?: number;
+    };
+    /** @description The payload containing integration data. */
+    JobSignal: {
+      agentId: string;
     };
     /** @description JSON file format. */
     JsonFileFormat: {
@@ -4773,6 +5274,7 @@ export interface components {
     LegacyDatadogMetricsSink: {
       /**
        * @description Additional tags to add to the metrics when writing to Datadog. Gets combined with the integration's additionalTags.
+       * @default []
        * @example [
        *       "env:dev"
        *     ]
@@ -4804,6 +5306,7 @@ export interface components {
       model: string;
       /**
        * @description Provider-specific configuration. For OPENAI, may include 'baseUrl'. For GEMINI, may include 'projectId'.
+       * @default {}
        * @example {
        *       "baseUrl": "https://api.openai.com/v1"
        *     }
@@ -4822,13 +5325,17 @@ export interface components {
     LlmPrompt: {
       /**
        * @description Rule types that the LLM can produce as output. When non-empty, the LLM output schema is augmented with a 'rules' field describing the available rule type schemas. Rules returned by the LLM are parsed and persisted to the LogRulesApplication operator for dynamic per-pattern rule application.
+       * @default []
        * @example [
        *       "masking",
        *       "time-series"
        *     ]
        */
       availableRuleTypes?: string[];
-      /** @description MCP tool integrations available for the LLM to invoke as terminal actions. Each entry references an integration that exposes MCP-compatible tools. */
+      /**
+       * @description MCP tool integrations available for the LLM to invoke as terminal actions. Each entry references an integration that exposes MCP-compatible tools.
+       * @default []
+       */
       availableTools?: components["schemas"]["LlmToolConfig"][];
       /**
        * Format: int32
@@ -4854,6 +5361,7 @@ export interface components {
       name: string;
       /**
        * @description Controls where LLM-enriched events are routed after processing. Multiple actions can be combined.
+       * @default []
        * @example [
        *       "FORWARD_TO_SINKS"
        *     ]
@@ -4917,6 +5425,7 @@ export interface components {
       query: components["schemas"]["query"];
       /**
        * @description The order in which the rows should be sorted by
+       * @default ASCENDING
        * @enum {string}
        */
       sortOrder?: GreprLlmPromptResultsSourceSortOrder;
@@ -4960,7 +5469,10 @@ export interface components {
       | components["schemas"]["Simple"]
       | components["schemas"]["Rag"];
     LogAttributesRemapper: {
-      /** @description List of attribute-to-attribute remapping rules. Each rule moves the value from a source attribute path to a target attribute path, removing the source unless the rule's preserveSource flag is set. An optional predicate filter controls when each rule is applied. */
+      /**
+       * @description List of attribute-to-attribute remapping rules. Each rule moves the value from a source attribute path to a target attribute path, removing the source unless the rule's preserveSource flag is set. An optional predicate filter controls when each rule is applied.
+       * @default []
+       */
       attributeRemappingRules?: components["schemas"]["AttributeRemappingRule"][];
       /**
        * @description When true, preserves the source host attribute after remapping instead of removing it. Defaults to true (source is preserved).
@@ -4986,9 +5498,11 @@ export interface components {
       /**
        * @description Attributes to search for host values
        * @default [
-       *       "@host",
+       *       "host",
        *       "hostname",
-       *       "syslog.hostname"
+       *       "syslog.hostname",
+       *       "kubernetes.host",
+       *       "sourceIPAddress"
        *     ]
        */
       hostReservedAttributes?: string[];
@@ -5059,7 +5573,8 @@ export interface components {
        *       "kubernetes.labels.app",
        *       "labels.app",
        *       "kubernetes.labels.k8s-app",
-       *       "labels.k8s-app"
+       *       "labels.k8s-app",
+       *       "eventSource"
        *     ]
        */
       serviceReservedAttributes?: string[];
@@ -5091,22 +5606,34 @@ export interface components {
        *     ]
        */
       statusReservedAttributes?: string[];
-      /** @description Map from tag key to an ordered list of attribute paths to search for values. All paths will be tried, and all found values will be added. If no value is found, the tag will not be changed. The attribute paths are a list of paths. This does not remove existing tag values. */
+      /**
+       * @description Map from tag key to an ordered list of attribute paths to search for values. All paths will be tried, and all found values will be added. If no value is found, the tag will not be changed. The attribute paths are a list of paths. This does not remove existing tag values.
+       * @default {}
+       */
       tagMappingPaths?: {
         [key: string]: string[][];
       };
-      /** @description Map from tag key to an ordered list of attribute paths to search for values. All paths will be tried, and all found values will be added. If no value is found, the tag will not be changed. The attribute paths are dot-separated. This does not remove existing tag values. */
+      /**
+       * @description Map from tag key to an ordered list of attribute paths to search for values. All paths will be tried, and all found values will be added. If no value is found, the tag will not be changed. The attribute paths are dot-separated. This does not remove existing tag values.
+       * @default {}
+       */
       tagMappings?: {
         [key: string]: string[];
       };
-      /** @description Possible locations of a map of string to string or to collection of strings that has tags. Added to tags, without replacement. */
+      /**
+       * @description Possible locations of a map of string to string or to collection of strings that has tags. Added to tags, without replacement.
+       * @default []
+       */
       tagMappingsLocationPaths?: string[][];
       /**
        * @description When true, preserves the source tag map location attributes after remapping instead of removing them. Defaults to false (source is removed after remapping).
        * @default false
        */
       tagMappingsLocationPreserveSource?: boolean;
-      /** @description Possible locations of a map of string to string or to collection of strings that has tags. Added to tags, without replacement. */
+      /**
+       * @description Possible locations of a map of string to string or to collection of strings that has tags. Added to tags, without replacement.
+       * @default []
+       */
       tagMappingsLocations?: string[];
       /**
        * @description When true, preserves the source tag mappings attributes after remapping instead of removing them. Defaults to false (source is removed).
@@ -5164,7 +5691,8 @@ export interface components {
        * @description Attributes to search for traceId values
        * @default [
        *       "dd.trace_id",
-       *       "contextMap.dd.trace_id"
+       *       "contextMap.dd.trace_id",
+       *       "otelTraceID"
        *     ]
        */
       traceIdReservedAttributes?: string[];
@@ -5223,6 +5751,7 @@ export interface components {
       /**
        * Attributes merge strategy entries
        * @description List of attribute paths and their corresponding merge strategies. If no strategy is defined for a path, the terminal merge strategy will be used.
+       * @default []
        */
       attributeMergeStrategyEntries?: components["schemas"]["AttributesMergeStrategyEntry"][];
       /**
@@ -5237,7 +5766,38 @@ export interface components {
       /**
        * Token delimiters
        * @description Characters to use for splitting tokens. Default is missing '@' to avoid splitting email addresses. Also missing '.' to avoid splitting identifiers using it.
-       * @default [":", "#", "[", "]", "(", ")", "{", "}", "|", ",", ";", """, "'", " ", "\t", "\n", "\r"]
+       * @default [
+       *       ":",
+       *       "#",
+       *       "[",
+       *       "]",
+       *       "(",
+       *       ")",
+       *       "{",
+       *       "}",
+       *       "|",
+       *       ",",
+       *       ";",
+       *       "\"",
+       *       "'",
+       *       " ",
+       *       "\t",
+       *       "\n",
+       *       "\r",
+       *       "&",
+       *       "=",
+       *       "?",
+       *       "!",
+       *       "+",
+       *       "*",
+       *       "/",
+       *       "<",
+       *       ">",
+       *       "%",
+       *       "^",
+       *       "~",
+       *       "`"
+       *     ]
        * @example [":", "#", "[", "]", "(", ")", "{", "}", "|", ",", ";", """, "'", " ", "\t", "\n", "\r"]
        */
       delimiters: string[];
@@ -5267,6 +5827,7 @@ export interface components {
       /**
        * Vendor imported exceptions
        * @description Exception configs that define which exceptions to use from the ones imported from the observability vendor integrations.
+       * @default []
        * @example {
        *       "autoSync": true,
        *       "ids": [
@@ -5280,6 +5841,7 @@ export interface components {
       /**
        * Event predicate
        * @description Predicate for skipping events. Logs matching these predicates won't be aggregated.
+       * @default []
        * @example {
        *       "query": "status:error",
        *       "type": "datadog-query"
@@ -5289,7 +5851,32 @@ export interface components {
       /**
        * Masks
        * @description Set of masks that can be applied to messages before tokenizing them. These masks are specified as pairs of (name, regex). The default masks are: ipport, timestamp, uuid, number, awsarn, awstoken.
-       * @default [["ipport", "(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?"],["timestamp", "(?:(?:\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}:\d{2}(?:[.,]\d{1,12})?(?:Z|(?:[\+\-]\d{2}:?\d{2})|\sUTC)?)|(?:\d{1,4}/\d{1,2}/\d{1,4}(,?\s\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)?)|(?:\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)|(?:\d{2}/[A-Za-z]{3}/\d{4}(?:[:\s]\d{2}:\d{2}:\d{2}(?:\s\+[0-9]{4})?)?))"],["uuid", "(?:^|(?<!\w))(?:[a-fA-F0-9]{8}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{12})(?:(?!\w)|$)"],["number", "(?:^|(?<!\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\-\+]?(?>(?:(?:\d{1,100})?(?:\.\d{1,100})(?:[eE][\-\+]?\d{1,100}))|(?:(?:\d{1,100})?(?:\.\d{1,100}))|(?:\d{1,100}))))(?:(?!\w)|$)"],["awsarn", "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*"],["awstoken", "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}"]]
+       * @default [
+       *       [
+       *         "ipport",
+       *         "(?:\\d{1,3}\\.){3}\\d{1,3}(?::\\d{1,5})?"
+       *       ],
+       *       [
+       *         "timestamp",
+       *         "(?:(?:\\d{4}-\\d{2}-\\d{2}(?:T|\\s)\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d{1,12})?(?:Z|(?:[\\+\\-]\\d{2}:?\\d{2})|\\sUTC)?)|(?:\\d{1,4}/\\d{1,2}/\\d{1,4}(,?\\s\\d{1,2}:\\d{2}:\\d{1,2}(?:[.,]\\d{1,12})?(?:\\s?(?:[AP]M))?)?)|(?:\\d{1,2}:\\d{2}:\\d{1,2}(?:[.,]\\d{1,12})?(?:\\s?(?:[AP]M))?)|(?:\\d{2}/[A-Za-z]{3}/\\d{4}(?:[:\\s]\\d{2}:\\d{2}:\\d{2}(?:\\s\\+[0-9]{4})?)?))"
+       *       ],
+       *       [
+       *         "uuid",
+       *         "(?:^|(?<!\\w))(?:[a-fA-F0-9]{8}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{12})(?:(?!\\w)|$)"
+       *       ],
+       *       [
+       *         "number",
+       *         "(?:^|(?<!\\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\\-\\+]?(?>(?:(?:\\d{1,100})?(?:\\.\\d{1,100})(?:[eE][\\-\\+]?\\d{1,100}))|(?:(?:\\d{1,100})?(?:\\.\\d{1,100}))|(?:\\d{1,100}))))(?:(?!\\w)|$)"
+       *       ],
+       *       [
+       *         "awsarn",
+       *         "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*"
+       *       ],
+       *       [
+       *         "awstoken",
+       *         "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}"
+       *       ]
+       *     ]
        * @example [["ipport", "(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?"],["timestamp", "(?:(?:\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}:\d{2}(?:[.,]\d{1,12})?(?:Z|(?:[\+\-]\d{2}:?\d{2})|\sUTC)?)|(?:\d{1,4}/\d{1,2}/\d{1,4}(,?\s\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)?)|(?:\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)|(?:\d{2}/[A-Za-z]{3}/\d{4}(?:[:\s]\d{2}:\d{2}:\d{2}(?:\s\+[0-9]{4})?)?))"],["uuid", "(?:^|(?<!\w))(?:[a-fA-F0-9]{8}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{12})(?:(?!\w)|$)"],["number", "(?:^|(?<!\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\-\+]?(?>(?:(?:\d{1,100})?(?:\.\d{1,100})(?:[eE][\-\+]?\d{1,100}))|(?:(?:\d{1,100})?(?:\.\d{1,100}))|(?:\d{1,100}))))(?:(?!\w)|$)"],["awsarn", "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*"],["awstoken", "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}"]]
        */
       masks: string[][];
@@ -5298,6 +5885,7 @@ export interface components {
       /**
        * Grouping by attribute paths (array format)
        * @description Attribute paths as arrays of keys. Use for unambiguous nested vs flat attributes. Example: [["user", "id"]] for nested user.id, [["user.id"]] for flat attribute named 'user.id'
+       * @default []
        * @example [
        *       [
        *         "user",
@@ -5309,12 +5897,14 @@ export interface components {
        *     ]
        */
       partitionByAttributePaths?: string[][];
+      /** @default [] */
       partitionByAttributes?: string[];
+      /** @default [] */
       partitionByTags?: string[];
       /**
        * Format: ISO-8601
        * @description Time window in which logs are considered for deduplication. Should not be modified without explicit guidance.
-       * @default PT120S
+       * @default PT2M
        * @example PT20.345S
        */
       reductionTimeWindow?: string;
@@ -5372,11 +5962,17 @@ export interface components {
       sqlOperations?: components["schemas"]["SqlOperations"];
     };
     LogRulesApplication: {
-      /** @description Global rules applied to all log events regardless of pattern (e.g., log-based alert rules). */
+      /**
+       * @description Global rules applied to all log events regardless of pattern (e.g., log-based alert rules).
+       * @default []
+       */
       globalRules?: components["schemas"]["PatternRuleConfig"][];
       /** @example operation_name */
       name: string;
-      /** @description Per-pattern rules keyed by pattern ID (TSID string). */
+      /**
+       * @description Per-pattern rules keyed by pattern ID (TSID string).
+       * @default {}
+       */
       rules?: {
         [key: string]: components["schemas"]["PatternRuleConfig"][];
       };
@@ -5389,6 +5985,7 @@ export interface components {
     LogTransformAction: {
       /** @example operation_name */
       name: string;
+      /** @default [] */
       transforms?: components["schemas"]["EventAction"][];
       /**
        * @description Applies transformations to log events. (enum property replaced by openapi-typescript)
@@ -5422,6 +6019,7 @@ export interface components {
       query: components["schemas"]["query"];
       /**
        * @description The order in which the rows should be sorted by
+       * @default ASCENDING
        * @enum {string}
        */
       sortOrder?: GreprLlmPromptResultsSourceSortOrder;
@@ -5447,6 +6045,7 @@ export interface components {
       variables?: {
         [key: string]: components["schemas"]["Any"];
       };
+      /** @default [] */
       vendorSinkIntegrationIds?: string[];
     };
     LogsBranch: {
@@ -5547,6 +6146,7 @@ export interface components {
       query: components["schemas"]["query"];
       /**
        * @description The order in which the rows should be sorted by
+       * @default ASCENDING
        * @enum {string}
        */
       sortOrder?: GreprLlmPromptResultsSourceSortOrder;
@@ -5576,6 +6176,7 @@ export interface components {
     LogsRuleEngine: {
       /**
        * @description Map of condition Id to condition objects. The ids are a unique name for the conditions.
+       * @default {}
        * @example {
        *       "condition-1": {
        *         "actionRules": [
@@ -5609,6 +6210,7 @@ export interface components {
       name: string;
       /**
        * @description Map of trigger Id to trigger objects. The ids are a unique name for the trigger.
+       * @default {}
        * @example {
        *       "trigger-1": {
        *         "type": "event-predicate",
@@ -5652,7 +6254,10 @@ export interface components {
        * @enum {string}
        */
       type: LogsValuesSourceType;
-      /** @description List of log events to be generated by the source. */
+      /**
+       * @description List of log events to be generated by the source.
+       * @default []
+       */
       values?: components["schemas"]["LogEvent"][];
     };
     Manifest: {
@@ -5668,6 +6273,9 @@ export interface components {
       components["schemas"]["PatternRuleConfig"],
       "type"
     > & {
+      /** @default true */
+      enabled?: boolean;
+      /** @default [] */
       masks: components["schemas"]["MaskEntry"][];
     } & {
       /**
@@ -5724,6 +6332,7 @@ export interface components {
     MessageExactMatchNode: {
       /**
        * @description The exact message value to match.
+       * @default
        * @example "this is an exact message"
        */
       exactValue: string;
@@ -5774,6 +6383,7 @@ export interface components {
     MessageNode: {
       /**
        * @description The message term to match.
+       * @default
        * @example word
        */
       term: string;
@@ -5786,6 +6396,7 @@ export interface components {
     MessagePrefixNode: {
       /**
        * @description The prefix to match a message.
+       * @default
        * @example "sample message prefix"
        */
       prefix: string;
@@ -5798,6 +6409,7 @@ export interface components {
     MessageRe2Node: {
       /**
        * @description The regex to match. This is a regex string that is matched against the message.
+       * @default
        * @example "grepr-service-1.*"
        */
       regex: string;
@@ -5815,6 +6427,7 @@ export interface components {
       type: MessageWildcardNodeType;
       /**
        * @description The message with wildcard to match. This is a string that is matched against the message.
+       * @default
        * @example "grepr-service-1*"
        */
       wildcard: string;
@@ -5832,7 +6445,10 @@ export interface components {
     };
     /** @description One metered dimension's daily usage and period totals. */
     MeteredDimensionUsage: {
-      /** @description Per-day usage counts. */
+      /**
+       * @description Per-day usage counts.
+       * @default []
+       */
       dailyValues: number[];
       /** @description Display label for the metered dimension. */
       label: string;
@@ -5847,6 +6463,7 @@ export interface components {
     MetricAggSpec: {
       /**
        * @description The tags to group the results by. If unspecified, all series are grouped together. Only applicable when spaceAggregation is set.
+       * @default []
        * @example [
        *       "service",
        *       "env"
@@ -5874,11 +6491,15 @@ export interface components {
     };
     /** @description One aggregation declaration inside an anomaly rule. */
     MetricAggregation: {
-      /** @description Aggregations to emit. Null = dimension view. */
+      /**
+       * @description Aggregations to emit. Null = dimension view.
+       * @default []
+       */
       aggregations?: components["schemas"]["AggregationDecl"][];
       filters?: components["schemas"]["FilterPrimitive"];
       /**
        * @description Group-by tokens: 'object', 'cohort', 'series', or a level-prefixed attribute path. Empty list = global aggregation.
+       * @default []
        * @example [
        *       "object",
        *       "cohort"
@@ -5925,6 +6546,7 @@ export interface components {
       };
       /**
        * @description The names of the metrics to query. Must not be empty.
+       * @default []
        * @example [
        *       "cpu.load",
        *       "cpu.utilization"
@@ -5941,18 +6563,30 @@ export interface components {
     /** @description Glob-pattern filter on metric names. */
     MetricNameFilter: {
       empty?: boolean;
-      /** @description Glob patterns to exclude. Precedence over includes. */
+      /**
+       * @description Glob patterns to exclude. Precedence over includes.
+       * @default []
+       */
       excludes?: string[];
-      /** @description Glob patterns to include. Empty list matches all. */
+      /**
+       * @description Glob patterns to include. Empty list matches all.
+       * @default []
+       */
       includes?: string[];
     };
     /** @description Reduces metric volume by aggregating per-object time series into per-cohort summaries while preserving the original signal when anomaly rules fire. Series that don't belong to a monitored object flow through unchanged; series matching a drop rule are discarded. */
     MetricReducer: {
-      /** @description Anomaly rules. */
+      /**
+       * @description Anomaly rules.
+       * @default []
+       */
       anomalies?: components["schemas"]["AnomalyConfig"][];
       anomalyActions?: components["schemas"]["AnomalyActions"];
       cohorts?: components["schemas"]["CohortsConfig"];
-      /** @description Drop rules — matching series are discarded outright. */
+      /**
+       * @description Drop rules — matching series are discarded outright.
+       * @default []
+       */
       dropRules?: components["schemas"]["DropRule"][];
       /**
        * Format: ISO-8601
@@ -5973,6 +6607,7 @@ export interface components {
       objects: components["schemas"]["ObjectsConfig"];
       /**
        * @description Per-metric-name overrides for space (cross-object) aggregation.
+       * @default {}
        * @example {
        *       "system.cpu.utilization": "AVG"
        *     }
@@ -6025,6 +6660,7 @@ export interface components {
       query: components["schemas"]["query"];
       /**
        * @description The order in which the rows should be sorted by
+       * @default ASCENDING
        * @enum {string}
        */
       sortOrder?: GreprLlmPromptResultsSourceSortOrder;
@@ -6066,6 +6702,14 @@ export interface components {
        * @enum {string}
        */
       type: MinAttributesMergeStrategyType;
+    };
+    ModelConfiguration: {
+      integrationId?: string;
+      /** Format: int32 */
+      maxOutputTokens?: number;
+      modelName?: string;
+      /** @enum {string} */
+      provider?: ModelConfigurationProvider;
     };
     /** @description Commitment summary for Monthly + Credit Pool plans. */
     MonthlyCreditPoolSummary: {
@@ -6139,6 +6783,7 @@ export interface components {
     NewRelicLogSink: {
       /**
        * @description Additional attributes to add to the logs when writing to New Relic. Gets combined with the integration's additionalAttributes.
+       * @default {}
        * @example {
        *       "processor": "grepr"
        *     }
@@ -6159,6 +6804,7 @@ export interface components {
     NewRelicQueryPredicate: {
       /**
        * @description The New Relic query used by the predicate. See https://docs.newrelic.com/docs/logs/ui-data/query-syntax-logs/
+       * @default
        * @example service:grepr-service-1
        */
       query: string;
@@ -6179,6 +6825,7 @@ export interface components {
     NrqlQueryPredicate: {
       /**
        * @description The Nrql query used by the predicate. See https://docs.newrelic.com/docs/nrql
+       * @default
        * @example SELECT * FROM Log WHERE service = 'grepr-service-1'
        */
       query: string;
@@ -6211,6 +6858,7 @@ export interface components {
     ObjectsConfig: {
       /**
        * @description Level-prefixed attribute keys that identify an object. Each key must have a 'resource.', 'scope.', or 'series.' prefix.
+       * @default []
        * @example [
        *       "resource.host.id"
        *     ]
@@ -6218,6 +6866,7 @@ export interface components {
       identifyingAttributes: string[];
       /**
        * @description Level-prefixed attribute keys that describe an object but may change.
+       * @default []
        * @example [
        *       "resource.os.version"
        *     ]
@@ -6335,6 +6984,7 @@ export interface components {
     OrQueryNode: {
       /**
        * @description This is a list of expressions that are combined with an OR operator.
+       * @default []
        * @example [
        *       "message1",
        *       "message2"
@@ -6351,6 +7001,7 @@ export interface components {
     Otlp: {
       /**
        * @description Headers whose values are dynamically extracted from log event attributes. Each mapping specifies a header name and the attribute path to read the value from.
+       * @default []
        * @example [
        *       {
        *         "attributePath": [
@@ -6443,6 +7094,7 @@ export interface components {
     OtlpLogSink: {
       /**
        * @description Additional attributes to add to the logs when writing to OTLP destination. Gets combined with the integration's additionalAttributes.
+       * @default {}
        * @example {
        *       "processor": "grepr"
        *     }
@@ -6480,6 +7132,7 @@ export interface components {
     OtlpTraceSink: {
       /**
        * @description Additional attributes to add to the logs when writing to OTLP destination. Gets combined with the integration's additionalAttributes.
+       * @default {}
        * @example {
        *       "processor": "grepr"
        *     }
@@ -6499,6 +7152,11 @@ export interface components {
     };
     /** @description The payload containing integration data. */
     PagerDutyMcp: {
+      /**
+       * @description Base web URL of the PagerDuty account, used to link to created incidents (e.g. https://acme.pagerduty.com). Optional.
+       * @example https://acme.pagerduty.com
+       */
+      accountUrl?: string;
       /** @description Masked API key for the MCP server. */
       readonly apiKey?: string;
       /**
@@ -6560,7 +7218,10 @@ export interface components {
     };
     /** @description User-chosen partition layout. */
     PartitionConfig: {
-      /** @description User-chosen partition fields applied in order. */
+      /**
+       * @description User-chosen partition fields applied in order.
+       * @default []
+       */
       fields: components["schemas"]["PartitionFieldConfig"][];
     };
     /** @description User-chosen partition fields applied in order. */
@@ -6592,6 +7253,38 @@ export interface components {
       /**
        * Token delimiters
        * @description Characters to use for splitting tokens.
+       * @default [
+       *       ":",
+       *       "#",
+       *       "[",
+       *       "]",
+       *       "(",
+       *       ")",
+       *       "{",
+       *       "}",
+       *       "|",
+       *       ",",
+       *       ";",
+       *       "\"",
+       *       "'",
+       *       " ",
+       *       "\t",
+       *       "\n",
+       *       "\r",
+       *       "&",
+       *       "=",
+       *       "?",
+       *       "!",
+       *       "+",
+       *       "*",
+       *       "/",
+       *       "<",
+       *       ">",
+       *       "%",
+       *       "^",
+       *       "~",
+       *       "`"
+       *     ]
        */
       delimiters: string[];
       /**
@@ -6620,7 +7313,32 @@ export interface components {
       /**
        * Masks
        * @description Set of masks that can be applied to messages before tokenizing them. These masks are specified as pairs of (name, regex).
-       * @default [["ipport", "(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?"],["timestamp", "(?:(?:\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}:\d{2}(?:[.,]\d{1,12})?(?:Z|(?:[\+\-]\d{2}:?\d{2})|\sUTC)?)|(?:\d{1,4}/\d{1,2}/\d{1,4}(,?\s\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)?)|(?:\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)|(?:\d{2}/[A-Za-z]{3}/\d{4}(?:[:\s]\d{2}:\d{2}:\d{2}(?:\s\+[0-9]{4})?)?))"],["uuid", "(?:^|(?<!\w))(?:[a-fA-F0-9]{8}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{12})(?:(?!\w)|$)"],["number", "(?:^|(?<!\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\-\+]?(?>(?:(?:\d{1,100})?(?:\.\d{1,100})(?:[eE][\-\+]?\d{1,100}))|(?:(?:\d{1,100})?(?:\.\d{1,100}))|(?:\d{1,100}))))(?:(?!\w)|$)"],["awsarn", "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*"],["awstoken", "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}"]]
+       * @default [
+       *       [
+       *         "ipport",
+       *         "(?:\\d{1,3}\\.){3}\\d{1,3}(?::\\d{1,5})?"
+       *       ],
+       *       [
+       *         "timestamp",
+       *         "(?:(?:\\d{4}-\\d{2}-\\d{2}(?:T|\\s)\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d{1,12})?(?:Z|(?:[\\+\\-]\\d{2}:?\\d{2})|\\sUTC)?)|(?:\\d{1,4}/\\d{1,2}/\\d{1,4}(,?\\s\\d{1,2}:\\d{2}:\\d{1,2}(?:[.,]\\d{1,12})?(?:\\s?(?:[AP]M))?)?)|(?:\\d{1,2}:\\d{2}:\\d{1,2}(?:[.,]\\d{1,12})?(?:\\s?(?:[AP]M))?)|(?:\\d{2}/[A-Za-z]{3}/\\d{4}(?:[:\\s]\\d{2}:\\d{2}:\\d{2}(?:\\s\\+[0-9]{4})?)?))"
+       *       ],
+       *       [
+       *         "uuid",
+       *         "(?:^|(?<!\\w))(?:[a-fA-F0-9]{8}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{12})(?:(?!\\w)|$)"
+       *       ],
+       *       [
+       *         "number",
+       *         "(?:^|(?<!\\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\\-\\+]?(?>(?:(?:\\d{1,100})?(?:\\.\\d{1,100})(?:[eE][\\-\\+]?\\d{1,100}))|(?:(?:\\d{1,100})?(?:\\.\\d{1,100}))|(?:\\d{1,100}))))(?:(?!\\w)|$)"
+       *       ],
+       *       [
+       *         "awsarn",
+       *         "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*"
+       *       ],
+       *       [
+       *         "awstoken",
+       *         "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}"
+       *       ]
+       *     ]
        * @example [["ipport", "(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?"],["timestamp", "(?:(?:\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}:\d{2}(?:[.,]\d{1,12})?(?:Z|(?:[\+\-]\d{2}:?\d{2})|\sUTC)?)|(?:\d{1,4}/\d{1,2}/\d{1,4}(,?\s\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)?)|(?:\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)|(?:\d{2}/[A-Za-z]{3}/\d{4}(?:[:\s]\d{2}:\d{2}:\d{2}(?:\s\+[0-9]{4})?)?))"],["uuid", "(?:^|(?<!\w))(?:[a-fA-F0-9]{8}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{12})(?:(?!\w)|$)"],["number", "(?:^|(?<!\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\-\+]?(?>(?:(?:\d{1,100})?(?:\.\d{1,100})(?:[eE][\-\+]?\d{1,100}))|(?:(?:\d{1,100})?(?:\.\d{1,100}))|(?:\d{1,100}))))(?:(?!\w)|$)"],["awsarn", "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*"],["awstoken", "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}"]]
        */
       masks: string[][];
@@ -6629,6 +7347,7 @@ export interface components {
       /**
        * Partition by attribute paths (array format)
        * @description Attribute paths as arrays of keys. Use for unambiguous nested vs flat attributes. Example: [["user", "id"]] for nested user.id, [["user.id"]] for flat attribute named 'user.id'
+       * @default []
        * @example [
        *       [
        *         "user",
@@ -6640,7 +7359,9 @@ export interface components {
        *     ]
        */
       partitionByAttributePaths?: string[][];
+      /** @default [] */
       partitionByAttributes?: string[];
+      /** @default [] */
       partitionByTags?: string[];
       /**
        * Similarity threshold
@@ -6692,6 +7413,7 @@ export interface components {
     PhraseNode: {
       /**
        * @description The terms in a phrase to match
+       * @default []
        * @example [
        *       "grepr-service-1",
        *       "grepr-service-2"
@@ -6848,6 +7570,7 @@ export interface components {
       sessionToken: string;
     };
     QueryParsingError: {
+      /** @default  */
       message: string;
     };
     QueryResult: {
@@ -6866,6 +7589,7 @@ export interface components {
       embeddingIntegrationId: string;
       /**
        * @description Event field references to store as filterable metadata on each vector and used to filter retrieval at query time. Values prefixed with '@' are resolved from event attributes; values without '@' are resolved from event tags. The metadata key is the bare field name (without '@'). Total filterable metadata per vector is limited to 2048 bytes.
+       * @default []
        * @example [
        *       "service",
        *       "@product_id"
@@ -6908,6 +7632,7 @@ export interface components {
     Read: {
       accessConfig: components["schemas"]["AccessConfig"];
       constraints: components["schemas"]["ReadOrgConstraints"];
+      /** @default [] */
       featureFlags?: ReadFeatureFlags[];
       name: string;
       plan: components["schemas"]["Plan"];
@@ -7108,9 +7833,15 @@ export interface components {
       id?: string;
       inviteeEmail?: string;
       inviterName?: string;
-      /** @description Role IDs assigned to the invitation */
+      /**
+       * @description Role IDs assigned to the invitation
+       * @default []
+       */
       roleIds?: string[];
-      /** @description Team-specific role assignments */
+      /**
+       * @description Team-specific role assignments
+       * @default []
+       */
       teamAssignments?: components["schemas"]["TeamAssignment"][];
     };
     /** @description Attributes of the Grepr Job */
@@ -7122,6 +7853,7 @@ export interface components {
       createdAt: string;
       /**
        * @description Desired state of the job
+       * @default RUNNING
        * @enum {string}
        */
       desiredState: PathsV1JobsGetParametersQueryState;
@@ -7134,6 +7866,7 @@ export interface components {
       endedAt?: string;
       /**
        * @description Execution mode of the job
+       * @default ASYNCHRONOUS
        * @enum {string}
        */
       execution: PathsV1JobsGetParametersQueryExecution;
@@ -7158,6 +7891,7 @@ export interface components {
       pipelineStatus?: components["schemas"]["PipelineStatus"];
       /**
        * @description Processing method of the job
+       * @default STREAMING
        * @enum {string}
        */
       processing: PathsV1JobsGetParametersQueryProcessing;
@@ -7168,14 +7902,21 @@ export interface components {
       startedAt?: string;
       /**
        * @description State of the job
+       * @default STARTING
        * @enum {string}
        */
       state: PathsV1JobsGetParametersQueryState;
-      /** @description Custom tags attached to the job for ease of search */
+      /**
+       * @description Custom tags attached to the job for ease of search
+       * @default {}
+       */
       tags: {
         [key: string]: string;
       };
-      /** @description The team IDs that this job is associated with. */
+      /**
+       * @description The team IDs that this job is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * Format: date-time
@@ -7185,6 +7926,49 @@ export interface components {
       /**
        * Format: int64
        * @description Version of the job
+       * @example 0
+       */
+      version: number;
+    };
+    ReadJobSignal: {
+      /**
+       * Format: date-time
+       * @description Timestamp when the integration was created.
+       */
+      readonly createdAt: string;
+      /** @description The integration id */
+      id: string;
+      /**
+       * @description List of job IDs associated with the integration.
+       * @default []
+       */
+      jobIds: string[];
+      /**
+       * @description Name of the integration.
+       * @example my_integration
+       */
+      name: string;
+      /** @description Organization ID of the integration. */
+      organizationId: string;
+      payload: components["schemas"]["JobSignal"];
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
+      teamIds?: string[];
+      /**
+       * @description The type of the integration. This is used to determine the payload type.
+       * @enum {string}
+       */
+      type: ReadJobSignalType;
+      /**
+       * Format: date-time
+       * @description Timestamp when the integration was last updated.
+       */
+      readonly updatedAt: string;
+      /**
+       * Format: int32
+       * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
        * @example 0
        */
       version: number;
@@ -7498,9 +8282,15 @@ export interface components {
        * @example 0n2abc12345
        */
       id: string;
-      /** @description Organization roles to assign when claim matches */
+      /**
+       * @description Organization roles to assign when claim matches
+       * @default []
+       */
       roles: components["schemas"]["SsoClaimMappingRole"][];
-      /** @description Team assignments to apply when claim matches */
+      /**
+       * @description Team assignments to apply when claim matches
+       * @default []
+       */
       teamAssignments: components["schemas"]["TeamAssignment"][];
       /**
        * Format: date-time
@@ -7561,7 +8351,10 @@ export interface components {
       id?: string;
       /** @description The name of the user. */
       name?: string;
-      /** @description The roles associated with this user. */
+      /**
+       * @description The roles associated with this user.
+       * @default []
+       */
       roles: components["schemas"]["Role"][];
       /** @description The teams that this user is a member of. */
       teamIds: string[];
@@ -7607,11 +8400,13 @@ export interface components {
       /**
        * Format: ISO-8601
        * @description The interval used by the Log Reducer for the query. Uses ISO 8601 format for intervals.
+       * @default PT2M
        * @example PT20.345S
        */
       reductionInterval: string;
       /**
        * @description The order in which the rows should be sorted by
+       * @default ASCENDING
        * @enum {string}
        */
       sortOrder?: GreprLlmPromptResultsSourceSortOrder;
@@ -7710,7 +8505,10 @@ export interface components {
       resourceType: ResourceFilterResourceType;
     };
     Role: {
-      /** @description Whether this is a built-in role */
+      /**
+       * @description Whether this is a built-in role
+       * @default false
+       */
       readonly builtin?: boolean;
       /**
        * Format: date-time
@@ -7721,13 +8519,19 @@ export interface components {
       createdBy?: string;
       /** @description Description of the role */
       description: string;
-      /** @description The effect of this role's permissions: 'allow' or 'deny'. Defaults to 'allow' for standard roles. */
+      /**
+       * @description The effect of this role's permissions: 'allow' or 'deny'. Defaults to 'allow' for standard roles.
+       * @default allow
+       */
       readonly effect?: string;
       /** @description The id of the role. */
       id: string;
       /** @description The user-facing name of the role. */
       name: string;
-      /** @description Permission IDs assigned to this role (empty for system roles) */
+      /**
+       * @description Permission IDs assigned to this role (empty for system roles)
+       * @default []
+       */
       permissionIds: string[];
     };
     /**
@@ -7749,7 +8553,10 @@ export interface components {
       assumeRoleArn?: string;
       /** @description The name of the S3 bucket to use for the data warehouse */
       bucketName: string;
-      /** @description The prefix (folder) within the S3 bucket where data warehouse files will be stored */
+      /**
+       * @description The prefix (folder) within the S3 bucket where data warehouse files will be stored
+       * @default
+       */
       prefix?: string;
       /**
        * @description The region of the S3 bucket
@@ -7764,6 +8571,7 @@ export interface components {
       name: string;
       /**
        * @description The s3 path under the provided bucket to monitor. Optional.In the case of CloudTrail logs, this is the path to the AWSLogs/ directory.
+       * @default
        * @example path/to/monitor
        */
       pathPrefix?: string;
@@ -7836,7 +8644,10 @@ export interface components {
       id: string;
       /** @description Display name of the service account */
       name: string;
-      /** @description List of assigned roles */
+      /**
+       * @description List of assigned roles
+       * @default []
+       */
       roles: components["schemas"]["Role"][];
     };
     /** @description Service account with client secret (only returned on creation) */
@@ -7847,7 +8658,10 @@ export interface components {
       id: string;
       /** @description Display name of the service account */
       name: string;
-      /** @description List of assigned roles */
+      /**
+       * @description List of assigned roles
+       * @default []
+       */
       roles: components["schemas"]["Role"][];
       /**
        * Format: password
@@ -7865,6 +8679,7 @@ export interface components {
     SeverityNode: {
       /**
        * @description The comparator to use for the match.
+       * @default EQUAL
        * @example "EQUAL"
        * @enum {string}
        */
@@ -7872,6 +8687,7 @@ export interface components {
       /**
        * Format: int32
        * @description The severity level to match. This is an integer that is matched against the severity.
+       * @default 0
        * @example 9
        */
       severity: number;
@@ -8102,6 +8918,7 @@ export interface components {
       offset?: number;
       /**
        * @description Filter by operation names (exact match)
+       * @default []
        * @example [
        *       "process-payment",
        *       "validate-user"
@@ -8111,6 +8928,7 @@ export interface components {
       query: components["schemas"]["query"];
       /**
        * @description Filter by service names (exact match)
+       * @default []
        * @example [
        *       "checkout-service",
        *       "user-service"
@@ -8119,6 +8937,7 @@ export interface components {
       serviceNames?: string[];
       /**
        * @description The order in which the rows should be sorted by
+       * @default ASCENDING
        * @enum {string}
        */
       sortOrder?: GreprLlmPromptResultsSourceSortOrder;
@@ -8130,6 +8949,7 @@ export interface components {
       start: string;
       /**
        * @description Filter by trace IDs (32-character hex format)
+       * @default []
        * @example [
        *       "6a33267c000000001001119764423b8d"
        *     ]
@@ -8137,6 +8957,7 @@ export interface components {
       traceIds?: string[];
       /**
        * @description Filter by trace signatures (supports wildcards with *)
+       * @default []
        * @example [
        *       "user-login-*",
        *       "checkout-*"
@@ -8159,6 +8980,7 @@ export interface components {
       variables?: {
         [key: string]: components["schemas"]["Any"];
       };
+      /** @default [] */
       vendorSinkIntegrationIds?: string[];
     };
     SpansSynchronousSink: {
@@ -8174,6 +8996,7 @@ export interface components {
     Splunk: {
       /**
        * @description Tags to add when writing data to Splunk
+       * @default []
        * @example [
        *       "tag1:value1",
        *       "tag2:value2"
@@ -8191,6 +9014,7 @@ export interface components {
       };
       /**
        * @description Filter to apply when reading any data from the Splunk API
+       * @default
        * @example service:my-service
        */
       filterQuery: string;
@@ -8222,7 +9046,10 @@ export interface components {
        * @example 8089
        */
       restPort?: string;
-      /** @description Splunk collector uses a valid SSL certificate */
+      /**
+       * @description Splunk collector uses a valid SSL certificate
+       * @default true
+       */
       secure?: boolean;
       /**
        * @description Splunk host name or IP address. If specified, ingest, REST and web endpoints default to this host. Either of splunk host or advanced config with individual endpoints should be specified.
@@ -8261,6 +9088,7 @@ export interface components {
     SplunkLogHttpSource: {
       /**
        * @description The Splunk query filter to use when reading logs from Splunk. This is concatenated with the one from the integration.
+       * @default
        * @example sourcetype="httpevent"
        */
       filterQuery?: string;
@@ -8277,6 +9105,7 @@ export interface components {
     SplunkLogSink: {
       /**
        * @description Additional tags to add to the logs when writing to Splunk. Gets combined with the integration's additionalTags.
+       * @default []
        * @example ["additional_tag": "value", "additional_tag2": "value2"]
        */
       additionalTags?: string[];
@@ -8316,7 +9145,7 @@ export interface components {
       materialized?: boolean;
       /**
        * @description The SQL query to execute. Can reference tables created by previous statements by their tableName, as well as the 'traces' input table and available datasets.
-       * @example SELECT * FROM traces WHERE durationNanos > 1000000
+       * @example SELECT * FROM traces WHERE duration > 1000000
        */
       sqlQuery: string;
       /**
@@ -8327,7 +9156,10 @@ export interface components {
     };
     /** @description Processes data through a sequence of SQL statements executed in order. Supports VIEW statements that create temporary tables, OUTPUT statements that produce DataStream results, and IO statements that perform side effects. */
     SqlOperation: {
-      /** @description IDs of datasets whose tables can be referenced in SQL statements. These will be registered as queryable tables in the SQL environment. The tables from each dataset will appear in a separate namespace based on the dataset name. */
+      /**
+       * @description IDs of datasets whose tables can be referenced in SQL statements. These will be registered as queryable tables in the SQL environment. The tables from each dataset will appear in a separate namespace based on the dataset name.
+       * @default []
+       */
       availableDatasets?: string[];
       /**
        * Format: ISO-8601
@@ -8336,13 +9168,19 @@ export interface components {
        * @example PT20.345S
        */
       globalStateTtl?: string;
-      /** @description Input table names that can be referenced in SQL statements. Each input table corresponds to an input stream that is connected to this operation in the job graph. All connected input types must be compatible with the SQL operations. Each type specifies what the schema of the resulting table that is available for the SQL statements looks like. */
+      /**
+       * @description Input table names that can be referenced in SQL statements. Each input table corresponds to an input stream that is connected to this operation in the job graph. All connected input types must be compatible with the SQL operations. Each type specifies what the schema of the resulting table that is available for the SQL statements looks like. For `COMPLETE_SPAN`, the table schema uses SQL row field names, which differ from the REST JSON property names in the `CompleteSpan` schema.
+       * @default {}
+       */
       inputs?: {
         [key: string]: SqlOperationInputs;
       };
       /** @example operation_name */
       name: string;
-      /** @description List of SQL statements to execute in order. Each statement can reference tables created by previous statements, the input tables, and any tables from the available datasets. */
+      /**
+       * @description List of SQL statements to execute in order. Each statement can reference tables created by previous statements, the input tables, and any tables from the available datasets.
+       * @default []
+       */
       statements: components["schemas"]["SqlExecutable"][];
       /**
        * @description Processes data through a sequence of SQL statements. (enum property replaced by openapi-typescript)
@@ -8373,14 +9211,14 @@ export interface components {
        */
       outputName: string;
       /**
-       * @description Data types that are acceptable as inputs and outputs to SQL operations.
+       * @description Data types that are acceptable as inputs and outputs to SQL operations. See [SQL transform supported data types](/transforms/sql-transform/data-types) for the SQL row schemas. The `COMPLETE_SPAN` SQL row schema uses SQL field names that differ from the REST JSON property names documented in [CompleteSpan](/apis/api-spec#schema/CompleteSpan).
        * @example VARIANT
        * @enum {string}
        */
       outputType: SqlOperationInputs;
       /**
        * @description The SQL query to execute. Can reference tables created by previous statements by their tableName, as well as the 'traces' input table and available datasets.
-       * @example SELECT * FROM traces WHERE durationNanos > 1000000
+       * @example SELECT * FROM traces WHERE duration > 1000000
        */
       sqlQuery: string;
       /**
@@ -8406,7 +9244,7 @@ export interface components {
       materialized?: boolean;
       /**
        * @description The SQL query to execute. Can reference tables created by previous statements by their tableName, as well as the 'traces' input table and available datasets.
-       * @example SELECT * FROM traces WHERE durationNanos > 1000000
+       * @example SELECT * FROM traces WHERE duration > 1000000
        */
       sqlQuery: string;
       /**
@@ -8435,6 +9273,13 @@ export interface components {
     };
     SsoEnablementRequest: {
       comments?: string;
+    };
+    StartInvestigationRequest: {
+      agentId: string;
+      userProvidedContext?: string;
+    };
+    StartInvestigationResponse: {
+      investigationId?: string;
     };
     /** @description Status information for a span */
     Status: {
@@ -8477,6 +9322,7 @@ export interface components {
     SumoLogSink: {
       /**
        * @description Additional attributes to add to the logs when writing to SumoLogic. Gets combined with the integration's additionalAttributes.
+       * @default {}
        * @example {
        *       "processor": "grepr"
        *     }
@@ -8514,13 +9360,22 @@ export interface components {
     /** @description Per-table configuration overrides. Read-only here; use /datasets/{id}/{tableKey}/config to mutate. */
     TableConfig: {
       partitionConfig?: components["schemas"]["PartitionConfig"];
-      /** @description Bare tag keys to promote to top-level columns. */
+      /**
+       * @description Bare tag keys to promote to top-level columns.
+       * @default []
+       */
       promotedTagKeys?: string[];
     };
     TableConfigRead: {
-      /** @description Full effective partition spec, including system-controlled rows. */
+      /**
+       * @description Full effective partition spec, including system-controlled rows.
+       * @default []
+       */
       effectiveSpec: components["schemas"]["EffectivePartitionField"][];
-      /** @description Bare tag keys promoted to top-level columns. */
+      /**
+       * @description Bare tag keys promoted to top-level columns.
+       * @default []
+       */
       promotedTagKeys?: string[];
     };
     TagAction: {
@@ -8547,6 +9402,7 @@ export interface components {
       type: TagActionType;
       /**
        * @description The values of the tag to modify.
+       * @default []
        * @example [
        *       "host1",
        *       "host2"
@@ -8557,6 +9413,7 @@ export interface components {
     TagKeyNode: {
       /**
        * @description This is a string that is matched against the tag key.
+       * @default
        * @example "source"
        */
       tagKey: string;
@@ -8569,6 +9426,7 @@ export interface components {
     TagKeyPrefixNode: {
       /**
        * @description This is a string that is matched against the tag key prefix.
+       * @default
        * @example "sourc"
        */
       prefix: string;
@@ -8586,6 +9444,7 @@ export interface components {
       type: TagKeyWildcardNodeType;
       /**
        * @description This is a wildcarded string that is matched against the tag key.
+       * @default
        * @example "ser*"
        */
       wildcard: string;
@@ -8593,11 +9452,13 @@ export interface components {
     TagNode: {
       /**
        * @description The tag key
+       * @default
        * @example "service"
        */
       tagKey: string;
       /**
        * @description This is a string that is matched against the tag value.
+       * @default
        * @example "grepr-service-1"
        */
       tagValue: string;
@@ -8610,11 +9471,13 @@ export interface components {
     TagPrefixNode: {
       /**
        * @description This is a prefix that is matched against the tag value.
+       * @default
        * @example "grepr-service"
        */
       prefix: string;
       /**
        * @description This is a string that is matched against the tag key.
+       * @default
        * @example "source"
        */
       tagKey: string;
@@ -8627,11 +9490,13 @@ export interface components {
     TagRe2Node: {
       /**
        * @description The regex to match. This is a regex string that is matched against the tag
+       * @default
        * @example "grepr-service-1.*"
        */
       regex: string;
       /**
        * @description This is a string that is matched against the tag key.
+       * @default
        * @example "source"
        */
       tagKey: string;
@@ -8644,6 +9509,7 @@ export interface components {
     TagWildcardNode: {
       /**
        * @description The tag key
+       * @default
        * @example "service"
        */
       tagKey: string;
@@ -8654,6 +9520,7 @@ export interface components {
       type: TagWildcardNodeType;
       /**
        * @description This is a string including wildcards that is matched against the tag value.
+       * @default
        * @example "grepr-serv*"
        */
       wildcard: string;
@@ -8661,17 +9528,20 @@ export interface components {
     TagWithComparatorNode: {
       /**
        * @description The comparator to use for the match.
+       * @default EQUAL
        * @example "equals"
        * @enum {string}
        */
       comparator: AttributeWithComparatorNodeComparator;
       /**
        * @description The tag name
+       * @default
        * @example "service"
        */
       tagKey: string;
       /**
        * @description The term to match. This is a string that is matched against the tag.
+       * @default
        * @example "source"
        */
       term: string;
@@ -8763,6 +9633,28 @@ export interface components {
       /**
        * Quantile Sampling Tiers
        * @description List of quantile sampling tiers for performance-based sampling. Each tier defines a percentile threshold, sampling rate, and label. Traces ABOVE each quantile get the corresponding sampling rate and are labeled with the tier's label. Always include a 0.0 quantile tier for baseline rate. Evaluated in descending quantile order.
+       * @default [
+       *       {
+       *         "label": "very_slow",
+       *         "quantile": 0.99,
+       *         "samplingRate": 0.8
+       *       },
+       *       {
+       *         "label": "slow",
+       *         "quantile": 0.95,
+       *         "samplingRate": 0.1
+       *       },
+       *       {
+       *         "label": "medium",
+       *         "quantile": 0.5,
+       *         "samplingRate": 0.05
+       *       },
+       *       {
+       *         "label": "fast",
+       *         "quantile": 0,
+       *         "samplingRate": 0.01
+       *       }
+       *     ]
        * @example [{quantile: 0.99, samplingRate: 0.8, label: 'very_slow'}, {quantile: 0.95, samplingRate: 0.1, label: 'slow'}, {quantile: 0.5, samplingRate: 0.05, label: 'medium'}, {quantile: 0.0, samplingRate: 0.01, label: 'fast'}]
        */
       quantileSamplingTiers?: components["schemas"]["QuantileSamplingTier"][];
@@ -8791,7 +9683,10 @@ export interface components {
        * @example Parses JSON log events and extracts fields.
        */
       description?: string;
-      /** @description List of additional outputs that will be added to the graph when running in draft mode. */
+      /**
+       * @description List of additional outputs that will be added to the graph when running in draft mode.
+       * @default []
+       */
       draftOutputs?: components["schemas"]["TemplateDraftOutput"][];
       /**
        * @description Unique identifier for the template.
@@ -8800,6 +9695,7 @@ export interface components {
       id?: string;
       /**
        * @description JSONSchema (https://json-schema.org/draft/2020-12) for validating the inputs to the template. Make sure you make this validation forwards/backwards compatible to ensure that the template version can be upgraded and rolled back.
+       * @default {}
        * @example {
        *       "type": "object",
        *       "properties": {
@@ -8814,6 +9710,7 @@ export interface components {
       };
       /**
        * @description Map of input names used in a parent subgraph that uses a TemplateOperation to their internal connections within the subgraph. Can be missing if there are no inputs to the subgraph
+       * @default {}
        * @example {
        *       "input": "log_reducer:input"
        *     }
@@ -8821,6 +9718,7 @@ export interface components {
       inputs?: {
         [key: string]: string;
       };
+      /** @default true */
       isLatest?: boolean;
       latest?: boolean;
       /**
@@ -8833,7 +9731,10 @@ export interface components {
        * @example org-456
        */
       organizationId?: string;
-      /** @description Map of output names used in a parent subgraph that uses a TemplateOperation to their internal connections within the subgraph. Can be missing if there are no outputs from the subgraph */
+      /**
+       * @description Map of output names used in a parent subgraph that uses a TemplateOperation to their internal connections within the subgraph. Can be missing if there are no outputs from the subgraph
+       * @default {}
+       */
       outputs?: {
         [key: string]: string;
       };
@@ -8844,6 +9745,7 @@ export interface components {
       sourceHash?: string;
       /**
        * @description Set of team IDs that can use this template.
+       * @default []
        * @example [
        *       "team-1",
        *       "team-2"
@@ -8920,7 +9822,10 @@ export interface components {
       stopAggregatingDataTime?: string;
       /** @description ID of the trigger to invoke */
       triggerId?: string;
-      /** @description Variables to extract from events */
+      /**
+       * @description Variables to extract from events
+       * @default []
+       */
       variables?: string[];
       /**
        * @description discriminator enum property added by openapi-typescript
@@ -8938,6 +9843,7 @@ export interface components {
       draft?: boolean;
       /**
        * @description Map of variable names to their values.
+       * @default {}
        * @example {
        *       "pattern": "^foo",
        *       "threshold": 10
@@ -8976,7 +9882,10 @@ export interface components {
        * @example template-12345
        */
       templateId: string;
-      /** @description Inputs to the template. Each entry in the map is added to the scope of the template javascript as a variable and can be accessed directly. In addition to the inputs, a 'user' object is also bound providing information about the current user. */
+      /**
+       * @description Inputs to the template. Each entry in the map is added to the scope of the template javascript as a variable and can be accessed directly. In addition to the inputs, a 'user' object is also bound providing information about the current user.
+       * @default {}
+       */
       templateInputs?: {
         [key: string]: Record<string, never>;
       };
@@ -9009,7 +9918,10 @@ export interface components {
       stopAggregatingDataTime?: string;
       /** @description ID of the trigger to invoke */
       triggerId?: string;
-      /** @description Variables to extract from events */
+      /**
+       * @description Variables to extract from events
+       * @default []
+       */
       variables?: string[];
       /**
        * @description discriminator enum property added by openapi-typescript
@@ -9065,6 +9977,7 @@ export interface components {
       /**
        * Trace ID Attribute Paths
        * @description List of attribute paths (each path is a list of segments) to extract trace IDs from. The first non-null value found will be used as the trace ID.
+       * @default []
        * @example [
        *       [
        *         "span",
@@ -9080,6 +9993,7 @@ export interface components {
       /**
        * Trace ID Tag Keys
        * @description List of tag keys to extract trace IDs from. The first non-null value found will be used as the trace ID (checked after attribute paths).
+       * @default []
        * @example [
        *       "trace_id",
        *       "traceId"
@@ -9110,6 +10024,7 @@ export interface components {
     TimeGranularity: {
       /**
        * @description Per-metric-name overrides for time aggregation.
+       * @default {}
        * @example {
        *       "system.cpu.utilization": "LATEST"
        *     }
@@ -9146,10 +10061,16 @@ export interface components {
       components["schemas"]["PatternRuleConfig"],
       "type"
     > & {
+      /** @default true */
+      enabled?: boolean;
+      /** @default [] */
       ewmaPeriods: string[];
       /** @description Name of the LLM prompt operator that created this rule. Used to route trigger actions back to the originating prompt. */
       originatingLlmPromptOperatorName?: string;
-      /** Format: double */
+      /**
+       * Format: double
+       * @default 3
+       */
       spikeThresholdRatio?: number;
       triggerPrompt: string;
     } & {
@@ -9170,6 +10091,10 @@ export interface components {
        */
       timestamp: string;
     });
+    ToolDescriptor: {
+      description?: string;
+      name?: string;
+    };
     /** @description Base class for trace actions. Actions execute on traces matching SQL predicates after sampling decisions have been made. */
     TraceAction: {
       /**
@@ -9202,6 +10127,7 @@ export interface components {
       /**
        * Format: ISO-8601
        * @description Time range to backfill logs for each trace, in ISO-8601 format. Defines the window around each trace's timestamp to fetch logs from. Must be between 1 minute and 24 hours.
+       * @default PT5M
        * @example PT20.345S
        */
       backfillWindow: string;
@@ -9225,13 +10151,17 @@ export interface components {
       /**
        * Format: ISO-8601
        * @description Window duration in ISO-8601 format. Traces are accumulated for this duration before the action executes. Must be between 1 minute and 10 minutes.
+       * @default PT1M30S
        * @example PT20.345S
        */
       traceCollectionDuration: string;
     });
     /** @description Reduces trace volume by routing spans through configurable head sampling rules and tail sampling, then emits the retained spans. */
     TraceReducer: {
-      /** @description Actions to execute on traces. Actions process spans after sampling decisions have been made and can trigger operations like logs backfill. */
+      /**
+       * @description Actions to execute on traces. Actions process spans after sampling decisions have been made and can trigger operations like logs backfill.
+       * @default []
+       */
       actions?: components["schemas"]["TraceAction"][];
       criticalPathAnalysis?: components["schemas"]["CriticalPathAnalysisConfig"];
       /**
@@ -9245,12 +10175,14 @@ export interface components {
       /**
        * Span-Scope Head Sampling Rules
        * @description Span-scope head sampling rules. Matched spans override the tail sampler's drop decision. Requires tail sampling to be configured. Order is significant; first match wins for metric attribution.
+       * @default []
        */
       spanHeadSamplingRules?: components["schemas"]["SpanHeadSamplingRule"][];
       tailSampling?: components["schemas"]["TailSamplingConfig"];
       /**
        * Trace-Scope Head Sampling Rules
        * @description Trace-scope head sampling rules. Matched traces bypass trace assembly and tail sampling. Order is significant; first match wins for metric attribution.
+       * @default []
        */
       traceHeadSamplingRules?: components["schemas"]["TraceHeadSamplingRule"][];
       /**
@@ -9281,6 +10213,7 @@ export interface components {
       /**
        * Trace ID Attribute Paths
        * @description List of attribute paths (each path is a list of segments) to extract trace IDs from. The first non-null value found will be used as the trace ID.
+       * @default []
        * @example [
        *       [
        *         "span",
@@ -9296,6 +10229,7 @@ export interface components {
       /**
        * Trace ID Tag Keys
        * @description List of tag keys to extract trace IDs from. The first non-null value found will be used as the trace ID (checked after attribute paths).
+       * @default []
        * @example [
        *       "trace_id",
        *       "traceId"
@@ -9369,6 +10303,7 @@ export interface components {
       offset?: number;
       /**
        * @description Filter by operation names (exact match)
+       * @default []
        * @example [
        *       "process-payment",
        *       "validate-user"
@@ -9378,6 +10313,7 @@ export interface components {
       query: components["schemas"]["query"];
       /**
        * @description Filter by service names (exact match)
+       * @default []
        * @example [
        *       "checkout-service",
        *       "user-service"
@@ -9386,6 +10322,7 @@ export interface components {
       serviceNames?: string[];
       /**
        * @description The order in which the rows should be sorted by
+       * @default ASCENDING
        * @enum {string}
        */
       sortOrder?: GreprLlmPromptResultsSourceSortOrder;
@@ -9397,6 +10334,7 @@ export interface components {
       start: string;
       /**
        * @description Filter by trace IDs (32-character hex format)
+       * @default []
        * @example [
        *       "6a33267c000000001001119764423b8d"
        *     ]
@@ -9404,6 +10342,7 @@ export interface components {
       traceIds?: string[];
       /**
        * @description Filter by trace signatures (supports wildcards with *)
+       * @default []
        * @example [
        *       "user-login-*",
        *       "checkout-*"
@@ -9426,6 +10365,25 @@ export interface components {
       variables?: {
         [key: string]: components["schemas"]["Any"];
       };
+    };
+    TranscriptMessage: {
+      id?: string;
+      /** @enum {string} */
+      role?: TranscriptMessageRole;
+      text?: string;
+      toolCallId?: string;
+      toolCalls?: components["schemas"]["TranscriptToolCall"][];
+      toolName?: string;
+    };
+    TranscriptToolCall: {
+      argumentsJson?: string;
+      id?: string;
+      name?: string;
+    };
+    TranscriptTurn: {
+      messages?: components["schemas"]["TranscriptMessage"][];
+      /** Format: int32 */
+      seq?: number;
     };
     /**
      * @description Base class of all Triggers
@@ -9493,6 +10451,10 @@ export interface components {
        */
       type: TriggerActionOpType;
     };
+    TriggerSignal: {
+      source?: string;
+      type?: string;
+    };
     TypeInformationAny: {
       /** Format: int32 */
       arity?: number;
@@ -9534,7 +10496,10 @@ export interface components {
        */
       fromVersion: number;
       jobGraph: components["schemas"]["GreprJobGraph"];
-      /** @description The team IDs that this job is associated with. */
+      /**
+       * @description The team IDs that this job is associated with.
+       * @default []
+       */
       teamIds?: string[];
     };
     UpdateRole: {
@@ -9544,6 +10509,7 @@ export interface components {
       name: string;
       /**
        * @description Permission IDs to assign to this role
+       * @default []
        * @example [
        *       "perm_001",
        *       "perm_002"
@@ -9560,6 +10526,7 @@ export interface components {
       name: string;
       /**
        * @description List of role IDs to assign to the service account
+       * @default []
        * @example [
        *       "rol_AlphaNum1234",
        *       "rol_alphaNum5678"
@@ -9575,6 +10542,7 @@ export interface components {
       | components["schemas"]["SocialUserInfo"]
     );
     UserPermissionsResponse: {
+      /** @default [] */
       permissions?: string[];
     };
     UserProvisionInfo: {
@@ -9590,7 +10558,9 @@ export interface components {
       total?: number;
     };
     UsersUpdate: {
+      /** @default [] */
       leaderUserIds: string[];
+      /** @default [] */
       memberUserIds: string[];
     };
     Variant: {
@@ -9674,6 +10644,7 @@ export interface components {
       /**
        * Format: int32
        * @description Logarithm base used by sampling algorithm
+       * @default 2
        */
       logarithmBase?: number;
       /**
@@ -9689,7 +10660,10 @@ export interface components {
        */
       name: string;
       payload: components["schemas"]["Anthropic"];
-      /** @description The team IDs that this integration is associated with. */
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * @description The type of the integration. This is used to determine the payload type.
@@ -9710,7 +10684,10 @@ export interface components {
        */
       name: string;
       payload: components["schemas"]["DataWarehouse"];
-      /** @description The team IDs that this integration is associated with. */
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * @description The type of the integration. This is used to determine the payload type.
@@ -9731,7 +10708,10 @@ export interface components {
        */
       name: string;
       payload: components["schemas"]["Datadog"];
-      /** @description The team IDs that this integration is associated with. */
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * @description The type of the integration. This is used to determine the payload type.
@@ -9752,7 +10732,10 @@ export interface components {
        */
       name: string;
       payload: components["schemas"]["DatadogMcp"];
-      /** @description The team IDs that this integration is associated with. */
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * @description The type of the integration. This is used to determine the payload type.
@@ -9773,13 +10756,40 @@ export interface components {
        */
       name: string;
       payload: components["schemas"]["Gemini"];
-      /** @description The team IDs that this integration is associated with. */
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * @description The type of the integration. This is used to determine the payload type.
        * @enum {string}
        */
       type: ReadGeminiType;
+      /**
+       * Format: int32
+       * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
+       * @example 0
+       */
+      version: number;
+    };
+    WriteJobSignal: {
+      /**
+       * @description Name of the integration.
+       * @example my_integration
+       */
+      name: string;
+      payload: components["schemas"]["JobSignal"];
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
+      teamIds?: string[];
+      /**
+       * @description The type of the integration. This is used to determine the payload type.
+       * @enum {string}
+       */
+      type: ReadJobSignalType;
       /**
        * Format: int32
        * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -9794,7 +10804,10 @@ export interface components {
        */
       name: string;
       payload: components["schemas"]["NewRelic"];
-      /** @description The team IDs that this integration is associated with. */
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * @description The type of the integration. This is used to determine the payload type.
@@ -9815,7 +10828,10 @@ export interface components {
        */
       name: string;
       payload: components["schemas"]["OpenAi"];
-      /** @description The team IDs that this integration is associated with. */
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * @description The type of the integration. This is used to determine the payload type.
@@ -9836,7 +10852,10 @@ export interface components {
        */
       name: string;
       payload: components["schemas"]["Otlp"];
-      /** @description The team IDs that this integration is associated with. */
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * @description The type of the integration. This is used to determine the payload type.
@@ -9857,7 +10876,10 @@ export interface components {
        */
       name: string;
       payload: components["schemas"]["PagerDutyMcp"];
-      /** @description The team IDs that this integration is associated with. */
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * @description The type of the integration. This is used to determine the payload type.
@@ -9878,7 +10900,10 @@ export interface components {
        */
       name: string;
       payload: components["schemas"]["S3DataWarehouse"];
-      /** @description The team IDs that this integration is associated with. */
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * @description The type of the integration. This is used to determine the payload type.
@@ -9899,7 +10924,10 @@ export interface components {
        */
       name: string;
       payload: components["schemas"]["S3VectorIndex"];
-      /** @description The team IDs that this integration is associated with. */
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * @description The type of the integration. This is used to determine the payload type.
@@ -9920,7 +10948,10 @@ export interface components {
        */
       name: string;
       payload: components["schemas"]["Splunk"];
-      /** @description The team IDs that this integration is associated with. */
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * @description The type of the integration. This is used to determine the payload type.
@@ -9937,7 +10968,9 @@ export interface components {
     WriteSsoClaimMapping: {
       claimKey: string;
       claimValue: string;
+      /** @default [] */
       roleIds: string[];
+      /** @default [] */
       teamAssignments: components["schemas"]["TeamAssignment"][];
     };
     WriteSumo: {
@@ -9947,7 +10980,10 @@ export interface components {
        */
       name: string;
       payload: components["schemas"]["Sumo"];
-      /** @description The team IDs that this integration is associated with. */
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
       teamIds?: string[];
       /**
        * @description The type of the integration. This is used to determine the payload type.
@@ -10023,6 +11059,23 @@ export type SchemaActivityLogsSearch =
   components["schemas"]["ActivityLogsSearch"];
 export type SchemaAddToListAttributeAction =
   components["schemas"]["AddToListAttributeAction"];
+export type SchemaAgentConfig = components["schemas"]["AgentConfig"];
+export type SchemaAgentConfigCreate =
+  components["schemas"]["AgentConfigCreate"];
+export type SchemaAgentConfigPayload =
+  components["schemas"]["AgentConfigPayload"];
+export type SchemaAgentConfigUpdate =
+  components["schemas"]["AgentConfigUpdate"];
+export type SchemaAgentDetail = components["schemas"]["AgentDetail"];
+export type SchemaAgentInvestigationMetrics =
+  components["schemas"]["AgentInvestigationMetrics"];
+export type SchemaAgentMcpIntegrations =
+  components["schemas"]["AgentMcpIntegrations"];
+export type SchemaAgentRecentHealth =
+  components["schemas"]["AgentRecentHealth"];
+export type SchemaAgentSubscriptionCounts =
+  components["schemas"]["AgentSubscriptionCounts"];
+export type SchemaAgentSummary = components["schemas"]["AgentSummary"];
 export type SchemaAggregationAccumulator =
   components["schemas"]["AggregationAccumulator"];
 export type SchemaAggregationDecl = components["schemas"]["AggregationDecl"];
@@ -10199,6 +11252,12 @@ export type SchemaIntegrationExceptionConfig =
   components["schemas"]["IntegrationExceptionConfig"];
 export type SchemaIntegrationExceptionsList =
   components["schemas"]["IntegrationExceptionsList"];
+export type SchemaInvestigationAction =
+  components["schemas"]["InvestigationAction"];
+export type SchemaInvestigationSummary =
+  components["schemas"]["InvestigationSummary"];
+export type SchemaInvestigationTranscript =
+  components["schemas"]["InvestigationTranscript"];
 export type SchemaInvitationsList = components["schemas"]["InvitationsList"];
 export type SchemaInvitee = components["schemas"]["Invitee"];
 export type SchemaItemsCollectionLogEvent =
@@ -10217,6 +11276,8 @@ export type SchemaItemsCollectionReadInvitation =
   components["schemas"]["ItemsCollectionReadInvitation"];
 export type SchemaItemsCollectionReadJob =
   components["schemas"]["ItemsCollectionReadJob"];
+export type SchemaItemsCollectionReadJobSignal =
+  components["schemas"]["ItemsCollectionReadJobSignal"];
 export type SchemaItemsCollectionReadNewRelic =
   components["schemas"]["ItemsCollectionReadNewRelic"];
 export type SchemaItemsCollectionReadOpenAi =
@@ -10245,6 +11306,7 @@ export type SchemaJobAction = components["schemas"]["JobAction"];
 export type SchemaJobActionRule = components["schemas"]["JobActionRule"];
 export type SchemaJobAnomaly = components["schemas"]["JobAnomaly"];
 export type SchemaJobId = components["schemas"]["JobID"];
+export type SchemaJobSignal = components["schemas"]["JobSignal"];
 export type SchemaJsonFileFormat = components["schemas"]["JsonFileFormat"];
 export type SchemaJsonLogEventMapper =
   components["schemas"]["JsonLogEventMapper"];
@@ -10328,6 +11390,8 @@ export type SchemaMetricsSynchronousSink =
   components["schemas"]["MetricsSynchronousSink"];
 export type SchemaMinAttributesMergeStrategy =
   components["schemas"]["MinAttributesMergeStrategy"];
+export type SchemaModelConfiguration =
+  components["schemas"]["ModelConfiguration"];
 export type SchemaMonthlyCreditPoolSummary =
   components["schemas"]["MonthlyCreditPoolSummary"];
 export type SchemaNewRelic = components["schemas"]["NewRelic"];
@@ -10403,6 +11467,7 @@ export type SchemaReadDatadogMcp = components["schemas"]["ReadDatadogMcp"];
 export type SchemaReadGemini = components["schemas"]["ReadGemini"];
 export type SchemaReadInvitation = components["schemas"]["ReadInvitation"];
 export type SchemaReadJob = components["schemas"]["ReadJob"];
+export type SchemaReadJobSignal = components["schemas"]["ReadJobSignal"];
 export type SchemaReadNewRelic = components["schemas"]["ReadNewRelic"];
 export type SchemaReadOpenAi = components["schemas"]["ReadOpenAi"];
 export type SchemaReadOrgConstraints =
@@ -10480,6 +11545,10 @@ export type SchemaSsoClaimMappingRole =
   components["schemas"]["SsoClaimMappingRole"];
 export type SchemaSsoEnablementRequest =
   components["schemas"]["SsoEnablementRequest"];
+export type SchemaStartInvestigationRequest =
+  components["schemas"]["StartInvestigationRequest"];
+export type SchemaStartInvestigationResponse =
+  components["schemas"]["StartInvestigationResponse"];
 export type SchemaStatus = components["schemas"]["Status"];
 export type SchemaStreamFormatAny = components["schemas"]["StreamFormatAny"];
 export type SchemaStringData = components["schemas"]["StringData"];
@@ -10534,6 +11603,7 @@ export type SchemaTimeSeriesRuleConfig =
   components["schemas"]["TimeSeriesRuleConfig"];
 export type SchemaTimestampReadingStrategy =
   components["schemas"]["TimestampReadingStrategy"];
+export type SchemaToolDescriptor = components["schemas"]["ToolDescriptor"];
 export type SchemaTraceAction = components["schemas"]["TraceAction"];
 export type SchemaTraceHeadSamplingRule =
   components["schemas"]["TraceHeadSamplingRule"];
@@ -10543,10 +11613,16 @@ export type SchemaTraceReducer = components["schemas"]["TraceReducer"];
 export type SchemaTraceSampler = components["schemas"]["TraceSampler"];
 export type SchemaTracesIcebergTableSource =
   components["schemas"]["TracesIcebergTableSource"];
+export type SchemaTranscriptMessage =
+  components["schemas"]["TranscriptMessage"];
+export type SchemaTranscriptToolCall =
+  components["schemas"]["TranscriptToolCall"];
+export type SchemaTranscriptTurn = components["schemas"]["TranscriptTurn"];
 export type SchemaTrigger = components["schemas"]["Trigger"];
 export type SchemaTriggerActionConfig =
   components["schemas"]["TriggerActionConfig"];
 export type SchemaTriggerActionOp = components["schemas"]["TriggerActionOp"];
+export type SchemaTriggerSignal = components["schemas"]["TriggerSignal"];
 export type SchemaTypeInformationAny =
   components["schemas"]["TypeInformationAny"];
 export type SchemaTypeInformationObject =
@@ -10578,6 +11654,7 @@ export type SchemaWriteDataWarehouse =
 export type SchemaWriteDatadog = components["schemas"]["WriteDatadog"];
 export type SchemaWriteDatadogMcp = components["schemas"]["WriteDatadogMcp"];
 export type SchemaWriteGemini = components["schemas"]["WriteGemini"];
+export type SchemaWriteJobSignal = components["schemas"]["WriteJobSignal"];
 export type SchemaWriteNewRelic = components["schemas"]["WriteNewRelic"];
 export type SchemaWriteOpenAi = components["schemas"]["WriteOpenAi"];
 export type SchemaWriteOtlp = components["schemas"]["WriteOtlp"];
@@ -10617,6 +11694,280 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ItemsCollectionLogEvent"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Agents retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentSummary"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AgentConfigCreate"];
+      };
+    };
+    responses: {
+      /** @description Agent created successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentConfig"];
+        };
+      };
+      /** @description A referenced model or MCP integration does not exist */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  tools: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tools retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ToolDescriptor"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Agent retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentDetail"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AgentConfigUpdate"];
+      };
+    };
+    responses: {
+      /** @description Agent updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentConfig"];
+        };
+      };
+      /** @description A referenced model or MCP integration does not exist */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent was modified concurrently */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Agent deleted successfully */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent still has a signal integration */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  investigations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Investigations retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InvestigationSummary"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  subscriptions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Subscriptions retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": string[];
         };
       };
       /** @description Unauthorized */
@@ -11397,7 +12748,7 @@ export interface operations {
       };
     };
   };
-  list: {
+  list_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -11424,7 +12775,7 @@ export interface operations {
       };
     };
   };
-  create: {
+  create_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -11464,7 +12815,7 @@ export interface operations {
       };
     };
   };
-  get: {
+  get_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -11500,7 +12851,7 @@ export interface operations {
       };
     };
   };
-  update: {
+  update_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -11547,7 +12898,7 @@ export interface operations {
       };
     };
   };
-  delete: {
+  delete_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -11626,7 +12977,7 @@ export interface operations {
       };
     };
   };
-  list_2: {
+  list_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -11653,7 +13004,7 @@ export interface operations {
       };
     };
   };
-  create_2: {
+  create_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -11691,7 +13042,7 @@ export interface operations {
       };
     };
   };
-  get_2: {
+  get_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -11727,7 +13078,7 @@ export interface operations {
       };
     };
   };
-  update_2: {
+  update_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -11767,7 +13118,7 @@ export interface operations {
       };
     };
   };
-  delete_2: {
+  delete_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -11794,7 +13145,7 @@ export interface operations {
       };
     };
   };
-  list_1: {
+  list_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -11821,7 +13172,7 @@ export interface operations {
       };
     };
   };
-  create_1: {
+  create_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -11861,7 +13212,7 @@ export interface operations {
       };
     };
   };
-  list_5: {
+  list_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -11888,7 +13239,7 @@ export interface operations {
       };
     };
   };
-  create_5: {
+  create_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -11928,7 +13279,7 @@ export interface operations {
       };
     };
   };
-  get_5: {
+  get_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -11964,7 +13315,7 @@ export interface operations {
       };
     };
   };
-  update_5: {
+  update_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -12011,7 +13362,7 @@ export interface operations {
       };
     };
   };
-  delete_5: {
+  delete_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -12141,7 +13492,7 @@ export interface operations {
       };
     };
   };
-  get_1: {
+  get_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -12177,7 +13528,7 @@ export interface operations {
       };
     };
   };
-  update_1: {
+  update_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -12224,7 +13575,7 @@ export interface operations {
       };
     };
   };
-  delete_1: {
+  delete_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -12518,7 +13869,7 @@ export interface operations {
       };
     };
   };
-  list_4: {
+  list_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -12545,7 +13896,7 @@ export interface operations {
       };
     };
   };
-  create_4: {
+  create_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -12585,7 +13936,7 @@ export interface operations {
       };
     };
   };
-  get_4: {
+  get_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -12621,7 +13972,7 @@ export interface operations {
       };
     };
   };
-  update_4: {
+  update_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -12668,7 +14019,7 @@ export interface operations {
       };
     };
   };
-  delete_4: {
+  delete_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -12747,7 +14098,7 @@ export interface operations {
       };
     };
   };
-  list_7: {
+  list_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -12774,7 +14125,7 @@ export interface operations {
       };
     };
   };
-  create_7: {
+  create_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -12841,7 +14192,7 @@ export interface operations {
       };
     };
   };
-  get_7: {
+  get_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -12877,7 +14228,7 @@ export interface operations {
       };
     };
   };
-  update_7: {
+  update_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -12924,7 +14275,7 @@ export interface operations {
       };
     };
   };
-  delete_7: {
+  delete_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -13112,7 +14463,7 @@ export interface operations {
       };
     };
   };
-  list_8: {
+  list_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -13139,7 +14490,7 @@ export interface operations {
       };
     };
   };
-  create_8: {
+  create_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -13179,7 +14530,7 @@ export interface operations {
       };
     };
   };
-  get_8: {
+  get_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -13215,7 +14566,7 @@ export interface operations {
       };
     };
   };
-  update_8: {
+  update_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -13262,7 +14613,7 @@ export interface operations {
       };
     };
   };
-  delete_8: {
+  delete_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -13327,7 +14678,7 @@ export interface operations {
       };
     };
   };
-  list_9: {
+  list_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -13354,7 +14705,7 @@ export interface operations {
       };
     };
   };
-  create_9: {
+  create_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -13394,7 +14745,7 @@ export interface operations {
       };
     };
   };
-  get_9: {
+  get_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -13430,7 +14781,7 @@ export interface operations {
       };
     };
   };
-  update_9: {
+  update_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -13477,7 +14828,7 @@ export interface operations {
       };
     };
   };
-  delete_9: {
+  delete_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -13621,7 +14972,7 @@ export interface operations {
       };
     };
   };
-  list_6: {
+  list_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -13648,7 +14999,7 @@ export interface operations {
       };
     };
   };
-  create_6: {
+  create_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -13688,7 +15039,7 @@ export interface operations {
       };
     };
   };
-  get_6: {
+  get_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -13724,7 +15075,7 @@ export interface operations {
       };
     };
   };
-  update_6: {
+  update_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -13771,7 +15122,7 @@ export interface operations {
       };
     };
   };
-  delete_6: {
+  delete_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -13836,7 +15187,99 @@ export interface operations {
       };
     };
   };
-  list_3: {
+  list_11: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Integrations retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ItemsCollectionReadJobSignal"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  create_11: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["WriteJobSignal"];
+      };
+    };
+    responses: {
+      /** @description Integration created successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadJobSignal"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description An integration for this agent already exists */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  delete_11: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Integration deleted successfully */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  list_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -13863,7 +15306,7 @@ export interface operations {
       };
     };
   };
-  create_3: {
+  create_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -13997,7 +15440,7 @@ export interface operations {
       };
     };
   };
-  get_3: {
+  get_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -14033,7 +15476,7 @@ export interface operations {
       };
     };
   };
-  update_3: {
+  update_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -14087,7 +15530,7 @@ export interface operations {
       };
     };
   };
-  delete_3: {
+  delete_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -14114,7 +15557,7 @@ export interface operations {
       };
     };
   };
-  list_10: {
+  list_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -14141,7 +15584,7 @@ export interface operations {
       };
     };
   };
-  create_10: {
+  create_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -14179,7 +15622,7 @@ export interface operations {
       };
     };
   };
-  get_10: {
+  get_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -14215,7 +15658,7 @@ export interface operations {
       };
     };
   };
-  update_10: {
+  update_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -14255,7 +15698,7 @@ export interface operations {
       };
     };
   };
-  delete_10: {
+  delete_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -14282,7 +15725,7 @@ export interface operations {
       };
     };
   };
-  list_11: {
+  list_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -14309,7 +15752,7 @@ export interface operations {
       };
     };
   };
-  create_11: {
+  create_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -14349,7 +15792,7 @@ export interface operations {
       };
     };
   };
-  get_11: {
+  get_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -14385,7 +15828,7 @@ export interface operations {
       };
     };
   };
-  update_11: {
+  update_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -14432,7 +15875,7 @@ export interface operations {
       };
     };
   };
-  delete_11: {
+  delete_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -14620,7 +16063,7 @@ export interface operations {
       };
     };
   };
-  list_12: {
+  list_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -14647,7 +16090,7 @@ export interface operations {
       };
     };
   };
-  create_12: {
+  create_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -14687,7 +16130,7 @@ export interface operations {
       };
     };
   };
-  get_12: {
+  get_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -14723,7 +16166,7 @@ export interface operations {
       };
     };
   };
-  update_12: {
+  update_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -14770,7 +16213,7 @@ export interface operations {
       };
     };
   };
-  delete_12: {
+  delete_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -14867,6 +16310,80 @@ export interface operations {
         content?: never;
       };
       /** @description Not Found - Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  start: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["StartInvestigationRequest"];
+      };
+    };
+    responses: {
+      /** @description Investigation started */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StartInvestigationResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  transcript: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        investigationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Transcript retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InvestigationTranscript"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Investigation not found */
       404: {
         headers: {
           [name: string]: unknown;
@@ -17216,7 +18733,7 @@ export interface operations {
       };
     };
   };
-  list_13: {
+  list_15: {
     parameters: {
       query?: {
         page?: number;
@@ -17733,6 +19250,11 @@ export enum IcebergLogsReplaySourceType {
 export enum IgnoreAttributesMergeStrategyType {
   ignore = "ignore",
 }
+export enum InvestigationSummaryStatus {
+  RUNNING = "RUNNING",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
+}
 export enum JobActionRuleType {
   job_rule = "job-rule",
 }
@@ -17854,6 +19376,10 @@ export enum MetricsSynchronousSinkType {
 export enum MinAttributesMergeStrategyType {
   min = "min",
 }
+export enum ModelConfigurationProvider {
+  ANTHROPIC = "ANTHROPIC",
+  GEMINI = "GEMINI",
+}
 export enum MonthlyCreditPoolSummaryType {
   monthly_credit_pool = "monthly-credit-pool",
 }
@@ -17955,6 +19481,9 @@ export enum ReadDatadogMcpType {
 }
 export enum ReadGeminiType {
   gemini = "gemini",
+}
+export enum ReadJobSignalType {
+  pipeline_signal = "pipeline-signal",
 }
 export enum ReadNewRelicType {
   newrelic = "newrelic",
@@ -18156,6 +19685,12 @@ export enum TraceSamplerType {
 export enum TracesIcebergTableSourceType {
   traces_iceberg_table_source = "traces-iceberg-table-source",
 }
+export enum TranscriptMessageRole {
+  SYSTEM = "SYSTEM",
+  USER = "USER",
+  ASSISTANT = "ASSISTANT",
+  TOOL_RESULT = "TOOL_RESULT",
+}
 export enum TriggerActionOpType {
   trigger_action = "trigger-action",
 }
@@ -18318,3 +19853,17 @@ export const LlmAttributes = {
   TAG_SUCCESS: 'greprLlmSuccess',
   TAG_ACTIONABLE: 'greprLlmActionable'
 } as const;
+
+// =============================================================================
+// Auto-generated default mask metadata from flink:model (Masks.LogReducerMasks)
+// DO NOT EDIT - This section is generated by ModelJarCodeGenTask
+// =============================================================================
+
+export const DEFAULT_LOG_REDUCER_MASKS = [
+  { name: "ipport", regex: "(?:\\d{1,3}\\.){3}\\d{1,3}(?::\\d{1,5})?", description: "Matches IPv4 addresses and optional ports, e.g. 192.168.0.1 or 192.168.0.1:8080", enabledByDefault: true },
+  { name: "timestamp", regex: "(?:(?:\\d{4}-\\d{2}-\\d{2}(?:T|\\s)\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d{1,12})?(?:Z|(?:[\\+\\-]\\d{2}:?\\d{2})|\\sUTC)?)|(?:\\d{1,4}/\\d{1,2}/\\d{1,4}(,?\\s\\d{1,2}:\\d{2}:\\d{1,2}(?:[.,]\\d{1,12})?(?:\\s?(?:[AP]M))?)?)|(?:\\d{1,2}:\\d{2}:\\d{1,2}(?:[.,]\\d{1,12})?(?:\\s?(?:[AP]M))?)|(?:\\d{2}/[A-Za-z]{3}/\\d{4}(?:[:\\s]\\d{2}:\\d{2}:\\d{2}(?:\\s\\+[0-9]{4})?)?))", description: "Matches many timestamp formats, e.g. 2024-04-26T15:30:45.123Z, 26/04/2024 15:30:45, 15:30:45", enabledByDefault: true },
+  { name: "uuid", regex: "(?:^|(?<!\\w))(?:[a-fA-F0-9]{8}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{12})(?:(?!\\w)|$)", description: "Matches UUIDs, e.g. 123e4567-e89b-12d3-a456-426614174000.", enabledByDefault: true },
+  { name: "number", regex: "(?:^|(?<!\\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\\-\\+]?(?>(?:(?:\\d{1,100})?(?:\\.\\d{1,100})(?:[eE][\\-\\+]?\\d{1,100}))|(?:(?:\\d{1,100})?(?:\\.\\d{1,100}))|(?:\\d{1,100}))))(?:(?!\\w)|$)", description: "Matches integers and decimal numbers up to 100 digits.", enabledByDefault: true },
+  { name: "awsarn", regex: "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*", description: "Matches AWS ARNs", enabledByDefault: false },
+  { name: "awstoken", regex: "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}", description: "Matches AWS session tokens", enabledByDefault: false }
+] as const;
