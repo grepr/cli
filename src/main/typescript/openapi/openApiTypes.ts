@@ -8830,8 +8830,8 @@ export interface components {
       timeUnixNano?: number;
     };
     /**
-     * Span-Scope Head Sampling Rules
-     * @description Head sampling rule evaluated per span. Matched spans are retained regardless of the tail sampler's decision.
+     * Span Head Sampling Rules
+     * @description Head sampling rule evaluated per span. Matched spans are retained.
      */
     SpanHeadSamplingRule: {
       filter?: components["schemas"]["HeadSamplingFilter"];
@@ -10105,8 +10105,9 @@ export interface components {
       type: string;
     };
     /**
-     * Trace-Scope Head Sampling Rules
-     * @description Head sampling rule evaluated per trace. Matched traces bypass trace assembly.
+     * Trace Head Sampling Rules (Deprecated)
+     * @deprecated
+     * @description Deprecated. Head sampling rule evaluated per trace. Use traceHeadSamplingRate on TraceReducer instead.
      */
     TraceHeadSamplingRule: {
       filter?: components["schemas"]["HeadSamplingFilter"];
@@ -10156,7 +10157,7 @@ export interface components {
        */
       traceCollectionDuration: string;
     });
-    /** @description Reduces trace volume by routing spans through configurable head sampling rules and tail sampling, then emits the retained spans. */
+    /** @description Reduces trace volume by applying a uniform trace head sampling rate and configurable span head sampling rules with optional tail sampling, then emits the retained spans. */
     TraceReducer: {
       /**
        * @description Actions to execute on traces. Actions process spans after sampling decisions have been made and can trigger operations like logs backfill.
@@ -10173,20 +10174,27 @@ export interface components {
       /** @example operation_name */
       name: string;
       /**
-       * Span-Scope Head Sampling Rules
-       * @description Span-scope head sampling rules. Matched spans override the tail sampler's drop decision. Requires tail sampling to be configured. Order is significant; first match wins for metric attribution.
+       * Span Head Sampling Rules
+       * @description Span head sampling rules. Matched spans are retained as SPAN_HEAD_SAMPLED. If tail sampling is configured, matched spans participate in trace assembly before output; otherwise, matched spans are emitted directly. Order is significant; first match wins for metric attribution. Trace head sampling wins when both match the same span.
        * @default []
        */
       spanHeadSamplingRules?: components["schemas"]["SpanHeadSamplingRule"][];
       tailSampling?: components["schemas"]["TailSamplingConfig"];
       /**
-       * Trace-Scope Head Sampling Rules
-       * @description Trace-scope head sampling rules. Matched traces bypass trace assembly and tail sampling. Order is significant; first match wins for metric attribution.
+       * Trace Head Sampling Rate
+       * Format: double
+       * @description Uniform trace head sampling rate in [0.0, 1.0]. When set, all spans sharing a traceId are retained together as HEAD_SAMPLED at this probability. Mutually exclusive with traceHeadSamplingRules (scalar wins when both present).
+       */
+      traceHeadSamplingRate?: number;
+      /**
+       * Trace Head Sampling Rules (Deprecated)
+       * @deprecated
+       * @description Deprecated: use traceHeadSamplingRate instead. Kept for backwards compatibility with stored configurations. When traceHeadSamplingRate is absent, the effective rate is max(rate) over this list (filters are ignored).
        * @default []
        */
       traceHeadSamplingRules?: components["schemas"]["TraceHeadSamplingRule"][];
       /**
-       * @description Reduces trace volume by sampling CompleteSpan instances. Combines configurable head sampling rules (per-trace bypass and per-span override) with optional quantile-based tail sampling. (enum property replaced by openapi-typescript)
+       * @description Reduces trace volume by sampling CompleteSpan instances. Combines a uniform trace head sampling rate (whole-trace retention) and per-span head sampling rules with optional quantile-based tail sampling. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: TraceReducerType;
