@@ -75,7 +75,7 @@ pre_exceptions_filter → log_reducer → sinks
 | `add-parser` / `remove-parser` | ✅ | ✅ | ❌ `unsupported raw job graph shape` |
 | `add-sink` / `remove-sink` / `set-raw-dataset` | ✅ | ✅ | ❌ `unsupported raw job graph shape` |
 | `set-input-field` / `unset-input-field` | ✅ | ❌ template-only | ❌ template-only |
-| `set-filter` phase `pre-aggregation` | ✅ | ❌ template-only stage | ❌ template-only stage |
+| `set-filter` phase `pre-aggregation` | ❌ no transforms slot | ❌ no transforms slot | ❌ no transforms slot |
 
 This matrix reflects the current add-biased op surface. ENGT-4722 adds `update-*`
 (source/sink/parser) and per-entry `remove-*` ops; expect raw-graph narrowing/removal
@@ -114,10 +114,10 @@ These never apply to a raw job graph, regardless of shape:
 - `set-input-field` and `unset-input-field` — they address template inputs by
   dot-notation path (`sinks.0` is an object key, not an array index) and are
   rejected on raw graphs, which have no template inputs to address.
-- `set-filter` at the `pre-aggregation` phase — the `pre-aggregation` slot is a
-  template construct; raw graphs have no equivalent stage. (The other phases —
-  `pre-parser`, `pre-exceptions`, `pre-warehouse` — map to named filter vertices
-  in a canonical UI graph.)
+- `set-filter` at the `pre-aggregation` phase — the transforms model has no
+  `pre-aggregation` slot, so it is rejected on every backend. The three real
+  phases — `pre-parser`, `pre-exceptions`, `pre-warehouse` — map to named filter
+  vertices in a canonical UI graph.
 
 ## Draft behavior by backend
 

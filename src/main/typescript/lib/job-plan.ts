@@ -77,7 +77,7 @@ export async function generatePlan(
 
 /**
  * Compute a diff between current and proposed configs. Template-backed: diffs at
- * template-input granularity (parsers/sources/sinks/filters/reducer/exceptions/
+ * template-input granularity (parsers/sources/sinks/transforms/reducer/exceptions/
  * scalars). Job-graph: diffs per resolved vertex (by name) and per edge.
  */
 export function computeDiff(current: SchemaReadJob, proposed: SchemaUpdateJob): JobDiffEntry[] {
@@ -90,7 +90,7 @@ export function computeDiff(current: SchemaReadJob, proposed: SchemaUpdateJob): 
   diffNamedArray('parsers', curInput.parsers ?? [], propInput.parsers ?? [], entries);
   diffNamedArray('sources', curInput.sources ?? [], propInput.sources ?? [], entries);
   diffSinks(curInput, propInput, entries);
-  diffFilters(curInput, propInput, entries);
+  diffTransforms(curInput, propInput, entries);
   diffNestedObject('reducer', curInput.reducer as unknown as Record<string, unknown>, propInput.reducer as unknown as Record<string, unknown>, entries);
   diffExceptions(curInput, propInput, entries);
   diffTopLevelScalars(curInput, propInput, entries);
@@ -217,29 +217,29 @@ function diffSinks(
   }
 }
 
-function diffFilters(
+function diffTransforms(
   curInput: SchemaLogReducerTemplateInput,
   propInput: SchemaLogReducerTemplateInput,
   entries: JobDiffEntry[],
 ): void {
-  const curFilters = (curInput.filters as unknown as Record<string, unknown>) ?? {};
-  const propFilters = (propInput.filters as unknown as Record<string, unknown>) ?? {};
-  const phases = new Set<string>([...Object.keys(curFilters), ...Object.keys(propFilters)]);
+  const curTransforms = (curInput.transforms as unknown as Record<string, unknown>) ?? {};
+  const propTransforms = (propInput.transforms as unknown as Record<string, unknown>) ?? {};
+  const phases = new Set<string>([...Object.keys(curTransforms), ...Object.keys(propTransforms)]);
   for (const phase of phases) {
-    const before = curFilters[phase];
-    const after = propFilters[phase];
+    const before = curTransforms[phase];
+    const after = propTransforms[phase];
     if (JSON.stringify(before) === JSON.stringify(after)) continue;
     if (before === undefined) {
-      entries.push({ kind: 'add', path: `filters.${phase}`, after, summary: `+ filters.${phase} = ${oneLine(after)}` });
+      entries.push({ kind: 'add', path: `transforms.${phase}`, after, summary: `+ transforms.${phase} = ${oneLine(after)}` });
     } else if (after === undefined) {
-      entries.push({ kind: 'remove', path: `filters.${phase}`, before, summary: `- filters.${phase}` });
+      entries.push({ kind: 'remove', path: `transforms.${phase}`, before, summary: `- transforms.${phase}` });
     } else {
       entries.push({
         kind: 'change',
-        path: `filters.${phase}`,
+        path: `transforms.${phase}`,
         before,
         after,
-        summary: `~ filters.${phase}: ${oneLine(before)} → ${oneLine(after)}`,
+        summary: `~ transforms.${phase}: ${oneLine(before)} → ${oneLine(after)}`,
       });
     }
   }
@@ -299,7 +299,7 @@ function diffTopLevelScalars(
 ): void {
   const cur = curInput as unknown as Record<string, unknown>;
   const prop = propInput as unknown as Record<string, unknown>;
-  const skipFields = new Set(['parsers', 'sources', 'sinks', 'filters', 'reducer', 'exceptions']);
+  const skipFields = new Set(['parsers', 'sources', 'sinks', 'transforms', 'reducer', 'exceptions']);
   const fields = new Set<string>([...Object.keys(cur), ...Object.keys(prop)]);
   for (const field of fields) {
     if (skipFields.has(field)) continue;

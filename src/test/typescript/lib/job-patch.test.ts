@@ -20,6 +20,9 @@ import {
   GrokParserType,
   LogReducerType,
   LogsFilterType,
+  ConditionNodeKind,
+  DropNodeKind,
+  PassthroughNodeKind,
   TemplateOperationType,
   DatadogQueryPredicateType,
   MinAttributesMergeStrategyType,
@@ -358,7 +361,7 @@ describe('applyPatch — add-parser / remove-parser', () => {
 });
 
 describe('applyPatch — set-filter / clear-filter', () => {
-  it('test_setFilter_atPhase_shouldStoreInSlot', () => {
+  it('test_setFilter_atPhase_shouldStoreKeepStyleConditionNode', () => {
     const job = makeTemplateJob({});
     const filter = {
       type: LogsFilterType.logs_filter,
@@ -368,14 +371,49 @@ describe('applyPatch — set-filter / clear-filter', () => {
     const update = applyPatch(job, {
       operations: [{ op: 'set-filter', phase: 'pre-parser', filter: filter as never }],
     });
-    const filters = readInputFromUpdate(update).filters as unknown as Record<string, unknown>;
-    expect(filters['pre-parser']).toEqual(filter);
+    const transforms = readInputFromUpdate(update).transforms as unknown as Record<string, Record<string, unknown>>;
+    // A keep-style filter compiles to a condition node: match → keep, else → drop.
+    expect(transforms['preParser']).toEqual({
+      kind: ConditionNodeKind.condition_node,
+      predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'NOT path:/healthz' },
+      thenAction: { kind: PassthroughNodeKind.passthrough_node },
+      elseAction: { kind: DropNodeKind.drop_node },
+    });
+  });
+
+  it('test_setFilter_invertedFilter_swapsArms', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, {
+      operations: [
+        {
+          op: 'set-filter',
+          phase: 'pre-parser',
+          filter: {
+            type: 'logs-filter',
+            name: 'inv',
+            predicate: { type: 'datadog-query', query: 'path:/spam' },
+            inverted: true,
+          } as never,
+        },
+      ],
+    });
+    const transforms = readInputFromUpdate(update).transforms as unknown as Record<string, Record<string, unknown>>;
+    // Inverted keeps non-matching: match → drop, else → keep.
+    expect(transforms['preParser']).toMatchObject({
+      kind: ConditionNodeKind.condition_node,
+      thenAction: { kind: DropNodeKind.drop_node },
+      elseAction: { kind: PassthroughNodeKind.passthrough_node },
+    });
   });
 
   it('test_setFilter_overwritesExisting', () => {
-    const job = makeTemplateJob({
-      filters: { 'pre-parser': { type: 'logs-filter', name: 'old', predicate: { type: 'datadog-query', query: 'a' } } } as never,
-    });
+    const existing = {
+      kind: ConditionNodeKind.condition_node,
+      predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'a' },
+      thenAction: { kind: PassthroughNodeKind.passthrough_node },
+      elseAction: { kind: DropNodeKind.drop_node },
+    };
+    const job = makeTemplateJob({ transforms: { preParser: existing } as never });
     const update = applyPatch(job, {
       operations: [
         {
@@ -385,22 +423,21 @@ describe('applyPatch — set-filter / clear-filter', () => {
         },
       ],
     });
-    const filters = readInputFromUpdate(update).filters as unknown as Record<string, { name: string }>;
-    expect(filters['pre-parser']?.name).toBe('new');
+    const transforms = readInputFromUpdate(update).transforms as unknown as Record<string, { predicate: { query: string } }>;
+    expect(transforms['preParser']?.predicate.query).toBe('b');
   });
 
-  it('test_setFilter_preservesExistingFilterFields', () => {
-    const job = makeTemplateJob({
-      filters: {
-        'pre-warehouse': {
-          type: 'logs-filter',
-          name: 'pre_warehouse',
-          predicate: { type: 'datadog-query', query: 'old' },
-          inverted: false,
-          maxLateEventTimestampDelta: 'PT48H',
-        },
-      } as never,
-    });
+  it('test_setFilter_carriesOverInvertedAndLatenessWhenOmitted', () => {
+    // Existing slot is an inverted, late-data condition node; the new filter
+    // supplies only a predicate, so `inverted` and the lateness carry over.
+    const existing = {
+      kind: ConditionNodeKind.condition_node,
+      predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'old' },
+      thenAction: { kind: DropNodeKind.drop_node },
+      elseAction: { kind: PassthroughNodeKind.passthrough_node },
+      lateDataDuration: 'PT48H',
+    };
+    const job = makeTemplateJob({ transforms: { preWarehouse: existing } as never });
     const update = applyPatch(job, {
       operations: [
         {
@@ -414,31 +451,45 @@ describe('applyPatch — set-filter / clear-filter', () => {
         },
       ],
     });
-    const filters = readInputFromUpdate(update).filters as unknown as Record<string, Record<string, unknown>>;
-    expect(filters['pre-warehouse']).toMatchObject({
+    const transforms = readInputFromUpdate(update).transforms as unknown as Record<string, Record<string, unknown>>;
+    expect(transforms['preWarehouse']).toEqual({
+      kind: ConditionNodeKind.condition_node,
       predicate: { type: 'datadog-query', query: 'service:checkout' },
-      inverted: false,
-      maxLateEventTimestampDelta: 'PT48H',
+      thenAction: { kind: DropNodeKind.drop_node },
+      elseAction: { kind: PassthroughNodeKind.passthrough_node },
+      lateDataDuration: 'PT48H',
     });
   });
 
-  it('test_clearFilter_phase_setsPassThroughFilter', () => {
+  it('test_clearFilter_phase_removesTransformSlot', () => {
     const job = makeTemplateJob({
-      filters: {
-        'pre-warehouse': {
-          type: 'logs-filter',
-          name: 'f',
-          predicate: { type: 'datadog-query', query: 'a' },
-          maxLateEventTimestampDelta: 'PT48H',
+      transforms: {
+        preWarehouse: {
+          kind: ConditionNodeKind.condition_node,
+          predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'a' },
+          thenAction: { kind: PassthroughNodeKind.passthrough_node },
+          elseAction: { kind: DropNodeKind.drop_node },
         },
       } as never,
     });
     const update = applyPatch(job, { operations: [{ op: 'clear-filter', phase: 'pre-warehouse' }] });
-    const filters = readInputFromUpdate(update).filters as unknown as Record<string, Record<string, unknown>>;
-    expect(filters['pre-warehouse']).toMatchObject({
-      predicate: { type: DatadogQueryPredicateType.datadog_query, query: '' },
-      maxLateEventTimestampDelta: 'PT48H',
-    });
+    const transforms = readInputFromUpdate(update).transforms as unknown as Record<string, unknown>;
+    expect(transforms['preWarehouse']).toBeUndefined();
+  });
+
+  it('test_setFilter_preAggregation_hasNoTransformsSlot_shouldThrow', () => {
+    const job = makeTemplateJob({});
+    expect(() =>
+      applyPatch(job, {
+        operations: [
+          {
+            op: 'set-filter',
+            phase: 'pre-aggregation',
+            filter: { type: 'logs-filter', name: 'f', predicate: { type: 'datadog-query', query: 'a' } } as never,
+          },
+        ],
+      }),
+    ).toThrow(/no transforms slot/);
   });
 });
 

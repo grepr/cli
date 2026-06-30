@@ -37,16 +37,16 @@ Operations (exact field names matter — field mistakes fail during
 | `add-aggregation-strategy` | `attributePath`, `strategies` | Add a reducer aggregation strategy. `strategies` is an array of `sum`/`min`/`max`/`avg` — not a scalar, not `"average"`. **One strategy per attribute path**: pass a single-element array (e.g. `["avg"]`). Passing `["min","max","avg"]` expands to three entries sharing the same path, which the backend rejects at draft/apply with `Duplicate attribute paths in merge strategies are not allowed`. Append-only. |
 | `add-reducer-exception` | `predicate` | Add a reducer exception (matching logs bypass aggregation). Only `predicate` is required — there is no `name` field. |
 | `add-grok-rule` | `pattern` (not `rule`); optional `parserName`, `extractAttribute` | Append a rule to a grok parser. `parserName` is required only when more than one grok parser exists; rejected if zero exist. |
-| `set-filter` / `clear-filter` | `phase` (not `stage`); `set` also needs `filter` | Set or clear a phase-slotted filter. Merges over the existing slot, so phase-specific fields (e.g. `maxLateEventTimestampDelta`, `inverted`) are preserved. `clear-filter` keeps the vertex but blanks the predicate query. |
+| `set-filter` / `clear-filter` | `phase` (not `stage`); `set` also needs `filter` | Set or clear a phase-slotted filter. Stored as a transform chain node (keep-style filter → condition node). Merges over the existing slot, so phase-specific fields (e.g. `maxLateEventTimestampDelta`, `inverted`) are preserved. `clear-filter` removes the phase's filter, reverting it to pass-through. |
 | `add-parser` / `remove-parser` | `parser` / `name` (not `parserName`) | Add or remove a parser. New parsers append before `pre_data_warehouse_filter`. |
 | `add-source` / `remove-source` | `source` / `name` (not `sourceName`) | Add or remove source vertices. A proposal leaving zero sources is rejected. |
 | `add-sink` / `remove-sink` | `target` (`vendor`\|`processed-logs`), `sink` / `name?` | Add or remove a sink. `vendor` adds a vendor log sink (optionally with a gating `filter`); `processed-logs` sets the single reduced-logs iceberg sink. |
 | `set-raw-dataset` | `datasetId` | Point the raw-logs dataset at a different dataset ID. |
 | `set-input-field` / `unset-input-field` | `path`, `value` / `path` | Template-input escape hatch only (dot-notation, object keys not array indices); rejected on raw job graphs. |
 
-Phases for `set-filter`/`clear-filter`: `pre-parser`, `pre-aggregation`,
-`pre-exceptions`, `pre-warehouse`. (`pre-aggregation` has no canonical raw
-UI-graph stage — template-backed only.)
+Phases for `set-filter`/`clear-filter`: `pre-parser`, `pre-exceptions`,
+`pre-warehouse`. (There is no `pre-aggregation` slot in the transforms model;
+it is rejected on both template and raw-graph backends.)
 
 A plan's `classification` field summarizes what the patch touches:
 `transform`, `source`, `sink`, or `mixed`. Harness skills use it to decide

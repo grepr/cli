@@ -107,11 +107,18 @@ describe('computeDiff', () => {
   it('test_computeDiff_setFilter', () => {
     const cur = makeTemplateJob({}, 1);
     const prop = makeTemplateUpdate({
-      filters: { 'pre-parser': { type: 'logs-filter', name: 'f', predicate: { type: 'datadog-query', query: 'a' } } } as never,
+      transforms: {
+        preParser: {
+          kind: 'condition-node',
+          predicate: { type: 'datadog-query', query: 'a' },
+          thenAction: { kind: 'passthrough-node' },
+          elseAction: { kind: 'drop-node' },
+        },
+      } as never,
     });
     const diff = computeDiff(cur, prop);
     expect(diff).toHaveLength(1);
-    expect(diff[0]?.path).toBe('filters.pre-parser');
+    expect(diff[0]?.path).toBe('transforms.preParser');
     expect(diff[0]?.kind).toBe('add');
   });
 

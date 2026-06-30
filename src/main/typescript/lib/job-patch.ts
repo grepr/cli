@@ -8,6 +8,9 @@ import {
   SchemaEventPredicate,
   SchemaLogReducerTemplateInput,
   SchemaLogReducerFilters,
+  SchemaTransforms,
+  SchemaChainNode,
+  SchemaConditionNode,
   SchemaLogsFilter,
   SchemaLogsIcebergTableSink,
   SchemaTemplateLogSink,
@@ -19,6 +22,9 @@ import {
   LogReducerType,
   GrokParserType,
   LogsFilterType,
+  ConditionNodeKind,
+  DropNodeKind,
+  PassthroughNodeKind,
   DatadogQueryPredicateType,
   DatadogLogSinkType,
   SplunkLogSinkType,
@@ -516,7 +522,7 @@ function applyOperation(input: SchemaLogReducerTemplateInput, op: JobPatchOp, in
     case 'set-filter':
       return applySetFilter(input, op.phase, op.filter, index);
     case 'clear-filter':
-      return applyClearFilter(input, op.phase);
+      return applyClearFilter(input, op.phase, index);
     case 'add-source':
       return applyAddSource(input, op.source, index);
     case 'remove-source':
@@ -1749,6 +1755,77 @@ function applyRemoveParser(input: SchemaLogReducerTemplateInput, name: string, i
   input.parsers.splice(idx, 1);
 }
 
+/**
+ * Maps a `FilterPhase` (the op's hyphenated wire value, a key of the legacy
+ * `LogReducerFilters`) to the corresponding `Transforms` slot. `pre-aggregation`
+ * has no transforms slot and maps to `null`.
+ */
+const PHASE_TO_TRANSFORM_KEY: Record<FilterPhase, keyof SchemaTransforms | null> = {
+  'pre-parser': 'preParser',
+  'pre-warehouse': 'preWarehouse',
+  'pre-exceptions': 'preExceptions',
+  'pre-aggregation': null,
+};
+
+/**
+ * Resolves the `Transforms` slot for a phase, throwing for `pre-aggregation`
+ * (which has no chain slot in the transforms model).
+ *
+ * @param phase the filter phase from the op
+ * @param index the operation index, for error messages
+ * @param opLabel the op name, for error messages
+ * @returns the matching `keyof SchemaTransforms`
+ * @throws Error when the phase has no transforms slot
+ */
+function transformKeyForPhase(phase: FilterPhase, index: number, opLabel: string): keyof SchemaTransforms {
+  const key = PHASE_TO_TRANSFORM_KEY[phase];
+  if (!key) {
+    throw new Error(
+      `Operation ${index} (${opLabel}): phase "${phase}" has no transforms slot. ` +
+        `Use "pre-parser", "pre-warehouse", or "pre-exceptions".`,
+    );
+  }
+  return key;
+}
+
+/** True when the existing slot value is a keep-style filter (then keep / else drop), i.e. not inverted. */
+function isInvertedConditionNode(node: SchemaConditionNode): boolean {
+  return (
+    node.thenAction?.kind === DropNodeKind.drop_node &&
+    node.elseAction?.kind === PassthroughNodeKind.passthrough_node
+  );
+}
+
+/**
+ * Compiles a keep-style {@link SchemaLogsFilter} into the equivalent single
+ * {@link SchemaConditionNode} chain: matching logs flow through, non-matching
+ * are dropped (arms swap when the filter is `inverted`). Carries over the two
+ * documented merge fields (`inverted`, `maxLateEventTimestampDelta`) from an
+ * existing condition node when the incoming filter omits them, preserving
+ * `set-filter`'s merge contract.
+ *
+ * @param filter the incoming logs-filter (predicate + optional inverted/lateness)
+ * @param existing the current condition node in the slot, if any, for field carry-over
+ * @returns a condition node that compiles to the same logs-filter vertex
+ */
+function filterToConditionNode(
+  filter: SchemaLogsFilter,
+  existing?: SchemaConditionNode,
+): SchemaConditionNode {
+  const keep: SchemaChainNode = { kind: PassthroughNodeKind.passthrough_node };
+  const drop: SchemaChainNode = { kind: DropNodeKind.drop_node };
+  const inverted =
+    filter.inverted ?? (existing ? isInvertedConditionNode(existing) : false);
+  const lateDataDuration = filter.maxLateEventTimestampDelta ?? existing?.lateDataDuration;
+  return {
+    kind: ConditionNodeKind.condition_node,
+    predicate: filter.predicate ?? existing?.predicate ?? { type: DatadogQueryPredicateType.datadog_query, query: '' },
+    thenAction: inverted ? drop : keep,
+    elseAction: inverted ? keep : drop,
+    ...(lateDataDuration ? { lateDataDuration } : {}),
+  };
+}
+
 function applySetFilter(
   input: SchemaLogReducerTemplateInput,
   phase: FilterPhase,
@@ -1758,17 +1835,20 @@ function applySetFilter(
   if (!filter || typeof filter !== 'object') {
     throw new Error(`Operation ${index} (set-filter): filter must be an object`);
   }
-  const filters: SchemaLogReducerFilters = input.filters ?? {};
-  filters[phase] = { ...(filters[phase] ?? {}), ...filter };
-  input.filters = filters;
+  const key = transformKeyForPhase(phase, index, 'set-filter');
+  const existing = input.transforms?.[key];
+  const node = filterToConditionNode(
+    filter,
+    existing?.kind === ConditionNodeKind.condition_node ? (existing as SchemaConditionNode) : undefined,
+  );
+  input.transforms = { ...(input.transforms ?? {}), [key]: node };
 }
 
-function applyClearFilter(input: SchemaLogReducerTemplateInput, phase: FilterPhase): void {
-  const filters: SchemaLogReducerFilters = input.filters ?? {};
-  const existing = filters[phase];
-  if (!existing || typeof existing !== 'object') return;
-  filters[phase] = { ...existing, predicate: { type: DatadogQueryPredicateType.datadog_query, query: '' } };
-  input.filters = filters;
+function applyClearFilter(input: SchemaLogReducerTemplateInput, phase: FilterPhase, index: number): void {
+  const key = transformKeyForPhase(phase, index, 'clear-filter');
+  if (!input.transforms?.[key]) return;
+  const { [key]: _removed, ...rest } = input.transforms;
+  input.transforms = rest;
 }
 
 function applyAddSource(input: SchemaLogReducerTemplateInput, source: SchemaOperation, index: number): void {
@@ -2067,10 +2147,9 @@ const INPUT_FIELD_TOUCHES: Record<keyof SchemaLogReducerTemplateInput, 'source' 
   conditionalDatasets: 'sink',
   reducer: 'transform',
   parsers: 'transform',
-  filters: 'transform',
+  transforms: 'transform',
   exceptions: 'transform',
   sampler: 'transform',
-  sqlOperations: 'transform',
 };
 
 /**

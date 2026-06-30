@@ -3396,6 +3396,15 @@ export interface components {
        */
       type: BucketPartitionTransformType;
     };
+    /** @description One node of the recursive chain tree. Every chain (and every nested chain) is rooted at a ChainNode; the recursion terminates at a DropNode or PassthroughNode leaf. */
+    ChainNode: {
+      kind: string;
+    } & (
+      | components["schemas"]["DropNode"]
+      | components["schemas"]["PassthroughNode"]
+      | components["schemas"]["SqlNode"]
+      | components["schemas"]["ConditionNode"]
+    );
     ChunkedOutputEventRecordReadableData: {
       closed?: boolean;
       type?: {
@@ -3597,6 +3606,23 @@ export interface components {
     Condition: {
       /** @default [] */
       actionRules: components["schemas"]["ActionRule"][];
+    };
+    /** @description Non-terminal — events matching `predicate` route into `thenAction`; non-matching events route into `elseAction`. `lateDataDuration` is honored only when this node is the root of a stage's slot. */
+    ConditionNode: {
+      elseAction: components["schemas"]["ChainNode"];
+      /**
+       * Format: ISO-8601
+       * @description Optional ISO-8601 maximum allowed lateness applied at the chain's entry filter. Honored only when this is the root node of a stage's slot; values set on a nested ConditionNode are ignored by the templates-layer compiler.
+       * @example PT20.345S
+       */
+      lateDataDuration?: string;
+      predicate: components["schemas"]["EventPredicate"];
+      thenAction: components["schemas"]["ChainNode"];
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: ConditionNodeKind;
     };
     /** @description One conditional branch in the raw log if-else routing ladder. */
     ConditionalDataLakeConfig: {
@@ -4156,6 +4182,14 @@ export interface components {
        * @enum {string}
        */
       type: DoubleDatapointType;
+    };
+    /** @description Terminal — discards every event reaching this node. */
+    DropNode: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: DropNodeKind;
     };
     /** @description Drops matching series outright. */
     DropRule: {
@@ -5948,7 +5982,6 @@ export interface components {
       datasetId?: string;
       /** @description A list of template-specific exceptions to apply in log reducer. */
       exceptions: components["schemas"]["TemplateException"][];
-      filters: components["schemas"]["LogReducerFilters"];
       /** @description A list of parsers to be applied to the data. */
       parsers: components["schemas"]["Operation"][];
       processedLogsSink?: components["schemas"]["LogsIcebergTableSink"];
@@ -5959,7 +5992,7 @@ export interface components {
       sinks?: components["schemas"]["TemplateLogSink"][];
       /** @description A list of data sources, each conforming to one of the defined source types. */
       sources: components["schemas"]["Operation"][];
-      sqlOperations?: components["schemas"]["SqlOperations"];
+      transforms?: components["schemas"]["Transforms"];
     };
     LogRulesApplication: {
       /**
@@ -7237,6 +7270,14 @@ export interface components {
     /** @description An Iceberg partition transform applied to a column: a time transform (hour/day/month/year) or a hash bucket transform with a fixed bucket count. Discriminated by the 'type' property (time/bucket). */
     PartitionTransform: {
       type: string;
+    };
+    /** @description Terminal — forwards every event to the chain's downstream pipeline step. UI label is stage-derived (e.g. "Send to Reducer"). */
+    PassthroughNode: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: PassthroughNodeKind;
     };
     PatternLookupIcebergTableSink: {
       /** @description The id of the dataset to write to */
@@ -9154,6 +9195,20 @@ export interface components {
        */
       type: SqlIoStatementType;
     };
+    /** @description Non-terminal — runs SQL on events, then routes survivors to `next`. */
+    SqlNode: {
+      next: components["schemas"]["ChainNode"];
+      /** @description Routes each SQL output statement's output name to the pipeline step that consumes it. Every key must match an output statement defined in `sqlOperation`. */
+      outputRouting: {
+        [key: string]: SqlNodeOutputRouting;
+      };
+      sqlOperation: components["schemas"]["SqlOperation"];
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: SqlNodeKind;
+    };
     /** @description Processes data through a sequence of SQL statements executed in order. Supports VIEW statements that create temporary tables, OUTPUT statements that produce DataStream results, and IO statements that perform side effects. */
     SqlOperation: {
       /**
@@ -10393,6 +10448,12 @@ export interface components {
       /** Format: int32 */
       seq?: number;
     };
+    /** @description Per-stage tree-shape chains applied during log processing. */
+    Transforms: {
+      preExceptions?: components["schemas"]["ChainNode"];
+      preParser?: components["schemas"]["ChainNode"];
+      preWarehouse?: components["schemas"]["ChainNode"];
+    };
     /**
      * @description Base class of all Triggers
      * @example {
@@ -11138,6 +11199,7 @@ export type SchemaBucketAccessResult =
   components["schemas"]["BucketAccessResult"];
 export type SchemaBucketPartitionTransform =
   components["schemas"]["BucketPartitionTransform"];
+export type SchemaChainNode = components["schemas"]["ChainNode"];
 export type SchemaChunkedOutputEventRecordReadableData =
   components["schemas"]["ChunkedOutputEventRecordReadableData"];
 export type SchemaClearSecret = components["schemas"]["ClearSecret"];
@@ -11151,6 +11213,7 @@ export type SchemaCompleteSpan = components["schemas"]["CompleteSpan"];
 export type SchemaCompositeAttributesMergeStrategy =
   components["schemas"]["CompositeAttributesMergeStrategy"];
 export type SchemaCondition = components["schemas"]["Condition"];
+export type SchemaConditionNode = components["schemas"]["ConditionNode"];
 export type SchemaConditionalDataLakeConfig =
   components["schemas"]["ConditionalDataLakeConfig"];
 export type SchemaConsoleSetupInfo = components["schemas"]["ConsoleSetupInfo"];
@@ -11191,6 +11254,7 @@ export type SchemaDatasetRead = components["schemas"]["DatasetRead"];
 export type SchemaDatasetUpdate = components["schemas"]["DatasetUpdate"];
 export type SchemaDiscardingSink = components["schemas"]["DiscardingSink"];
 export type SchemaDoubleDatapoint = components["schemas"]["DoubleDatapoint"];
+export type SchemaDropNode = components["schemas"]["DropNode"];
 export type SchemaDropRule = components["schemas"]["DropRule"];
 export type SchemaEarliestReadingStrategy =
   components["schemas"]["EarliestReadingStrategy"];
@@ -11437,6 +11501,7 @@ export type SchemaPartitionFieldConfig =
   components["schemas"]["PartitionFieldConfig"];
 export type SchemaPartitionTransform =
   components["schemas"]["PartitionTransform"];
+export type SchemaPassthroughNode = components["schemas"]["PassthroughNode"];
 export type SchemaPatternLookupIcebergTableSink =
   components["schemas"]["PatternLookupIcebergTableSink"];
 export type SchemaPatternMatcher = components["schemas"]["PatternMatcher"];
@@ -11542,6 +11607,7 @@ export type SchemaSplunkLogHttpSource =
 export type SchemaSplunkLogSink = components["schemas"]["SplunkLogSink"];
 export type SchemaSqlExecutable = components["schemas"]["SqlExecutable"];
 export type SchemaSqlIoStatement = components["schemas"]["SqlIoStatement"];
+export type SchemaSqlNode = components["schemas"]["SqlNode"];
 export type SchemaSqlOperation = components["schemas"]["SqlOperation"];
 export type SchemaSqlOperations = components["schemas"]["SqlOperations"];
 export type SchemaSqlOutputStatement =
@@ -11626,6 +11692,7 @@ export type SchemaTranscriptMessage =
 export type SchemaTranscriptToolCall =
   components["schemas"]["TranscriptToolCall"];
 export type SchemaTranscriptTurn = components["schemas"]["TranscriptTurn"];
+export type SchemaTransforms = components["schemas"]["Transforms"];
 export type SchemaTrigger = components["schemas"]["Trigger"];
 export type SchemaTriggerActionConfig =
   components["schemas"]["TriggerActionConfig"];
@@ -19143,6 +19210,9 @@ export enum CompleteSpanType {
 export enum CompositeAttributesMergeStrategyType {
   composite = "composite",
 }
+export enum ConditionNodeKind {
+  condition_node = "condition-node",
+}
 export enum ConstantSamplingType {
   constant_sampling = "constant-sampling",
 }
@@ -19189,6 +19259,9 @@ export enum DoubleDatapointMetricType {
 }
 export enum DoubleDatapointType {
   double_datapoint = "double-datapoint",
+}
+export enum DropNodeKind {
+  drop_node = "drop-node",
 }
 export enum EntityContextAggregationType {
   entity_context_aggregation = "entity-context-aggregation",
@@ -19425,6 +19498,9 @@ export enum OtlpTraceAgentSourceType {
 export enum OtlpTraceSinkType {
   otlp_trace_sink = "otlp-trace-sink",
 }
+export enum PassthroughNodeKind {
+  passthrough_node = "passthrough-node",
+}
 export enum PatternLookupIcebergTableSinkType {
   pattern_lookup_iceberg_table_sink = "pattern-lookup-iceberg-table-sink",
 }
@@ -19578,6 +19654,16 @@ export enum SplunkLogSinkType {
 }
 export enum SqlIoStatementType {
   sql_io = "sql_io",
+}
+export enum SqlNodeOutputRouting {
+  json_log_processor = "json-log-processor",
+  grok_parser = "grok-parser",
+  data_warehouse = "data-warehouse",
+  log_reducer = "log-reducer",
+  sinks = "sinks",
+}
+export enum SqlNodeKind {
+  sql_node = "sql-node",
 }
 export enum SqlOperationInputs {
   VARIANT = "VARIANT",

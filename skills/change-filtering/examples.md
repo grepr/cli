@@ -11,9 +11,9 @@ in `NOT (...)`.
 - [❌ set-filter against a non-canonical raw graph](#bad-raw-shape)
 
 `set-filter`/`clear-filter` behave identically on template-backed and canonical
-raw-graph pipelines for `pre-parser`, `pre-warehouse`, and `pre-exceptions`. The
-difference: `pre-aggregation` is template-only (no raw UI stage), and only
-templates accept `set-input-field`.
+raw-graph pipelines for `pre-parser`, `pre-warehouse`, and `pre-exceptions` —
+the only three phase slots. The difference: only templates accept
+`set-input-field`.
 
 <a id="template-set-filter"></a>
 ## ✅ Template-backed: drop health checks pre-parser
@@ -37,8 +37,7 @@ templates accept `set-input-field`.
 
 Why this works: `path` is a raw tag present before parsing, so `pre-parser` is
 the cheapest drop point. The keep predicate `NOT (...)` keeps everything except
-the three health-check paths. On a template-backed pipeline `pre-aggregation`
-would also be valid; on a raw graph it would not.
+the three health-check paths.
 
 <a id="raw-set-clear-filter"></a>
 ## ✅ Raw graph: tighten pre-warehouse, clear pre-exceptions
@@ -64,7 +63,8 @@ would also be valid; on a raw graph it would not.
 Why this works: canonical UI-shaped raw graphs accept `set-filter`/`clear-filter`
 on `pre-parser`, `pre-warehouse`, and `pre-exceptions`. `set-filter` merges, so
 any existing `maxLateEventTimestampDelta` on the pre-warehouse slot is preserved.
-`clear-filter` blanks the pre-exceptions query but keeps the vertex. In most
+`clear-filter` removes the pre-exceptions filter, reverting that phase to
+pass-through. In most
 templates pre-warehouse is upstream of the reducer too — verify topology with
 `describe-pipeline` before telling the user where the drop lands.
 
@@ -105,7 +105,7 @@ approving.
   "operations": [
     {
       "op": "set-filter",
-      "phase": "pre-aggregation",
+      "phase": "pre-warehouse",
       "filter": {
         "predicate": {
           "type": "datadog-query",
@@ -117,8 +117,7 @@ approving.
 }
 ```
 
-Why this fails: `pre-aggregation` has no canonical UI raw-graph stage, and a
-non-UI raw DAG has no recognizable filter slots, so the patch is rejected at plan
-time with `unsupported raw job graph shape`. Use a template-backed pipeline for
-`pre-aggregation`, or pick the closest real raw stage (`pre-warehouse`) after
-inspecting topology with `describe-pipeline`.
+Why this fails: a non-UI raw DAG has no recognizable phase-slot filter vertices,
+so even a valid phase like `pre-warehouse` is rejected at plan time with
+`unsupported raw job graph shape`. Use a template-backed pipeline, or inspect
+topology with `describe-pipeline` and edit the raw graph manually.
