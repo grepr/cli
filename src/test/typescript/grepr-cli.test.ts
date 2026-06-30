@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'bun:test';
 import { Command } from 'commander';
 import { GreprQueryCLI } from '../../../src/main/typescript/grepr.js';
 import { createApiClient, ApiClientFactoryOptions } from '../../../src/main/typescript/lib/api-client-factory.js';

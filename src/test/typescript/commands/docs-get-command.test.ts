@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import { DocsGetCommand } from '../../../../src/main/typescript/commands/docs-get-command.js';
 
 describe('DocsGetCommand', () => {

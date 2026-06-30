@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'bun:test';
 import { DocsSearchCommand } from '../../../../src/main/typescript/commands/docs-command.js';
 import { SearchResult } from '../../../../src/main/typescript/lib/docs-search.js';
 import { DocumentTextSection } from 'vectra';

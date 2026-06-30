@@ -7,7 +7,7 @@
  * the entire transformation is correct, not just individual fields.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import {
   transformJobToTest,
   transformJobGraphToSourcePreservingDraft,

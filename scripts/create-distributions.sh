@@ -32,18 +32,16 @@ build_cli "$CLI_DIR"
 echo -e "${GREEN}Creating source distribution...${NC}"
 SOURCE_DIR="$DIST_DIR/grepr-source-v$VERSION"
 mkdir -p "$SOURCE_DIR/src/main"
-mkdir -p "$SOURCE_DIR/src/test"
 
-# Copy source files
+# Copy source files. Tests are internal-only (they run under bun, which we do
+# not require customers to install), so the source distribution ships only the
+# production source and builds with plain `npm install && npm run build`.
 echo -e "${YELLOW}Copying source files...${NC}"
 cp -r "$CLI_DIR/src/main/typescript" "$SOURCE_DIR/src/main"
-cp -r "$CLI_DIR/src/test/typescript" "$SOURCE_DIR/src/test"
 cp -r "$CLI_DIR/templates" "$SOURCE_DIR/"
 cp -r "$CLI_DIR/scripts" "$SOURCE_DIR/"
 cp "$CLI_DIR/tsconfig.json" "$SOURCE_DIR/"
-cp "$CLI_DIR/tsconfig.test.json" "$SOURCE_DIR/"
 cp "$CLI_DIR/eslint.config.mjs" "$SOURCE_DIR/"
-cp "$CLI_DIR/vitest.config.ts" "$SOURCE_DIR/"
 
 # Generate package.json from main package.json
 generate_source_package_json "$CLI_DIR" "$SOURCE_DIR"

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'bun:test';
 import { DatasetListCommand } from '../../../../src/main/typescript/commands/dataset-command.js';
 
 // Mock the GreprApiClient
@@ -207,9 +207,9 @@ describe('DatasetListCommand', () => {
       const mockError = new Error('API connection failed');
       mockApiClient.listDatasets.mockRejectedValue(mockError);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeList(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing datasets:',
@@ -222,9 +222,9 @@ describe('DatasetListCommand', () => {
       const timeoutError = new Error('Request timeout after 30000ms');
       mockApiClient.listDatasets.mockRejectedValue(timeoutError);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeList(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing datasets:',
@@ -237,9 +237,9 @@ describe('DatasetListCommand', () => {
       const authError = new Error('Unauthorized: Invalid API token');
       mockApiClient.listDatasets.mockRejectedValue(authError);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeList(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing datasets:',
@@ -252,9 +252,9 @@ describe('DatasetListCommand', () => {
       const serverError = new Error('Internal Server Error: Database connection failed');
       mockApiClient.listDatasets.mockRejectedValue(serverError);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeList(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing datasets:',
@@ -710,9 +710,9 @@ describe('DatasetListCommand', () => {
         output: '/tmp/test-datasets.json'
       };
 
-      await expect(async () => {
+      await expect((async () => {
         await commandWithRealFormatAndOutput.executeList(optionsWithOutput);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing datasets:',

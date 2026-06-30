@@ -6,7 +6,7 @@
  * identified by a port name (input/output) on this vertex.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { Vertex, IO, DEFAULT_INPUT, DEFAULT_OUTPUT } from '@/types.js';
 import { SchemaOperation, LogsFilterType, DatadogQueryPredicateType, DatadogLogAgentSourceType, DatadogLogSinkType } from '@/openapi/openApiTypes.js';
 

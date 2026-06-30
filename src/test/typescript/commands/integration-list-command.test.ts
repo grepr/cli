@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'bun:test';
 import { IntegrationListCommand } from '../../../../src/main/typescript/commands/integration-command.js';
 
 // Mock the GreprApiClient
@@ -284,9 +284,9 @@ describe('IntegrationListCommand', () => {
       const mockError = new Error('API connection failed');
       mockApiClient.getAllIntegrations.mockRejectedValue(mockError);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeList(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing integrations:',
@@ -299,9 +299,9 @@ describe('IntegrationListCommand', () => {
       const timeoutError = new Error('Request timeout after 30000ms');
       mockApiClient.getAllIntegrations.mockRejectedValue(timeoutError);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeList(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing integrations:',
@@ -314,9 +314,9 @@ describe('IntegrationListCommand', () => {
       const authError = new Error('Unauthorized: Invalid API token');
       mockApiClient.getAllIntegrations.mockRejectedValue(authError);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeList(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing integrations:',
@@ -803,9 +803,9 @@ describe('IntegrationListCommand', () => {
         output: '/tmp/test-integrations.json'
       };
 
-      await expect(async () => {
+      await expect((async () => {
         await commandWithRealFormatAndOutput.executeList(optionsWithOutput);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing integrations:',

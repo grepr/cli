@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'bun:test';
 import type { ApiClientConfig } from '../../../main/typescript/types.js';
 
 const mockPathExists = vi.fn();

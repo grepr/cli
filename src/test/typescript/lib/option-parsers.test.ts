@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { parseAuthMethod, parseEnvUrl, parseQueryEngine, parseUrl } from '../../../main/typescript/lib/option-parsers.js';
 
 describe('parseUrl', () => {

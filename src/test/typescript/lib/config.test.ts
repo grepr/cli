@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { ConfigManager } from '../../../../src/main/typescript/lib/config.js';
 import { SavedCliConfig } from '../../../../src/main/typescript/types.js';
 import fs from 'fs-extra';

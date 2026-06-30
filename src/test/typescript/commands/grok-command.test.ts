@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'bun:test';
 import { GrokParseCommand } from '../../../../src/main/typescript/commands/grok-command.js';
 import { SchemaGrokParseResponse, SchemaGrokParseBatchRequest, SchemaGrokParseBatchResponse, GrokParserType } from '../../../../src/main/typescript/openapi/openApiTypes.js';
 

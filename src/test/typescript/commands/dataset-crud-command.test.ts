@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'bun:test';
 import { DatasetCrudCommand } from '../../../main/typescript/commands/dataset-command';
 
 // Mock the GreprApiClient
@@ -174,9 +174,9 @@ describe('DatasetCrudCommand', () => {
     it('test_executeGet_datasetNotFound_shouldLogErrorAndExit', async () => {
       mockApiClient.getDataset.mockResolvedValue(null);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeGet('non-existent', mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(mockApiClient.getDataset).toHaveBeenCalledWith('non-existent');
       expect(consoleSpy.error).toHaveBeenCalledWith('Dataset non-existent not found');
@@ -187,9 +187,9 @@ describe('DatasetCrudCommand', () => {
       const mockError = new Error('API connection failed');
       mockApiClient.getDataset.mockRejectedValue(mockError);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeGet('123', mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error getting dataset 123:',
@@ -264,9 +264,9 @@ describe('DatasetCrudCommand', () => {
     it('test_executeCreate_fileNotFound_shouldLogErrorAndExit', async () => {
       mockFs.pathExists.mockResolvedValue(false);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeCreate(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error creating dataset:',
@@ -278,9 +278,9 @@ describe('DatasetCrudCommand', () => {
     it('test_executeCreate_invalidJsonFile_shouldLogErrorAndExit', async () => {
       mockFs.readJson.mockRejectedValue(new Error('Invalid JSON'));
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeCreate(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error creating dataset:',
@@ -301,9 +301,9 @@ describe('DatasetCrudCommand', () => {
       mockFs.readJson.mockResolvedValue(datasetWithoutName);
       mockApiClient.createDataset.mockRejectedValue(new Error('name must not be null'));
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeCreate(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(mockApiClient.createDataset).toHaveBeenCalledWith(datasetWithoutName);
       expect(consoleSpy.error).toHaveBeenCalledWith(
@@ -317,9 +317,9 @@ describe('DatasetCrudCommand', () => {
       mockFs.readJson.mockResolvedValue(mockDatasetData);
       mockApiClient.createDataset.mockRejectedValue(new Error('Create failed'));
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeCreate(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error creating dataset:',
@@ -371,9 +371,9 @@ describe('DatasetCrudCommand', () => {
       mockFs.readJson.mockResolvedValue(mockDatasetData);
       mockApiClient.updateDataset.mockResolvedValue(null);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeUpdate('123', mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith('Failed to update dataset 123');
       expect(mockProcessExit).toHaveBeenCalledWith(1);
@@ -384,9 +384,9 @@ describe('DatasetCrudCommand', () => {
       mockFs.readJson.mockResolvedValue(mockDatasetData);
       mockApiClient.updateDataset.mockRejectedValue(new Error('Update failed'));
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeUpdate('123', mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error updating dataset 123:',
@@ -419,9 +419,9 @@ describe('DatasetCrudCommand', () => {
     it('test_executeDelete_apiDeleteFails_shouldLogErrorAndExit', async () => {
       mockApiClient.deleteDataset.mockRejectedValue(new Error('Delete failed'));
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeDelete('123', mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error deleting dataset 123:',
@@ -433,9 +433,9 @@ describe('DatasetCrudCommand', () => {
     it('test_executeDelete_datasetNotFound_shouldLogErrorAndExit', async () => {
       mockApiClient.deleteDataset.mockRejectedValue(new Error('Dataset not found'));
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeDelete('non-existent', mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error deleting dataset non-existent:',

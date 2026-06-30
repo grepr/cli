@@ -5,7 +5,7 @@
  * including vertex identification, edge parsing, and graph traversal.
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import {
   generateUUID,
   parseEdge

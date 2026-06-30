@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'bun:test'
 import { parseDurationToMilliseconds, parseSinceOption } from '../../main/typescript/lib/time-utils.js'
 
 describe('parseDurationToMilliseconds', () => {

@@ -1,29 +1,30 @@
 {
   "name": "@grepr/cli",
-  "version": "1.6.30-551accf",
+  "version": "1.6.31-2713579",
   "description": "Official Grepr CLI tool for submitting synchronous batch jobs with OAuth authentication",
   "main": "build/dist/grepr.js",
   "type": "module",
   "scripts": {
-    "build": "yarn lint && yarn typecheck && vitest run && tsc && tsc-alias --resolve-full-paths && chmod +x build/dist/grepr.js && yarn build:docs-index",
-    "build:fast": "tsc && tsc-alias --resolve-full-paths && chmod +x build/dist/grepr.js && yarn build:docs-index",
+    "build": "eslint src/**/*.ts && tsc --noEmit && tsc && tsc-alias --resolve-full-paths && chmod +x build/dist/grepr.js && tsx scripts/build-docs-index.ts",
+    "build:fast": "tsc && tsc-alias --resolve-full-paths && chmod +x build/dist/grepr.js && tsx scripts/build-docs-index.ts",
     "build:no-index": "tsc && tsc-alias --resolve-full-paths && chmod +x build/dist/grepr.js",
     "build:docs-index": "tsx scripts/build-docs-index.ts",
-    "start": "yarn build:fast && node build/dist/grepr.js --version",
+    "start": "bun run build:fast && node build/dist/grepr.js --version",
     "dev": "tsc --watch",
     "clean": "rm -rf build/dist build/customer-distributions",
-    "typecheck": "yarn run lint && tsc --noEmit && tsc --noEmit --project tsconfig.test.json",
+    "typecheck": "eslint src/**/*.ts && tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "test": "vitest run",
-    "test:watch": "vitest --watch",
-    "test:coverage": "vitest --coverage",
-    "prepublishOnly": "node -e \"const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));delete p.packageManager;fs.writeFileSync('package.json',JSON.stringify(p,null,2))\" && yarn clean && yarn build",
-    "pack": "yarn clean && yarn build && yarn pack",
+    "test": "./scripts/run-tests.sh",
+    "test:watch": "bun test --watch",
+    "test:coverage": "BUN_TEST_FLAGS=--coverage ./scripts/run-tests.sh",
+    "verify": "bun run typecheck && bun run test",
+    "prepublishOnly": "node -e \"const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));delete p.packageManager;fs.writeFileSync('package.json',JSON.stringify(p,null,2))\" && bun run clean && bun run build",
+    "pack": "bun run clean && bun run build && bun pm pack",
     "dist": "./scripts/create-distributions.sh",
-    "dist:fast": "yarn build:fast && ./scripts/create-distributions.sh",
-    "link:local": "yarn build && yarn link",
-    "unlink:local": "yarn unlink -g grepr"
+    "dist:fast": "bun run build:fast && ./scripts/create-distributions.sh",
+    "link:local": "bun run build && bun link",
+    "unlink:local": "bun unlink"
   },
   "bin": {
     "grepr": "build/dist/grepr.js"
@@ -53,7 +54,6 @@
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "@vitest/coverage-v8": "^4.0.5",
     "esbuild": "^0.28.1",
     "eslint": "^8.57.0",
     "glob": "^10.3.0",
@@ -68,8 +68,7 @@
     "tsx": "^4.7.0",
     "typescript": "^5.3.0",
     "typescript-eslint": "^8.53.1",
-    "unified": "^11.0.5",
-    "vitest": "^4.0.5"
+    "unified": "^11.0.5"
   },
   "resolutions": {
     "tar": "^7.5.16",

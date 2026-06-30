@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'bun:test';
 import { Command } from 'commander';
 import fs from 'fs-extra';
 import path from 'path';
@@ -198,9 +198,9 @@ describe('apply', () => {
     } as unknown as GreprApiClient;
     vi.useFakeTimers();
     const promise = apply(api, 'job_1', fakeUpdate(5));
-    const rejection = expect(promise).rejects.toThrow(/gateway/);
-    await vi.runAllTimersAsync();
-    await rejection;
+    const drained = vi.runAllTimersAsync();
+    await expect(promise).rejects.toThrow(/gateway/);
+    await drained;
     vi.useRealTimers();
   });
 
@@ -217,9 +217,9 @@ describe('apply', () => {
     } as unknown as GreprApiClient;
     vi.useFakeTimers();
     const promise = apply(api, 'job_1', fakeUpdate(5));
-    const rejection = expect(promise).rejects.toThrow(/drift during apply/);
-    await vi.runAllTimersAsync();
-    await rejection;
+    const drained = vi.runAllTimersAsync();
+    await expect(promise).rejects.toThrow(/drift during apply/);
+    await drained;
     vi.useRealTimers();
   });
 
@@ -230,9 +230,9 @@ describe('apply', () => {
     } as unknown as GreprApiClient;
     vi.useFakeTimers();
     const promise = apply(api, 'job_1', fakeUpdate(5));
-    const rejection = expect(promise).rejects.toThrow(/after 3 retries/);
-    await vi.runAllTimersAsync();
-    await rejection;
+    const drained = vi.runAllTimersAsync();
+    await expect(promise).rejects.toThrow(/after 3 retries/);
+    await drained;
     vi.useRealTimers();
   });
 

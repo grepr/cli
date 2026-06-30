@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'bun:test'
 import { Command } from 'commander'
 import { CommandRegistry, ICommand } from '../../main/typescript/lib/command-registry.js'
 

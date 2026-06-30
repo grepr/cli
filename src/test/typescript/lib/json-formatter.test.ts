@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import { JsonFormatter, JsonFormatterOptions } from '../../../../src/main/typescript/lib/json-formatter.js';
 import { LogEventData } from '../../../../src/main/typescript/types.js';
 

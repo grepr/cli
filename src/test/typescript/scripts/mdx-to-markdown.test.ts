@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll } from 'bun:test';
 import path from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';

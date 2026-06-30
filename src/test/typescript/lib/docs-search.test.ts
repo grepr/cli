@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { DocsSearch } from '../../../main/typescript/lib/docs-search.js';
 import { LocalDocumentIndex } from 'vectra';
 import { TransformersEmbeddings } from '../../../main/typescript/lib/transformers-embeddings.js';

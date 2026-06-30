@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'bun:test';
 import { JobCrudCommand } from '../../../../src/main/typescript/commands/job-command.js';
 import { StreamingJobExecutor } from '../../../../src/main/typescript/lib/streaming-job-executor.js';
 import { PathsV1JobsGetParametersQueryExecution } from '../../../../src/main/typescript/openapi/openApiTypes.js';
@@ -173,9 +173,9 @@ describe('JobCrudCommand', () => {
     it('test_executeGet_jobNotFound_shouldLogErrorAndExit', async () => {
       mockApiClient.getJob.mockResolvedValue(null);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeGet('non-existent', mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(mockApiClient.getJob).toHaveBeenCalledWith('non-existent', undefined, undefined);
       expect(consoleSpy.error).toHaveBeenCalledWith('Job non-existent not found');
@@ -273,9 +273,9 @@ describe('JobCrudCommand', () => {
       });
 
       // Since synchronous jobs exit the process, we expect process.exit to be called
-      await expect(async () => {
+      await expect((async () => {
         await command.executeCreate(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       // Should NOT call createAsyncJob for sync jobs
       expect(mockApiClient.createAsyncJob).not.toHaveBeenCalled();
@@ -317,9 +317,9 @@ describe('JobCrudCommand', () => {
     it('test_loadJobDefinition_fileNotFound_shouldLogErrorAndExit', async () => {
       mockFs.pathExists.mockResolvedValue(false);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeCreate(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error creating job:',
@@ -331,9 +331,9 @@ describe('JobCrudCommand', () => {
     it('test_loadJobDefinition_invalidJson_shouldLogErrorAndExit', async () => {
       mockFs.readJson.mockRejectedValue(new Error('Invalid JSON'));
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeCreate(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error creating job:',
@@ -353,9 +353,9 @@ describe('JobCrudCommand', () => {
       };
       mockFs.readJson.mockResolvedValue(invalidJobDefinition);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeCreate(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error creating job:',
@@ -412,9 +412,9 @@ describe('JobCrudCommand', () => {
       mockFs.readJson.mockResolvedValue(mockJobData);
       mockApiClient.updateJob.mockResolvedValue(null);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeUpdate('123', mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith('Failed to update job 123');
       expect(mockProcessExit).toHaveBeenCalledWith(1);
@@ -444,9 +444,9 @@ describe('JobCrudCommand', () => {
     it('test_executeDelete_apiDeleteFails_shouldLogErrorAndExit', async () => {
       mockApiClient.deleteJob.mockRejectedValue(new Error('Delete failed'));
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeDelete('123', mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error deleting job 123:',
@@ -531,9 +531,9 @@ describe('JobCrudCommand', () => {
       });
 
       // Since synchronous jobs exit the process, we expect process.exit to be called
-      await expect(async () => {
+      await expect((async () => {
         await command.executeCreate(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       // Verify that the streaming executor was called with the options including sync-specific ones
       expect(mockStreamingExecutor.execute).toHaveBeenCalledWith(
@@ -582,9 +582,9 @@ describe('JobCrudCommand', () => {
         process.exit(0);
       });
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeCreate(optionsWithDefaults);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       // Verify that the streaming executor was called (defaults are applied by Commander.js)
       expect(mockStreamingExecutor.execute).toHaveBeenCalledWith(

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'bun:test';
 import { JobListCommand } from '../../../../src/main/typescript/commands/job-command.js';
 
 // Mock the GreprApiClient
@@ -222,9 +222,9 @@ describe('JobListCommand', () => {
       const mockError = new Error('API connection failed');
       mockApiClient.listJobs.mockRejectedValue(mockError);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeList(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing jobs:',
@@ -237,9 +237,9 @@ describe('JobListCommand', () => {
       const timeoutError = new Error('Request timeout after 30000ms');
       mockApiClient.listJobs.mockRejectedValue(timeoutError);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeList(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing jobs:',
@@ -252,9 +252,9 @@ describe('JobListCommand', () => {
       const authError = new Error('Unauthorized: Invalid API token');
       mockApiClient.listJobs.mockRejectedValue(authError);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeList(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing jobs:',
@@ -267,9 +267,9 @@ describe('JobListCommand', () => {
       const serverError = new Error('Internal Server Error: Database connection failed');
       mockApiClient.listJobs.mockRejectedValue(serverError);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeList(mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing jobs:',
@@ -745,7 +745,7 @@ describe('JobListCommand', () => {
       // This should not throw an error about fs.default being undefined
       await expect(
         commandWithRealFormatAndOutput.executeList(optionsWithOutput)
-      ).resolves.not.toThrow();
+      ).resolves.toBeUndefined();
 
       // Verify the write was attempted
       expect(mockFs.writeFile).toHaveBeenCalled();
@@ -769,9 +769,9 @@ describe('JobListCommand', () => {
         output: '/tmp/test-jobs.json'
       };
 
-      await expect(async () => {
+      await expect((async () => {
         await commandWithRealFormatAndOutput.executeList(optionsWithOutput);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error listing jobs:',

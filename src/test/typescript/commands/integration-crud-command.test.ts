@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'bun:test';
 import { IntegrationCrudCommand } from '../../../../src/main/typescript/commands/integration-command.js';
 
 // Mock the GreprApiClient
@@ -146,9 +146,9 @@ describe('IntegrationCrudCommand', () => {
     it('test_executeGet_integrationNotFound_shouldLogErrorAndExit', async () => {
       mockApiClient.getIntegrationById.mockResolvedValue(null);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeGet('non-existent', mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(mockApiClient.getIntegrationById).toHaveBeenCalledWith('non-existent');
       expect(consoleSpy.error).toHaveBeenCalledWith('Integration non-existent not found');
@@ -159,9 +159,9 @@ describe('IntegrationCrudCommand', () => {
       const mockError = new Error('API connection failed');
       mockApiClient.getIntegrationById.mockRejectedValue(mockError);
 
-      await expect(async () => {
+      await expect((async () => {
         await command.executeGet('123', mockOptions);
-      }).rejects.toThrow('process.exit called');
+      })()).rejects.toThrow('process.exit called');
 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error getting integration 123:',

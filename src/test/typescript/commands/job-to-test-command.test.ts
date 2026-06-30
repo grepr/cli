@@ -8,7 +8,7 @@
  * - Output formatting
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'bun:test';
 import { Command } from 'commander';
 import { JobToTestCommand } from '@/commands/job-to-test-command.js';
 import fs from 'fs-extra';
@@ -88,7 +88,7 @@ describe('JobToTestCommand', () => {
       command.addToProgram(program, mockMergeConfig);
 
       // Then: Should log error and exit
-      await expect(async () => {
+      await expect((async () => {
         await program.parseAsync([
           'node',
           'test',
@@ -99,7 +99,7 @@ describe('JobToTestCommand', () => {
           '--start', '2025-01-01T00:00:00Z',
           '--end', '2025-01-01T01:00:00Z'
         ]);
-      }).rejects.toThrow();
+      })()).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error transforming job:',
@@ -123,7 +123,7 @@ describe('JobToTestCommand', () => {
       command.addToProgram(program, mockMergeConfig);
 
       // Then: Should log error and exit
-      await expect(async () => {
+      await expect((async () => {
         await program.parseAsync([
           'node',
           'test',
@@ -131,7 +131,7 @@ describe('JobToTestCommand', () => {
           jobFile,
           '--dataset-id', 'dataset_123'
         ]);
-      }).rejects.toThrow();
+      })()).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error transforming job:',
@@ -155,7 +155,7 @@ describe('JobToTestCommand', () => {
       command.addToProgram(program, mockMergeConfig);
 
       // Then: Should log error and exit
-      await expect(async () => {
+      await expect((async () => {
         await program.parseAsync([
           'node',
           'test',
@@ -163,7 +163,7 @@ describe('JobToTestCommand', () => {
           jobFile,
           '--execution', 'INVALID'
         ]);
-      }).rejects.toThrow();
+      })()).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error transforming job:',
@@ -187,7 +187,7 @@ describe('JobToTestCommand', () => {
       command.addToProgram(program, mockMergeConfig);
 
       // Then: Should log error and exit
-      await expect(async () => {
+      await expect((async () => {
         await program.parseAsync([
           'node',
           'test',
@@ -195,7 +195,7 @@ describe('JobToTestCommand', () => {
           jobFile,
           '--processing', 'INVALID'
         ]);
-      }).rejects.toThrow();
+      })()).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error transforming job:',
@@ -261,14 +261,14 @@ describe('JobToTestCommand', () => {
       command.addToProgram(program, mockMergeConfig);
 
       // Then: Should log error and exit
-      await expect(async () => {
+      await expect((async () => {
         await program.parseAsync([
           'node',
           'test',
           'job:to-test',
           jobFile
         ]);
-      }).rejects.toThrow();
+      })()).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error transforming job:',
@@ -287,14 +287,14 @@ describe('JobToTestCommand', () => {
       command.addToProgram(program, mockMergeConfig);
 
       // Then: Should log error and exit
-      await expect(async () => {
+      await expect((async () => {
         await program.parseAsync([
           'node',
           'test',
           'job:to-test',
           jobFile
         ]);
-      }).rejects.toThrow();
+      })()).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error transforming job:',
@@ -316,14 +316,14 @@ describe('JobToTestCommand', () => {
       command.addToProgram(program, mockMergeConfig);
 
       // Then: Should log error and exit
-      await expect(async () => {
+      await expect((async () => {
         await program.parseAsync([
           'node',
           'test',
           'job:to-test',
           jobFile
         ]);
-      }).rejects.toThrow();
+      })()).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error transforming job:',

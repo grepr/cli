@@ -3,7 +3,7 @@
 /**
  * Build-time script to generate the documentation search index.
  *
- * This script runs during `yarn build` and creates a Vectra vector database index
+ * This script runs during the build (`bun run build`) and creates a Vectra vector database index
  * of all documentation files. The index is bundled with the CLI distribution,
  * making documentation search available offline with zero setup.
  *

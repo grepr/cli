@@ -166,8 +166,8 @@ build_cli() {
 
     echo -e "${YELLOW}Building CLI...${NC}"
     cd "$cli_dir"
-    yarn install --frozen-lockfile
-    yarn build
+    bun install --frozen-lockfile
+    bun run build
 }
 
 # Create tarball
