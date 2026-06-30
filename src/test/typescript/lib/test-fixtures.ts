@@ -175,7 +175,7 @@ export function createTestTagOp(name: string, testRunId: string, sinkName: strin
  */
 export function buildTemplateInput(input: Partial<SchemaLogReducerTemplateInput> = {}): SchemaLogReducerTemplateInput {
   return {
-    exceptions: [], filters: {}, parsers: [],
+    exceptions: [], parsers: [],
     reducer: { delimiters: [' '], enabledMasks: [], masks: [], name: 'log_reducer', type: 'log-reducer' } as never,
     sources: [],
     ...input,

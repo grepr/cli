@@ -25,6 +25,7 @@ import {
   SchemaReadDataWarehouse,
   SchemaReadJob,
   SchemaReadNewRelic,
+  SchemaParseQueryResponse,
   SchemaReadOtlp,
   SchemaReadS3DataWarehouse,
   SchemaReadSplunk,
@@ -577,6 +578,19 @@ export class GreprApiClient {
     }
 
     return matchingDataset;
+  }
+
+  async validateSql(sql: string): Promise<SchemaParseQueryResponse | undefined> {
+    // The endpoint consumes the SQL as a plain-string body. openapi-fetch's
+    // default JSON serializer would wrap it in quotes (`"SELECT ..."`), which the
+    // Flink parser rejects with a leading-quote error — so send raw text/plain.
+    const { data, error } = await this.client.POST('/v1/validation/sql/flink', {
+      body: sql,
+      bodySerializer: body => body,
+      headers: { 'Content-Type': 'text/plain' },
+    });
+    if (error) throw new Error(`Failed to validate SQL: ${JSON.stringify(error)}`);
+    return data;
   }
 
   // Sync job submission for the existing sync command - using fetch directly due to streaming

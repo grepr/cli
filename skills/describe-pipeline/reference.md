@@ -45,7 +45,7 @@ template inputs via the intent skills.
   "templateInputs": {
     "input": {
       "sources": [], "parsers": [], "reducer": {},
-      "filters": {}, "exceptions": [], "sinks": [], "datasetId": "…"
+      "transforms": {}, "exceptions": [], "sinks": [], "datasetId": "…"
     }
   }
 }
@@ -75,7 +75,7 @@ pre_exceptions_filter → log_reducer → sinks
 | `add-parser` / `remove-parser` | ✅ | ✅ | ❌ `unsupported raw job graph shape` |
 | `add-sink` / `remove-sink` / `set-raw-dataset` | ✅ | ✅ | ❌ `unsupported raw job graph shape` |
 | `set-input-field` / `unset-input-field` | ✅ | ❌ template-only | ❌ template-only |
-| `set-filter` phase `pre-aggregation` | ❌ no transforms slot | ❌ no transforms slot | ❌ no transforms slot |
+| `set-sql-transform` / `set-transform-chain` / `clear-transform-chain` | ✅ | ❌ template-only | ❌ template-only |
 
 This matrix reflects the current add-biased op surface. ENGT-4722 adds `update-*`
 (source/sink/parser) and per-entry `remove-*` ops; expect raw-graph narrowing/removal
@@ -114,10 +114,10 @@ These never apply to a raw job graph, regardless of shape:
 - `set-input-field` and `unset-input-field` — they address template inputs by
   dot-notation path (`sinks.0` is an object key, not an array index) and are
   rejected on raw graphs, which have no template inputs to address.
-- `set-filter` at the `pre-aggregation` phase — the transforms model has no
-  `pre-aggregation` slot, so it is rejected on every backend. The three real
-  phases — `pre-parser`, `pre-exceptions`, `pre-warehouse` — map to named filter
-  vertices in a canonical UI graph.
+- `set-sql-transform`, `set-transform-chain`, and `clear-transform-chain` — they
+  edit the template `transforms` chain, which raw graphs don't have, so raw
+  graphs reject them with a template-only message. SQL/chain edits on a raw graph
+  need manual `job:get`/`job:update`.
 
 ## Draft behavior by backend
 

@@ -1,5 +1,5 @@
 ---
-description: Set, modify, or clear pipeline filters on a Grepr pipeline to drop unwanted logs (debug, health checks, vendor heartbeats) at a chosen phase — pre-parser, pre-exceptions, or pre-warehouse. Estimates drop volume first and routes through test-pipeline-change. Use for "add a filter", "drop these logs", "filter is too aggressive", or "stop filtering".
+description: Set, modify, or clear pipeline filters on a Grepr pipeline to drop unwanted logs (debug, health checks, vendor heartbeats) at a chosen phase — pre-parser, pre-warehouse, or pre-exceptions. Estimates drop volume first and routes through test-pipeline-change. Use for "add a filter", "drop these logs", "filter is too aggressive", or "stop filtering".
 allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:plan), Bash(grepr --conf * job:draft), Read, Write, grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
 ---
 
@@ -33,9 +33,8 @@ the user where logs land.
 | `pre-exceptions` | On the path of logs bypassing the reducer (matched `logReducerExceptions`). Narrows the bypass. | Post-parser attributes. |
 | `pre-warehouse` | After the parser/remapper chain, before downstream branches. Often upstream of *both* warehouse sink and reducer. | Post-parser attributes. |
 
-There is no `pre-aggregation` slot in the transforms model — filter immediately
-before the reducer via `pre-warehouse` (usually upstream of the reducer) or
-narrow the reducer bypass with `pre-exceptions`.
+To filter immediately before the reducer, use `pre-warehouse` (usually upstream
+of the reducer); to narrow the reducer bypass, use `pre-exceptions`.
 
 Pick by what the predicate references:
 
@@ -46,8 +45,9 @@ Pick by what the predicate references:
 | "Drop noise everywhere" composable from raw fields | `pre-parser`, else `pre-warehouse` |
 
 `set-filter`/`clear-filter` accept `pre-parser`, `pre-warehouse`, and
-`pre-exceptions` on both template-backed and canonical UI-shaped raw graphs.
-Non-UI raw DAGs reject these edits with `unsupported raw job graph shape`.
+`pre-exceptions` on both backends. Raw job-graph support is also
+shape-dependent: canonical UI-shaped graphs support these edits, while non-UI raw
+DAGs reject them with `unsupported raw job graph shape`.
 
 ## Step 2a — Predicate syntax: tags vs attributes (high-failure)
 
@@ -91,22 +91,24 @@ user. See `grepr:query-logs` for query mechanics.
 
 ## Step 4 — Build the patch
 
-`set-filter` **merges** into the slot: fields you supply win, fields you omit
-(e.g. `maxLateEventTimestampDelta`, `inverted`) carry over from the existing
-filter. The same op installs the first filter or replaces one already there. The
-`filter` shape is `{"predicate":{"type":"datadog-query","query":"..."}}`.
-Internally the phase slot is a transform chain node — a keep-style filter
-compiles to a condition node (match → keep, else → drop; arms swap when
-`inverted`). Use `clear-filter` to remove a phase's filter, reverting that phase
-to pass-through (no filtering).
+`set-filter` takes the same patch regardless of backend:
+`{ "op": "set-filter", "phase": ..., "filter": {...} }`. It installs or updates
+the phase's filter; fields you omit (`inverted`, `maxLateEventTimestampDelta`)
+carry over from an existing filter, so a predicate-only edit won't flip
+keep↔drop. The `filter` shape is
+`{"predicate":{"type":"datadog-query","query":"..."}}`, though `predicate`
+accepts any `EventPredicate`, not only `datadog-query`. Re-running `set-filter`
+with a new predicate is the way to change an existing filter.
 
-See examples.md for copy-paste patches: a ✅ template-backed `set-filter`, a ✅
-raw-graph `set-filter`/`clear-filter`, and the ❌ tag-vs-`@attribute` no-op.
+`clear-filter` (`{ "op": "clear-filter", "phase": ... }`) removes the phase's
+filter. On a template-backed job, if the phase holds a complex (branching)
+transform chain rather than a simple filter, it errors and points you to
+`set-transform-chain` (a template-only op for hand-authoring chains); a simple
+filter clears cleanly.
 
-For modifying only the predicate of an existing template filter without
-restating the slot, `set-input-field` (`path` like `transforms.preParser.predicate`)
-works — but it is TEMPLATE-ONLY and rejected on raw graphs; use `set-filter` there. For
-the full op catalog and exact field names, see `grepr:operations-reference`.
+Accepted phases: `pre-parser`, `pre-warehouse`, `pre-exceptions`. See
+examples.md for copy-paste patches, and `grepr:operations-reference` for the
+full op catalog and field names.
 
 ## Step 5 — Hand off to test-pipeline-change
 
@@ -128,7 +130,7 @@ than reciting the generic phase description.
 
 ## Resources
 
-- `examples.md` — ✅ template `set-filter`, ✅ raw-graph `set-filter`/`clear-filter`, ❌ tag-vs-`@attribute` no-op and unsupported raw-graph shape.
+- `examples.md` — ✅ template `set-filter`, ✅ raw-graph `set-filter`/`clear-filter`, ❌ tag-vs-`@attribute` no-op.
 - `grepr:describe-pipeline` — backend detection and per-backend op support.
 - `grepr:test-pipeline-change` — plan → draft → approval → apply.
 - `grepr:operations-reference` — full op catalog and exact field names.

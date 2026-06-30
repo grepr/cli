@@ -8,12 +8,11 @@ in `NOT (...)`.
 - [✅ Template-backed: set a pre-parser filter](#template-set-filter)
 - [✅ Raw graph: set + clear a filter](#raw-set-clear-filter)
 - [❌ Tag-vs-@attribute mismatch (silent no-op)](#bad-tag-attribute)
-- [❌ set-filter against a non-canonical raw graph](#bad-raw-shape)
 
-`set-filter`/`clear-filter` behave identically on template-backed and canonical
-raw-graph pipelines for `pre-parser`, `pre-warehouse`, and `pre-exceptions` —
-the only three phase slots. The difference: only templates accept
-`set-input-field`.
+`set-filter`/`clear-filter` take the **same patch** on template-backed and
+canonical raw-graph pipelines for `pre-parser`, `pre-warehouse`, and
+`pre-exceptions`. Only templates accept `set-input-field`, `set-sql-transform`,
+and `set-transform-chain`.
 
 <a id="template-set-filter"></a>
 ## ✅ Template-backed: drop health checks pre-parser
@@ -37,7 +36,9 @@ the only three phase slots. The difference: only templates accept
 
 Why this works: `path` is a raw tag present before parsing, so `pre-parser` is
 the cheapest drop point. The keep predicate `NOT (...)` keeps everything except
-the three health-check paths.
+the three health-check paths. `pre-warehouse` would also drop them (the tag is
+still present post-parse), just after paying the parse cost; `pre-exceptions`
+would only narrow the reducer-bypass path, not drop everywhere.
 
 <a id="raw-set-clear-filter"></a>
 ## ✅ Raw graph: tighten pre-warehouse, clear pre-exceptions
@@ -96,28 +97,3 @@ cleanly and the draft looks identical to baseline, masking the bug. The reverse
 (`@route` written as bare `route`) fails the same way for grok-extracted
 attributes. Confirm each field against draft records per Step 2a before
 approving.
-
-<a id="bad-raw-shape"></a>
-## ❌ set-filter against a non-canonical raw graph
-
-```json
-{
-  "operations": [
-    {
-      "op": "set-filter",
-      "phase": "pre-warehouse",
-      "filter": {
-        "predicate": {
-          "type": "datadog-query",
-          "query": "NOT (@http_status_code:200)"
-        }
-      }
-    }
-  ]
-}
-```
-
-Why this fails: a non-UI raw DAG has no recognizable phase-slot filter vertices,
-so even a valid phase like `pre-warehouse` is rejected at plan time with
-`unsupported raw job graph shape`. Use a template-backed pipeline, or inspect
-topology with `describe-pipeline` and edit the raw graph manually.

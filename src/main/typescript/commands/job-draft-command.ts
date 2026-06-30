@@ -29,11 +29,11 @@ export class JobDraftCommand implements ICommand {
       .command('job:draft [plan-file]')
       .description('Run a plan (or a live pipeline as-is via --job-id) in draft mode and stream NDJSON output')
       .option('--job-id <id>', 'Draft the live pipeline as-is, no edits (instead of a plan file)')
-      // Job-graph-only flags tuning the logs-event-sampler inserted after each live
-      // source; rejected on template plans (sampling/duration are server-side there).
+      // Sampler flags tune the logs-event-sampler inserted per live source for
+      // job-graph drafts; rejected on template plans where sampling is server-side.
       .option('--sample-rate <n>', 'Sampler max allowed rate in messages/sec for the live draft (job-graph plans only)', parseFloatArg)
       .option('--sample-burst <n>', 'Sampler max burst limit in messages for the live draft (job-graph plans only)', parseIntArg)
-      .option('--max-duration-seconds <n>', 'Stop the live draft after N seconds (job-graph plans only)', parseIntArg)
+      .option('--max-duration-seconds <n>', 'Stop the live draft after N seconds', parseIntArg)
       .action(async (planFile: string | undefined, options: JobDraftCommandOptions, command: Command) => {
         try {
           const merged = { ...command.parent?.opts(), ...options } as Record<string, string | boolean | number | string[]>;
@@ -239,17 +239,16 @@ function resolveMaxDurationSeconds(options: JobDraftCommandOptions): number | un
   return value;
 }
 
-/** The sampler/duration flags only apply to raw job-graph drafts; reject them on template plans rather than ignoring them. */
+/** Sampler flags only apply to raw job-graph drafts; reject them on template plans. */
 function rejectSamplerFlagsOnTemplate(plan: JobPlan, options: JobDraftCommandOptions): void {
   if (plan.backend !== 'template') return;
   const jobGraphOnlyFlags = [
     ['--sample-rate', options.sampleRate],
     ['--sample-burst', options.sampleBurst],
-    ['--max-duration-seconds', options.maxDurationSeconds],
   ].filter(([, value]) => value !== undefined);
   if (jobGraphOnlyFlags.length > 0) {
     throw new Error(
-      `Template-backed plans manage sampling and duration server-side; ` +
+      `Template-backed plans manage sampling server-side; ` +
         `do not pass job-graph-only flags (${jobGraphOnlyFlags.map(([flag]) => flag).join(', ')}).`,
     );
   }

@@ -488,9 +488,9 @@ describe('JobDraftCommand', () => {
     expect(mockApi.sendHeartbeat).toHaveBeenCalledWith('tok-1');
   });
 
-  it('test_jobDraft_templatePlan_rejectsJobGraphOnlyFlags', async () => {
-    // --sample-rate/--sample-burst/--max-duration-seconds only apply to raw
-    // job-graph drafts; template plans manage sampling server-side.
+  it('test_jobDraft_templatePlan_rejectsSamplerFlags', async () => {
+    // --sample-rate/--sample-burst only apply to raw job-graph drafts;
+    // template plans manage sampling server-side.
     const planFile = path.join(tempDir, 'plan.json');
     await writeTransformPlan(planFile);
 
@@ -508,6 +508,23 @@ describe('JobDraftCommand', () => {
       'Error running draft pipeline:',
       expect.stringContaining('do not pass job-graph-only flags'),
     );
+  });
+
+  it('test_jobDraft_templatePlan_maxDurationSeconds_passesAbortSignal', async () => {
+    // --max-duration-seconds works for template drafts: the AbortController is
+    // backend-agnostic and simply cuts the stream after N seconds.
+    const planFile = path.join(tempDir, 'plan.json');
+    await writeTransformPlan(planFile);
+
+    const stream = Readable.from(['{"jobState":"FINISHED"}\n']);
+    const mockApi = { submitSyncJob: vi.fn().mockResolvedValue(stream) };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
+    await program.parseAsync(['node', 'test', 'job:draft', planFile, '--max-duration-seconds', '30']);
+
+    const signal = mockApi.submitSyncJob.mock.calls[0]?.[1] as AbortSignal | undefined;
+    expect(signal).toBeInstanceOf(AbortSignal);
   });
 
   it('test_jobDraft_jobGraphSourceTouching_preservesProposedSources', async () => {

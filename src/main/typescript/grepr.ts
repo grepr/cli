@@ -19,6 +19,7 @@ import { DatasetListCommand, DatasetCrudCommand } from './commands/dataset-comma
 import { GrokParseCommand } from './commands/grok-command.js';
 import { DocsSearchCommand } from './commands/docs-command.js';
 import { DocsGetCommand } from './commands/docs-get-command.js';
+import { SqlValidateCommand } from './commands/sql-validate-command.js';
 import { CliOptions } from './types.js';
 import { parseAuthMethod, parseEnvUrl, parseQueryEngine, parseUrl } from './lib/option-parsers.js';
 
@@ -207,6 +208,9 @@ export class GreprQueryCLI {
     // Register dataset commands
     this.commandRegistry.register(new DatasetListCommand());
     this.commandRegistry.register(new DatasetCrudCommand());
+
+    // Register SQL commands
+    this.commandRegistry.register(new SqlValidateCommand());
 
     // Register grok commands
     this.commandRegistry.register(new GrokParseCommand());

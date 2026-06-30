@@ -23,7 +23,7 @@ A single `template-operation` vertex expands into the named-stage graph below.
 ## TL;DR
 Standard Datadog basic-logs template. Datadog agent → JSON + remap → branches to
 raw-Iceberg AND reducer (2-min window, partitioned by service); reducer output
-goes to pattern-Iceberg + back to Datadog. All four phase filters are
+goes to pattern-Iceberg + back to Datadog. All three phase filters are
 pass-through; reducer has 1 exception (`status:error`).
 
 > Note: vertex names below carry the resolved-graph `template_operation__`

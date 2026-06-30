@@ -104,7 +104,7 @@ describe('computeDiff', () => {
     expect(diff[0]?.after).toBe(8);
   });
 
-  it('test_computeDiff_setFilter', () => {
+  it('test_computeDiff_setTransform', () => {
     const cur = makeTemplateJob({}, 1);
     const prop = makeTemplateUpdate({
       transforms: {
@@ -501,5 +501,38 @@ describe('generatePlan', () => {
   it('test_generatePlan_jobNotFound_shouldThrow', async () => {
     const apiClient = { getJob: async () => undefined } as unknown as GreprApiClient;
     await expect(generatePlan(apiClient, 'nope', { operations: [] })).rejects.toThrow(/not found/);
+  });
+
+  it('test_generatePlan_sqlTransform_classifiesTransformAndDiffsUnderTransforms', async () => {
+    const job = makeTemplateJob({}, 5);
+    const apiClient = { getJob: async () => job } as unknown as GreprApiClient;
+    const plan = await generatePlan(apiClient, 'j', {
+      operations: [{
+        op: 'set-sql-transform',
+        phase: 'pre-warehouse',
+        sqlOperation: {
+          type: 'sql-operation',
+          name: 'normalize_errors',
+          statements: [
+            { type: 'sql_output', outputName: 'critical_errors', outputType: 'LOG_EVENT', sqlQuery: 'SELECT * FROM logs' },
+          ],
+        } as never,
+        outputRouting: { critical_errors: 'sinks' } as never,
+        mainStream: 'passthrough',
+      }],
+    });
+    expect(plan.classification).toBe('transform');
+    expect(plan.diff).toHaveLength(1);
+    expect(plan.diff[0]?.path).toBe('transforms.preWarehouse');
+  });
+
+  it('test_generatePlan_sqlTransformOnJobGraph_failsBeforeUpdatePayload', async () => {
+    const job = makeJobGraphJob();
+    const apiClient = { getJob: async () => job } as unknown as GreprApiClient;
+    await expect(
+      generatePlan(apiClient, 'j', {
+        operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: { type: 'sql-operation', name: 's', statements: [] } as never, outputRouting: {} as never, mainStream: 'drop' }],
+      }),
+    ).rejects.toThrow(/SQL transform edits are only supported for template-backed log-reducer jobs/);
   });
 });

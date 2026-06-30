@@ -20,14 +20,20 @@ import {
   GrokParserType,
   LogReducerType,
   LogsFilterType,
-  ConditionNodeKind,
-  DropNodeKind,
-  PassthroughNodeKind,
   TemplateOperationType,
   DatadogQueryPredicateType,
   MinAttributesMergeStrategyType,
   MaxAttributesMergeStrategyType,
   PathsV1JobsGetParametersQueryState,
+  ConditionNodeKind,
+  DropNodeKind,
+  PassthroughNodeKind,
+  SqlNodeKind,
+  SqlNodeOutputRouting,
+  SqlOperationType,
+  SqlOutputStatementType,
+  SqlViewStatementType,
+  SqlOperationInputs,
 } from '@/openapi/openApiTypes.js';
 import {
   makeTemplateJob,
@@ -360,8 +366,31 @@ describe('applyPatch — add-parser / remove-parser', () => {
   });
 });
 
-describe('applyPatch — set-filter / clear-filter', () => {
-  it('test_setFilter_atPhase_shouldStoreKeepStyleConditionNode', () => {
+// A filter gate node as it lands in a template transform slot.
+const conditionNode = (node: unknown): {
+  kind: string;
+  predicate: { type: string; query?: string };
+  thenAction: { kind: string };
+  elseAction: { kind: string };
+  lateDataDuration?: string;
+} => node as never;
+
+// A simple SqlNode chain for tests that exercise existing-chain preservation.
+const existingSqlChain = (): Record<string, unknown> => ({
+  kind: SqlNodeKind.sql_node,
+  sqlOperation: {
+    type: SqlOperationType.sql_operation,
+    name: 'existing_sql',
+    statements: [
+      { type: SqlOutputStatementType.sql_output, outputName: 'out', outputType: SqlOperationInputs.LOG_EVENT, sqlQuery: 'SELECT * FROM logs' },
+    ],
+  },
+  outputRouting: { out: SqlNodeOutputRouting.sinks },
+  next: { kind: PassthroughNodeKind.passthrough_node },
+});
+
+describe('applyPatch — template set-filter / clear-filter (transforms)', () => {
+  it('test_setFilter_emptySlot_createsGateOverPassthrough', () => {
     const job = makeTemplateJob({});
     const filter = {
       type: LogsFilterType.logs_filter,
@@ -371,125 +400,422 @@ describe('applyPatch — set-filter / clear-filter', () => {
     const update = applyPatch(job, {
       operations: [{ op: 'set-filter', phase: 'pre-parser', filter: filter as never }],
     });
-    const transforms = readInputFromUpdate(update).transforms as unknown as Record<string, Record<string, unknown>>;
-    // A keep-style filter compiles to a condition node: match → keep, else → drop.
-    expect(transforms['preParser']).toEqual({
-      kind: ConditionNodeKind.condition_node,
-      predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'NOT path:/healthz' },
-      thenAction: { kind: PassthroughNodeKind.passthrough_node },
-      elseAction: { kind: DropNodeKind.drop_node },
-    });
+    const input = readInputFromUpdate(update);
+    expect((input as { filters?: unknown }).filters).toBeUndefined();
+    const gate = conditionNode(input.transforms?.preParser);
+    expect(gate.kind).toBe(ConditionNodeKind.condition_node);
+    expect(gate.predicate).toEqual({ type: DatadogQueryPredicateType.datadog_query, query: 'NOT path:/healthz' });
+    expect(gate.thenAction.kind).toBe(PassthroughNodeKind.passthrough_node);
+    expect(gate.elseAction.kind).toBe(DropNodeKind.drop_node);
   });
 
-  it('test_setFilter_invertedFilter_swapsArms', () => {
+  it('test_setFilter_inverted_swapsThenAndElse', () => {
     const job = makeTemplateJob({});
     const update = applyPatch(job, {
-      operations: [
-        {
-          op: 'set-filter',
-          phase: 'pre-parser',
-          filter: {
-            type: 'logs-filter',
-            name: 'inv',
-            predicate: { type: 'datadog-query', query: 'path:/spam' },
-            inverted: true,
-          } as never,
-        },
-      ],
+      operations: [{
+        op: 'set-filter',
+        phase: 'pre-parser',
+        filter: {
+          type: 'logs-filter',
+          name: 'drop_debug',
+          predicate: { type: 'datadog-query', query: 'status:debug' },
+          inverted: true,
+        } as never,
+      }],
     });
-    const transforms = readInputFromUpdate(update).transforms as unknown as Record<string, Record<string, unknown>>;
-    // Inverted keeps non-matching: match → drop, else → keep.
-    expect(transforms['preParser']).toMatchObject({
-      kind: ConditionNodeKind.condition_node,
-      thenAction: { kind: DropNodeKind.drop_node },
-      elseAction: { kind: PassthroughNodeKind.passthrough_node },
-    });
+    const gate = conditionNode(readInputFromUpdate(update).transforms?.preParser);
+    expect(gate.thenAction.kind).toBe(DropNodeKind.drop_node);
+    expect(gate.elseAction.kind).toBe(PassthroughNodeKind.passthrough_node);
   });
 
-  it('test_setFilter_overwritesExisting', () => {
-    const existing = {
-      kind: ConditionNodeKind.condition_node,
-      predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'a' },
-      thenAction: { kind: PassthroughNodeKind.passthrough_node },
-      elseAction: { kind: DropNodeKind.drop_node },
-    };
-    const job = makeTemplateJob({ transforms: { preParser: existing } as never });
+  it('test_setFilter_maxLateEventDelta_mapsToRootLateDataDuration', () => {
+    const job = makeTemplateJob({});
     const update = applyPatch(job, {
-      operations: [
-        {
-          op: 'set-filter',
-          phase: 'pre-parser',
-          filter: { type: 'logs-filter', name: 'new', predicate: { type: 'datadog-query', query: 'b' } } as never,
-        },
-      ],
+      operations: [{
+        op: 'set-filter',
+        phase: 'pre-warehouse',
+        filter: {
+          type: 'logs-filter',
+          name: 'f',
+          predicate: { type: 'datadog-query', query: 'service:api' },
+          maxLateEventTimestampDelta: 'PT48H',
+        } as never,
+      }],
     });
-    const transforms = readInputFromUpdate(update).transforms as unknown as Record<string, { predicate: { query: string } }>;
-    expect(transforms['preParser']?.predicate.query).toBe('b');
+    expect(conditionNode(readInputFromUpdate(update).transforms?.preWarehouse).lateDataDuration).toBe('PT48H');
   });
 
-  it('test_setFilter_carriesOverInvertedAndLatenessWhenOmitted', () => {
-    // Existing slot is an inverted, late-data condition node; the new filter
-    // supplies only a predicate, so `inverted` and the lateness carry over.
-    const existing = {
-      kind: ConditionNodeKind.condition_node,
-      predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'old' },
-      thenAction: { kind: DropNodeKind.drop_node },
-      elseAction: { kind: PassthroughNodeKind.passthrough_node },
-      lateDataDuration: 'PT48H',
-    };
-    const job = makeTemplateJob({ transforms: { preWarehouse: existing } as never });
+  it('test_setFilter_existingSqlNode_wrapsAsPassSide', () => {
+    const job = makeTemplateJob({ transforms: { preWarehouse: existingSqlChain() } as never });
     const update = applyPatch(job, {
-      operations: [
-        {
-          op: 'set-filter',
-          phase: 'pre-warehouse',
-          filter: {
-            type: 'logs-filter',
-            name: 'pre_warehouse',
-            predicate: { type: 'datadog-query', query: 'service:checkout' },
-          } as never,
-        },
-      ],
+      operations: [{
+        op: 'set-filter',
+        phase: 'pre-warehouse',
+        filter: { type: 'logs-filter', name: 'gate', predicate: { type: 'datadog-query', query: 'service:api' } } as never,
+      }],
     });
-    const transforms = readInputFromUpdate(update).transforms as unknown as Record<string, Record<string, unknown>>;
-    expect(transforms['preWarehouse']).toEqual({
-      kind: ConditionNodeKind.condition_node,
-      predicate: { type: 'datadog-query', query: 'service:checkout' },
-      thenAction: { kind: DropNodeKind.drop_node },
-      elseAction: { kind: PassthroughNodeKind.passthrough_node },
-      lateDataDuration: 'PT48H',
-    });
+    const gate = conditionNode(readInputFromUpdate(update).transforms?.preWarehouse);
+    expect(gate.kind).toBe(ConditionNodeKind.condition_node);
+    expect(gate.thenAction.kind).toBe(SqlNodeKind.sql_node);
+    expect(gate.elseAction.kind).toBe(DropNodeKind.drop_node);
   });
 
-  it('test_clearFilter_phase_removesTransformSlot', () => {
+  it('test_setFilter_existingSimpleGate_updatesPredicateKeepsPassSide', () => {
+    const job = makeTemplateJob({
+      transforms: {
+        preParser: {
+          kind: ConditionNodeKind.condition_node,
+          predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'old' },
+          thenAction: existingSqlChain(),
+          elseAction: { kind: DropNodeKind.drop_node },
+        },
+      } as never,
+    });
+    const update = applyPatch(job, {
+      operations: [{
+        op: 'set-filter',
+        phase: 'pre-parser',
+        filter: { type: 'logs-filter', name: 'gate', predicate: { type: 'datadog-query', query: 'new' } } as never,
+      }],
+    });
+    const gate = conditionNode(readInputFromUpdate(update).transforms?.preParser);
+    expect(gate.predicate.query).toBe('new');
+    // The SQL node on the pass side survives the predicate update.
+    expect(gate.thenAction.kind).toBe(SqlNodeKind.sql_node);
+  });
+
+  it('test_setFilter_unacceptedPhase_throwsAcceptedPhasesError', () => {
+    const job = makeTemplateJob({});
+    expect(() =>
+      applyPatch(job, {
+        operations: [{
+          op: 'set-filter',
+          phase: 'pre-aggregation' as never,
+          filter: { type: 'logs-filter', name: 'f', predicate: { type: 'datadog-query', query: 'a' } } as never,
+        }],
+      }),
+    ).toThrow(/phase "pre-aggregation" is not accepted\. Accepted phases are pre-parser, pre-warehouse, and pre-exceptions\./);
+  });
+
+  it('test_clearFilter_simpleGate_unwrapsToPassSide', () => {
     const job = makeTemplateJob({
       transforms: {
         preWarehouse: {
           kind: ConditionNodeKind.condition_node,
-          predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'a' },
-          thenAction: { kind: PassthroughNodeKind.passthrough_node },
+          predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'service:api' },
+          thenAction: existingSqlChain(),
           elseAction: { kind: DropNodeKind.drop_node },
         },
       } as never,
     });
     const update = applyPatch(job, { operations: [{ op: 'clear-filter', phase: 'pre-warehouse' }] });
-    const transforms = readInputFromUpdate(update).transforms as unknown as Record<string, unknown>;
-    expect(transforms['preWarehouse']).toBeUndefined();
+    const slot = readInputFromUpdate(update).transforms?.preWarehouse as { kind: string };
+    expect(slot.kind).toBe(SqlNodeKind.sql_node);
   });
 
-  it('test_setFilter_preAggregation_hasNoTransformsSlot_shouldThrow', () => {
+  it('test_clearFilter_emptySlot_isNoOp', () => {
     const job = makeTemplateJob({});
-    expect(() =>
-      applyPatch(job, {
-        operations: [
-          {
-            op: 'set-filter',
-            phase: 'pre-aggregation',
-            filter: { type: 'logs-filter', name: 'f', predicate: { type: 'datadog-query', query: 'a' } } as never,
-          },
-        ],
-      }),
-    ).toThrow(/no transforms slot/);
+    const update = applyPatch(job, { operations: [{ op: 'clear-filter', phase: 'pre-parser' }] });
+    expect(readInputFromUpdate(update).transforms?.preParser).toBeUndefined();
+  });
+
+  it('test_clearFilter_branchingChain_throws', () => {
+    const job = makeTemplateJob({
+      transforms: {
+        preWarehouse: {
+          kind: ConditionNodeKind.condition_node,
+          predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'service:api' },
+          thenAction: existingSqlChain(),
+          elseAction: existingSqlChain(),
+        },
+      } as never,
+    });
+    expect(() => applyPatch(job, { operations: [{ op: 'clear-filter', phase: 'pre-warehouse' }] })).toThrow(
+      /template transform slot "preWarehouse" contains a branching transform chain, not a simple filter gate\. Use set-transform-chain/,
+    );
+  });
+
+  it('test_clearFilter_nonConditionRoot_throws', () => {
+    // A slot holding a lone sql-node (e.g. left by `set-sql-transform` with
+    // passthrough + no gate) has no root filter gate at all — the non-condition
+    // arm of the error path.
+    const job = makeTemplateJob({ transforms: { preWarehouse: existingSqlChain() } as never });
+    expect(() => applyPatch(job, { operations: [{ op: 'clear-filter', phase: 'pre-warehouse' }] })).toThrow(
+      /template transform slot "preWarehouse" contains a sql-node at its root, not a filter gate\. Use set-transform-chain/,
+    );
+  });
+
+  // An already-inverted root gate (drop on then, SQL pass-side on else) with a lateDataDuration.
+  const invertedGateJob = (): SchemaReadJob =>
+    makeTemplateJob({
+      transforms: {
+        preWarehouse: {
+          kind: ConditionNodeKind.condition_node,
+          predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'old' },
+          thenAction: { kind: DropNodeKind.drop_node },
+          elseAction: existingSqlChain(),
+          lateDataDuration: 'PT48H',
+        },
+      } as never,
+    });
+
+  it('test_setFilter_existingInvertedGate_inheritsInversionLateDataAndPassSide', () => {
+    const update = applyPatch(invertedGateJob(), {
+      operations: [{ op: 'set-filter', phase: 'pre-warehouse', filter: { type: 'logs-filter', name: 'g', predicate: { type: 'datadog-query', query: 'new' } } as never }],
+    });
+    const gate = conditionNode(readInputFromUpdate(update).transforms?.preWarehouse);
+    expect(gate.predicate.query).toBe('new');
+    // A predicate-only edit must keep the gate inverted (drop on then, SQL pass-side on else) and keep lateDataDuration.
+    expect(gate.thenAction.kind).toBe(DropNodeKind.drop_node);
+    expect(gate.elseAction.kind).toBe(SqlNodeKind.sql_node);
+    expect(gate.lateDataDuration).toBe('PT48H');
+  });
+
+  it('test_setFilter_explicitFieldsOverrideExistingGate', () => {
+    const update = applyPatch(invertedGateJob(), {
+      operations: [{ op: 'set-filter', phase: 'pre-warehouse', filter: { type: 'logs-filter', name: 'g', predicate: { type: 'datadog-query', query: 'new' }, inverted: false, maxLateEventTimestampDelta: 'PT1H' } as never }],
+    });
+    const gate = conditionNode(readInputFromUpdate(update).transforms?.preWarehouse);
+    // Explicit inverted:false un-inverts → SQL pass-side moves to then; explicit lateData wins.
+    expect(gate.thenAction.kind).toBe(SqlNodeKind.sql_node);
+    expect(gate.elseAction.kind).toBe(DropNodeKind.drop_node);
+    expect(gate.lateDataDuration).toBe('PT1H');
+  });
+
+  it('test_clearFilter_invertedSimpleGate_unwrapsToPassSide', () => {
+    const update = applyPatch(invertedGateJob(), { operations: [{ op: 'clear-filter', phase: 'pre-warehouse' }] });
+    expect((readInputFromUpdate(update).transforms?.preWarehouse as { kind: string }).kind).toBe(SqlNodeKind.sql_node);
+  });
+
+  it('test_setFilter_nonDatadogPredicate_copiedExactly', () => {
+    const job = makeTemplateJob({});
+    const predicate = { type: 'and-event-predicate', predicates: [{ type: 'datadog-query', query: 'a' }] };
+    const update = applyPatch(job, {
+      operations: [{ op: 'set-filter', phase: 'pre-parser', filter: { type: 'logs-filter', name: 'f', predicate } as never }],
+    });
+    expect(conditionNode(readInputFromUpdate(update).transforms?.preParser).predicate).toEqual(predicate);
+  });
+
+  it('test_setFilter_missingPredicate_throws', () => {
+    const job = makeTemplateJob({});
+    expect(() => applyPatch(job, { operations: [{ op: 'set-filter', phase: 'pre-parser', filter: { type: 'logs-filter', name: 'f' } as never }] })).toThrow(
+      /filter\.predicate must be an EventPredicate/,
+    );
+  });
+
+  it('test_setFilter_preExceptions_mapsToPreExceptionsSlot', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, { operations: [{ op: 'set-filter', phase: 'pre-exceptions', filter: { type: 'logs-filter', name: 'f', predicate: { type: 'datadog-query', query: 'a' } } as never }] });
+    expect(conditionNode(readInputFromUpdate(update).transforms?.preExceptions).kind).toBe(ConditionNodeKind.condition_node);
+  });
+});
+
+describe('applyPatch — set-sql-transform', () => {
+  const sqlOp = (): Record<string, unknown> => ({
+    type: SqlOperationType.sql_operation,
+    name: 'normalize_errors',
+    inputs: { logs: SqlOperationInputs.LOG_EVENT },
+    statements: [
+      { type: SqlViewStatementType.sql_view, tableName: 'errors', sqlQuery: 'SELECT * FROM logs WHERE severity >= 13', materialized: false },
+      { type: SqlOutputStatementType.sql_output, outputName: 'critical_errors', outputType: SqlOperationInputs.LOG_EVENT, sqlQuery: "SELECT * FROM errors WHERE message LIKE '%CRITICAL%'" },
+    ],
+    availableDatasets: [],
+  });
+
+  it('test_setSqlTransform_noGate_dropMainStream_buildsMatchAllConditionNode', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, {
+      operations: [{
+        op: 'set-sql-transform',
+        phase: 'pre-warehouse',
+        sqlOperation: sqlOp() as never,
+        outputRouting: { critical_errors: SqlNodeOutputRouting.sinks },
+        mainStream: 'drop',
+      }],
+    });
+    const root = conditionNode(readInputFromUpdate(update).transforms?.preWarehouse);
+    expect(root.kind).toBe(ConditionNodeKind.condition_node);
+    expect(root.predicate).toEqual({ type: DatadogQueryPredicateType.datadog_query, query: '*' });
+    const thenAction = root.thenAction as { kind: string; next: { kind: string }; outputRouting: Record<string, string> };
+    expect(thenAction.kind).toBe(SqlNodeKind.sql_node);
+    expect(thenAction.next.kind).toBe(DropNodeKind.drop_node);
+    expect(thenAction.outputRouting).toEqual({ critical_errors: SqlNodeOutputRouting.sinks });
+    expect(root.elseAction.kind).toBe(PassthroughNodeKind.passthrough_node);
+  });
+
+  it('test_setSqlTransform_noGate_passthroughMainStream_buildsSqlThenPassthrough', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, {
+      operations: [{
+        op: 'set-sql-transform',
+        phase: 'pre-warehouse',
+        sqlOperation: sqlOp() as never,
+        outputRouting: { critical_errors: SqlNodeOutputRouting.sinks },
+        mainStream: 'passthrough',
+      }],
+    });
+    const node = readInputFromUpdate(update).transforms?.preWarehouse as { kind: string; next: { kind: string }; outputRouting: Record<string, string> };
+    expect(node.kind).toBe(SqlNodeKind.sql_node);
+    expect(node.next.kind).toBe(PassthroughNodeKind.passthrough_node);
+    expect(node.outputRouting).toEqual({ critical_errors: SqlNodeOutputRouting.sinks });
+  });
+
+  it('test_setSqlTransform_withGate_buildsConditionWithSqlOnThen', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, {
+      operations: [{
+        op: 'set-sql-transform',
+        phase: 'pre-warehouse',
+        sqlOperation: sqlOp() as never,
+        outputRouting: { critical_errors: SqlNodeOutputRouting.sinks },
+        mainStream: 'drop',
+        gate: { type: 'datadog-query', query: 'service:api' } as never,
+      }],
+    });
+    const gate = conditionNode(readInputFromUpdate(update).transforms?.preWarehouse);
+    expect(gate.kind).toBe(ConditionNodeKind.condition_node);
+    const thenAction = gate.thenAction as unknown as { kind: string; next: { kind: string } };
+    expect(thenAction.kind).toBe(SqlNodeKind.sql_node);
+    expect(thenAction.next.kind).toBe(DropNodeKind.drop_node);
+    expect(gate.elseAction.kind).toBe(PassthroughNodeKind.passthrough_node);
+  });
+
+  it('test_setSqlTransform_withGate_passthroughMainStream_sideOutputsAndPassesThrough', () => {
+    // The side-output case: matching events run SQL *and* continue downstream
+    // (SQL node's `next` is a passthrough), while non-matching events pass
+    // through unchanged. This is the only combination exercising a real gate
+    // together with a passthrough main stream.
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, {
+      operations: [{
+        op: 'set-sql-transform',
+        phase: 'pre-warehouse',
+        sqlOperation: sqlOp() as never,
+        outputRouting: { critical_errors: SqlNodeOutputRouting.sinks },
+        mainStream: 'passthrough',
+        gate: { type: 'datadog-query', query: 'service:api' } as never,
+      }],
+    });
+    const gate = conditionNode(readInputFromUpdate(update).transforms?.preWarehouse);
+    expect(gate.kind).toBe(ConditionNodeKind.condition_node);
+    const thenAction = gate.thenAction as unknown as { kind: string; next: { kind: string } };
+    expect(thenAction.kind).toBe(SqlNodeKind.sql_node);
+    expect(thenAction.next.kind).toBe(PassthroughNodeKind.passthrough_node);
+    expect(gate.elseAction.kind).toBe(PassthroughNodeKind.passthrough_node);
+  });
+
+  it('test_setSqlTransform_replacesExistingChain', () => {
+    const job = makeTemplateJob({ transforms: { preWarehouse: existingSqlChain() } as never });
+    const update = applyPatch(job, {
+      operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: sqlOp() as never, outputRouting: { critical_errors: SqlNodeOutputRouting.sinks }, mainStream: 'drop' }],
+    });
+    const root = readInputFromUpdate(update).transforms?.preWarehouse as { thenAction: { sqlOperation: { name: string } } };
+    expect(root.thenAction.sqlOperation.name).toBe('normalize_errors');
+  });
+
+  it('test_setSqlTransform_noOutputStatement_throws', () => {
+    const job = makeTemplateJob({});
+    const op = sqlOp();
+    (op as { statements: unknown[] }).statements = [{ type: SqlViewStatementType.sql_view, tableName: 'errors', sqlQuery: 'SELECT 1' }];
+    expect(() => applyPatch(job, { operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: op as never, outputRouting: {}, mainStream: 'drop' }] })).toThrow(
+      /at least one sql_output/,
+    );
+  });
+
+  it('test_setSqlTransform_duplicateOutputName_throws', () => {
+    const job = makeTemplateJob({});
+    const op = sqlOp();
+    (op as { statements: unknown[] }).statements = [
+      { type: SqlOutputStatementType.sql_output, outputName: 'dup', outputType: SqlOperationInputs.LOG_EVENT, sqlQuery: 'SELECT 1' },
+      { type: SqlOutputStatementType.sql_output, outputName: 'dup', outputType: SqlOperationInputs.LOG_EVENT, sqlQuery: 'SELECT 2' },
+    ];
+    expect(() => applyPatch(job, { operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: op as never, outputRouting: { dup: SqlNodeOutputRouting.sinks }, mainStream: 'drop' }] })).toThrow(
+      /duplicate sql_output outputName "dup"/,
+    );
+  });
+
+  it('test_setSqlTransform_routeForUnknownOutput_throws', () => {
+    const job = makeTemplateJob({});
+    expect(() => applyPatch(job, { operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: sqlOp() as never, outputRouting: { critical_errors: SqlNodeOutputRouting.sinks, nope: SqlNodeOutputRouting.sinks }, mainStream: 'drop' }] })).toThrow(
+      /outputRouting key "nope" does not match/,
+    );
+  });
+
+  it('test_setSqlTransform_missingRouteForOutput_throws', () => {
+    const job = makeTemplateJob({});
+    expect(() => applyPatch(job, { operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: sqlOp() as never, outputRouting: {}, mainStream: 'drop' }] })).toThrow(
+      /sql_output "critical_errors" has no route/,
+    );
+  });
+
+  it('test_setSqlTransform_invalidRouteTarget_throws', () => {
+    const job = makeTemplateJob({});
+    expect(() => applyPatch(job, { operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: sqlOp() as never, outputRouting: { critical_errors: 'nowhere' as never }, mainStream: 'drop' }] })).toThrow(
+      /is not a valid target step/,
+    );
+  });
+
+  it('test_setSqlTransform_invalidMainStream_throws', () => {
+    const job = makeTemplateJob({});
+    expect(() => applyPatch(job, { operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: sqlOp() as never, outputRouting: { critical_errors: SqlNodeOutputRouting.sinks }, mainStream: 'keep' as never }] })).toThrow(
+      /mainStream must be one of: drop, passthrough/,
+    );
+  });
+
+  it('test_setSqlTransform_unacceptedPhase_throwsAcceptedPhasesError', () => {
+    const job = makeTemplateJob({});
+    expect(() => applyPatch(job, { operations: [{ op: 'set-sql-transform', phase: 'pre-aggregation' as never, sqlOperation: sqlOp() as never, outputRouting: { critical_errors: SqlNodeOutputRouting.sinks }, mainStream: 'drop' }] })).toThrow(
+      /phase "pre-aggregation" is not accepted/,
+    );
+  });
+
+  it('test_setSqlTransform_preExceptions_mapsToPreExceptionsSlot', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, { operations: [{ op: 'set-sql-transform', phase: 'pre-exceptions', sqlOperation: sqlOp() as never, outputRouting: { critical_errors: SqlNodeOutputRouting.sinks }, mainStream: 'drop' }] });
+    expect((readInputFromUpdate(update).transforms?.preExceptions as { kind: string }).kind).toBe(ConditionNodeKind.condition_node);
+  });
+
+  // Early-fail validation branches (PRD validation requirements).
+  const routing = { critical_errors: SqlNodeOutputRouting.sinks };
+  const expectSqlTransformThrows = (sqlOperation: unknown, pattern: RegExp, outputRouting: unknown = routing): void => {
+    expect(() => applyPatch(makeTemplateJob({}), {
+      operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: sqlOperation as never, outputRouting: outputRouting as never, mainStream: 'drop' }],
+    })).toThrow(pattern);
+  };
+
+  it('test_setSqlTransform_wrongOperationType_throws', () => {
+    expectSqlTransformThrows({ ...sqlOp(), type: 'not-sql' }, /must be an object with type "sql-operation"/);
+  });
+
+  it('test_setSqlTransform_emptyStatements_throws', () => {
+    expectSqlTransformThrows({ ...sqlOp(), statements: [] }, /statements must be a non-empty array/, {});
+  });
+
+  it('test_setSqlTransform_emptyOutputName_throws', () => {
+    const op = { ...sqlOp(), statements: [{ type: SqlOutputStatementType.sql_output, outputName: '', outputType: SqlOperationInputs.LOG_EVENT, sqlQuery: 'SELECT 1' }] };
+    expectSqlTransformThrows(op, /non-empty outputName/, {});
+  });
+
+  it('test_setSqlTransform_invalidGate_throws', () => {
+    const job = makeTemplateJob({});
+    expect(() => applyPatch(job, { operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: sqlOp() as never, outputRouting: routing, mainStream: 'drop', gate: { notAPredicate: true } as never }] })).toThrow(
+      /gate must be an EventPredicate/,
+    );
+  });
+});
+
+describe('applyPatch — set-transform-chain / clear-transform-chain', () => {
+  it('test_setTransformChain_writesRootVerbatim', () => {
+    const job = makeTemplateJob({});
+    const root = { kind: PassthroughNodeKind.passthrough_node };
+    const update = applyPatch(job, { operations: [{ op: 'set-transform-chain', phase: 'pre-parser', root: root as never }] });
+    expect(readInputFromUpdate(update).transforms?.preParser).toEqual(root);
+  });
+
+  it('test_clearTransformChain_removesWholeSlot', () => {
+    const job = makeTemplateJob({ transforms: { preWarehouse: existingSqlChain() } as never });
+    const update = applyPatch(job, { operations: [{ op: 'clear-transform-chain', phase: 'pre-warehouse' }] });
+    expect(readInputFromUpdate(update).transforms?.preWarehouse).toBeUndefined();
   });
 });
 
@@ -1059,6 +1385,22 @@ describe('applyPatch (job-graph backend)', () => {
     expect(filter['maxLateEventTimestampDelta']).toBe('PT48H');
   });
 
+  it('test_jobGraph_setSqlTransform_rejectsWithTemplateOnlyMessage', () => {
+    const job = makeUiRawJobGraphJob();
+    expect(() =>
+      applyPatch(job, {
+        operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: { type: 'sql-operation', name: 's', statements: [] } as never, outputRouting: {}, mainStream: 'drop' }],
+      }),
+    ).toThrow(/SQL transform edits are only supported for template-backed log-reducer jobs in the CLI\. This job is a direct job graph\./);
+  });
+
+  it('test_jobGraph_setTransformChain_rejectsWithTemplateOnlyMessage', () => {
+    const job = makeUiRawJobGraphJob();
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'set-transform-chain', phase: 'pre-parser', root: { kind: 'passthrough-node' } as never }] }),
+    ).toThrow(/transform-chain edits are only supported for template-backed log-reducer jobs/);
+  });
+
   it('test_jobGraph_addGrokParser_uiGraph_insertsBeforePreWarehouse', () => {
     const job = makeUiRawJobGraphJob();
     const update = applyPatch(job, {
@@ -1384,6 +1726,50 @@ describe('parsePatch — new ops', () => {
       /update-sink.*"sink" is required and must be an object/,
     );
   });
+
+  it('test_parsePatch_acceptsSetTransformChain', () => {
+    const patch = parsePatch({
+      operations: [{ op: 'set-transform-chain', phase: 'pre-parser', root: { kind: 'passthrough-node' } }],
+    });
+    expect(patch.operations).toHaveLength(1);
+  });
+
+  it('test_parsePatch_acceptsSetSqlTransform', () => {
+    const patch = parsePatch({
+      operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: { type: 'sql-operation', name: 's', statements: [] }, outputRouting: {}, mainStream: 'drop' }],
+    });
+    expect(patch.operations).toHaveLength(1);
+  });
+
+  it('test_parsePatch_setTransformChainMissingRoot_shouldThrow', () => {
+    expect(() => parsePatch({ operations: [{ op: 'set-transform-chain', phase: 'pre-parser' }] })).toThrow(
+      /set-transform-chain.*"root" is required and must be an object/,
+    );
+  });
+
+  it('test_parsePatch_clearTransformChainMissingPhase_shouldThrow', () => {
+    expect(() => parsePatch({ operations: [{ op: 'clear-transform-chain' }] })).toThrow(
+      /clear-transform-chain.*"phase" is required and must be a string/,
+    );
+  });
+
+  it('test_parsePatch_setSqlTransformMissingSqlOperation_shouldThrow', () => {
+    expect(() => parsePatch({ operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', outputRouting: {} }] })).toThrow(
+      /set-sql-transform.*"sqlOperation" is required and must be an object/,
+    );
+  });
+
+  it('test_parsePatch_setSqlTransformMissingOutputRouting_shouldThrow', () => {
+    expect(() => parsePatch({ operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: { type: 'sql-operation', name: 's', statements: [] } }] })).toThrow(
+      /set-sql-transform.*"outputRouting" is required and must be an object/,
+    );
+  });
+
+  it('test_parsePatch_setSqlTransformMissingMainStream_shouldThrow', () => {
+    expect(() => parsePatch({ operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: { type: 'sql-operation', name: 's', statements: [] }, outputRouting: {} }] })).toThrow(
+      /set-sql-transform.*"mainStream" is required and must be a string/,
+    );
+  });
 });
 
 describe('classifyPatch — new ops', () => {
@@ -1404,6 +1790,16 @@ describe('classifyPatch — new ops', () => {
     expect(classifyPatch({ operations: [{ op: 'remove-group-by', attributePath: 'svc' }] })).toBe('transform');
     expect(classifyPatch({ operations: [{ op: 'remove-reducer-exception', predicate: { type: DatadogQueryPredicateType.datadog_query, query: 'x' } }] })).toBe('transform');
     expect(classifyPatch({ operations: [{ op: 'update-parser', parser: { type: 'grok-parser', name: 'g' } as never }] })).toBe('transform');
+  });
+
+  it('test_classify_transformChainOps_transformOnly', () => {
+    expect(classifyPatch({ operations: [{ op: 'set-transform-chain', phase: 'pre-parser', root: { kind: 'passthrough-node' } as never }] })).toBe('transform');
+    expect(classifyPatch({ operations: [{ op: 'clear-transform-chain', phase: 'pre-warehouse' }] })).toBe('transform');
+    expect(classifyPatch({ operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: { type: 'sql-operation', name: 's', statements: [] } as never, outputRouting: {}, mainStream: 'drop' }] })).toBe('transform');
+  });
+
+  it('test_classify_setInputFieldOnTransforms_transformOnly', () => {
+    expect(classifyPatch({ operations: [{ op: 'set-input-field', path: 'transforms.preParser', value: {} }] })).toBe('transform');
   });
 });
 

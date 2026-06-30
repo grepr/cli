@@ -37,16 +37,18 @@ Operations (exact field names matter — field mistakes fail during
 | `add-aggregation-strategy` | `attributePath`, `strategies` | Add a reducer aggregation strategy. `strategies` is an array of `sum`/`min`/`max`/`avg` — not a scalar, not `"average"`. **One strategy per attribute path**: pass a single-element array (e.g. `["avg"]`). Passing `["min","max","avg"]` expands to three entries sharing the same path, which the backend rejects at draft/apply with `Duplicate attribute paths in merge strategies are not allowed`. Append-only. |
 | `add-reducer-exception` | `predicate` | Add a reducer exception (matching logs bypass aggregation). Only `predicate` is required — there is no `name` field. |
 | `add-grok-rule` | `pattern` (not `rule`); optional `parserName`, `extractAttribute` | Append a rule to a grok parser. `parserName` is required only when more than one grok parser exists; rejected if zero exist. |
-| `set-filter` / `clear-filter` | `phase` (not `stage`); `set` also needs `filter` | Set or clear a phase-slotted filter. Stored as a transform chain node (keep-style filter → condition node). Merges over the existing slot, so phase-specific fields (e.g. `maxLateEventTimestampDelta`, `inverted`) are preserved. `clear-filter` removes the phase's filter, reverting it to pass-through. |
+| `set-filter` / `clear-filter` | `phase` (not `stage`); `set` also needs `filter` | Set or clear a phase-slotted filter. **Raw job graph:** replaces the canonical filter vertex; `clear-filter` keeps the vertex but blanks the predicate query. **Template-backed:** writes a transform-chain gate (`condition-node` → `passthrough-node`/`drop-node`) into the phase's `transforms` slot; `set` preserves any existing non-filter chain (e.g. a SQL node) as the pass side, `clear` unwraps a simple root gate and errors on a branching chain. `filter.predicate` is a generic `EventPredicate` (not necessarily `datadog-query`); `maxLateEventTimestampDelta`/`inverted` are honored. **Predicate validation diverges by backend:** the template path requires `filter.predicate` and rejects a predicate-omitted `set-filter`; the raw path does not validate the predicate. Always supply `filter.predicate` (omit only `inverted`/`maxLateEventTimestampDelta` to inherit them). |
+| `set-transform-chain` / `clear-transform-chain` | `phase`; `set` also needs `root` | **Template-backed only** (rejected on raw job graphs). Replace (`set`) or remove (`clear`) a phase's entire `transforms` chain. `root` is a hand-authored chain node (`condition-node`/`sql-node`/`passthrough-node`/`drop-node`). Use when you need to preserve or merge a complex chain that the semantic filter/SQL ops would overwrite. |
+| `set-sql-transform` | `phase`, `sqlOperation`, `outputRouting`, `mainStream`; optional `gate` | **Template-backed only** (rejected on raw job graphs with a template-only message). Replace a phase's `transforms` chain with one generated `sql-node` chain. `mainStream: "drop"` drops originals after SQL input; `"passthrough"` keeps originals flowing. With `gate`, non-matching events pass through unchanged. See the `sql-operation` shape below. |
 | `add-parser` / `remove-parser` | `parser` / `name` (not `parserName`) | Add or remove a parser. New parsers append before `pre_data_warehouse_filter`. |
 | `add-source` / `remove-source` | `source` / `name` (not `sourceName`) | Add or remove source vertices. A proposal leaving zero sources is rejected. |
 | `add-sink` / `remove-sink` | `target` (`vendor`\|`processed-logs`), `sink` / `name?` | Add or remove a sink. `vendor` adds a vendor log sink (optionally with a gating `filter`); `processed-logs` sets the single reduced-logs iceberg sink. |
 | `set-raw-dataset` | `datasetId` | Point the raw-logs dataset at a different dataset ID. |
 | `set-input-field` / `unset-input-field` | `path`, `value` / `path` | Template-input escape hatch only (dot-notation, object keys not array indices); rejected on raw job graphs. |
 
-Phases for `set-filter`/`clear-filter`: `pre-parser`, `pre-exceptions`,
-`pre-warehouse`. (There is no `pre-aggregation` slot in the transforms model;
-it is rejected on both template and raw-graph backends.)
+Every `phase`-bearing op above (`set-filter`, `clear-filter`,
+`set-transform-chain`, `clear-transform-chain`, `set-sql-transform`) accepts
+`pre-parser`, `pre-warehouse`, or `pre-exceptions`.
 
 A plan's `classification` field summarizes what the patch touches:
 `transform`, `source`, `sink`, or `mixed`. Harness skills use it to decide
@@ -117,7 +119,49 @@ Transforms process log events and produce modified events.
 | Operation | Description | Key Properties |
 |-----------|-------------|----------------|
 | `log-attributes-remapper` | Remap attributes to tags or top-level fields | (auto-configured) |
-| `sql-operation` | Transform with SQL queries | `sqlQuery` |
+| `sql-operation` | Transform with a sequence of SQL statements | `name`, `statements` (see below), `inputs?`, `availableDatasets?`, `globalStateTtl?`, `watermarkDelay?` |
+
+#### `sql-operation` shape
+
+A `sql-operation` runs an ordered list of `statements`.
+The common statement types are:
+
+- `sql_view` — `tableName`, `sqlQuery`, `materialized?`. Creates an intermediate
+  (optionally materialized) table later statements can query.
+- `sql_output` — `outputName`, `outputType`, `sqlQuery`. Produces a named output
+  stream. There must be at least one, and `outputName`s must be unique.
+
+`inputs` maps input table names to event types and `sql_output.outputType` sets
+the output stream's type; for log-reducer pipelines that is `LOG_EVENT`, as in
+the example below.
+
+For template-backed jobs, install a `sql-operation` with `set-sql-transform`
+(do **not** write a legacy `sqlOperations` template input). Its `outputRouting`
+maps each `sql_output.outputName` to a downstream step: `json-log-processor`,
+`grok-parser`, `data-warehouse`, `log-reducer`, or `sinks`. Every `sql_output`
+must have exactly one route. `mainStream` controls the original event stream:
+use `"drop"` for replacement/redaction transforms, and `"passthrough"` for
+side-output SQL. Example:
+
+```json
+{
+  "op": "set-sql-transform",
+  "phase": "pre-warehouse",
+  "sqlOperation": {
+    "type": "sql-operation",
+    "name": "normalize_errors",
+    "inputs": { "logs": "LOG_EVENT" },
+    "statements": [
+      { "type": "sql_view", "tableName": "errors", "sqlQuery": "SELECT * FROM logs WHERE severity >= 13", "materialized": false },
+      { "type": "sql_output", "outputName": "critical_errors", "outputType": "LOG_EVENT", "sqlQuery": "SELECT * FROM errors WHERE message LIKE '%CRITICAL%'" }
+    ],
+    "availableDatasets": []
+  },
+  "outputRouting": { "critical_errors": "sinks" },
+  "mainStream": "passthrough",
+  "gate": { "type": "datadog-query", "query": "service:api" }
+}
+```
 
 ### Aggregation & Reduction
 

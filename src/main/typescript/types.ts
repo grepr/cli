@@ -113,11 +113,7 @@ export interface JobDraftCommandOptions extends CliOptions {
    * logs-event-sampler. Defaults to the UI draft value when omitted.
    */
   sampleBurst?: number;
-  /**
-   * Job-graph backend only. Wall-clock cap in seconds for a live
-   * source-preserving draft; the streaming sync job is aborted after it so the
-   * draft doesn't run indefinitely.
-   */
+  /** Wall-clock cap in seconds; the streaming sync job is aborted client-side after it. */
   maxDurationSeconds?: number;
 }
 

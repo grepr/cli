@@ -8,9 +8,6 @@ import {
   SchemaEventPredicate,
   SchemaLogReducerTemplateInput,
   SchemaLogReducerFilters,
-  SchemaTransforms,
-  SchemaChainNode,
-  SchemaConditionNode,
   SchemaLogsFilter,
   SchemaLogsIcebergTableSink,
   SchemaTemplateLogSink,
@@ -18,13 +15,24 @@ import {
   SchemaLogAttributesRemapper,
   SchemaGrokParser,
   SchemaTemplateQueryException,
+  SchemaChainNode,
+  SchemaConditionNode,
+  SchemaDropNode,
+  SchemaPassthroughNode,
+  SchemaSqlNode,
+  SchemaSqlOperation,
+  SchemaTransforms,
+  ConditionNodeKind,
+  DropNodeKind,
+  PassthroughNodeKind,
+  SqlNodeKind,
+  SqlNodeOutputRouting,
+  SqlOperationType,
+  SqlOutputStatementType,
   LogAttributesRemapperType,
   LogReducerType,
   GrokParserType,
   LogsFilterType,
-  ConditionNodeKind,
-  DropNodeKind,
-  PassthroughNodeKind,
   DatadogQueryPredicateType,
   DatadogLogSinkType,
   SplunkLogSinkType,
@@ -59,6 +67,23 @@ export type AggregationStrategy =
   | `${MaxAttributesMergeStrategyType}`
   | `${AverageAttributesMergeStrategyType}`;
 export type FilterPhase = keyof SchemaLogReducerFilters;
+
+/**
+ * The processing phases that map to a template `transforms` chain slot. A strict
+ * subset of {@link FilterPhase}.
+ */
+export type TemplateTransformPhase = 'pre-parser' | 'pre-warehouse' | 'pre-exceptions';
+
+/** The accepted-phases suffix shared by every template transform-phase error. */
+const ACCEPTED_TRANSFORM_PHASES_MESSAGE =
+  'Accepted phases are pre-parser, pre-warehouse, and pre-exceptions.';
+
+/** The downstream pipeline steps a `sql_output` may route to (the generated {@link SqlNodeOutputRouting} values). */
+const SQL_OUTPUT_ROUTING_TARGETS: ReadonlySet<string> = new Set(Object.values(SqlNodeOutputRouting));
+
+export type SqlTransformMainStream = 'drop' | 'passthrough';
+
+const SQL_TRANSFORM_MAIN_STREAMS: ReadonlySet<string> = new Set<SqlTransformMainStream>(['drop', 'passthrough']);
 
 /** Where a sink lives in the pipeline. */
 export type SinkTarget = 'vendor' | 'processed-logs';
@@ -156,12 +181,39 @@ export type JobPatchOp =
   | {
       op: 'set-filter';
       phase: FilterPhase;
-      /** Filter for this phase (one per phase). Template: merged into the existing phase filter; job-graph: replaces the filter vertex. */
+      /** Filter for this phase (one per phase). Template: written as a transform-chain gate; job-graph: replaces the canonical filter vertex. */
       filter: SchemaLogsFilter;
     }
   | {
       op: 'clear-filter';
       phase: FilterPhase;
+    }
+  // Template-only transform-chain ops. Each targets a `transforms` slot by
+  // camel-case-equivalent phase and replaces or removes that whole chain.
+  | {
+      op: 'set-transform-chain';
+      phase: TemplateTransformPhase;
+      /** Replacement chain root for the slot; written verbatim. */
+      root: SchemaChainNode;
+    }
+  | {
+      op: 'clear-transform-chain';
+      phase: TemplateTransformPhase;
+    }
+  | {
+      op: 'set-sql-transform';
+      phase: TemplateTransformPhase;
+      /** The `sql-operation` to embed in a generated `SqlNode` chain. */
+      sqlOperation: SchemaSqlOperation;
+      /** Maps each `sql_output.outputName` to the downstream step that consumes it. */
+      outputRouting: Record<string, SqlNodeOutputRouting>;
+      /** What to do with the original/main stream after sending it to SQL. */
+      mainStream: SqlTransformMainStream;
+      /**
+       * Optional predicate gating which events run the SQL node. Non-matching
+       * events pass through unchanged.
+       */
+      gate?: SchemaEventPredicate;
     }
   | {
       op: 'add-source';
@@ -340,6 +392,9 @@ const REQUIRED_OP_FIELDS: Record<JobPatchOp['op'], readonly (readonly [string, R
   'remove-parser': [['name', 'string']],
   'set-filter': [['phase', 'string'], ['filter', 'object']],
   'clear-filter': [['phase', 'string']],
+  'set-transform-chain': [['phase', 'string'], ['root', 'object']],
+  'clear-transform-chain': [['phase', 'string']],
+  'set-sql-transform': [['phase', 'string'], ['sqlOperation', 'object'], ['outputRouting', 'object'], ['mainStream', 'string']],
   'add-source': [['source', 'object']],
   'remove-source': [['name', 'string']],
   // Target-conditional fields (vendor removal's `name`, sink shape) stay with the apply-time guards.
@@ -523,6 +578,12 @@ function applyOperation(input: SchemaLogReducerTemplateInput, op: JobPatchOp, in
       return applySetFilter(input, op.phase, op.filter, index);
     case 'clear-filter':
       return applyClearFilter(input, op.phase, index);
+    case 'set-transform-chain':
+      return applySetTransformChain(input, op.phase, op.root, index);
+    case 'clear-transform-chain':
+      return applyClearTransformChain(input, op.phase, index);
+    case 'set-sql-transform':
+      return applySetSqlTransform(input, op.phase, op.sqlOperation, op.outputRouting, op.mainStream, op.gate, index);
     case 'add-source':
       return applyAddSource(input, op.source, index);
     case 'remove-source':
@@ -592,6 +653,17 @@ function applyJobGraphOperation(jobGraph: SchemaGreprJobGraph, op: JobPatchOp, i
       return jobGraphSetFilter(jobGraph, op.phase, op.filter, index);
     case 'clear-filter':
       return jobGraphClearFilter(jobGraph, op.phase, index);
+    case 'set-sql-transform':
+      throw new Error(
+        `Operation ${index} (set-sql-transform): SQL transform edits are only supported for ` +
+          `template-backed log-reducer jobs in the CLI. This job is a direct job graph. `
+      );
+    case 'set-transform-chain':
+    case 'clear-transform-chain':
+      throw new Error(
+        `Operation ${index} (${op.op}): transform-chain edits are only supported for ` +
+          `template-backed log-reducer jobs in the CLI. This job is a direct job graph. `
+      );
     case 'add-source':
       return jobGraphAddSource(jobGraph, op.source, index);
     case 'remove-source':
@@ -1386,10 +1458,10 @@ function rawFilterNameForPhase(phase: FilterPhase, index: number, opLabel: strin
       return RAW_PRE_WAREHOUSE_FILTER;
     case 'pre-exceptions':
       return RAW_PRE_EXCEPTIONS_FILTER;
-    case 'pre-aggregation':
+    default:
       throw new Error(
-        `Operation ${index} (${opLabel}): phase "pre-aggregation" has no canonical UI raw-graph stage. ` +
-          `Use "pre-warehouse" or "pre-exceptions" for raw UI log graphs.`,
+        `Operation ${index} (${opLabel}): phase "${phase}" has no canonical UI raw-graph stage. ` +
+          ACCEPTED_TRANSFORM_PHASES_MESSAGE,
       );
   }
 }
@@ -1755,77 +1827,117 @@ function applyRemoveParser(input: SchemaLogReducerTemplateInput, name: string, i
   input.parsers.splice(idx, 1);
 }
 
-/**
- * Maps a `FilterPhase` (the op's hyphenated wire value, a key of the legacy
- * `LogReducerFilters`) to the corresponding `Transforms` slot. `pre-aggregation`
- * has no transforms slot and maps to `null`.
- */
-const PHASE_TO_TRANSFORM_KEY: Record<FilterPhase, keyof SchemaTransforms | null> = {
-  'pre-parser': 'preParser',
-  'pre-warehouse': 'preWarehouse',
-  'pre-exceptions': 'preExceptions',
-  'pre-aggregation': null,
-};
+/** A root filter gate located by {@link findSimpleRootFilterGate}: the branch kept on match and whether the filter is inverted. */
+interface FilterGateMatch {
+  /** The chain the gate routes kept events into (the gate's non-drop branch). */
+  passSide: SchemaChainNode;
+  /** True when the drop is on the `thenAction` side (an inverted keep filter). */
+  inverted: boolean;
+  /** The gate's existing root `lateDataDuration`, if any. */
+  lateDataDuration?: string;
+}
 
 /**
- * Resolves the `Transforms` slot for a phase, throwing for `pre-aggregation`
- * (which has no chain slot in the transforms model).
- *
- * @param phase the filter phase from the op
- * @param index the operation index, for error messages
- * @param opLabel the op name, for error messages
- * @returns the matching `keyof SchemaTransforms`
- * @throws Error when the phase has no transforms slot
+ * Map a filter phase to its template `transforms` slot key. Only the three
+ * transform-backed phases are accepted; any other phase fails with the shared
+ * accepted-phases error.
  */
-function transformKeyForPhase(phase: FilterPhase, index: number, opLabel: string): keyof SchemaTransforms {
-  const key = PHASE_TO_TRANSFORM_KEY[phase];
-  if (!key) {
-    throw new Error(
-      `Operation ${index} (${opLabel}): phase "${phase}" has no transforms slot. ` +
-        `Use "pre-parser", "pre-warehouse", or "pre-exceptions".`,
-    );
+function phaseToTransformSlot(phase: FilterPhase, index: number, opLabel: string): keyof SchemaTransforms {
+  switch (phase) {
+    case 'pre-parser':
+      return 'preParser';
+    case 'pre-warehouse':
+      return 'preWarehouse';
+    case 'pre-exceptions':
+      return 'preExceptions';
+    default:
+      throw new Error(
+        `Operation ${index} (${opLabel}): phase "${phase}" is not accepted. ${ACCEPTED_TRANSFORM_PHASES_MESSAGE}`,
+      );
   }
-  return key;
 }
 
-/** True when the existing slot value is a keep-style filter (then keep / else drop), i.e. not inverted. */
-function isInvertedConditionNode(node: SchemaConditionNode): boolean {
-  return (
-    node.thenAction?.kind === DropNodeKind.drop_node &&
-    node.elseAction?.kind === PassthroughNodeKind.passthrough_node
-  );
+function makePassthroughNode(): SchemaPassthroughNode {
+  return { kind: PassthroughNodeKind.passthrough_node };
+}
+
+function makeDropNode(): SchemaDropNode {
+  return { kind: DropNodeKind.drop_node };
+}
+
+function makeMainStreamNode(mainStream: SqlTransformMainStream): SchemaDropNode | SchemaPassthroughNode {
+  return mainStream === 'drop' ? makeDropNode() : makePassthroughNode();
+}
+
+function nodeKind(node: SchemaChainNode): string | undefined {
+  return (node as { kind?: string } | null | undefined)?.kind;
+}
+
+export function isDropNode(node: SchemaChainNode): boolean {
+  return nodeKind(node) === DropNodeKind.drop_node;
+}
+
+export function isPassthroughNode(node: SchemaChainNode): boolean {
+  return nodeKind(node) === PassthroughNodeKind.passthrough_node;
+}
+
+export function isSqlNode(node: SchemaChainNode): boolean {
+  return nodeKind(node) === SqlNodeKind.sql_node;
+}
+
+export function isConditionNode(node: SchemaChainNode): boolean {
+  return nodeKind(node) === ConditionNodeKind.condition_node;
 }
 
 /**
- * Compiles a keep-style {@link SchemaLogsFilter} into the equivalent single
- * {@link SchemaConditionNode} chain: matching logs flow through, non-matching
- * are dropped (arms swap when the filter is `inverted`). Carries over the two
- * documented merge fields (`inverted`, `maxLateEventTimestampDelta`) from an
- * existing condition node when the incoming filter omits them, preserving
- * `set-filter`'s merge contract.
- *
- * @param filter the incoming logs-filter (predicate + optional inverted/lateness)
- * @param existing the current condition node in the slot, if any, for field carry-over
- * @returns a condition node that compiles to the same logs-filter vertex
+ * Build a CLI-managed filter gate routing kept events into `passSide` and
+ * dropping the rest. A normal keep filter passes `thenAction`; an inverted
+ * filter swaps the branches. `maxLateEventTimestampDelta` becomes the gate's
+ * root `lateDataDuration`, matching the previous `set-filter` behavior.
  */
-function filterToConditionNode(
-  filter: SchemaLogsFilter,
-  existing?: SchemaConditionNode,
-): SchemaConditionNode {
-  const keep: SchemaChainNode = { kind: PassthroughNodeKind.passthrough_node };
-  const drop: SchemaChainNode = { kind: DropNodeKind.drop_node };
-  const inverted =
-    filter.inverted ?? (existing ? isInvertedConditionNode(existing) : false);
-  const lateDataDuration = filter.maxLateEventTimestampDelta ?? existing?.lateDataDuration;
-  return {
+function makeFilterGate(filter: SchemaLogsFilter, passSide: SchemaChainNode): SchemaConditionNode {
+  const drop = makeDropNode();
+  const gate: SchemaConditionNode = {
     kind: ConditionNodeKind.condition_node,
-    predicate: filter.predicate ?? existing?.predicate ?? { type: DatadogQueryPredicateType.datadog_query, query: '' },
-    thenAction: inverted ? drop : keep,
-    elseAction: inverted ? keep : drop,
-    ...(lateDataDuration ? { lateDataDuration } : {}),
+    predicate: filter.predicate,
+    thenAction: filter.inverted ? drop : passSide,
+    elseAction: filter.inverted ? passSide : drop,
+  };
+  if (filter.maxLateEventTimestampDelta !== undefined) {
+    gate.lateDataDuration = filter.maxLateEventTimestampDelta;
+  }
+  return gate;
+}
+
+/**
+ * Detect whether `root` is an unambiguous CLI-managed filter gate: a
+ * `ConditionNode` with exactly one terminal `DropNode` branch. Returns the pass
+ * side and inversion, or `undefined` when `root` is not a condition or has
+ * meaningful (non-drop) work on both branches — a chain the CLI must not guess
+ * at.
+ */
+function findSimpleRootFilterGate(root: SchemaChainNode): FilterGateMatch | undefined {
+  if (!isConditionNode(root)) return undefined;
+  const cond = root as SchemaConditionNode;
+  const thenIsDrop = isDropNode(cond.thenAction);
+  const elseIsDrop = isDropNode(cond.elseAction);
+  // Exactly one branch must be a drop; both-drop or neither-drop is ambiguous.
+  if (thenIsDrop === elseIsDrop) return undefined;
+  return {
+    passSide: elseIsDrop ? cond.thenAction : cond.elseAction,
+    inverted: !elseIsDrop,
+    lateDataDuration: cond.lateDataDuration,
   };
 }
 
+/**
+ * Install or update a filter gate at the phase's transform slot:
+ * - empty slot: `IF filter THEN PASSTHROUGH ELSE DROP`
+ * - existing simple gate: rebuild with the new predicate, keeping the pass side
+ *   and inheriting `inverted`/`lateDataDuration` when the patch omits them (raw
+ *   merge semantics — a predicate-only edit must not flip keep↔drop)
+ * - any other existing chain (e.g. a SqlNode): `IF filter THEN <chain> ELSE DROP`
+ */
 function applySetFilter(
   input: SchemaLogReducerTemplateInput,
   phase: FilterPhase,
@@ -1835,20 +1947,193 @@ function applySetFilter(
   if (!filter || typeof filter !== 'object') {
     throw new Error(`Operation ${index} (set-filter): filter must be an object`);
   }
-  const key = transformKeyForPhase(phase, index, 'set-filter');
-  const existing = input.transforms?.[key];
-  const node = filterToConditionNode(
-    filter,
-    existing?.kind === ConditionNodeKind.condition_node ? (existing as SchemaConditionNode) : undefined,
-  );
-  input.transforms = { ...(input.transforms ?? {}), [key]: node };
+  if (!isEventPredicate(filter.predicate)) {
+    throw new Error(`Operation ${index} (set-filter): filter.predicate must be an EventPredicate object with a "type"`);
+  }
+  const slot = phaseToTransformSlot(phase, index, 'set-filter');
+  const transforms: SchemaTransforms = input.transforms ?? {};
+  const existing = transforms[slot];
+  const match = existing === undefined ? undefined : findSimpleRootFilterGate(existing);
+  const passSide = existing === undefined ? makePassthroughNode() : match?.passSide ?? existing;
+  const gateFilter: SchemaLogsFilter = match
+    ? {
+        ...filter,
+        inverted: filter.inverted ?? match.inverted,
+        maxLateEventTimestampDelta: filter.maxLateEventTimestampDelta ?? match.lateDataDuration,
+      }
+    : filter;
+  transforms[slot] = makeFilterGate(gateFilter, passSide);
+  input.transforms = transforms;
 }
 
+/**
+ * Remove a root filter gate from the phase's transform slot, replacing the slot
+ * with the gate's pass side. No-ops on an empty slot. Fails clearly when the
+ * slot holds a chain that is not an unambiguous filter gate, rather than
+ * guessing which branch is the filter.
+ */
 function applyClearFilter(input: SchemaLogReducerTemplateInput, phase: FilterPhase, index: number): void {
-  const key = transformKeyForPhase(phase, index, 'clear-filter');
-  if (!input.transforms?.[key]) return;
-  const { [key]: _removed, ...rest } = input.transforms;
-  input.transforms = rest;
+  const slot = phaseToTransformSlot(phase, index, 'clear-filter');
+  const transforms = input.transforms;
+  const existing = transforms?.[slot];
+  if (existing === undefined) return;
+  const match = findSimpleRootFilterGate(existing);
+  if (!match) {
+    const detail = isConditionNode(existing)
+      ? 'contains a branching transform chain, not a simple filter gate'
+      : `contains a ${nodeKind(existing) ?? 'non-condition'} at its root, not a filter gate`;
+    throw new Error(
+      `Operation ${index} (clear-filter): template transform slot "${slot}" ${detail}. ` +
+        `Use set-transform-chain to edit it explicitly.`,
+    );
+  }
+  (transforms as SchemaTransforms)[slot] = match.passSide;
+  input.transforms = transforms as SchemaTransforms;
+}
+
+/** True when `value` looks like an `EventPredicate` (an object carrying a string `type` discriminator). */
+function isEventPredicate(value: unknown): value is SchemaEventPredicate {
+  return isRecord(value) && typeof value['type'] === 'string';
+}
+
+/**
+ * Replace the phase's transform slot with a hand-authored chain root. The CLI
+ * does not introspect or validate the tree beyond requiring an object; the
+ * template compiler remains the final authority.
+ */
+function applySetTransformChain(
+  input: SchemaLogReducerTemplateInput,
+  phase: TemplateTransformPhase,
+  root: SchemaChainNode,
+  index: number,
+): void {
+  if (!isRecord(root)) {
+    throw new Error(`Operation ${index} (set-transform-chain): root must be a chain-node object`);
+  }
+  const slot = phaseToTransformSlot(phase, index, 'set-transform-chain');
+  const transforms: SchemaTransforms = input.transforms ?? {};
+  transforms[slot] = root;
+  input.transforms = transforms;
+}
+
+/** Remove a phase's entire transform slot (distinct from `clear-filter`, which removes only a filter gate). */
+function applyClearTransformChain(
+  input: SchemaLogReducerTemplateInput,
+  phase: TemplateTransformPhase,
+  index: number,
+): void {
+  const slot = phaseToTransformSlot(phase, index, 'clear-transform-chain');
+  if (input.transforms) {
+    Reflect.deleteProperty(input.transforms, slot);
+  }
+}
+
+/**
+ * Replace the phase's transform slot with a generated `SqlNode` chain. Any
+ * existing chain is replaced — callers needing to preserve or merge a chain
+ * must use `set-transform-chain`.
+ */
+function applySetSqlTransform(
+  input: SchemaLogReducerTemplateInput,
+  phase: TemplateTransformPhase,
+  sqlOperation: SchemaSqlOperation,
+  outputRouting: Record<string, SqlNodeOutputRouting>,
+  mainStream: SqlTransformMainStream,
+  gate: SchemaEventPredicate | undefined,
+  index: number,
+): void {
+  const slot = phaseToTransformSlot(phase, index, 'set-sql-transform');
+  validateSqlTransform(sqlOperation, outputRouting, mainStream, gate, index);
+  const sqlChain: SchemaSqlNode = {
+    kind: SqlNodeKind.sql_node,
+    sqlOperation,
+    outputRouting,
+    next: makeMainStreamNode(mainStream),
+  };
+  // An ungated drop (`mainStream: 'drop'`, no gate) still needs a condition node
+  // wrapper with a match-all (`*`) predicate. The `elseAction` passthrough is
+  // unreachable under `*`, but it is load-bearing, NOT dead code: it is the SQL
+  // node's connected main output edge. A bare `sql-node` whose `next` is a drop
+  // compiles to a disconnected `chainOut` in the Flink graph (see ENGT-4852 fix);
+  // the passthrough else-branch is what keeps that main output connected. Do not
+  // "simplify" it away — `test_setSqlTransform_noGate_dropMainStream_buildsMatchAllConditionNode`
+  // pins this shape.
+  const effectiveGate: SchemaEventPredicate = gate ?? { type: DatadogQueryPredicateType.datadog_query, query: '*' };
+  const root: SchemaChainNode = mainStream === 'passthrough' && gate === undefined
+    ? sqlChain
+    : {
+        kind: ConditionNodeKind.condition_node,
+        predicate: effectiveGate,
+        thenAction: sqlChain,
+        elseAction: makePassthroughNode(),
+      };
+  const transforms: SchemaTransforms = input.transforms ?? {};
+  transforms[slot] = root;
+  input.transforms = transforms;
+}
+
+/**
+ * Validate a `set-sql-transform` op before mutating the input, so malformed
+ * SQL fails with a readable CLI error ahead of `job:draft`.
+ */
+function validateSqlTransform(
+  sqlOperation: SchemaSqlOperation,
+  outputRouting: Record<string, SqlNodeOutputRouting>,
+  mainStream: SqlTransformMainStream,
+  gate: SchemaEventPredicate | undefined,
+  index: number,
+): void {
+  const fail = (detail: string): never => {
+    throw new Error(`Operation ${index} (set-sql-transform): ${detail}`);
+  };
+  if (!isRecord(sqlOperation) || sqlOperation['type'] !== SqlOperationType.sql_operation) {
+    fail(`sqlOperation must be an object with type "${SqlOperationType.sql_operation}"`);
+  }
+  const statements = (sqlOperation as { statements?: unknown }).statements;
+  if (!Array.isArray(statements) || statements.length === 0) {
+    fail('sqlOperation.statements must be a non-empty array');
+  }
+  const outputNames = (statements as { type?: unknown; outputName?: unknown }[])
+    .filter(s => s.type === SqlOutputStatementType.sql_output)
+    .map(s => s.outputName);
+  if (outputNames.length === 0) {
+    fail('sqlOperation.statements must include at least one sql_output statement');
+  }
+  const seen = new Set<unknown>();
+  for (const name of outputNames) {
+    if (typeof name !== 'string' || name.length === 0) {
+      fail('every sql_output statement must have a non-empty outputName');
+    }
+    if (seen.has(name)) {
+      fail(`duplicate sql_output outputName "${name as string}"; output names must be unique`);
+    }
+    seen.add(name);
+  }
+  if (!isRecord(outputRouting)) {
+    fail('outputRouting must be an object');
+  }
+  if (typeof mainStream !== 'string' || !SQL_TRANSFORM_MAIN_STREAMS.has(mainStream)) {
+    fail(`mainStream must be one of: ${[...SQL_TRANSFORM_MAIN_STREAMS].join(', ')}`);
+  }
+  for (const [key, target] of Object.entries(outputRouting)) {
+    if (!seen.has(key)) {
+      fail(`outputRouting key "${key}" does not match any sql_output outputName`);
+    }
+    if (typeof target !== 'string' || !SQL_OUTPUT_ROUTING_TARGETS.has(target)) {
+      fail(
+        `outputRouting["${key}"] = ${JSON.stringify(target)} is not a valid target step. ` +
+          `Valid targets: ${[...SQL_OUTPUT_ROUTING_TARGETS].join(', ')}.`,
+      );
+    }
+  }
+  for (const name of seen) {
+    if (!Object.prototype.hasOwnProperty.call(outputRouting, name as string)) {
+      fail(`sql_output "${name as string}" has no route in outputRouting`);
+    }
+  }
+  if (gate !== undefined && !isEventPredicate(gate)) {
+    fail('gate must be an EventPredicate object with a "type"');
+  }
 }
 
 function applyAddSource(input: SchemaLogReducerTemplateInput, source: SchemaOperation, index: number): void {

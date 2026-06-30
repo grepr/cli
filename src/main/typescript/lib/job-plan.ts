@@ -5,7 +5,7 @@
  */
 import chalk from 'chalk';
 import fs from 'fs-extra';
-import { SchemaReadJob, SchemaUpdateJob, SchemaOperation, SchemaLogReducerTemplateInput, SchemaTemplateLogSink } from '@/openapi/openApiTypes';
+import { SchemaReadJob, SchemaUpdateJob, SchemaOperation, SchemaLogReducerTemplateInput, SchemaTemplateLogSink, SchemaTransforms } from '@/openapi/openApiTypes';
 import {
   applyPatch,
   classifyPatch,
@@ -222,24 +222,24 @@ function diffTransforms(
   propInput: SchemaLogReducerTemplateInput,
   entries: JobDiffEntry[],
 ): void {
-  const curTransforms = (curInput.transforms as unknown as Record<string, unknown>) ?? {};
-  const propTransforms = (propInput.transforms as unknown as Record<string, unknown>) ?? {};
-  const phases = new Set<string>([...Object.keys(curTransforms), ...Object.keys(propTransforms)]);
-  for (const phase of phases) {
-    const before = curTransforms[phase];
-    const after = propTransforms[phase];
+  const curTransforms: SchemaTransforms = curInput.transforms ?? {};
+  const propTransforms: SchemaTransforms = propInput.transforms ?? {};
+  const slots: (keyof SchemaTransforms)[] = ['preParser', 'preWarehouse', 'preExceptions'];
+  for (const slot of slots) {
+    const before = curTransforms[slot];
+    const after = propTransforms[slot];
     if (JSON.stringify(before) === JSON.stringify(after)) continue;
     if (before === undefined) {
-      entries.push({ kind: 'add', path: `transforms.${phase}`, after, summary: `+ transforms.${phase} = ${oneLine(after)}` });
+      entries.push({ kind: 'add', path: `transforms.${slot}`, after, summary: `+ transforms.${slot} = ${oneLine(after)}` });
     } else if (after === undefined) {
-      entries.push({ kind: 'remove', path: `transforms.${phase}`, before, summary: `- transforms.${phase}` });
+      entries.push({ kind: 'remove', path: `transforms.${slot}`, before, summary: `- transforms.${slot}` });
     } else {
       entries.push({
         kind: 'change',
-        path: `transforms.${phase}`,
+        path: `transforms.${slot}`,
         before,
         after,
-        summary: `~ transforms.${phase}: ${oneLine(before)} → ${oneLine(after)}`,
+        summary: `~ transforms.${slot}: ${oneLine(before)} → ${oneLine(after)}`,
       });
     }
   }
