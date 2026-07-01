@@ -4511,6 +4511,13 @@ export interface components {
       };
       metricName?: components["schemas"]["MetricNameFilter"];
     };
+    FrontendConfig: {
+      appBaseUrl?: string;
+      flinkBaseUrl?: string;
+      gtmContainerId?: string;
+      kafkaToolkitClusterName?: string;
+      region?: string;
+    };
     /** @description The payload containing integration data. */
     Gemini: {
       /**
@@ -6295,6 +6302,7 @@ export interface components {
     };
     Manifest: {
       auth: components["schemas"]["AuthConfig"];
+      frontend?: components["schemas"]["FrontendConfig"];
     };
     MaskEntry: {
       name: string;
@@ -11285,6 +11293,7 @@ export type SchemaFileFormat = components["schemas"]["FileFormat"];
 export type SchemaFileReadingStrategy =
   components["schemas"]["FileReadingStrategy"];
 export type SchemaFilterPrimitive = components["schemas"]["FilterPrimitive"];
+export type SchemaFrontendConfig = components["schemas"]["FrontendConfig"];
 export type SchemaGemini = components["schemas"]["Gemini"];
 export type SchemaGreprApiKey = components["schemas"]["GreprApiKey"];
 export type SchemaGreprJobGraph = components["schemas"]["GreprJobGraph"];

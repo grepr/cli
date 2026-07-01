@@ -1,5 +1,19 @@
-import { pipeline, FeatureExtractionPipeline } from '@xenova/transformers';
+import { pipeline, env, FeatureExtractionPipeline } from '@xenova/transformers';
 import { EmbeddingsModel, EmbeddingsResponse } from 'vectra';
+
+// Force single-threaded, in-process wasm execution for onnxruntime.
+//
+// In some runtimes (notably bun, which Transformers.js resolves to the
+// onnxruntime-web backend rather than onnxruntime-node) multithreaded wasm
+// inference spawns a worker thread from a `blob:` URL. Bun cannot load a worker
+// from a createObjectURL blob, so the worker raises an unhandled
+// `ENOENT: ... open 'blob:<uuid>'` at teardown that exits the process non-zero
+// even when every inference and test has already succeeded. Disabling the proxy
+// worker and pthread pool keeps execution on the main thread, so no blob worker
+// is ever created. A CLI doc-search runs a handful of short queries, so
+// single-threaded execution costs nothing measurable.
+env.backends.onnx.wasm.numThreads = 1;
+env.backends.onnx.wasm.proxy = false;
 
 /**
  * Embeddings provider for Vectra using Transformers.js.
