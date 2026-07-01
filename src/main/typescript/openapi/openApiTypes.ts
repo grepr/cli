@@ -3509,6 +3509,11 @@ export interface components {
        */
       aggregations?: components["schemas"]["AggregationDecl"][];
       selectors?: components["schemas"]["FilterPrimitive"];
+      /**
+       * @description When false, emit per-series time-only aggregation (no space/cohort collapse); aggregations apply as time-window folds. Default true keeps cohort aggregation.
+       * @default true
+       */
+      spaceAggregation?: boolean;
     };
     /** @description Cohort-identity + space-aggregation configuration. */
     CohortsConfig: {
