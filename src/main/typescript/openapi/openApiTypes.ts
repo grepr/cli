@@ -1708,6 +1708,66 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/investigations/{investigationId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cancel an investigation
+     * @description Aborts an investigation for good (running or paused). It pauses at the next turn boundary if running, then finalizes as CANCELLED.
+     */
+    post: operations["cancel"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/investigations/{investigationId}/resume": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Resume a stopped investigation
+     * @description Resumes a stopped (resumable) investigation in place. A non-blank message is appended as a new user turn; an empty body continues the agent with no added input.
+     */
+    post: operations["resume"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/investigations/{investigationId}/stop": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Stop a running investigation
+     * @description Requests a running investigation pause at its next turn boundary. It can then be resumed with a message. Returns 202; the status flips to STOPPED shortly after.
+     */
+    post: operations["stop"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/investigations/{investigationId}/transcript": {
     parameters: {
       query?: never;
@@ -1720,6 +1780,26 @@ export interface paths {
      * @description Returns the investigation's status and its turn-by-turn transcript of model messages, tool calls and tool results.
      */
     get: operations["transcript"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/investigations/{investigationId}/turns": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Stream an investigation's transcript turns by sequence cursor
+     * @description Returns journalled turns after the given sequence, oldest first.
+     */
+    get: operations["turns"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5083,8 +5163,10 @@ export interface components {
       /** Format: int32 */
       inputTokens?: number;
       investigationId?: string;
+      live?: boolean;
       /** Format: int32 */
       outputTokens?: number;
+      resumable?: boolean;
       /** @enum {string} */
       status?: InvestigationSummaryStatus;
       summary?: string;
@@ -5101,7 +5183,14 @@ export interface components {
       /** @enum {string} */
       status?: InvestigationSummaryStatus;
       summary?: string;
-      turns?: components["schemas"]["TranscriptTurn"][];
+    };
+    InvestigationsList: {
+      hasMore?: boolean;
+      investigations?: components["schemas"]["ItemsCollectionInvestigationSummary"];
+      /** Format: int32 */
+      limit?: number;
+      /** Format: int32 */
+      start?: number;
     };
     InvitationsList: {
       invitations?: components["schemas"]["ItemsCollectionReadInvitation"];
@@ -5122,6 +5211,10 @@ export interface components {
        * @default []
        */
       teamAssignments?: components["schemas"]["TeamAssignment"][];
+    };
+    ItemsCollectionInvestigationSummary: {
+      /** @default [] */
+      items?: components["schemas"]["InvestigationSummary"][];
     };
     ItemsCollectionLogEvent: {
       /** @default [] */
@@ -8558,6 +8651,9 @@ export interface components {
        */
       resourceType: ResourceFilterResourceType;
     };
+    ResumeInvestigationRequest: {
+      text?: string;
+    };
     Role: {
       /**
        * @description Whether this is a built-in role
@@ -9344,6 +9440,7 @@ export interface components {
     };
     StartInvestigationRequest: {
       agentId: string;
+      parentInvestigationId?: string;
       userProvidedContext?: string;
     };
     StartInvestigationResponse: {
@@ -10461,6 +10558,10 @@ export interface components {
       /** Format: int32 */
       seq?: number;
     };
+    TranscriptTurnsList: {
+      hasMore?: boolean;
+      turns?: components["schemas"]["TranscriptTurn"][];
+    };
     /** @description Per-stage tree-shape chains applied during log processing. */
     Transforms: {
       preExceptions?: components["schemas"]["ChainNode"];
@@ -11344,8 +11445,12 @@ export type SchemaInvestigationSummary =
   components["schemas"]["InvestigationSummary"];
 export type SchemaInvestigationTranscript =
   components["schemas"]["InvestigationTranscript"];
+export type SchemaInvestigationsList =
+  components["schemas"]["InvestigationsList"];
 export type SchemaInvitationsList = components["schemas"]["InvitationsList"];
 export type SchemaInvitee = components["schemas"]["Invitee"];
+export type SchemaItemsCollectionInvestigationSummary =
+  components["schemas"]["ItemsCollectionInvestigationSummary"];
 export type SchemaItemsCollectionLogEvent =
   components["schemas"]["ItemsCollectionLogEvent"];
 export type SchemaItemsCollectionReadAnthropic =
@@ -11580,6 +11685,8 @@ export type SchemaResetImpactEstimationResponse =
   components["schemas"]["ResetImpactEstimationResponse"];
 export type SchemaResource = components["schemas"]["Resource"];
 export type SchemaResourceFilter = components["schemas"]["ResourceFilter"];
+export type SchemaResumeInvestigationRequest =
+  components["schemas"]["ResumeInvestigationRequest"];
 export type SchemaRole = components["schemas"]["Role"];
 export type SchemaRoleIds = components["schemas"]["RoleIds"];
 export type SchemaRoleUpdate = components["schemas"]["RoleUpdate"];
@@ -11706,6 +11813,8 @@ export type SchemaTranscriptMessage =
 export type SchemaTranscriptToolCall =
   components["schemas"]["TranscriptToolCall"];
 export type SchemaTranscriptTurn = components["schemas"]["TranscriptTurn"];
+export type SchemaTranscriptTurnsList =
+  components["schemas"]["TranscriptTurnsList"];
 export type SchemaTransforms = components["schemas"]["Transforms"];
 export type SchemaTrigger = components["schemas"]["Trigger"];
 export type SchemaTriggerActionConfig =
@@ -12012,7 +12121,10 @@ export interface operations {
   };
   investigations: {
     parameters: {
-      query?: never;
+      query?: {
+        page?: number;
+        pageSize?: number;
+      };
       header?: never;
       path: {
         id: string;
@@ -12027,7 +12139,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["InvestigationSummary"][];
+          "application/json": components["schemas"]["InvestigationsList"];
         };
       };
       /** @description Unauthorized */
@@ -16445,6 +16557,133 @@ export interface operations {
       };
     };
   };
+  cancel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        investigationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cancel requested */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Investigation not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Investigation is already finished */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  resume: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        investigationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ResumeInvestigationRequest"];
+      };
+    };
+    responses: {
+      /** @description Resume requested */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Investigation not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Investigation is not resumable */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  stop: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        investigationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Stop requested */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Investigation not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Investigation is not running */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   transcript: {
     parameters: {
       query?: never;
@@ -16463,6 +16702,45 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["InvestigationTranscript"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Investigation not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  turns: {
+    parameters: {
+      query?: {
+        afterSeq?: number;
+        pageSize?: number;
+      };
+      header?: never;
+      path: {
+        investigationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Turns retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TranscriptTurnsList"];
         };
       };
       /** @description Unauthorized */
@@ -19347,8 +19625,10 @@ export enum IgnoreAttributesMergeStrategyType {
 }
 export enum InvestigationSummaryStatus {
   RUNNING = "RUNNING",
+  STOPPED = "STOPPED",
   COMPLETED = "COMPLETED",
   FAILED = "FAILED",
+  CANCELLED = "CANCELLED",
 }
 export enum JobActionRuleType {
   job_rule = "job-rule",
@@ -19795,6 +20075,7 @@ export enum TracesIcebergTableSourceType {
 }
 export enum TranscriptMessageRole {
   SYSTEM = "SYSTEM",
+  TRIGGER_SIGNAL = "TRIGGER_SIGNAL",
   USER = "USER",
   ASSISTANT = "ASSISTANT",
   TOOL_RESULT = "TOOL_RESULT",
