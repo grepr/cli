@@ -6083,6 +6083,11 @@ export interface components {
     LogReducerTemplateInput: {
       /** @description Conditional routing of raw logs to datasets. Logs will match the filters in order, and once a log matches a filter, it will not attempt to match other filters in the list. If a log matches none of the filters, it is written to the default dataset. A default dataset must be set when conditional routing is configured. */
       conditionalDatasets?: components["schemas"]["ConditionalDataLakeConfig"][];
+      /**
+       * @description When true (ENGT-3898), vendor log sinks are non-terminal: delivered records are written to a confirmed-delivery dedup sink so only logs actually accepted by the vendor are marked sent. Defaults to false during gradual rollout.
+       * @default false
+       */
+      confirmedDeliveryEnabled?: boolean;
       /** @description The unique identifier for the dataset. When absent, no raw logs will be stored. At least one of `datasetId` or `sinks` must be provided for non-draft pipelines. */
       datasetId?: string;
       /** @description A list of template-specific exceptions to apply in log reducer. */
@@ -7067,6 +7072,7 @@ export interface components {
       | components["schemas"]["LogsIcebergTableSink"]
       | components["schemas"]["PatternLookupIcebergTableSink"]
       | components["schemas"]["EventDedupIcebergTableSink"]
+      | components["schemas"]["VendorLogEventDedupIcebergTableSink"]
       | components["schemas"]["SpanDedupIcebergTableSink"]
       | components["schemas"]["LogsIcebergTableSource"]
       | components["schemas"]["LlmPromptResultsIcebergTableSource"]
@@ -10823,6 +10829,18 @@ export interface components {
       vendorResourceId: string;
       vendorResourceName?: string;
     };
+    VendorLogEventDedupIcebergTableSink: {
+      /** @description The id of the dataset to write to */
+      datasetId: string;
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Writes confirmed-delivered event IDs to an Iceberg table to keep track of which events have actually been sent to a particular sink. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: VendorLogEventDedupIcebergTableSinkType;
+      vendorSinkId: string;
+    };
     WindowBasedLogarithmicSampling: {
       /**
        * Format: int32
@@ -11844,6 +11862,8 @@ export type SchemaVectorData = components["schemas"]["VectorData"];
 export type SchemaVectorResult = components["schemas"]["VectorResult"];
 export type SchemaVendorImportedException =
   components["schemas"]["VendorImportedException"];
+export type SchemaVendorLogEventDedupIcebergTableSink =
+  components["schemas"]["VendorLogEventDedupIcebergTableSink"];
 export type SchemaWindowBasedLogarithmicSampling =
   components["schemas"]["WindowBasedLogarithmicSampling"];
 export type SchemaWriteAnthropic = components["schemas"]["WriteAnthropic"];
@@ -20112,6 +20132,9 @@ export enum VendorImportedExceptionExceptionType {
   NEW_RELIC_MONITOR = "NEW_RELIC_MONITOR",
   NEW_RELIC_DASHBOARD = "NEW_RELIC_DASHBOARD",
 }
+export enum VendorLogEventDedupIcebergTableSinkType {
+  vendorlog_event_dedup_iceberg_table_sink = "vendorlog-event-dedup-iceberg-table-sink",
+}
 export enum WindowBasedLogarithmicSamplingType {
   window_based_logarithmic_sampling = "window-based-logarithmic-sampling",
 }
@@ -20177,7 +20200,8 @@ export const SINK_TYPES = new Set<string>([
   'spans-sync-sink',
   'splunk-log-sink',
   'sumologic-log-sink',
-  'variant-sync-sink'
+  'variant-sync-sink',
+  'vendorlog-event-dedup-iceberg-table-sink'
 ]);
 
 export const OPERATION_TYPES = new Set<string>([

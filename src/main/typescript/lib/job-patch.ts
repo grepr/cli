@@ -2430,6 +2430,7 @@ const INPUT_FIELD_TOUCHES: Record<keyof SchemaLogReducerTemplateInput, 'source' 
   rawSinkConfig: 'sink',
   datasetId: 'sink',
   conditionalDatasets: 'sink',
+  confirmedDeliveryEnabled: 'sink',
   reducer: 'transform',
   parsers: 'transform',
   transforms: 'transform',
