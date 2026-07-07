@@ -85,6 +85,7 @@ routes it through the `grepr:test-pipeline-change` safety harness:
 - `grepr:change-filtering` — drop logs at a pipeline phase
 - `grepr:change-source` — add / remove / replace a source
 - `grepr:change-sink` — change sinks, forwarding destinations, or datasets
+- `grepr:build-sql-transform` — author a Flink-SQL transform (redact, enrich, windowed logs-to-metrics); template-backed jobs only
 - `grepr:build-pipeline` — build a new pipeline from scratch
 - `grepr:debug-pipeline` — troubleshoot a misbehaving pipeline
 
