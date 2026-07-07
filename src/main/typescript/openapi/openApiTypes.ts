@@ -3929,12 +3929,6 @@ export interface components {
        */
       site: string;
       /**
-       * @description Whether to process Datadog Lucene queries for this integration through BabelFish. Safe to enable per-integration once verified.
-       * @default false
-       * @example false
-       */
-      useBabelFishForLucene?: boolean;
-      /**
        * @description Indicates whether to validate the API and App keys when saving the keys.
        * @default true
        * @example true
@@ -6900,12 +6894,6 @@ export interface components {
        * @example newrelic.com
        */
       site: string;
-      /**
-       * @description Whether to process New Relic Lucene queries for this integration through BabelFish. Safe to enable per-integration once verified. Does not affect NRQL processing.
-       * @default false
-       * @example false
-       */
-      useBabelFishForLucene?: boolean;
     };
     NewRelicLogAgentSource: {
       /** @description The integration id for the observability vendor. */
