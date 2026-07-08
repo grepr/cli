@@ -7101,6 +7101,7 @@ export interface components {
       | components["schemas"]["OtlpLogAgentSource"]
       | components["schemas"]["OtlpTraceAgentSource"]
       | components["schemas"]["TraceSampler"]
+      | components["schemas"]["SpanTagger"]
       | components["schemas"]["S3LogsFileSource"]
       | components["schemas"]["CloudTrailLogsFileSource"]
       | components["schemas"]["GreprUploadedLogFileSource"]
@@ -9015,6 +9016,23 @@ export interface components {
        */
       traceState?: string;
     };
+    /** @description Overlays a fixed set of attributes onto every span passing through this operation. Used by the trace draft pipeline to stamp stage tags on previewed spans. */
+    SpanTagger: {
+      /**
+       * Attributes
+       * @description Attributes to overlay onto each span's attributes map.
+       */
+      attributes: {
+        [key: string]: string;
+      };
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Overlays a fixed set of attributes onto every span passing through. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: SpanTaggerType;
+    };
     SpansBackfillIcebergTableSource: {
       /** @description The ID of the dataset to read data from. */
       datasetId: string;
@@ -10179,6 +10197,10 @@ export interface components {
        */
       type: TemplateTraceSamplerExceptionType;
     };
+    /** @description Template trace sink configuration */
+    TemplateTraceSink: {
+      sink?: components["schemas"]["Operation"];
+    };
     /** @description Time-aggregation window and per-metric agg-fn overrides. */
     TimeGranularity: {
       /**
@@ -10358,6 +10380,20 @@ export interface components {
        */
       type: TraceReducerType;
     };
+    /**
+     * Inputs Schema
+     * @description Schema for the trace reducer job graph.
+     */
+    TraceReducerTemplateInput: {
+      /** @description The unique identifier for the dataset persisted by the trace reducer. When absent, no raw spans will be stored and no dedup sinks will be wired. At least one of `datasetId` or `sinks` must be provided for non-draft pipelines. */
+      datasetId?: string;
+      reducer?: components["schemas"]["TraceReducer"];
+      /** @description A list of template trace sinks, each wrapping a vendor sink operation. When absent, reduced spans will not be forwarded to any vendor. At least one of `sinks` or `datasetId` must be provided for non-draft pipelines. */
+      sinks?: components["schemas"]["TemplateTraceSink"][];
+      /** @description A list of trace sources, each conforming to one of the defined source types. */
+      sources: components["schemas"]["Operation"][];
+      sqlOperations?: components["schemas"]["TraceSqlOperations"];
+    };
     TraceSampler: {
       /** @example operation_name */
       name: string;
@@ -10422,6 +10458,11 @@ export interface components {
        * @enum {string}
        */
       type: TraceSamplerType;
+    };
+    /** @description SQL operations applied at various stages of trace processing. */
+    TraceSqlOperations: {
+      postReducer?: components["schemas"]["TemplateSqlOperation"];
+      preReducer?: components["schemas"]["TemplateSqlOperation"];
     };
     TracesIcebergTableSource: {
       /** @description The ID of the dataset to read data from. */
@@ -11722,6 +11763,7 @@ export type SchemaSpanEvent = components["schemas"]["SpanEvent"];
 export type SchemaSpanHeadSamplingRule =
   components["schemas"]["SpanHeadSamplingRule"];
 export type SchemaSpanLink = components["schemas"]["SpanLink"];
+export type SchemaSpanTagger = components["schemas"]["SpanTagger"];
 export type SchemaSpansBackfillIcebergTableSource =
   components["schemas"]["SpansBackfillIcebergTableSource"];
 export type SchemaSpansSynchronousSink =
@@ -11797,6 +11839,8 @@ export type SchemaTemplateSqlOperation =
   components["schemas"]["TemplateSqlOperation"];
 export type SchemaTemplateTraceSamplerException =
   components["schemas"]["TemplateTraceSamplerException"];
+export type SchemaTemplateTraceSink =
+  components["schemas"]["TemplateTraceSink"];
 export type SchemaTimeGranularity = components["schemas"]["TimeGranularity"];
 export type SchemaTimePartitionTransform =
   components["schemas"]["TimePartitionTransform"];
@@ -11811,7 +11855,11 @@ export type SchemaTraceHeadSamplingRule =
 export type SchemaTraceIdLogsBackfillAction =
   components["schemas"]["TraceIdLogsBackfillAction"];
 export type SchemaTraceReducer = components["schemas"]["TraceReducer"];
+export type SchemaTraceReducerTemplateInput =
+  components["schemas"]["TraceReducerTemplateInput"];
 export type SchemaTraceSampler = components["schemas"]["TraceSampler"];
+export type SchemaTraceSqlOperations =
+  components["schemas"]["TraceSqlOperations"];
 export type SchemaTracesIcebergTableSource =
   components["schemas"]["TracesIcebergTableSource"];
 export type SchemaTranscriptMessage =
@@ -19939,6 +19987,9 @@ export enum SpanSpanKind {
 export enum SpanDedupIcebergTableSinkType {
   spans_dedup_iceberg_table_sink = "spans-dedup-iceberg-table-sink",
 }
+export enum SpanTaggerType {
+  span_tagger = "span-tagger",
+}
 export enum SpansBackfillIcebergTableSourceType {
   spans_backfill_iceberg_table_source = "spans-backfill-iceberg-table-source",
 }
@@ -20207,6 +20258,7 @@ export const OPERATION_TYPES = new Set<string>([
   'logs-filter',
   'pattern-matcher',
   'rule-engine',
+  'span-tagger',
   'sql-operation',
   'template-operation',
   'trace-reducer',
