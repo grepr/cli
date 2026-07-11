@@ -2980,7 +2980,7 @@ export interface components {
     /** @description One aggregation function declaration. */
     AggregationDecl: {
       /**
-       * @description Function arguments. Heterogeneous; validated at pipeline construction.
+       * @description Function arguments. Heterogeneous; validated at pipeline construction. PERCENTILE accepts [rank], [rank, relativeAccuracy], or [rank, relativeAccuracy, maxNumBins].
        * @default []
        */
       args?: Record<string, never>[];
