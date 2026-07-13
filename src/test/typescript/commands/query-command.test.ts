@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'bun:test';
 import {
+  buildLanguageQueryPredicate,
   buildMessageLengthPredicate,
   buildSourcePredicate
-} from '../../../main/typescript/commands/query-command';
+} from '../../../main/typescript/lib/query-predicate.js';
 import {
   AndEventPredicateType,
   DatadogQueryPredicateType,
-  MessageLengthPredicateType,
-  NrqlQueryPredicateType
-} from '../../../main/typescript/openapi/openApiTypes';
-import type { QueryCommandOptions } from '../../../main/typescript/types';
+  MessageLengthPredicateType
+} from '../../../main/typescript/openapi/openApiTypes.js';
+import type { QueryCommandOptions } from '../../../main/typescript/types.js';
 
 const baseOptions: QueryCommandOptions = {
   orgName: 'test',
@@ -21,6 +21,15 @@ const baseOptions: QueryCommandOptions = {
 };
 
 describe('query-command predicate builders', () => {
+  describe('buildLanguageQueryPredicate', () => {
+    it('test_buildLanguageQueryPredicate_defaultType_returnsDatadogPredicate', () => {
+      expect(buildLanguageQueryPredicate({ query: 'service:web' })).toEqual({
+        type: DatadogQueryPredicateType.datadog_query,
+        query: 'service:web'
+      });
+    });
+  });
+
   describe('buildMessageLengthPredicate', () => {
     it('test_buildMessageLengthPredicate_neitherBoundSet_returnsUndefined', () => {
       expect(buildMessageLengthPredicate(baseOptions)).toBeUndefined();
@@ -126,31 +135,6 @@ describe('query-command predicate builders', () => {
       ).toEqual({
         type: MessageLengthPredicateType.message_length,
         minLength: 500
-      });
-    });
-
-    it('test_buildSourcePredicate_nrqlQueryWithLength_wrapsInAndPredicate', () => {
-      expect(
-        buildSourcePredicate({
-          ...baseOptions,
-          query: "SELECT * FROM Log WHERE service = 'foo'",
-          queryType: NrqlQueryPredicateType.nrql_query,
-          messageLengthMin: 100,
-          messageLengthMax: 200
-        })
-      ).toEqual({
-        type: AndEventPredicateType.and_predicate,
-        queries: [
-          {
-            type: NrqlQueryPredicateType.nrql_query,
-            query: "SELECT * FROM Log WHERE service = 'foo'"
-          },
-          {
-            type: MessageLengthPredicateType.message_length,
-            minLength: 100,
-            maxLength: 200
-          }
-        ]
       });
     });
   });

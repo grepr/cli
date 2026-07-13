@@ -20,7 +20,8 @@ import { GrokParseCommand } from './commands/grok-command.js';
 import { DocsSearchCommand } from './commands/docs-command.js';
 import { DocsGetCommand } from './commands/docs-get-command.js';
 import { SqlValidateCommand } from './commands/sql-validate-command.js';
-import { CliOptions } from './types.js';
+import { BackfillCommand } from './commands/backfill-command.js';
+import type { CliOptions } from './types.js';
 import { parseAuthMethod, parseEnvUrl, parseQueryEngine, parseUrl } from './lib/option-parsers.js';
 
 /**
@@ -187,6 +188,9 @@ export class GreprQueryCLI {
   private registerCommands(): void {
     // Register streaming commands
     this.commandRegistry.register(new QueryCommand());
+
+    // Register public write workflow commands
+    this.commandRegistry.register(new BackfillCommand());
 
     // Register configuration commands
     this.commandRegistry.register(new ConfigCommand());
