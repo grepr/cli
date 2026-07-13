@@ -79,11 +79,6 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
-      # The CLI toolchain migrated to bun (build script, test runner via
-      # scripts/run-tests.sh, and the distribution build in
-      # scripts/create-distributions.sh all shell out to `bun`). Node is still
-      # required below for `npm publish` (Trusted Publishing / provenance).
-      # Pinned to the version that produced bun.lock for reproducible installs.
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
