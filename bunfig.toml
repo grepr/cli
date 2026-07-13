@@ -1,0 +1,19 @@
+# Bun configuration for the Grepr CLI.
+# See: https://bun.sh/docs/runtime/bunfig
+#
+# NOTE: bun is used for internal development, testing, and CI only. The
+# published npm package and the customer source/binary distributions build
+# with plain `npm`/`node` (see scripts/create-distributions.sh) so end users
+# are never required to install bun.
+
+[install]
+exact = true
+cache = true
+registry = "https://registry.npmjs.org"
+
+[test]
+# Bridge Vitest's `vi` API onto bun:test (vi.mocked, vi.setSystemTime, async
+# timer advancers). See src/test/typescript/bun-setup.ts.
+preload = ["./src/test/typescript/bun-setup.ts"]
+# Tests live only under src/test; the bun-setup preload is not itself a test.
+root = "./src/test"

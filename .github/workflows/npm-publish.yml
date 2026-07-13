@@ -79,16 +79,21 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
       - name: Upgrade npm for Trusted Publishing (>= 11.5.1)
         run: npm install -g npm@11
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Build CLI
         run: |
           echo "Building CLI..."
-          yarn build
+          bun run build
 
           # Verify build output
           ls -la build/dist/
@@ -96,12 +101,12 @@ jobs:
           node build/dist/grepr.js --version
 
       - name: Run tests
-        run: yarn test
+        run: bun run test
 
       - name: Create distributions
         run: |
           echo "Creating distribution packages..."
-          yarn dist
+          bun run dist
 
           echo "Created distributions:"
           ls -la build/customer-distributions/
