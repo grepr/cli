@@ -11,12 +11,12 @@ import {
   // name; GreprLlmPromptResultsSourceSortOrder is the surviving member of
   // the dedupe equivalence class. The runtime values are the canonical
   // ASCENDING / DESCENDING / UNSORTED.
-  type GreprLlmPromptResultsSourceSortOrder,
-  type DatadogQueryPredicateType,
-  type NewRelicQueryPredicateType,
-  type SchemaReadDatadog, type SchemaReadDataWarehouse, type SchemaReadS3DataWarehouse,
-  type SchemaReadNewRelic, type SchemaReadOtlp, type SchemaReadSplunk, type SchemaReadSumo,
-  type SchemaOperation,
+  GreprLlmPromptResultsSourceSortOrder,
+  DatadogQueryPredicateType,
+  NewRelicQueryPredicateType,
+  NrqlQueryPredicateType,
+  SchemaReadDatadog, SchemaReadDataWarehouse, SchemaReadS3DataWarehouse,
+  SchemaReadNewRelic, SchemaReadOtlp, SchemaReadSplunk, SchemaReadSumo, SchemaOperation,
 } from './openapi/openApiTypes.js';
 
 export type AuthMethod = 'oauth' | 'client-credentials';
@@ -72,7 +72,7 @@ export interface QueryCommandOptions extends FormattableCommandOptions {
   datasetId?: string;
   datasetName?: string;
   sortOrder?: GreprLlmPromptResultsSourceSortOrder;
-  queryType?: DatadogQueryPredicateType.datadog_query | NewRelicQueryPredicateType.newrelic_query;
+  queryType?: DatadogQueryPredicateType.datadog_query | NewRelicQueryPredicateType.newrelic_query | NrqlQueryPredicateType.nrql_query;
   query?: string;
   start?: string;
   end?: string;
@@ -180,7 +180,7 @@ export interface CommandOption {
   parser?: (value: string) => string | boolean | number;
 }
 
-// Re-export job enum values for convenience.
+// Re-export only enum types for convenience
 export {
   PathsV1JobsGetParametersQueryExecution as JobExecution,
   PathsV1JobsGetParametersQueryProcessing as JobProcessing,

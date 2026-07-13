@@ -66,11 +66,6 @@ Query data from datasets with filters and time ranges.
 - Execute queries on the data lake
 - Command: `query`
 
-### Backfill Logs → `grepr:backfill-logs`
-Replay raw data-lake logs to vendor destinations (Datadog, Splunk, New Relic, Sumo Logic, OTLP).
-- Backfill, resend, or re-deliver logs for a time range/query
-- Command: `backfill`
-
 ### Build Grok Patterns → `grepr:build-grok`
 Build and test Grok patterns for log parsing.
 - Iterative pattern development workflow

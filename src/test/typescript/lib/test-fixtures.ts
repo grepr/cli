@@ -6,6 +6,7 @@
  */
 
 import {
+  SchemaOperation,
   DatadogLogAgentSourceType,
   DatadogLogSinkType,
   SplunkLogSinkType,
@@ -15,30 +16,19 @@ import {
   LogsSynchronousSinkType,
   LogsBranchType,
   DatadogQueryPredicateType,
-  ReadDatadogType,
-  ReadNewRelicType,
-  ReadOtlpType,
-  ReadSplunkType,
-  ReadSumoType,
   TagActionModification,
   TagActionType,
   LogTransformActionType,
+  SchemaLogsIcebergTableSource,
+  SchemaDatadogQueryPredicate,
+  SchemaReadJob,
+  SchemaUpdateJob,
+  SchemaLogReducerTemplateInput,
   LogAttributesRemapperType,
   LogReducerType,
   JsonLogProcessorType,
   TemplateOperationType,
-  PathsV1JobsGetParametersQueryState,
-  type SchemaOperation,
-  type SchemaLogsIcebergTableSource,
-  type SchemaDatadogQueryPredicate,
-  type SchemaReadJob,
-  type SchemaUpdateJob,
-  type SchemaLogReducerTemplateInput,
-  type SchemaReadDatadog,
-  type SchemaReadNewRelic,
-  type SchemaReadOtlp,
-  type SchemaReadSplunk,
-  type SchemaReadSumo
+  PathsV1JobsGetParametersQueryState
 } from '@/openapi/openApiTypes.js';
 import { DEFAULT_LIMIT } from '@/types.js';
 
@@ -126,105 +116,6 @@ export function createFilter(name: string, query: string): SchemaOperation {
       query
     }
   };
-}
-
-export function recentBackfillRange(): { start: string; end: string } {
-  const end = new Date();
-  const start = new Date(end.getTime() - 60 * 60 * 1000);
-  return {
-    start: start.toISOString(),
-    end: end.toISOString()
-  };
-}
-
-interface IntegrationFixtureOptions<T> {
-  name?: string;
-  teamIds?: string[];
-  payload?: Partial<T>;
-}
-
-export function createDatadogIntegration(
-  id = 'dd_1',
-  options: IntegrationFixtureOptions<NonNullable<SchemaReadDatadog['payload']>> = {}
-): SchemaReadDatadog {
-  return {
-    id,
-    type: ReadDatadogType.datadog,
-    name: options.name ?? id,
-    ...(options.teamIds ? { teamIds: options.teamIds } : {}),
-    payload: {
-      additionalTags: [],
-      filterQuery: '',
-      site: 'datadoghq.com',
-      ...options.payload
-    }
-  } as SchemaReadDatadog;
-}
-
-export function createSplunkIntegration(
-  id = 'splunk_1',
-  options: IntegrationFixtureOptions<NonNullable<SchemaReadSplunk['payload']>> = {}
-): SchemaReadSplunk {
-  return {
-    id,
-    type: ReadSplunkType.splunk,
-    name: options.name ?? id,
-    ...(options.teamIds ? { teamIds: options.teamIds } : {}),
-    payload: {
-      additionalTags: [],
-      filterQuery: '',
-      splunkHost: 'splunk.example.com',
-      secure: true,
-      ...options.payload
-    }
-  } as SchemaReadSplunk;
-}
-
-export function createNewRelicIntegration(
-  id = 'nr_1',
-  options: IntegrationFixtureOptions<NonNullable<SchemaReadNewRelic['payload']>> = {}
-): SchemaReadNewRelic {
-  return {
-    id,
-    type: ReadNewRelicType.newrelic,
-    name: options.name ?? id,
-    ...(options.teamIds ? { teamIds: options.teamIds } : {}),
-    payload: {
-      accountId: '1234567',
-      site: 'newrelic.com',
-      ...options.payload
-    }
-  } as SchemaReadNewRelic;
-}
-
-export function createSumoIntegration(
-  id = 'sumo_1',
-  options: IntegrationFixtureOptions<NonNullable<SchemaReadSumo['payload']>> = {}
-): SchemaReadSumo {
-  return {
-    id,
-    type: ReadSumoType.sumo,
-    name: options.name ?? id,
-    ...(options.teamIds ? { teamIds: options.teamIds } : {}),
-    payload: { ...options.payload }
-  } as SchemaReadSumo;
-}
-
-export function createOtlpIntegration(
-  id = 'otlp_1',
-  options: IntegrationFixtureOptions<NonNullable<SchemaReadOtlp['payload']>> = {}
-): SchemaReadOtlp {
-  return {
-    id,
-    type: ReadOtlpType.otlp,
-    name: options.name ?? id,
-    ...(options.teamIds ? { teamIds: options.teamIds } : {}),
-    payload: {
-      endpoint: 'https://otlp.example.com:4318',
-      logsEndpoint: 'https://logs.example.com:4318/v1/logs',
-      ...options.payload
-    }
-  } as SchemaReadOtlp;
 }
 
 /**

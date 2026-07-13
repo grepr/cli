@@ -97,12 +97,6 @@ describe('GreprQueryCLI Configuration Tests', () => {
     processExitSpy.mockRestore();
   });
 
-  it('test_setupCLI_commandRegistry_shouldRegisterTopLevelBackfillCommand', () => {
-    const program = new GreprQueryCLI().setupCLI();
-
-    expect(program.commands.map(command => command.name())).toContain('backfill');
-  });
-
   // Test the mergeConfiguration method indirectly by testing CLI option parsing
   describe('Boolean Option Defaults', () => {
     it('should default authCache to true when --no-auth-cache is not specified', () => {

@@ -8,40 +8,6 @@ import duration from 'dayjs/plugin/duration.js';
 // Enable duration plugin for ISO 8601 duration parsing
 dayjs.extend(duration);
 
-const ISO_TIMESTAMP_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})?$/;
-
-function parseStrictIsoTimestamp(value: string): Date | undefined {
-  const match = ISO_TIMESTAMP_PATTERN.exec(value);
-  if (!match || !match[8]) {
-    return undefined;
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime()) || !isValidIsoTimestampParts(match)) {
-    return undefined;
-  }
-  return date;
-}
-
-function isValidIsoTimestampParts(match: RegExpExecArray): boolean {
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const hour = Number(match[4]);
-  const minute = Number(match[5]);
-  const second = Number(match[6]);
-  const millisecond = match[7] ? Number(match[7].slice(0, 3).padEnd(3, '0')) : 0;
-  const timestamp = new Date(Date.UTC(year, month - 1, day, hour, minute, second, millisecond));
-
-  return timestamp.getUTCFullYear() === year &&
-    timestamp.getUTCMonth() === month - 1 &&
-    timestamp.getUTCDate() === day &&
-    timestamp.getUTCHours() === hour &&
-    timestamp.getUTCMinutes() === minute &&
-    timestamp.getUTCSeconds() === second &&
-    timestamp.getUTCMilliseconds() === millisecond;
-}
-
 /**
  * Parse ISO 8601 duration format to milliseconds using dayjs
  * Supports full ISO 8601 duration formats:
@@ -127,63 +93,4 @@ export function parseSinceOption(since: string): string {
   }
 
   return new Date(parsed).toISOString();
-}
-
-export interface TimestampRangeOptions {
-  start?: string;
-  end?: string;
-}
-
-export interface RequiredTimestampRange {
-  start: string;
-  end: string;
-  startDate: Date;
-  endDate: Date;
-}
-
-/**
- * Parse a required timestamp using strict ISO 8601 syntax with an explicit
- * timezone and includes the flag name in validation errors.
- */
-export function parseIsoTimestamp(value: string, flagName: string): Date {
-  const date = parseStrictIsoTimestamp(value);
-  if (!date) {
-    throw new Error(`${flagName} must be a valid ISO 8601 timestamp`);
-  }
-  return date;
-}
-
-/**
- * Require both endpoints of a backfill/query time range and return the parsed
- * dates after enforcing start <= end.
- */
-export function requireTimestampRange(options: TimestampRangeOptions): RequiredTimestampRange {
-  if (!options.start || !options.end) {
-    throw new Error('--start and --end are required');
-  }
-
-  const startDate = parseIsoTimestamp(options.start, '--start');
-  const endDate = parseIsoTimestamp(options.end, '--end');
-  if (startDate.getTime() > endDate.getTime()) {
-    throw new Error('--start must be before or equal to --end');
-  }
-
-  return {
-    start: options.start,
-    end: options.end,
-    startDate,
-    endDate
-  };
-}
-
-/**
- * Validate whichever endpoints are present on an optional time range without
- * requiring callers that only support one bound to synthesize the other.
- */
-export function validateOptionalTimestampRange(options: TimestampRangeOptions): void {
-  const startDate = options.start ? parseIsoTimestamp(options.start, '--start') : undefined;
-  const endDate = options.end ? parseIsoTimestamp(options.end, '--end') : undefined;
-  if (startDate && endDate && startDate.getTime() > endDate.getTime()) {
-    throw new Error('--start must be before or equal to --end');
-  }
 }
