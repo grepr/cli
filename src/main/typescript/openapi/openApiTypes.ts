@@ -48,6 +48,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/agents/skills": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List available agent skills
+     * @description Returns the catalog of skills that can be enabled on an agent.
+     */
+    get: operations["skills"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/agents/tools": {
     parameters: {
       query?: never;
@@ -8926,6 +8946,11 @@ export interface components {
        */
       type: SimpleType;
     };
+    SkillDescriptor: {
+      description?: string;
+      name?: string;
+      tools?: components["schemas"]["ToolDescriptor"][];
+    };
     SocialUserInfo: {
       idToken: string;
       /**
@@ -11826,6 +11851,7 @@ export type SchemaSeverityNode = components["schemas"]["SeverityNode"];
 export type SchemaShardingConfig = components["schemas"]["ShardingConfig"];
 export type SchemaSignupRequest = components["schemas"]["SignupRequest"];
 export type SchemaSimple = components["schemas"]["Simple"];
+export type SchemaSkillDescriptor = components["schemas"]["SkillDescriptor"];
 export type SchemaSocialUserInfo = components["schemas"]["SocialUserInfo"];
 export type SchemaSpan = components["schemas"]["Span"];
 export type SchemaSpanDedupIcebergTableSink =
@@ -12085,6 +12111,33 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  skills: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Skills retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SkillDescriptor"][];
+        };
       };
       /** @description Unauthorized */
       401: {
