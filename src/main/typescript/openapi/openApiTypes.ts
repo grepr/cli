@@ -3199,6 +3199,39 @@ export interface components {
        */
       type: AttributeKeyTermNodeType;
     };
+    /**
+     * @description Masks to apply to attribute values. Each entry names an attribute path (as a list of segments) and the masks to apply to the value at that path. Only string values at the exact path are masked; missing or non-string attributes are skipped. Paths must be unique. The same matching rules as messageMasks apply.
+     * @example [
+     *       {
+     *         "masks": {
+     *           "email": "\\S+@\\S+"
+     *         },
+     *         "path": [
+     *           "user",
+     *           "contact"
+     *         ]
+     *       }
+     *     ]
+     */
+    AttributeMask: {
+      /**
+       * @description Masks to apply to the value at this path, as a map of label to regular expression. The same matching rules as messageMasks apply.
+       * @example {
+       *       "email": "\\S+@\\S+"
+       *     }
+       */
+      masks: {
+        [key: string]: string;
+      };
+      /**
+       * @description Attribute path to mask, as a list of segments.
+       * @example [
+       *       "user",
+       *       "contact"
+       *     ]
+       */
+      path: string[];
+    };
     AttributeNode: {
       /**
        * @description The attribute name
@@ -6406,6 +6439,41 @@ export interface components {
       pattern: string;
       replacement: string;
     };
+    MaskingOperator: {
+      /**
+       * @description Masks to apply to attribute values. Each entry names an attribute path (as a list of segments) and the masks to apply to the value at that path. Only string values at the exact path are masked; missing or non-string attributes are skipped. Paths must be unique. The same matching rules as messageMasks apply.
+       * @default []
+       * @example [
+       *       {
+       *         "masks": {
+       *           "email": "\\S+@\\S+"
+       *         },
+       *         "path": [
+       *           "user",
+       *           "contact"
+       *         ]
+       *       }
+       *     ]
+       */
+      attributeMasks: components["schemas"]["AttributeMask"][];
+      /**
+       * @description Masks to apply to the log message, as a map of label to regular expression. Each match is replaced with the label in square brackets, e.g. a match of the regex labeled "email" becomes "[email]". Labels may be up to 64 characters. Overlapping matches resolve to the leftmost match first, then the longest; declaration order breaks remaining ties, so declare more specific patterns first. Regexes must be compatible with Hyperscan syntax (no lookbehind or backreferences).
+       * @default {}
+       * @example {
+       *       "email": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+       *     }
+       */
+      messageMasks: {
+        [key: string]: string;
+      };
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Masks sensitive substrings in log events by replacing regex matches with decorated labels. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: MaskingOperatorType;
+    };
     /** @description Masking rule that scrubs PII from log messages using regex patterns. */
     MaskingRuleConfig: Omit<
       components["schemas"]["PatternRuleConfig"],
@@ -7055,6 +7123,7 @@ export interface components {
       | components["schemas"]["LogAttributesRemapper"]
       | components["schemas"]["LogReducer"]
       | components["schemas"]["LogTransformAction"]
+      | components["schemas"]["MaskingOperator"]
       | components["schemas"]["LlmPrompt"]
       | components["schemas"]["PatternMatcher"]
       | components["schemas"]["LogsIcebergTableSink"]
@@ -11330,6 +11399,7 @@ export type SchemaAttributeHeaderMapping =
   components["schemas"]["AttributeHeaderMapping"];
 export type SchemaAttributeKeyTermNode =
   components["schemas"]["AttributeKeyTermNode"];
+export type SchemaAttributeMask = components["schemas"]["AttributeMask"];
 export type SchemaAttributeNode = components["schemas"]["AttributeNode"];
 export type SchemaAttributePrefixNode =
   components["schemas"]["AttributePrefixNode"];
@@ -11588,6 +11658,7 @@ export type SchemaLogsSynchronousSink =
 export type SchemaLogsValuesSource = components["schemas"]["LogsValuesSource"];
 export type SchemaManifest = components["schemas"]["Manifest"];
 export type SchemaMaskEntry = components["schemas"]["MaskEntry"];
+export type SchemaMaskingOperator = components["schemas"]["MaskingOperator"];
 export type SchemaMaskingRuleConfig =
   components["schemas"]["MaskingRuleConfig"];
 export type SchemaMatrixData = components["schemas"]["MatrixData"];
@@ -19750,6 +19821,9 @@ export enum LogsSynchronousSinkType {
 export enum LogsValuesSourceType {
   logs_values_source = "logs-values-source",
 }
+export enum MaskingOperatorType {
+  masking_operator = "masking-operator",
+}
 export enum MaskingRuleConfigType {
   masking = "masking",
 }
@@ -20256,6 +20330,7 @@ export const OPERATION_TYPES = new Set<string>([
   'logs-branch',
   'logs-event-sampler',
   'logs-filter',
+  'masking-operator',
   'pattern-matcher',
   'rule-engine',
   'span-tagger',

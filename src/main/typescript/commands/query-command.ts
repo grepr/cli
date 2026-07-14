@@ -1,28 +1,30 @@
-import { Command } from 'commander'
+import type { Command } from 'commander'
 import { BaseCommand } from './base-command.js'
-import { ICommand } from '../lib/command-registry.js'
+import type { ICommand } from '../lib/command-registry.js'
 import { parseIntArg } from '../lib/option-parsers.js'
+import { validateOptionalTimestampRange } from '../lib/time-utils.js'
 import {
-  CommandOption,
-  MergeConfiguration,
   JobExecution,
   JobProcessing,
-  QueryCommandOptions
+  type CommandOption,
+  type MergeConfiguration,
+  type QueryCommandOptions
 } from '../types.js'
 import {
-  AndEventPredicateType,
-  DatadogQueryPredicateType,
   GreprLlmPromptResultsSourceSortOrder,
   GreprRawLogsSourceType,
   LogsIcebergTableSourceType,
   LogsSynchronousSinkType,
-  MessageLengthPredicateType,
-  SchemaEventPredicate,
-  SchemaGreprRawLogsSource,
-  SchemaLogsIcebergTableSource,
-  SchemaCreateJob,
-  SchemaMessageLengthPredicate
+  type SchemaGreprRawLogsSource,
+  type SchemaLogsIcebergTableSource,
+  type SchemaCreateJob
 } from '../openapi/openApiTypes.js'
+import { buildSourcePredicate } from '../lib/query-predicate.js'
+export {
+  buildLanguageQueryPredicate,
+  buildMessageLengthPredicate,
+  buildSourcePredicate
+} from '../lib/query-predicate.js'
 
 export class QueryCommand extends BaseCommand<QueryCommandOptions> implements ICommand {
 
@@ -162,6 +164,8 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
       console.error('Error: Cannot specify both --dataset-id and --dataset-name');
       process.exit(1);
     }
+
+    validateOptionalTimestampRange(options);
   }
 
   private async resolveDatasetId(options: QueryCommandOptions): Promise<string> {
@@ -233,56 +237,4 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
       throw new Error(`Failed to create job definition: ${(error as Error).message}`);
     }
   }
-}
-
-/**
- * Build a {@link SchemaMessageLengthPredicate} from optional bounds, or
- * undefined when neither bound is set. Matches the frontend
- * buildMessageLengthPredicate helper.
- */
-export function buildMessageLengthPredicate(
-  options: QueryCommandOptions
-): SchemaMessageLengthPredicate | undefined {
-  const min = options.messageLengthMin;
-  const max = options.messageLengthMax;
-  const minIsNumber = typeof min === 'number' && !Number.isNaN(min);
-  const maxIsNumber = typeof max === 'number' && !Number.isNaN(max);
-  if (!minIsNumber && !maxIsNumber) {
-    return undefined;
-  }
-  const predicate: SchemaMessageLengthPredicate = {
-    type: MessageLengthPredicateType.message_length
-  };
-  if (minIsNumber) {
-    predicate.minLength = min;
-  }
-  if (maxIsNumber) {
-    predicate.maxLength = max;
-  }
-  return predicate;
-}
-
-/**
- * Build the source-vertex query predicate by combining the language query
- * with an optional message-length filter. When length is set the result is
- * an AndEventPredicate; otherwise the bare language predicate is returned.
- * An empty language query plus a length filter collapses to the length
- * predicate alone, matching the frontend combineWithAnd behavior.
- */
-export function buildSourcePredicate(options: QueryCommandOptions): SchemaEventPredicate {
-  const languagePredicate: SchemaEventPredicate = {
-    type: options.queryType || DatadogQueryPredicateType.datadog_query,
-    query: options.query || ''
-  };
-  const lengthPredicate = buildMessageLengthPredicate(options);
-  if (!lengthPredicate) {
-    return languagePredicate;
-  }
-  if ((options.query || '').trim() === '') {
-    return lengthPredicate;
-  }
-  return {
-    type: AndEventPredicateType.and_predicate,
-    queries: [languagePredicate, lengthPredicate]
-  };
 }

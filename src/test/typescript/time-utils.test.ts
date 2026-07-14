@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'bun:test'
-import { parseDurationToMilliseconds, parseSinceOption } from '../../main/typescript/lib/time-utils.js'
+import {
+  parseDurationToMilliseconds,
+  parseIsoTimestamp,
+  parseSinceOption,
+  requireTimestampRange,
+  validateOptionalTimestampRange,
+} from '../../main/typescript/lib/time-utils.js'
 
 describe('parseDurationToMilliseconds', () => {
   it('should parse hours duration (PT5H)', () => {
@@ -118,5 +124,98 @@ describe('parseSinceOption', () => {
   it('should throw error for invalid time format', () => {
     expect(() => parseSinceOption('not-a-date')).toThrow('Invalid time format: not-a-date. Use ISO 8601 timestamp or duration like PT5H, P1D')
     expect(() => parseSinceOption('2023-13-45')).toThrow('Invalid time format: 2023-13-45. Use ISO 8601 timestamp or duration like PT5H, P1D')
+  })
+})
+
+describe('parseIsoTimestamp', () => {
+  it('should parse a valid timestamp', () => {
+    const result = parseIsoTimestamp('2024-01-02T03:04:05.000Z', '--start')
+
+    expect(result.toISOString()).toBe('2024-01-02T03:04:05.000Z')
+  })
+
+  it('should parse valid leap day timestamps', () => {
+    const result = parseIsoTimestamp('2024-02-29T00:00:00Z', '--start')
+
+    expect(result.toISOString()).toBe('2024-02-29T00:00:00.000Z')
+  })
+
+  it('should parse timestamps with timezone offsets', () => {
+    const result = parseIsoTimestamp('2024-01-02T03:04:05-08:00', '--start')
+
+    expect(result.toISOString()).toBe('2024-01-02T11:04:05.000Z')
+  })
+
+  it('should include the flag name when timestamp parsing fails', () => {
+    expect(() => parseIsoTimestamp('not-a-date', '--end')).toThrow('--end must be a valid ISO 8601 timestamp')
+    expect(() => parseIsoTimestamp('1', '--start')).toThrow('--start must be a valid ISO 8601 timestamp')
+    expect(() => parseIsoTimestamp('2024-02-30T00:00:00Z', '--end')).toThrow('--end must be a valid ISO 8601 timestamp')
+    expect(() => parseIsoTimestamp('2024-01-02T03:04:05', '--start')).toThrow('--start must be a valid ISO 8601 timestamp')
+  })
+})
+
+describe('requireTimestampRange', () => {
+  it('should return parsed dates for a valid range', () => {
+    const result = requireTimestampRange({
+      start: '2024-01-02T03:04:05.000Z',
+      end: '2024-01-02T04:04:05.000Z',
+    })
+
+    expect(result.start).toBe('2024-01-02T03:04:05.000Z')
+    expect(result.end).toBe('2024-01-02T04:04:05.000Z')
+    expect(result.startDate.toISOString()).toBe('2024-01-02T03:04:05.000Z')
+    expect(result.endDate.toISOString()).toBe('2024-01-02T04:04:05.000Z')
+  })
+
+  it('should allow equal start and end timestamps', () => {
+    expect(() => requireTimestampRange({
+      start: '2024-01-02T03:04:05.000Z',
+      end: '2024-01-02T03:04:05.000Z',
+    })).not.toThrow()
+  })
+
+  it('should require both start and end timestamps', () => {
+    expect(() => requireTimestampRange({ start: '2024-01-02T03:04:05.000Z' })).toThrow('--start and --end are required')
+    expect(() => requireTimestampRange({ end: '2024-01-02T04:04:05.000Z' })).toThrow('--start and --end are required')
+  })
+
+  it('should reject ranges where start is after end', () => {
+    expect(() => requireTimestampRange({
+      start: '2024-01-02T04:04:05.000Z',
+      end: '2024-01-02T03:04:05.000Z',
+    })).toThrow('--start must be before or equal to --end')
+  })
+})
+
+describe('validateOptionalTimestampRange', () => {
+  it('should allow missing timestamps', () => {
+    expect(() => validateOptionalTimestampRange({})).not.toThrow()
+    expect(() => validateOptionalTimestampRange({ start: '2024-01-02T03:04:05.000Z' })).not.toThrow()
+    expect(() => validateOptionalTimestampRange({ end: '2024-01-02T04:04:05.000Z' })).not.toThrow()
+  })
+
+  it('should allow equal start and end timestamps', () => {
+    expect(() => validateOptionalTimestampRange({
+      start: '2024-01-02T03:04:05.000Z',
+      end: '2024-01-02T03:04:05.000Z',
+    })).not.toThrow()
+  })
+
+  it('should reject invalid timestamps', () => {
+    expect(() => validateOptionalTimestampRange({
+      start: 'not-a-date',
+      end: '2024-01-02T04:04:05.000Z',
+    })).toThrow('--start must be a valid ISO 8601 timestamp')
+    expect(() => validateOptionalTimestampRange({
+      start: '2024-01-02T03:04:05.000Z',
+      end: 'not-a-date',
+    })).toThrow('--end must be a valid ISO 8601 timestamp')
+  })
+
+  it('should reject ranges where start is after end', () => {
+    expect(() => validateOptionalTimestampRange({
+      start: '2024-01-02T04:04:05.000Z',
+      end: '2024-01-02T03:04:05.000Z',
+    })).toThrow('--start must be before or equal to --end')
   })
 })
