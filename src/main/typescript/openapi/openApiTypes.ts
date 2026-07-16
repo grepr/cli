@@ -3479,6 +3479,7 @@ export interface components {
       strategy: components["schemas"]["AttributesMergeStrategy"];
     };
     AuthConfig: {
+      adminPortalClientId?: string;
       appClientId: string;
       authServerUrl: string;
       provider: string;
