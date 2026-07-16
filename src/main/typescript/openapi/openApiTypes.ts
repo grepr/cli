@@ -7472,6 +7472,12 @@ export interface components {
     };
     ParseQueryRequest: {
       query?: components["schemas"]["EventPredicate"];
+      /**
+       * @description Which runtime representation to validate the query against. Defaults to PARSED_QUERY_NODE (returns the parsed tree for the in-browser matcher). Use EVENT_PREDICATE to validate against the Java predicate the Flink pipeline runs; no parsed tree is returned in that case.
+       * @default PARSED_QUERY_NODE
+       * @enum {string}
+       */
+      validationTarget?: ParseQueryRequestValidationTarget;
     };
     ParseQueryResponse: {
       /** @description The error message if there is an error */
@@ -20347,6 +20353,10 @@ export enum OtlpTraceAgentSourceType {
 }
 export enum OtlpTraceSinkType {
   otlp_trace_sink = "otlp-trace-sink",
+}
+export enum ParseQueryRequestValidationTarget {
+  PARSED_QUERY_NODE = "PARSED_QUERY_NODE",
+  EVENT_PREDICATE = "EVENT_PREDICATE",
 }
 export enum PassthroughNodeKind {
   passthrough_node = "passthrough-node",
