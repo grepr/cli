@@ -21,6 +21,7 @@ import {
   SchemaItemsCollectionReadS3DataWarehouse,
   SchemaItemsCollectionReadSplunk,
   SchemaItemsCollectionReadSumo,
+  SchemaItemsCollectionTemplate,
   SchemaReadDatadog,
   SchemaReadDataWarehouse,
   SchemaReadJob,
@@ -30,6 +31,7 @@ import {
   SchemaReadS3DataWarehouse,
   SchemaReadSplunk,
   SchemaReadSumo,
+  SchemaTemplate,
   SchemaUpdateJob
 } from '@/openapi/openApiTypes'
 import { GreprAuth, ClientCredentialsAuth } from './auth.js'
@@ -175,6 +177,32 @@ export class GreprApiClient {
     }
 
     return data;
+  }
+
+  /** Fetches the exact template version referenced by a template operation. */
+  async getTemplate(id: string, version: number): Promise<SchemaTemplate> {
+    const { data, error } = await this.client.GET('/v1/templates/{id}', {
+      params: {
+        path: { id },
+        query: { version }
+      }
+    });
+
+    if (error) {
+      throw new Error(`Failed to get template ${id} version ${version}: ${JSON.stringify(error)}`);
+    }
+
+    // The API returns an ItemsCollection even though its generated response type is SchemaTemplate.
+    const response: SchemaTemplate | SchemaItemsCollectionTemplate | undefined = data;
+    if (response == null || !('items' in response) || !Array.isArray(response.items)) {
+      throw new Error(`Template ${id} version ${version} returned an invalid response`);
+    }
+
+    const template = response.items[0];
+    if (!template) {
+      throw new Error(`Template ${id} version ${version} not found`);
+    }
+    return template;
   }
 
   async createAsyncJob(job: SchemaCreateJob): Promise<SchemaReadJob | undefined> {

@@ -36,6 +36,64 @@ vi.mock('../../../main/typescript/lib/auth.js', () => ({
 const { GreprApiClient } = await import('../../../main/typescript/lib/grepr-api-client.js');
 import type { ApiClientConfig } from '../../../main/typescript/types.js';
 
+const API_CLIENT_CONFIG: ApiClientConfig = {
+  orgName: 'test-org',
+  apiBaseUrl: 'https://test.app.grepr.ai/api',
+  authBaseUrl: 'https://test.app.grepr.ai/auth',
+  authMethod: 'client-credentials',
+  clientId: 'test-client-id',
+  clientSecret: 'test-client-secret',
+  debug: false,
+  authCache: true,
+  browser: true
+};
+
+describe('GreprApiClient getTemplate', () => {
+  it('requests the pinned version and unwraps the template collection', async () => {
+    vi.clearAllMocks();
+    const client = new GreprApiClient(API_CLIENT_CONFIG);
+    mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({
+      items: [{
+        id: '0qqtysycrgp1a',
+        name: 'log-reducer-job-graph-template',
+        template: '',
+        version: 16
+      }]
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    }));
+
+    const template = await client.getTemplate('0qqtysycrgp1a', 16);
+
+    expect(template).toMatchObject({
+      id: '0qqtysycrgp1a',
+      name: 'log-reducer-job-graph-template',
+      version: 16
+    });
+    const request = mockFetch.mock.calls[0]?.[0];
+    if (!(request instanceof Request)) {
+      throw new Error('Expected openapi-fetch to issue a Request');
+    }
+    expect(request.url).toBe(
+      'https://test.app.grepr.ai/api/v1/templates/0qqtysycrgp1a?version=16'
+    );
+  });
+
+  it('throws when the template version is not found', async () => {
+    vi.clearAllMocks();
+    const client = new GreprApiClient(API_CLIENT_CONFIG);
+    mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ items: [] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    }));
+
+    await expect(client.getTemplate('0qqtysycrgp1a', 16)).rejects.toThrow(
+      'Template 0qqtysycrgp1a version 16 not found'
+    );
+  });
+});
+
 describe('GreprApiClient sendHeartbeat', () => {
   let client: InstanceType<typeof GreprApiClient>;
   let config: ApiClientConfig;
@@ -43,17 +101,7 @@ describe('GreprApiClient sendHeartbeat', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    config = {
-      orgName: 'test-org',
-      apiBaseUrl: 'https://test.app.grepr.ai/api',
-      authBaseUrl: 'https://test.app.grepr.ai/auth',
-      authMethod: 'client-credentials',
-      clientId: 'test-client-id',
-      clientSecret: 'test-client-secret',
-      debug: false,
-      authCache: true,
-      browser: true
-    };
+    config = API_CLIENT_CONFIG;
 
     client = new GreprApiClient(config);
   });
@@ -169,17 +217,7 @@ describe('GreprApiClient submitSyncJob', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    client = new GreprApiClient({
-      orgName: 'test-org',
-      apiBaseUrl: 'https://test.app.grepr.ai/api',
-      authBaseUrl: 'https://test.app.grepr.ai/auth',
-      authMethod: 'client-credentials',
-      clientId: 'test-client-id',
-      clientSecret: 'test-client-secret',
-      debug: false,
-      authCache: true,
-      browser: true,
-    } as ApiClientConfig);
+    client = new GreprApiClient(API_CLIENT_CONFIG);
   });
 
   afterEach(() => {

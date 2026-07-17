@@ -19,7 +19,8 @@ import {
   TemplateOperationType,
   VendorLogEventDedupIcebergTableSinkType,
   type SchemaReadDataWarehouse,
-  type SchemaReadJob
+  type SchemaReadJob,
+  type SchemaTemplate
 } from '../../../main/typescript/openapi/openApiTypes.js';
 import type { BackfillApiClient } from '../../../main/typescript/lib/backfill.js';
 import {
@@ -32,6 +33,18 @@ import {
 } from './test-fixtures.js';
 
 const now = new Date('2026-07-07T12:00:00Z');
+const LOG_REDUCER_TEMPLATE = {
+  id: '0qqtysycrgp1a',
+  name: 'log-reducer-job-graph-template',
+  template: '',
+  version: 16
+} satisfies SchemaTemplate;
+const TRACE_REDUCER_TEMPLATE = {
+  id: '0trace1234567',
+  name: 'trace-reducer-job-graph-template',
+  template: '',
+  version: 1
+} satisfies SchemaTemplate;
 const baseOptions = {
   datasetId: 'ds_raw',
   sinkIds: ['dd_1'],
@@ -46,6 +59,7 @@ function dataWarehouse(id = 'warehouse_1'): SchemaReadDataWarehouse {
 function apiClient(overrides: Partial<BackfillApiClient> = {}): BackfillApiClient {
   return {
     getJob: vi.fn(),
+    getTemplate: vi.fn(async () => LOG_REDUCER_TEMPLATE),
     listDatasets: vi.fn(async () => []),
     getDataset: vi.fn(async id => ({ id, name: id } as never)),
     getIntegrationById: vi.fn(async id => datadog(id)),
@@ -400,8 +414,8 @@ describe('resolveBackfillInputs', () => {
         vertices: [{
           type: TemplateOperationType.template_operation,
           name: 'log_reducer_template',
-          templateId: 'log-reducer',
-          templateVersion: 1,
+          templateId: LOG_REDUCER_TEMPLATE.id,
+          templateVersion: LOG_REDUCER_TEMPLATE.version,
           templateInputs: {
             input: {
               datasetId: 'ds_default',
@@ -434,6 +448,10 @@ describe('resolveBackfillInputs', () => {
     expect(client.getDataset).toHaveBeenCalledWith('ds_default');
     expect(resolved.teamIds).toEqual(['team_template_source']);
     expect(resolved.sinks.map(sink => sink.id)).toEqual(['dd_1', 'splunk_1']);
+    expect(client.getTemplate).toHaveBeenCalledWith(
+      LOG_REDUCER_TEMPLATE.id,
+      LOG_REDUCER_TEMPLATE.version
+    );
   });
 
   it('test_resolveBackfillInputs_rejectsUnsupportedSink', async () => {
@@ -548,8 +566,8 @@ describe('resolveBackfillInputs', () => {
         vertices: [{
           type: TemplateOperationType.template_operation,
           name: 'traces_template',
-          templateId: 'traces',
-          templateVersion: 1,
+          templateId: TRACE_REDUCER_TEMPLATE.id,
+          templateVersion: TRACE_REDUCER_TEMPLATE.version,
           templateInputs: {
             input: {
               datasetId: 'ds_raw',
@@ -561,11 +579,15 @@ describe('resolveBackfillInputs', () => {
       }
     } as SchemaReadJob;
     const client = apiClient({
-      getJob: vi.fn(async () => sourceJob)
+      getJob: vi.fn(async () => sourceJob),
+      getTemplate: vi.fn(async () => TRACE_REDUCER_TEMPLATE)
     });
 
     await expect(resolveBackfillInputs({ jobId: 'job_1', ...recentBackfillRange() }, client))
-      .rejects.toThrow('Template traces is not supported for logs backfill');
+      .rejects.toThrow(
+        `Template ${TRACE_REDUCER_TEMPLATE.name} (${TRACE_REDUCER_TEMPLATE.id}) ` +
+        'is not supported for logs backfill'
+      );
   });
 
   it('test_resolveBackfillInputs_templateFallsBackToRawSinkConfigDatasetId', async () => {
@@ -577,8 +599,8 @@ describe('resolveBackfillInputs', () => {
         vertices: [{
           type: TemplateOperationType.template_operation,
           name: 'log_reducer_template',
-          templateId: 'log-reducer',
-          templateVersion: 1,
+          templateId: LOG_REDUCER_TEMPLATE.id,
+          templateVersion: LOG_REDUCER_TEMPLATE.version,
           templateInputs: {
             input: {
               rawSinkConfig: { datasetId: 'ds_fallback' },

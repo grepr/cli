@@ -22,7 +22,8 @@ import {
   type SchemaLogReducerTemplateInput,
   type SchemaLogsBackfillFlinkSource,
   type SchemaOperation,
-  type SchemaReadJob
+  type SchemaReadJob,
+  type SchemaTemplate
 } from '../openapi/openApiTypes.js';
 import type { IntegrationReadType } from '../types.js';
 import {
@@ -38,9 +39,7 @@ import { requireTimestampRange } from './time-utils.js';
 const DEFAULT_LIMIT = 10000;
 const HOUR_MS = 60 * 60 * 1000;
 const RAW_DATA_LAKE_SINK_NAME_PREFIX = 'raw_data_sink';
-const SUPPORTED_BACKFILL_TEMPLATES = {
-  LOG_REDUCER: 'log-reducer'
-} as const;
+const LOG_REDUCER_TEMPLATE_NAME = 'log-reducer-job-graph-template';
 const BACKFILL_TAGS = {
   type: 'backfill',
   backfillType: 'manual'
@@ -61,6 +60,7 @@ export interface BackfillCommandInputs {
 
 export interface BackfillApiClient {
   getJob(id: string, version?: number, resolved?: boolean): Promise<SchemaReadJob | undefined>;
+  getTemplate(id: string, version: number): Promise<SchemaTemplate>;
   listDatasets(): Promise<SchemaDatasetRead[] | undefined>;
   getDataset(id: string): Promise<SchemaDatasetRead | undefined>;
   getIntegrationById(id: string): Promise<IntegrationReadType | null>;
@@ -80,6 +80,11 @@ interface SkippedBackfillSink {
 
 interface BackfillResolvedInputs extends BackfillJobInputs {
   skippedSinks: SkippedBackfillSink[];
+}
+
+interface BackfillSourceConfig {
+  datasetId: string;
+  sinkOperations: SchemaOperation[];
 }
 
 /**
@@ -129,8 +134,9 @@ export async function resolveBackfillInputs(
 
   if (options.jobId) {
     const job = await resolveSourceJob(options, apiClient);
-    dataset = await resolveDataset(inferRawDatasetId(job), apiClient, 'id', job.teamIds);
-    sinkIds = inferSinkIds(job);
+    const source = await inferBackfillSource(job, apiClient);
+    dataset = await resolveDataset(source.datasetId, apiClient, 'id', job.teamIds);
+    sinkIds = inferSinkIds(source.sinkOperations);
     if (sinkIds.length === 0) {
       throw new Error(`No supported log sinks found in source job ${job.id ?? job.name}`);
     }
@@ -293,16 +299,7 @@ function validateResolvedSinks(sinks: IntegrationReadType[]): void {
   });
 }
 
-function inferRawDatasetId(job: SchemaReadJob): string {
-  const templateInput = getTemplateInput(job);
-  if (templateInput) {
-    const datasetId = templateInput.datasetId ?? templateInput.rawSinkConfig?.datasetId;
-    if (!datasetId) {
-      throw new Error(`Source job ${job.id ?? job.name} has no raw logs dataset`);
-    }
-    return datasetId;
-  }
-
+function adaptJobGraph(job: SchemaReadJob): BackfillSourceConfig {
   const rawSinks = job.jobGraph.vertices.filter(isRawDataLakeSink);
   if (rawSinks.length !== 1) {
     throw new Error(`Source job ${job.id ?? job.name} must have exactly one raw logs data lake sink`);
@@ -311,35 +308,54 @@ function inferRawDatasetId(job: SchemaReadJob): string {
   if (!datasetId) {
     throw new Error(`Source job ${job.id ?? job.name} raw data lake sink has no datasetId`);
   }
-  return datasetId;
+  return {
+    datasetId,
+    sinkOperations: job.jobGraph.vertices
+  };
 }
 
-function inferSinkIds(job: SchemaReadJob): string[] {
-  const templateInput = getTemplateInput(job);
-  const vertices = templateInput
-    ? (templateInput.sinks ?? []).map(templateSink => templateSink.sink).filter(isOperation)
-    : job.jobGraph.vertices;
-
-  return vertices
+function inferSinkIds(operations: SchemaOperation[]): string[] {
+  return operations
     .filter(isBackfillLogSink)
     .map(sink => sink.integrationId)
     .filter((id, index, ids) => ids.indexOf(id) === index);
 }
 
-function getTemplateInput(job: SchemaReadJob): SchemaLogReducerTemplateInput | undefined {
+async function inferBackfillSource(
+  job: SchemaReadJob,
+  apiClient: BackfillApiClient
+): Promise<BackfillSourceConfig> {
   const templateOperation = job.jobGraph.vertices.find(
     vertex => vertex.type === TemplateOperationType.template_operation
   );
   if (!templateOperation || templateOperation.type !== TemplateOperationType.template_operation) {
-    return undefined;
+    return adaptJobGraph(job);
   }
 
-  switch (templateOperation.templateId) {
-    case SUPPORTED_BACKFILL_TEMPLATES.LOG_REDUCER:
-      return templateOperation.templateInputs?.input as SchemaLogReducerTemplateInput | undefined;
+  const template = await apiClient.getTemplate(
+    templateOperation.templateId,
+    templateOperation.templateVersion
+  );
+
+  switch (template.name) {
+    case LOG_REDUCER_TEMPLATE_NAME: {
+      const templateInput = templateOperation.templateInputs?.input as
+        SchemaLogReducerTemplateInput | undefined;
+      const datasetId = templateInput?.datasetId ?? templateInput?.rawSinkConfig?.datasetId;
+      if (!datasetId) {
+        throw new Error('Log reducer template has no raw logs dataset');
+      }
+
+      return {
+        datasetId,
+        sinkOperations: (templateInput?.sinks ?? [])
+          .map(templateSink => templateSink.sink)
+          .filter(isOperation)
+      };
+    }
     default:
       throw new Error(
-        `Template ${templateOperation.templateId} is not supported for logs backfill`
+        `Template ${template.name} (${templateOperation.templateId}) is not supported for logs backfill`
       );
   }
 }
