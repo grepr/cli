@@ -6308,6 +6308,7 @@ export interface components {
       datasetId?: string;
       /** @description A list of template-specific exceptions to apply in log reducer. */
       exceptions: components["schemas"]["TemplateException"][];
+      masking?: components["schemas"]["MaskingOperator"];
       /** @description A list of parsers to be applied to the data. */
       parsers: components["schemas"]["Operation"][];
       processedLogsSink?: components["schemas"]["LogsIcebergTableSink"];
