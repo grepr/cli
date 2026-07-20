@@ -2436,7 +2436,6 @@ const INPUT_FIELD_TOUCHES: Record<keyof SchemaLogReducerTemplateInput, 'source' 
   transforms: 'transform',
   exceptions: 'transform',
   sampler: 'transform',
-  masking: 'transform',
 };
 
 /**
