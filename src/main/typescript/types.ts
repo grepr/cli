@@ -93,6 +93,7 @@ export interface JobPlanCommandOptions extends CliOptions {
 
 export interface JobApplyCommandOptions extends CliOptions {
   force?: boolean;
+  rollbackEnabled?: boolean;
 }
 
 export interface JobDraftCommandOptions extends CliOptions {

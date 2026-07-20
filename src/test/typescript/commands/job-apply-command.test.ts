@@ -130,6 +130,40 @@ describe('JobApplyCommand', () => {
     const submitted = (mockApi.updateJob.mock.calls[0] as [string, SchemaUpdateJob])[1];
     expect(submitted.fromVersion).toBe(8);
   });
+
+  it('test_jobApply_noRollbackEnabledFlag_disablesRollback', async () => {
+    const planFile = path.join(tempDir, 'plan.json');
+    await writePlan(planFile, 5);
+    const mockApi = {
+      getJob: vi.fn().mockResolvedValue(fakeJob(5)),
+      updateJob: vi.fn().mockResolvedValue(fakeJob(6)),
+    };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobApplyCommand().addToProgram(program, async opts => opts as never);
+    await program.parseAsync(['node', 'test', 'job:apply', planFile, '--no-rollback-enabled']);
+
+    expect(mockApi.updateJob).toHaveBeenCalledTimes(1);
+    const rollbackArg = (mockApi.updateJob.mock.calls[0] as [string, SchemaUpdateJob, boolean | undefined])[2];
+    expect(rollbackArg).toBe(false);
+  });
+
+  it('test_jobApply_noFlag_defersRollbackToClientDefault', async () => {
+    const planFile = path.join(tempDir, 'plan.json');
+    await writePlan(planFile, 5);
+    const mockApi = {
+      getJob: vi.fn().mockResolvedValue(fakeJob(5)),
+      updateJob: vi.fn().mockResolvedValue(fakeJob(6)),
+    };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobApplyCommand().addToProgram(program, async opts => opts as never);
+    await program.parseAsync(['node', 'test', 'job:apply', planFile]);
+
+    // No flag: nothing is forwarded, so the api-client default (rollback on) applies.
+    const rollbackArg = (mockApi.updateJob.mock.calls[0] as [string, SchemaUpdateJob, boolean | undefined])[2];
+    expect(rollbackArg).toBeUndefined();
+  });
 });
 
 describe('apply', () => {

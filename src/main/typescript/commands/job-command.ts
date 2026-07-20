@@ -188,7 +188,11 @@ export class JobCrudCommand extends CrudCommand<JobCrudCommandOptions> {
     return [
       {
         flags: '--rollback-enabled',
-        description: 'Enable rollback capability'
+        description: 'Enable automatic rollback if the update fails (default)'
+      },
+      {
+        flags: '--no-rollback-enabled',
+        description: 'Disable automatic rollback if the update fails'
       }
     ];
   }

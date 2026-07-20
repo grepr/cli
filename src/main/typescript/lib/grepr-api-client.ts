@@ -217,7 +217,7 @@ export class GreprApiClient {
     return data;
   }
 
-  async updateJob(id: string, job: SchemaUpdateJob, rollbackEnabled = false): Promise<SchemaReadJob | undefined> {
+  async updateJob(id: string, job: SchemaUpdateJob, rollbackEnabled = true): Promise<SchemaReadJob | undefined> {
     // noinspection TypeScriptValidateTypes
     const { data, error, response } = await this.client.PUT('/v1/jobs/{id}', {
       params: {

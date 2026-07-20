@@ -263,3 +263,58 @@ describe('GreprApiClient submitSyncJob', () => {
     await expect(drain(stream)).rejects.toThrow('network boom');
   });
 });
+
+describe('GreprApiClient updateJob rollback default', () => {
+  let client: InstanceType<typeof GreprApiClient>;
+  let config: ApiClientConfig;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetAuthHeaders.mockResolvedValue({ Authorization: 'Bearer test-token' });
+
+    config = {
+      orgName: 'test-org',
+      apiBaseUrl: 'https://test.app.grepr.ai/api',
+      authBaseUrl: 'https://test.app.grepr.ai/auth',
+      authMethod: 'client-credentials',
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+      debug: false,
+      authCache: true,
+      browser: true
+    };
+
+    client = new GreprApiClient(config);
+  });
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  const jobUpdateResponse = () =>
+    new Response(JSON.stringify({ id: '123' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  const requestedUrl = (): string => {
+    const [arg] = mockFetch.mock.calls[0] as [string | Request];
+    return typeof arg === 'string' ? arg : arg.url;
+  };
+
+  it('test_updateJob_noRollbackArg_defaultsToRollbackEnabledTrue', async () => {
+    mockFetch.mockResolvedValueOnce(jobUpdateResponse());
+
+    await client.updateJob('123', { name: 'job' } as never);
+
+    expect(requestedUrl()).toContain('rollbackEnabled=true');
+  });
+
+  it('test_updateJob_rollbackDisabled_sendsRollbackEnabledFalse', async () => {
+    mockFetch.mockResolvedValueOnce(jobUpdateResponse());
+
+    await client.updateJob('123', { name: 'job' } as never, false);
+
+    expect(requestedUrl()).toContain('rollbackEnabled=false');
+  });
+});

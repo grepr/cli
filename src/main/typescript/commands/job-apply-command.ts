@@ -23,6 +23,8 @@ export class JobApplyCommand implements ICommand {
       .command('job:apply <plan-file>')
       .description('Apply a generated plan file to the live pipeline')
       .option('--force', 'Apply even if the live job has changed since the plan was generated')
+      .option('--rollback-enabled', 'Enable automatic rollback if the apply fails (default)')
+      .option('--no-rollback-enabled', 'Disable automatic rollback if the apply fails')
       .action(async (planFile: string, options: JobApplyCommandOptions, command: Command) => {
         try {
           const merged = { ...command.parent?.opts(), ...options } as Record<string, string | boolean | number | string[]>;
@@ -32,7 +34,7 @@ export class JobApplyCommand implements ICommand {
           const plan = await loadPlanFromFile(planFile);
 
           await this.checkDrift(apiClient, plan, options.force ?? false);
-          await apply(apiClient, plan.jobId, plan.proposed);
+          await apply(apiClient, plan.jobId, plan.proposed, options.rollbackEnabled);
 
           if (!cliOptions.quiet) {
             console.log(`Applied ${plan.diff.length} change(s) to job ${plan.jobId}`);
@@ -61,15 +63,19 @@ export class JobApplyCommand implements ICommand {
   }
 }
 
-/** PUT the proposed job, retrying transient failures and rechecking drift after conflicts. */
+/**
+ * PUT the proposed job, retrying transient failures and rechecking drift after conflicts.
+ * rollbackEnabled is forwarded to the API; when undefined the client defaults it to on.
+ */
 export async function apply(
   apiClient: GreprApiClient,
   jobId: string,
   proposed: SchemaUpdateJob,
+  rollbackEnabled?: boolean,
 ): Promise<void> {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      await apiClient.updateJob(jobId, proposed);
+      await apiClient.updateJob(jobId, proposed, rollbackEnabled);
       return;
     } catch (error) {
       const status = error instanceof ApiError ? error.status : undefined;
