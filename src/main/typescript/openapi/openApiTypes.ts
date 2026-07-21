@@ -5291,6 +5291,42 @@ export interface components {
        */
       type: IgnoreAttributesMergeStrategyType;
     };
+    /**
+     * Inputs Schema
+     * @description Schema for the impact estimation job graph.
+     */
+    ImpactEstimationTemplateInput: {
+      /**
+       * Format: date-time
+       * @description Time of the estimation check recorded on the LogCounter.
+       * @example 2023-01-01T01:00:00Z
+       */
+      checkTime: string;
+      /** @description The dataset the estimation reads from and scopes the impact propagation to. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of the time interval to scan, inclusive.
+       * @example 2023-01-01T01:00:00Z
+       */
+      end: string;
+      /**
+       * Format: int32
+       * @description Maximum total number of log messages to process for the estimation.
+       */
+      logLimit: number;
+      /** @description Organization the estimation runs for; used to route impact updates. */
+      organizationId: string;
+      /** @description The query predicates the LogCounter counts matches against. */
+      predicates: components["schemas"]["EventPredicate"][];
+      query: components["schemas"]["EventPredicate"];
+      /**
+       * Format: date-time
+       * @description Start of the time interval to scan, inclusive.
+       * @example 2023-01-01T00:00:00Z
+       */
+      start: string;
+    };
     /** @description Instrumentation scope information describing the library/framework that produced the telemetry. */
     InstrumentationScope: {
       attributes?: components["schemas"]["Variant"];
@@ -11890,6 +11926,8 @@ export type SchemaIcebergLogsReplaySource =
   components["schemas"]["IcebergLogsReplaySource"];
 export type SchemaIgnoreAttributesMergeStrategy =
   components["schemas"]["IgnoreAttributesMergeStrategy"];
+export type SchemaImpactEstimationTemplateInput =
+  components["schemas"]["ImpactEstimationTemplateInput"];
 export type SchemaInstrumentationScope =
   components["schemas"]["InstrumentationScope"];
 export type SchemaIntegrationExceptionConfig =
