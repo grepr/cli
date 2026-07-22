@@ -6960,6 +6960,17 @@ export interface components {
        */
       type: MetricDataType;
     };
+    MetricDataRawIcebergTableSink: {
+      /** @description The id of the dataset to write to */
+      datasetId: string;
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Writes MetricData (one row per datapoint, attributes auto-flattened to columns) to an Iceberg table. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: MetricDataRawIcebergTableSinkType;
+    };
     MetricEventPredicate: {
       /**
        * @description The set of tags to query for. If unspecified, all tags are queried.
@@ -7363,6 +7374,7 @@ export interface components {
       | components["schemas"]["TracesIcebergTableSource"]
       | components["schemas"]["SpansBackfillIcebergTableSource"]
       | components["schemas"]["MetricsIcebergTableSink"]
+      | components["schemas"]["MetricDataRawIcebergTableSink"]
       | components["schemas"]["DatadogLogCloudSource"]
       | components["schemas"]["DatadogLogAgentSource"]
       | components["schemas"]["DatadogTraceAgentSource"]
@@ -9261,6 +9273,17 @@ export interface components {
        */
       type: SocialUserInfoType;
     };
+    /** @description User-chosen sort fields, in precedence order. */
+    SortFieldConfig: {
+      /** @description Built-in column or an attribute key to sort by. */
+      column: string;
+      /**
+       * @description Sort direction for this field.
+       * @default ASC
+       * @enum {string}
+       */
+      direction?: SortFieldConfigDirection;
+    };
     /** @description A distributed tracing span. */
     Span: {
       attributes?: components["schemas"]["Variant"];
@@ -9938,6 +9961,11 @@ export interface components {
        * @default []
        */
       promotedTagKeys?: string[];
+      /**
+       * @description User-chosen sort fields, in precedence order.
+       * @default []
+       */
+      sortFields?: components["schemas"]["SortFieldConfig"][];
     };
     TableConfigRead: {
       /**
@@ -9950,6 +9978,11 @@ export interface components {
        * @default []
        */
       promotedTagKeys?: string[];
+      /**
+       * @description Effective sort fields, in precedence order.
+       * @default []
+       */
+      sortFields?: components["schemas"]["SortFieldConfig"][];
     };
     TagAction: {
       /**
@@ -12069,6 +12102,8 @@ export type SchemaMetricAggSpec = components["schemas"]["MetricAggSpec"];
 export type SchemaMetricAggregation =
   components["schemas"]["MetricAggregation"];
 export type SchemaMetricData = components["schemas"]["MetricData"];
+export type SchemaMetricDataRawIcebergTableSink =
+  components["schemas"]["MetricDataRawIcebergTableSink"];
 export type SchemaMetricEventPredicate =
   components["schemas"]["MetricEventPredicate"];
 export type SchemaMetricNameFilter = components["schemas"]["MetricNameFilter"];
@@ -12213,6 +12248,7 @@ export type SchemaSimple = components["schemas"]["Simple"];
 export type SchemaSkillDescriptor = components["schemas"]["SkillDescriptor"];
 export type SchemaSlackMcp = components["schemas"]["SlackMcp"];
 export type SchemaSocialUserInfo = components["schemas"]["SocialUserInfo"];
+export type SchemaSortFieldConfig = components["schemas"]["SortFieldConfig"];
 export type SchemaSpan = components["schemas"]["Span"];
 export type SchemaSpanDedupIcebergTableSink =
   components["schemas"]["SpanDedupIcebergTableSink"];
@@ -20708,6 +20744,9 @@ export enum MetricAggSpecSpaceAggregation {
 export enum MetricDataType {
   metricdata = "metricdata",
 }
+export enum MetricDataRawIcebergTableSinkType {
+  metricdata_raw_iceberg_table_sink = "metricdata-raw-iceberg-table-sink",
+}
 export enum MetricEventPredicateType {
   metric_predicate = "metric-predicate",
 }
@@ -20904,6 +20943,10 @@ export enum SimpleType {
 }
 export enum SocialUserInfoType {
   SOCIAL = "SOCIAL",
+}
+export enum SortFieldConfigDirection {
+  ASC = "ASC",
+  DESC = "DESC",
 }
 export enum SpanSpanKind {
   UNSPECIFIED = "UNSPECIFIED",
@@ -21157,6 +21200,7 @@ export const SINK_TYPES = new Set<string>([
   'logs-iceberg-table-sink',
   'logs-predicates-counter',
   'logs-sync-sink',
+  'metricdata-raw-iceberg-table-sink',
   'metrics-iceberg-table-sink',
   'metrics-sync-sink',
   'newrelic-log-sink',
