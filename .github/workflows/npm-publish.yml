@@ -91,6 +91,9 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build CLI
+        env:
+          REQUIRE_DOCS_INDEX: 'true'
+          SKIP_DOCS_INDEX: 'false'
         run: |
           echo "Building CLI..."
           bun run build
@@ -106,10 +109,34 @@ jobs:
       - name: Create distributions
         run: |
           echo "Creating distribution packages..."
-          bun run dist
+          SKIP_CLI_BUILD=true ./scripts/create-distributions.sh
 
           echo "Created distributions:"
           ls -la build/customer-distributions/
+
+      - name: Pack and smoke-test npm artifact
+        id: package
+        run: |
+          set -euo pipefail
+          mkdir -p build/npm-package build/npm-smoke
+          ARCHIVE=$(npm pack --ignore-scripts --pack-destination build/npm-package --silent)
+          TARBALL="$PWD/build/npm-package/$ARCHIVE"
+
+          npm install --prefix build/npm-smoke "$TARBALL"
+          INSTALLED="$PWD/build/npm-smoke/node_modules/@grepr/cli"
+
+          test -f "$INSTALLED/build/dist/docs-index/catalog.json"
+          test -f "$INSTALLED/THIRD_PARTY_NOTICES.md"
+          test -f "$INSTALLED/LICENSES/Apache-2.0.txt"
+          test -f "$INSTALLED/build/dist/models/Xenova/all-MiniLM-L6-v2/751bff37182d3f1213fa05d7196b954e230abad9/onnx/model_quantized.onnx"
+
+          "$PWD/build/npm-smoke/node_modules/.bin/grepr" \
+            docs:get doc://tutorials/first-pipeline/page.mdx > build/npm-smoke/docs-get.txt
+          "$PWD/build/npm-smoke/node_modules/.bin/grepr" \
+            docs:search "create a pipeline" --format compact --limit 2 > build/npm-smoke/docs-search.txt
+          grep -q 'doc://' build/npm-smoke/docs-search.txt
+
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
 
       - name: Publish to npm
         env:
@@ -124,7 +151,8 @@ jobs:
           else
             DIST_TAG="latest"
           fi
-          npm publish --access public --provenance --tag "$DIST_TAG"
+          npm publish "${{ steps.package.outputs.tarball }}" \
+            --ignore-scripts --access public --provenance --tag "$DIST_TAG"
           echo "Successfully published @grepr/cli@$VERSION to dist-tag '$DIST_TAG'"
 
       - name: Create GitHub Release
