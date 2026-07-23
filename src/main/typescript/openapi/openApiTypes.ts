@@ -1832,6 +1832,78 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/webhooks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List webhook integrations
+     * @description Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.
+     */
+    get: operations["list_17"];
+    put?: never;
+    /**
+     * Create a webhook integration
+     * @description Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).
+     */
+    post: operations["create_17"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/webhooks/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get a webhook integration
+     * @description Get a webhook integration by ID.
+     */
+    get: operations["get_16"];
+    /**
+     * Update a webhook integration
+     * @description Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
+     */
+    put: operations["update_16"];
+    post?: never;
+    /**
+     * Delete a webhook integration
+     * @description Deletes a webhook integration. No-op if already deleted.
+     */
+    delete: operations["delete_17"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/webhooks/{id}/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Submit a webhook event
+     * @description Accepts one JSON event from the sending system and starts an investigation on each target agent of the integration. The org is taken from the Grepr API key and the integration id from the path. Returns 202 with the started investigation ids. Retries after a 5xx may start duplicate investigations.
+     */
+    post: operations["postEvent"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/integrations/{integrationId}/exceptions/estimation-datasets": {
     parameters: {
       query?: never;
@@ -2880,7 +2952,7 @@ export interface paths {
      * List all users
      * @description Get all users in the system.
      */
-    get: operations["list_17"];
+    get: operations["list_18"];
     put?: never;
     /**
      * Create a new user
@@ -3120,6 +3192,9 @@ export interface components {
       completed?: number;
       /** Format: int32 */
       failed?: number;
+    };
+    AgentSignalSubscription: {
+      integrationId: string;
     };
     AgentSubscriptionCounts: {
       /** Format: int32 */
@@ -5556,6 +5631,10 @@ export interface components {
     ItemsCollectionReadUser: {
       /** @default [] */
       items?: components["schemas"]["ReadUser"][];
+    };
+    ItemsCollectionReadWebhookIntegration: {
+      /** @default [] */
+      items?: components["schemas"]["ReadWebhookIntegration"][];
     };
     ItemsCollectionServiceAccountRead: {
       /** @default [] */
@@ -8907,6 +8986,43 @@ export interface components {
       /** @description The teams that this user is a member of. */
       teamIds: string[];
     };
+    ReadWebhookIntegration: {
+      /**
+       * Format: date-time
+       * @description Timestamp when the integration was created.
+       */
+      readonly createdAt: string;
+      /** @description The integration id */
+      id: string;
+      /** @description List of job IDs associated with the integration. */
+      jobIds: string[];
+      /**
+       * @description Name of the integration.
+       * @example my_integration
+       */
+      name: string;
+      /** @description Organization ID of the integration. */
+      organizationId: string;
+      payload: components["schemas"]["WebhookIntegration"];
+      /** @description The team IDs that this integration is associated with. */
+      teamIds?: string[];
+      /**
+       * @description The type of the integration. This is used to determine the payload type.
+       * @enum {string}
+       */
+      type: ReadWebhookIntegrationType;
+      /**
+       * Format: date-time
+       * @description Timestamp when the integration was last updated.
+       */
+      readonly updatedAt: string;
+      /**
+       * Format: int32
+       * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
+       * @example 0
+       */
+      version: number;
+    };
     /** @description Readable data via a synchronous job. */
     ReadableData: {
       type: string;
@@ -11318,6 +11434,13 @@ export interface components {
       type: VendorLogEventDedupIcebergTableSinkType;
       vendorSinkId: string;
     };
+    /** @description The payload containing integration data. */
+    WebhookIntegration: {
+      /** @default [] */
+      agentSubscriptions: components["schemas"]["AgentSignalSubscription"][];
+      schemaDescription: string;
+      systemType: string;
+    };
     WindowBasedLogarithmicSampling: {
       /**
        * Format: int32
@@ -11737,6 +11860,30 @@ export interface components {
        */
       roleIds: string[];
     };
+    WriteWebhookIntegration: {
+      /**
+       * @description Name of the integration.
+       * @example my_integration
+       */
+      name: string;
+      payload: components["schemas"]["WebhookIntegration"];
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
+      teamIds?: string[];
+      /**
+       * @description The type of the integration. This is used to determine the payload type.
+       * @enum {string}
+       */
+      type: ReadWebhookIntegrationType;
+      /**
+       * Format: int32
+       * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
+       * @example 0
+       */
+      version: number;
+    };
     /**
      * @description The query to use for the backfill. This scopes the data that will be backfilled into the sink. It can also refer to variables generated by a trigger. Variables use __ (a double underscore) at the beginning and they are specified as part of the trigger description.
      * @example {
@@ -11799,6 +11946,8 @@ export type SchemaAgentMcpIntegrations =
   components["schemas"]["AgentMcpIntegrations"];
 export type SchemaAgentRecentHealth =
   components["schemas"]["AgentRecentHealth"];
+export type SchemaAgentSignalSubscription =
+  components["schemas"]["AgentSignalSubscription"];
 export type SchemaAgentSubscriptionCounts =
   components["schemas"]["AgentSubscriptionCounts"];
 export type SchemaAgentSummary = components["schemas"]["AgentSummary"];
@@ -12040,6 +12189,8 @@ export type SchemaItemsCollectionReadSumo =
   components["schemas"]["ItemsCollectionReadSumo"];
 export type SchemaItemsCollectionReadUser =
   components["schemas"]["ItemsCollectionReadUser"];
+export type SchemaItemsCollectionReadWebhookIntegration =
+  components["schemas"]["ItemsCollectionReadWebhookIntegration"];
 export type SchemaItemsCollectionServiceAccountRead =
   components["schemas"]["ItemsCollectionServiceAccountRead"];
 export type SchemaItemsCollectionTemplate =
@@ -12234,6 +12385,8 @@ export type SchemaReadSsoClaimMapping =
 export type SchemaReadSumo = components["schemas"]["ReadSumo"];
 export type SchemaReadTeam = components["schemas"]["ReadTeam"];
 export type SchemaReadUser = components["schemas"]["ReadUser"];
+export type SchemaReadWebhookIntegration =
+  components["schemas"]["ReadWebhookIntegration"];
 export type SchemaReadableData = components["schemas"]["ReadableData"];
 export type SchemaReducerLogsQuerySource =
   components["schemas"]["ReducerLogsQuerySource"];
@@ -12414,6 +12567,8 @@ export type SchemaVendorImportedException =
   components["schemas"]["VendorImportedException"];
 export type SchemaVendorLogEventDedupIcebergTableSink =
   components["schemas"]["VendorLogEventDedupIcebergTableSink"];
+export type SchemaWebhookIntegration =
+  components["schemas"]["WebhookIntegration"];
 export type SchemaWindowBasedLogarithmicSampling =
   components["schemas"]["WindowBasedLogarithmicSampling"];
 export type SchemaWriteAnthropic = components["schemas"]["WriteAnthropic"];
@@ -12439,6 +12594,8 @@ export type SchemaWriteSsoClaimMapping =
   components["schemas"]["WriteSsoClaimMapping"];
 export type SchemaWriteSumo = components["schemas"]["WriteSumo"];
 export type SchemaWriteUser = components["schemas"]["WriteUser"];
+export type SchemaWriteWebhookIntegration =
+  components["schemas"]["WriteWebhookIntegration"];
 export type SchemaBackfillQuery = components["schemas"]["backfillQuery"];
 export type SchemaQuery = components["schemas"]["query"];
 export type $defs = Record<string, never>;
@@ -17508,6 +17665,237 @@ export interface operations {
       };
     };
   };
+  list_17: {
+    parameters: {
+      query?: {
+        /** @description Only return integrations targeting this agent. */
+        agentId?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Integrations retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ItemsCollectionReadWebhookIntegration"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  create_17: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["WriteWebhookIntegration"];
+      };
+    };
+    responses: {
+      /** @description Integration created successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadWebhookIntegration"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration already exists. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  get_16: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Integration retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadWebhookIntegration"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  update_16: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["WriteWebhookIntegration"];
+      };
+    };
+    responses: {
+      /** @description Integration updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadWebhookIntegration"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration was modified or deleted concurrently. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  delete_17: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Integration deleted successfully */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  postEvent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The webhook integration id. */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": string;
+      };
+    };
+    responses: {
+      /** @description Investigation(s) started */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Body is not valid JSON */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description API key is invalid */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No such webhook integration */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Body exceeds the size limit */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   getEstimationDatasets: {
     parameters: {
       query?: never;
@@ -20129,7 +20517,7 @@ export interface operations {
       };
     };
   };
-  list_17: {
+  list_18: {
     parameters: {
       query?: {
         page?: number;
@@ -20931,6 +21319,9 @@ export enum ReadSplunkType {
 }
 export enum ReadSumoType {
   sumo = "sumo",
+}
+export enum ReadWebhookIntegrationType {
+  webhook = "webhook",
 }
 export enum ReducerLogsQuerySourceType {
   reducer_logs_iceberg_table_source = "reducer-logs-iceberg-table-source",
