@@ -3246,6 +3246,7 @@ export interface components {
       parsers: components["schemas"]["Operation"][];
       patternMatcher: components["schemas"]["PatternMatcher"];
       processedLogsSink?: components["schemas"]["LogsIcebergTableSink"];
+      processedLogsSinkFilter?: components["schemas"]["LogsFilter"];
       sampler?: components["schemas"]["LogsEventSampler"];
       /** @description A list of template log sinks, each specific to a vendor with optional filter configuration. */
       sinks: components["schemas"]["TemplateLogSink"][];
@@ -6445,6 +6446,7 @@ export interface components {
       /** @description A list of parsers to be applied to the data. */
       parsers: components["schemas"]["Operation"][];
       processedLogsSink?: components["schemas"]["LogsIcebergTableSink"];
+      processedLogsSinkFilter?: components["schemas"]["LogsFilter"];
       rawSinkConfig?: components["schemas"]["RawLogsSinkConfig"];
       reducer: components["schemas"]["LogReducer"];
       sampler?: components["schemas"]["LogsEventSampler"];
