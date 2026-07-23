@@ -5231,6 +5231,24 @@ export interface components {
        */
       value: string;
     };
+    /** @description Keep a vendor's host inventory in sync with the metric reduction. */
+    HostMetadataReporting: {
+      /**
+       * @description Collapse each cohort's real hosts into a single virtual cohort host.
+       * @default false
+       */
+      aggregateCohortHosts?: boolean;
+      /**
+       * @description Datadog integration IDs that receive the reported host metadata.
+       * @default []
+       */
+      integrationIds: string[];
+      /**
+       * @description While an object is anomalous, re-report its real host to Datadog.
+       * @default false
+       */
+      rehydrateAnomalousHosts?: boolean;
+    };
     IcebergLogsReplaySource: {
       /** @description The ID of the dataset to read data from. */
       datasetId: string;
@@ -7038,6 +7056,7 @@ export interface components {
        * @example PT20.345S
        */
       emitInterval: string;
+      hostMetadata?: components["schemas"]["HostMetadataReporting"];
       /**
        * Format: ISO-8601
        * @description Watermark delay applied to give late-arriving data a chance to be aggregated.
@@ -11955,6 +11974,8 @@ export type SchemaGrokRuleErrors = components["schemas"]["GrokRuleErrors"];
 export type SchemaHeadSamplingFilter =
   components["schemas"]["HeadSamplingFilter"];
 export type SchemaHeader = components["schemas"]["Header"];
+export type SchemaHostMetadataReporting =
+  components["schemas"]["HostMetadataReporting"];
 export type SchemaIcebergLogsReplaySource =
   components["schemas"]["IcebergLogsReplaySource"];
 export type SchemaIgnoreAttributesMergeStrategy =
@@ -21162,6 +21183,7 @@ export const SOURCE_TYPES = new Set<string>([
   'datadog-log-agent-source',
   'datadog-log-cloud-source',
   'datadog-metric-agent-source',
+  'datadog-metric-agent-source-v3',
   'datadog-metrics-cloud-source',
   'datadog-trace-agent-source',
   'grepr-llm-prompt-results-source',
