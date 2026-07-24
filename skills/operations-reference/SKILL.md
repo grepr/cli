@@ -40,6 +40,7 @@ Operations (exact field names matter — field mistakes fail during
 | `set-filter` / `clear-filter` | `phase` (not `stage`); `set` also needs `filter` | Set or clear a phase-slotted filter. **Raw job graph:** replaces the canonical filter vertex; `clear-filter` keeps the vertex but blanks the predicate query. **Template-backed:** writes a transform-chain gate (`condition-node` → `passthrough-node`/`drop-node`) into the phase's `transforms` slot; `set` preserves any existing non-filter chain (e.g. a SQL node) as the pass side, `clear` unwraps a simple root gate and errors on a branching chain. `filter.predicate` is a generic `EventPredicate` (not necessarily `datadog-query`); `maxLateEventTimestampDelta`/`inverted` are honored. **Predicate validation diverges by backend:** the template path requires `filter.predicate` and rejects a predicate-omitted `set-filter`; the raw path does not validate the predicate. Always supply `filter.predicate` (omit only `inverted`/`maxLateEventTimestampDelta` to inherit them). |
 | `set-transform-chain` / `clear-transform-chain` | `phase`; `set` also needs `root` | **Template-backed only** (rejected on raw job graphs). Replace (`set`) or remove (`clear`) a phase's entire `transforms` chain. `root` is a hand-authored chain node (`condition-node`/`sql-node`/`passthrough-node`/`drop-node`). Use when you need to preserve or merge a complex chain that the semantic filter/SQL ops would overwrite. |
 | `set-sql-transform` | `phase`, `sqlOperation`, `outputRouting`, `mainStream`; optional `gate` | **Template-backed only** (rejected on raw job graphs with a template-only message). Replace a phase's `transforms` chain with one generated `sql-node` chain. `mainStream: "drop"` drops originals after SQL input; `"passthrough"` keeps originals flowing. With `gate`, non-matching events pass through unchanged. See the `sql-operation` shape below. |
+| `set-masking` / `clear-masking` | `set` needs `masking` | **Template-backed only** (rejected on raw job graphs). Install/replace (`set`) or remove (`clear`) the masking operator (`input.masking`) — a regex redactor that replaces matches with `[label]` in the message and configured attribute paths. Runs pre-exceptions, so the raw data lake stays unmasked. See the `masking-operator` shape below and `grepr:change-masking`. |
 | `add-parser` / `remove-parser` | `parser` / `name` (not `parserName`) | Add or remove a parser. New parsers append before `pre_data_warehouse_filter`. |
 | `add-source` / `remove-source` | `source` / `name` (not `sourceName`) | Add or remove source vertices. A proposal leaving zero sources is rejected. |
 | `add-sink` / `remove-sink` | `target` (`vendor`\|`processed-logs`), `sink` / `name?` | Add or remove a sink. `vendor` adds a vendor log sink (optionally with a gating `filter`); `processed-logs` sets the single reduced-logs iceberg sink. |
@@ -162,6 +163,46 @@ side-output SQL. Example:
   "gate": { "type": "datadog-query", "query": "service:api" }
 }
 ```
+
+### Masking
+
+| Operation | Description | Key Properties |
+|-----------|-------------|----------------|
+| `masking-operator` | Redact sensitive substrings, replacing each regex match with a decorated label (`[email]`) in the message and at configured attribute paths | `messageMasks`, `attributeMasks` |
+
+A `masking-operator` is a **template input** (`input.masking`). Install or replace
+it with the first-class `set-masking` op, and remove it with `clear-masking`
+(both template-backed only). It runs after the post-warehouse (pre-exceptions)
+stage, so the raw data lake keeps original content; masking applies only to the
+exceptions branch, the reducer, and forwarding sinks. Prefer it over a SQL
+`REGEXP_REPLACE` transform for redaction. See `grepr:change-masking` for the
+authoring workflow. Shape:
+
+```json
+{
+  "op": "set-masking",
+  "masking": {
+    "type": "masking-operator",
+    "name": "masking_operator",
+    "messageMasks": {
+      "email": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+    },
+    "attributeMasks": [
+      { "path": ["user", "contact"], "masks": { "email": "\\S+@\\S+" } }
+    ]
+  }
+}
+```
+
+- `messageMasks` — map of label to regex, applied to `message`. Each match
+  becomes `[label]`. Labels ≤ 64 chars.
+- `attributeMasks` — list of `{ "path": [segments], "masks": {label: regex} }`.
+  Only string values at the exact path are masked; paths must be unique.
+- Regexes must be **Hyperscan-compatible** (no lookbehind or backreferences).
+  Overlapping matches resolve leftmost-then-longest, ties by declaration order —
+  declare more specific patterns first. JSON-escape backslashes (`\\d+`).
+- Both mask maps default to empty; masks are dynamically reconfigurable (edits
+  rebuild the regex databases in place, no job restart).
 
 ### Aggregation & Reduction
 

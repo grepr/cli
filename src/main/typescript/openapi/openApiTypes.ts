@@ -6440,6 +6440,7 @@ export interface components {
       confirmedDeliveryEnabled?: boolean;
       /** @description The unique identifier for the dataset. When absent, no raw logs will be stored. At least one of `datasetId` or `sinks` must be provided for non-draft pipelines. */
       datasetId?: string;
+      draftSource?: components["schemas"]["Operation"];
       /** @description A list of template-specific exceptions to apply in log reducer. */
       exceptions: components["schemas"]["TemplateException"][];
       masking?: components["schemas"]["MaskingOperator"];

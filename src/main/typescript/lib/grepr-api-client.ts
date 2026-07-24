@@ -34,7 +34,7 @@ import {
   SchemaTemplate,
   SchemaUpdateJob
 } from '@/openapi/openApiTypes'
-import { GreprAuth, ClientCredentialsAuth } from './auth.js'
+import { GreprAuth, ClientCredentialsAuth, NoAuth } from './auth.js'
 import {
   ApiClientConfig, IntegrationReadType,
   IntegrationTypeAndList,
@@ -86,7 +86,7 @@ function retryAfterMsFromResponse(response: Response | undefined): number | unde
 export class GreprApiClient {
   private config: ApiClientConfig;
   private client: ReturnType<typeof createClient<paths>>;
-  private auth: ClientCredentialsAuth | GreprAuth;
+  private auth: ClientCredentialsAuth | GreprAuth | NoAuth;
 
   constructor(config: ApiClientConfig) {
     this.config = config;
@@ -99,6 +99,8 @@ export class GreprApiClient {
     // Set up authentication
     if (config.authMethod === 'client-credentials') {
       this.auth = new ClientCredentialsAuth(config);
+    } else if (config.authMethod === 'none') {
+      this.auth = new NoAuth(config);
     } else {
       this.auth = new GreprAuth(config);
     }

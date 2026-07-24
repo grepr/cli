@@ -34,7 +34,7 @@ function isResolvedCliOptions(options: Partial<CliOptions>): options is CliOptio
     typeof options.orgName === 'string' &&
     typeof options.authBaseUrl === 'string' &&
     typeof options.clientId === 'string' &&
-    (options.authMethod === 'oauth' || options.authMethod === 'client-credentials')
+    (options.authMethod === 'oauth' || options.authMethod === 'client-credentials' || options.authMethod === 'none')
   );
 }
 
@@ -239,7 +239,7 @@ export class GreprQueryCLI {
       .option('--org-name <name>', 'Organization name (required unless using --conf)')
       .option('--api-base-url <url>', 'API server base URL (default: https://<orgName>.app.grepr.ai/api)', parseUrl)
       .option('--auth-base-url <url>', 'Auth0 base URL', parseUrl)
-      .option('--auth-method <method>', 'Authentication method (oauth, client-credentials)')
+      .option('--auth-method <method>', 'Authentication method (oauth, client-credentials, none)')
       .option('--client-id <id>', 'OAuth Client ID (optional, defaults to Web Client ID)')
       .option('--client-secret <secret>', 'Client secret for client-credentials authentication (required when using --auth-method client-credentials)')
       .option('--no-auth-cache', 'Force fresh authentication by ignoring cached tokens', true)
@@ -253,7 +253,40 @@ export class GreprQueryCLI {
     this.registerCommands();
     this.commandRegistry.registerAll(this.program, this.mergeConfiguration.bind(this));
 
+    this.applyCommandAllowlist();
+
     return this.program;
+  }
+
+  /**
+   * When GREPR_ALLOWED_SUBCOMMANDS is set (sandboxed/embedded use), expose ONLY the whitelisted
+   * subcommands: any command whose name does not start with an allowed prefix is removed, so it is
+   * both absent from `--help` and rejected as an unknown command on invocation (commander routes
+   * and renders help off this same array). Unset => no filtering (normal CLI); set-but-empty => no
+   * subcommands are exposed.
+   */
+  private applyCommandAllowlist(): void {
+    const raw = process.env.GREPR_ALLOWED_SUBCOMMANDS;
+    if (raw === undefined) {
+      return;
+    }
+    const allowed = raw.split(/[\s,]+/).filter((prefix) => prefix.length > 0);
+    // An entry ending in ':' is a namespace prefix and matches every command in it (e.g.
+    // 'dataset:' -> 'dataset:list', 'dataset:create'); any other entry must match the command name
+    // exactly. This matches the server's GREPR_ALLOWED_SUBCOMMANDS format (SandboxTool.greprSubcommands
+    // emits 'dataset:' for a whole namespace vs 'job:get'/'query' for single commands) and, crucially,
+    // does NOT fail open: an unanchored startsWith would let 'job' silently grant 'job:apply' etc.
+    const isAllowed = (name: string): boolean =>
+      allowed.some((prefix) =>
+        prefix.endsWith(':') ? name.startsWith(prefix) : name === prefix);
+    // commander types `commands` readonly (it has no public command-removal API), but it is the
+    // very array commander routes and renders help from, so mutating it in place removes commands
+    // from both. Editing in place keeps commander's own reference; a single readonly->mutable
+    // assertion is unavoidable here.
+    const commands = this.program.commands as Command[];
+    const allowedCommands = commands.filter((command) => isAllowed(command.name()));
+    commands.length = 0;
+    commands.push(...allowedCommands);
   }
 }
 

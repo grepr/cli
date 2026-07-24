@@ -42,6 +42,10 @@ describe('parseAuthMethod', () => {
     expect(parseAuthMethod('client-credentials')).toBe('client-credentials');
   });
 
+  it('test_parseAuthMethod_none_shouldReturnNone', () => {
+    expect(parseAuthMethod('none')).toBe('none');
+  });
+
   it('test_parseAuthMethod_undefined_shouldReturnUndefinedForCallerDefault', () => {
     expect(parseAuthMethod(undefined)).toBeUndefined();
   });
@@ -52,7 +56,7 @@ describe('parseAuthMethod', () => {
 
   it('test_parseAuthMethod_invalidValue_shouldThrow', () => {
     expect(() => parseAuthMethod('client_credentials')).toThrow(
-      'Invalid authentication method: client_credentials. Must be oauth or client-credentials'
+      'Invalid authentication method: client_credentials. Must be oauth, client-credentials, or none'
     );
   });
 });

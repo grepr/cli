@@ -179,6 +179,19 @@ export class ClientCredentialsAuth {
   }
 }
 
+/** Pass-through auth: attaches no headers (used when auth is injected downstream). */
+export class NoAuth {
+  public config: AuthConfig;
+
+  constructor(options: AuthConfig) {
+    this.config = options;
+  }
+
+  async getAuthHeaders(): Promise<Record<string, string>> {
+    return {};
+  }
+}
+
 /**
  * OAuth-based authentication (simplified version for now)
  */

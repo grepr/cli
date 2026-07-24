@@ -71,6 +71,7 @@ Split `jobGraph.vertices` by role using the `type` field:
 | Remapper   | `log-attributes-remapper` |
 | Reducer    | `log-reducer` |
 | SQL        | `sql-operation` |
+| Masking    | `masking-operator` |
 | Branches   | `logs-branch` |
 | Transforms | `log-transform`, `pattern-matcher`, `log-rules-application` |
 | Sinks      | `logs-iceberg-table-sink`, `datadog-log-sink`, `splunk-log-sink`, `newrelic-log-sink`, `sumologic-log-sink`, `otlp-log-sink`, `logs-sync-sink` |
@@ -95,6 +96,9 @@ Include only populated fields — keep the output focused.
   `partitionByAttributePaths` / `partitionByTags`,
   `attributeMergeStrategyEntries` (path + strategy type), `logReducerExceptions`
   (count + a sample predicate or two), `integrationExceptionConfigs`.
+- **Masking** (`masking-operator`) — the `messageMasks` (label→regex) and
+  `attributeMasks` (path + label→regex). It runs pre-exceptions, so note that the
+  raw data lake stays unmasked. Edit via `grepr:change-masking`.
 - **Sinks** — name, type, `integrationId`, `datasetId` (iceberg), any
   sink-level filter/predicate.
 - **Job-level state** — `id`, `name`, `version`, `desiredState`, `state`,

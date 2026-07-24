@@ -600,6 +600,135 @@ describe('JobDraftCommand', () => {
     expect(mockApi.submitSyncJob).not.toHaveBeenCalled();
   });
 
+  it('test_jobDraft_sampleLogs_injectsDraftSourceWithLogTypeAndBatch', async () => {
+    // --sample-logs injects a bounded logs-values-source as the template
+    // input's draftSource, stamps type:log on every value, and runs BATCH.
+    const planFile = path.join(tempDir, 'plan.json');
+    await writeTransformPlan(planFile);
+    const sampleFile = path.join(tempDir, 'sample.json');
+    // One event already tagged, one missing the discriminator entirely.
+    await fs.writeJson(sampleFile, [
+      { id: 'a1', message: 'boom', eventTimestamp: 1, receivedTimestamp: 1, type: 'log' },
+      { id: 'a2', message: 'bang', eventTimestamp: 2, receivedTimestamp: 2 },
+    ]);
+
+    const stream = Readable.from(['{"jobState":"FINISHED"}\n']);
+    const mockApi = { submitSyncJob: vi.fn().mockResolvedValue(stream) };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
+    await program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-logs', sampleFile]);
+
+    expect(mockApi.submitSyncJob).toHaveBeenCalledTimes(1);
+    const submitted = mockApi.submitSyncJob.mock.calls[0]?.[0] as {
+      processing: string;
+      jobGraph: { vertices: { draftMode?: boolean; templateInputs?: { input?: { draftSource?: { type: string; name: string; values: { type: string }[] } } } }[] };
+    };
+    // A bounded values-source demands BATCH.
+    expect(submitted.processing).toBe('BATCH');
+    const templateOp = submitted.jobGraph.vertices[0];
+    expect(templateOp?.draftMode).toBe(true);
+    const draftSource = templateOp?.templateInputs?.input?.draftSource;
+    expect(draftSource?.type).toBe('logs-values-source');
+    expect(draftSource?.name).toBe('draft_source');
+    expect(draftSource?.values).toHaveLength(2);
+    // Every value carries type:log, added where it was missing.
+    expect(draftSource?.values.every(v => v.type === 'log')).toBe(true);
+  });
+
+  it('test_jobDraft_sampleLogs_acceptsNdjson', async () => {
+    // NDJSON (one event per line) is accepted alongside a JSON array.
+    const planFile = path.join(tempDir, 'plan.json');
+    await writeTransformPlan(planFile);
+    const sampleFile = path.join(tempDir, 'sample.ndjson');
+    await fs.writeFile(
+      sampleFile,
+      '{"id":"a1","message":"one","eventTimestamp":1,"receivedTimestamp":1}\n' +
+        '{"id":"a2","message":"two","eventTimestamp":2,"receivedTimestamp":2}\n',
+    );
+
+    const stream = Readable.from(['{"jobState":"FINISHED"}\n']);
+    const mockApi = { submitSyncJob: vi.fn().mockResolvedValue(stream) };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
+    await program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-logs', sampleFile]);
+
+    const submitted = mockApi.submitSyncJob.mock.calls[0]?.[0] as {
+      jobGraph: { vertices: { templateInputs?: { input?: { draftSource?: { values: { id: string; type: string }[] } } } }[] };
+    };
+    const values = submitted.jobGraph.vertices[0]?.templateInputs?.input?.draftSource?.values;
+    expect(values).toHaveLength(2);
+    expect(values?.map(v => v.id)).toEqual(['a1', 'a2']);
+    expect(values?.every(v => v.type === 'log')).toBe(true);
+  });
+
+  it('test_jobDraft_sampleLogs_applyPathNeverCarriesDraftSource', async () => {
+    // The draftSource is injected onto a clone at draft-submit time, so the
+    // plan's `proposed` (what job:apply PUTs) must never carry a draftSource.
+    const planFile = path.join(tempDir, 'plan.json');
+    await writeTransformPlan(planFile);
+    const sampleFile = path.join(tempDir, 'sample.json');
+    await fs.writeJson(sampleFile, [{ id: 'a1', eventTimestamp: 1, receivedTimestamp: 1 }]);
+
+    const stream = Readable.from(['{"jobState":"FINISHED"}\n']);
+    const mockApi = { submitSyncJob: vi.fn().mockResolvedValue(stream) };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
+    await program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-logs', sampleFile]);
+
+    // The plan file on disk (source of truth for job:apply) is untouched: its
+    // proposed template input has no draftSource, and draftMode stays false.
+    const planOnDisk = await fs.readJson(planFile);
+    const inputOnDisk = planOnDisk.proposed.jobGraph.vertices[0];
+    expect(inputOnDisk.templateInputs.input.draftSource).toBeUndefined();
+    expect(inputOnDisk.draftMode).toBe(false);
+  });
+
+  it('test_jobDraft_sampleLogs_rejectedOnJobGraphPlan', async () => {
+    // Sample-driven drafts inject a template draftSource; a raw job-graph plan
+    // has no template input, so the flag is rejected before any submit.
+    const planFile = path.join(tempDir, 'plan.json');
+    await writeJobGraphPlan(planFile);
+    const sampleFile = path.join(tempDir, 'sample.json');
+    await fs.writeJson(sampleFile, [{ id: 'a1', eventTimestamp: 1, receivedTimestamp: 1 }]);
+
+    const mockApi = { submitSyncJob: vi.fn() };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
+    await expect(
+      program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-logs', sampleFile]),
+    ).rejects.toThrow();
+
+    expect(mockApi.submitSyncJob).not.toHaveBeenCalled();
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error running draft pipeline:',
+      expect.stringContaining('--sample-logs is only supported for template-backed pipelines'),
+    );
+  });
+
+  it('test_jobDraft_sampleLogs_missingFile_shouldErrorAndExit', async () => {
+    const planFile = path.join(tempDir, 'plan.json');
+    await writeTransformPlan(planFile);
+
+    const mockApi = { submitSyncJob: vi.fn() };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
+    await expect(
+      program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-logs', path.join(tempDir, 'nope.json')]),
+    ).rejects.toThrow();
+
+    expect(mockApi.submitSyncJob).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error running draft pipeline:',
+      expect.stringContaining('Sample logs file not found'),
+    );
+  });
+
   it('test_jobDraft_neitherPlanNorJobId_shouldErrorAndExit', async () => {
     const mockApi = { getJob: vi.fn(), submitSyncJob: vi.fn() };
     (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);

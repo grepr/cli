@@ -630,6 +630,36 @@ describe('GreprQueryCLI Configuration Tests', () => {
       expect(result.authMethod).toBe('client-credentials');
     });
 
+    it('should use GREPR_AUTH_METHOD=none env var as a pass-through auth method', async () => {
+      process.env.GREPR_AUTH_METHOD = 'none';
+
+      const result = await simulateMergeWithEnvVars({ orgName: 'test-org' });
+      expect(result.authMethod).toBe('none');
+    });
+
+    it('should resolve GREPR_AUTH_METHOD=none in the real configuration merge', async () => {
+      process.env.GREPR_AUTH_METHOD = 'none';
+
+      const result = await new GreprQueryCLI().mergeConfiguration({ orgName: 'test-org' });
+      expect(result.authMethod).toBe('none');
+    });
+
+    it('should resolve --auth-method none in the real configuration merge', async () => {
+      const result = await new GreprQueryCLI().mergeConfiguration({ orgName: 'test-org', authMethod: 'none' });
+      expect(result.authMethod).toBe('none');
+    });
+
+    it('should never infer none as a default even when no auth method or client secret is set', async () => {
+      const result = await simulateMergeWithEnvVars({ orgName: 'test-org' });
+      expect(result.authMethod).not.toBe('none');
+    });
+
+    it('should never infer none as a default in the real configuration merge', async () => {
+      const result = await new GreprQueryCLI().mergeConfiguration({ orgName: 'test-org' });
+      expect(result.authMethod).not.toBe('none');
+      expect(result.authMethod).toBe('oauth');
+    });
+
     it('should infer client-credentials when a client secret is provided without an auth method', async () => {
       process.env.GREPR_CLIENT_SECRET = 'env-secret';
 

@@ -79,10 +79,11 @@ longer than the window or you'll see no rows.
 
 ## Variant — transform **and** derive a metric in one operation
 
-*"Mask the card numbers **and** give me a per-service count of masked logs per
-minute"* is two outputs of **one** `sql-operation`: an in-place stream plus a
-windowed rollup. Build the count as a real routed output — never eyeball it from
-draft records. Use a `sql_view` to do the shared work once.
+*"Normalize high-cardinality request paths **and** give me a per-service request
+count per minute"* is two outputs of **one** `sql-operation`: an in-place stream
+plus a windowed rollup. Build the count as a real routed output — never eyeball it
+from draft records. Use a `sql_view` to do the shared work once. (For redaction,
+this is **not** the tool — use `grepr:change-masking`.)
 
 ```json
 {
@@ -92,46 +93,47 @@ draft records. Use a `sql_view` to do the shared work once.
       "phase": "pre-parser",
       "sqlOperation": {
         "type": "sql-operation",
-        "name": "mask_and_count",
+        "name": "normalize_and_count",
         "inputs": { "logs": "LOG_EVENT" },
         "statements": [
           {
             "type": "sql_view",
-            "tableName": "masked",
-            "sqlQuery": "SELECT REGEXP_REPLACE(message, '[Cc]ard ending [0-9]{4}', 'card ending <redacted>') AS message, id, eventtimestamp, receivedtimestamp, severity, tags, attributes FROM logs"
+            "tableName": "normalized",
+            "sqlQuery": "SELECT REGEXP_REPLACE(message, '/[0-9]+', '/{id}') AS message, id, eventtimestamp, receivedtimestamp, severity, tags, attributes FROM logs"
           },
           {
             "type": "sql_output",
-            "outputName": "masked_logs",
+            "outputName": "normalized_logs",
             "outputType": "LOG_EVENT",
-            "sqlQuery": "SELECT *, 'v1' AS `tags.mask` FROM masked"
+            "sqlQuery": "SELECT *, 'v1' AS `tags.normalized` FROM normalized"
           },
           {
             "type": "sql_output",
-            "outputName": "mask_counts",
+            "outputName": "request_counts",
             "outputType": "LOG_EVENT",
-            "sqlQuery": "SELECT CONCAT('masked=', CAST(COUNT(*) AS STRING)) AS message, tags['service'][1] AS `tags.service`, 'mask_count' AS `tags.metric`, CAST(COUNT(*) AS STRING) AS masked_count FROM TABLE(TUMBLE(TABLE logs, DESCRIPTOR(eventtimestamp), INTERVAL '1' MINUTE)) WHERE message LIKE '%card ending %' GROUP BY window_start, window_end, tags['service'][1]"
+            "sqlQuery": "SELECT CONCAT('requests=', CAST(COUNT(*) AS STRING)) AS message, tags['service'][1] AS `tags.service`, 'request_count' AS `tags.metric`, CAST(COUNT(*) AS STRING) AS request_count FROM TABLE(TUMBLE(TABLE logs, DESCRIPTOR(eventtimestamp), INTERVAL '1' MINUTE)) GROUP BY window_start, window_end, tags['service'][1]"
           }
         ],
         "availableDatasets": []
       },
       "outputRouting": {
-        "masked_logs": "json-log-processor",
-        "mask_counts": "data-warehouse"
+        "normalized_logs": "json-log-processor",
+        "request_counts": "data-warehouse"
       },
       "mainStream": "drop",
-      "gate": { "type": "datadog-query", "query": "service:payment" }
+      "gate": { "type": "datadog-query", "query": "service:api" }
     }
   ]
 }
 ```
 
-Why it works: the `masked` view does the masking once. `masked_logs` is the
-replacement stream (`mainStream: "drop"` drops the original, so no duplicate),
-routed to `json-log-processor` to continue the log path; `mask_counts` is the
-windowed rollup, routed to `data-warehouse` so the user can `grepr query` it. The
-count windows over `logs` (where the time attribute/watermark lives). Draft ≥
-window + watermark (~90s) or you'll see masked logs but no counts yet.
+Why it works: the `normalized` view does the path-normalization once.
+`normalized_logs` is the replacement stream (`mainStream: "drop"` drops the
+original, so no duplicate), routed to `json-log-processor` to continue the log
+path; `request_counts` is the windowed rollup, routed to `data-warehouse` so the
+user can `grepr query` it. The count windows over `logs` (where the time
+attribute/watermark lives). Draft ≥ window + watermark (~90s) or you'll see
+normalized logs but no counts yet.
 
 ## Verifying the draft
 

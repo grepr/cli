@@ -45,11 +45,11 @@ export function parseAuthMethod(method?: string): AuthMethod | undefined {
   if (!method) {
     return undefined;
   }
-  if (method === 'oauth' || method === 'client-credentials') {
+  if (method === 'oauth' || method === 'client-credentials' || method === 'none') {
     return method;
   }
 
-  throw new Error(`Invalid authentication method: ${method}. Must be oauth or client-credentials`);
+  throw new Error(`Invalid authentication method: ${method}. Must be oauth, client-credentials, or none`);
 }
 
 /** Parse a query engine; returns undefined when unset so the caller can default. */

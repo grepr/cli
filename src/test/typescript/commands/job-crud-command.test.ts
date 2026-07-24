@@ -551,6 +551,48 @@ describe('JobCrudCommand', () => {
       expect(mockApiClient.createAsyncJob).not.toHaveBeenCalled();
     });
 
+    it('test_executeCreate_withNoneAuthMethodAndSyncJob_shouldPassNarrowingAndExecute', async () => {
+      // authMethod: 'none' (the egress-proxy pass-through mode) must be accepted by
+      // isFormattableJobCreateOptions just like 'oauth' and 'client-credentials' are, so
+      // execution reaches the streaming executor instead of throwing the "missing
+      // required auth fields" internal error.
+      const noneAuthOptions = { ...mockOptions, authMethod: 'none' as const };
+
+      const mockJobDefinition = {
+        name: 'test-sync-job-none-auth',
+        execution: PathsV1JobsGetParametersQueryExecution.SYNCHRONOUS,
+        processing: 'BATCH',
+        jobGraph: {
+          vertices: [{ type: 'source', name: 'src' }],
+          edges: []
+        }
+      };
+
+      mockFs.readJson.mockResolvedValue(mockJobDefinition);
+
+      // Mock the streaming executor to resolve and then exit
+      mockStreamingExecutor.execute.mockImplementation(() => {
+        process.exit(0);
+      });
+
+      // Since synchronous jobs exit the process, we expect process.exit to be called
+      await expect((async () => {
+        await command.executeCreate(noneAuthOptions);
+      })()).rejects.toThrow('process.exit called');
+
+      // The narrowing must have passed and reached the streaming executor with authMethod
+      // intact (a rejected narrowing would instead throw an internal error and exit(1)).
+      expect(mockStreamingExecutor.execute).toHaveBeenCalledWith(
+        mockJobDefinition,
+        expect.objectContaining({ authMethod: 'none' })
+      );
+      expect(mockProcessExit).toHaveBeenCalledWith(0);
+      expect(consoleSpy.error).not.toHaveBeenCalledWith(
+        'Error creating job:',
+        expect.stringContaining('missing required auth fields')
+      );
+    });
+
     it('test_executeCreate_withDefaultSyncOptions_shouldUseDefaults', async () => {
       const optionsWithDefaults = {
         resourceFile: '/path/to/sync-job.json',

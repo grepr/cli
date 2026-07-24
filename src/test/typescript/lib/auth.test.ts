@@ -23,7 +23,7 @@ vi.mock('axios', () => ({
   },
 }));
 
-const { ClientCredentialsAuth } = await import('../../../main/typescript/lib/auth.js');
+const { ClientCredentialsAuth, NoAuth } = await import('../../../main/typescript/lib/auth.js');
 
 const BASE_CONFIG: ApiClientConfig = {
   orgName: 'test-org',
@@ -304,5 +304,28 @@ describe('ClientCredentialsAuth', () => {
       expect(mockAxiosPost).not.toHaveBeenCalled();
       expect(mockPathExists).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('NoAuth', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('test_getAuthHeaders_shouldReturnEmptyHeadersWithNoTokenFetchOrCacheIO', async () => {
+    const auth = new NoAuth({ ...BASE_CONFIG, authMethod: 'none', clientSecret: undefined });
+
+    const headers = await auth.getAuthHeaders();
+
+    expect(headers).toEqual({});
+    expect(mockAxiosPost).not.toHaveBeenCalled();
+    expect(mockPathExists).not.toHaveBeenCalled();
+    expect(mockReadJson).not.toHaveBeenCalled();
+    expect(mockEnsureDir).not.toHaveBeenCalled();
+    expect(mockWriteJson).not.toHaveBeenCalled();
   });
 });

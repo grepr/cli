@@ -27,9 +27,20 @@ class MockGreprAuth {
   getAuthHeaders = mockGetAuthHeaders;
 }
 
+const mockNoAuthGetAuthHeaders = vi.fn().mockResolvedValue({});
+
+class MockNoAuth {
+  config: AuthConfig;
+  constructor(config: AuthConfig) {
+    this.config = config;
+  }
+  getAuthHeaders = mockNoAuthGetAuthHeaders;
+}
+
 vi.mock('../../../main/typescript/lib/auth.js', () => ({
   ClientCredentialsAuth: MockClientCredentialsAuth,
-  GreprAuth: MockGreprAuth
+  GreprAuth: MockGreprAuth,
+  NoAuth: MockNoAuth
 }));
 
 // Import after mocking
@@ -91,6 +102,23 @@ describe('GreprApiClient getTemplate', () => {
     await expect(client.getTemplate('0qqtysycrgp1a', 16)).rejects.toThrow(
       'Template 0qqtysycrgp1a version 16 not found'
     );
+  });
+});
+
+describe('GreprApiClient with authMethod none', () => {
+  it('sends requests with no Authorization header and never calls the oauth/client-credentials auth classes', async () => {
+    vi.clearAllMocks();
+    const noAuthConfig: ApiClientConfig = { ...API_CLIENT_CONFIG, authMethod: 'none' };
+    const client = new GreprApiClient(noAuthConfig);
+
+    mockFetch.mockResolvedValueOnce(new Response('', { status: 202 }));
+
+    await client.sendHeartbeat('irrelevant-token');
+
+    const [, options] = mockFetch.mock.calls[0] as [string, { headers: Record<string, string> }];
+    expect(options.headers).toEqual({ 'Content-Type': 'application/json' });
+    expect(mockNoAuthGetAuthHeaders).toHaveBeenCalled();
+    expect(mockGetAuthHeaders).not.toHaveBeenCalled();
   });
 });
 

@@ -804,6 +804,63 @@ describe('applyPatch — set-sql-transform', () => {
   });
 });
 
+describe('applyPatch — set-masking / clear-masking', () => {
+  const emailMask = { type: 'masking-operator', name: 'masking_operator', messageMasks: { email: '\\S+@\\S+' }, attributeMasks: [] };
+
+  it('test_setMasking_installsMaskingInput', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, { operations: [{ op: 'set-masking', masking: emailMask as never }] });
+    const input = readInputFromUpdate(update) as unknown as Record<string, unknown>;
+    expect(input['masking']).toEqual(emailMask);
+  });
+
+  it('test_setMasking_defaultsTypeAndNameWhenOmitted', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, { operations: [{ op: 'set-masking', masking: { messageMasks: { email: '\\S+@\\S+' }, attributeMasks: [] } as never }] });
+    const masking = (readInputFromUpdate(update) as unknown as Record<string, unknown>)['masking'] as Record<string, unknown>;
+    expect(masking['type']).toBe('masking-operator');
+    expect(masking['name']).toBe('masking_operator');
+  });
+
+  it('test_setMasking_keepsExplicitName', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, { operations: [{ op: 'set-masking', masking: { type: 'masking-operator', name: 'pii_masker', messageMasks: { email: '\\S+@\\S+' }, attributeMasks: [] } as never }] });
+    const masking = (readInputFromUpdate(update) as unknown as Record<string, unknown>)['masking'] as Record<string, unknown>;
+    expect(masking['name']).toBe('pii_masker');
+  });
+
+  it('test_setMasking_replacesExisting', () => {
+    const job = makeTemplateJob({});
+    applyPatch(job, { operations: [{ op: 'set-masking', masking: { type: 'masking-operator', messageMasks: { a: 'x' }, attributeMasks: [] } as never }] });
+    (job.jobGraph?.vertices[0] as unknown as { templateInputs: { input: Record<string, unknown> } }).templateInputs.input['masking'] = { type: 'masking-operator', messageMasks: { a: 'x' }, attributeMasks: [] };
+    const update = applyPatch(job, { operations: [{ op: 'set-masking', masking: emailMask as never }] });
+    expect((readInputFromUpdate(update) as unknown as Record<string, unknown>)['masking']).toEqual(emailMask);
+  });
+
+  it('test_clearMasking_removesMaskingInput', () => {
+    const job = makeTemplateJob({});
+    (job.jobGraph?.vertices[0] as unknown as { templateInputs: { input: Record<string, unknown> } }).templateInputs.input['masking'] = emailMask;
+    const update = applyPatch(job, { operations: [{ op: 'clear-masking' }] });
+    expect((readInputFromUpdate(update) as unknown as Record<string, unknown>)['masking']).toBeUndefined();
+  });
+});
+
+describe('applyPatch — set-input-field input. prefix tolerance', () => {
+  it('test_setInputField_leadingInputPrefix_resolvesFromRoot', () => {
+    const job = makeTemplateJob({});
+    const update = applyPatch(job, { operations: [{ op: 'set-input-field', path: 'input.masking', value: { type: 'masking-operator', messageMasks: {}, attributeMasks: [] } }] });
+    const input = readInputFromUpdate(update) as unknown as Record<string, unknown>;
+    expect((input['masking'] as Record<string, unknown>)['type']).toBe('masking-operator');
+  });
+
+  it('test_unsetInputField_leadingInputPrefix_resolvesFromRoot', () => {
+    const job = makeTemplateJob({});
+    (job.jobGraph?.vertices[0] as unknown as { templateInputs: { input: Record<string, unknown> } }).templateInputs.input['datasetId'] = 'ds_1';
+    const update = applyPatch(job, { operations: [{ op: 'unset-input-field', path: 'input.datasetId' }] });
+    expect((readInputFromUpdate(update) as unknown as Record<string, unknown>)['datasetId']).toBeUndefined();
+  });
+});
+
 describe('applyPatch — set-transform-chain / clear-transform-chain', () => {
   it('test_setTransformChain_writesRootVerbatim', () => {
     const job = makeTemplateJob({});
@@ -1399,6 +1456,13 @@ describe('applyPatch (job-graph backend)', () => {
     expect(() =>
       applyPatch(job, { operations: [{ op: 'set-transform-chain', phase: 'pre-parser', root: { kind: 'passthrough-node' } as never }] }),
     ).toThrow(/transform-chain edits are only supported for template-backed log-reducer jobs/);
+  });
+
+  it('test_jobGraph_setMasking_rejectsWithTemplateOnlyMessage', () => {
+    const job = makeUiRawJobGraphJob();
+    expect(() =>
+      applyPatch(job, { operations: [{ op: 'set-masking', masking: { type: 'masking-operator', messageMasks: {}, attributeMasks: [] } as never }] }),
+    ).toThrow(/masking operator edits are only supported for template-backed log-reducer jobs/);
   });
 
   it('test_jobGraph_addGrokParser_uiGraph_insertsBeforePreWarehouse', () => {

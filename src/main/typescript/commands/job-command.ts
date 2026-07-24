@@ -378,6 +378,6 @@ function isFormattableJobCreateOptions(
 ): options is CrudCreateUpdateOptions & FormattableCommandOptions {
   return typeof options.authBaseUrl === 'string' &&
     typeof options.clientId === 'string' &&
-    (options.authMethod === 'oauth' || options.authMethod === 'client-credentials');
+    (options.authMethod === 'oauth' || options.authMethod === 'client-credentials' || options.authMethod === 'none');
 }
 

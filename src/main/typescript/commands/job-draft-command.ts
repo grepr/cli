@@ -14,14 +14,25 @@ import { generatePlan, JobPlan, loadPlanFromFile } from '@/lib/job-plan.js';
 import {
   draftVerificationLimitations,
   findTemplateOperation,
+  readTemplateInput,
 } from '@/lib/job-patch.js';
 import {
   DraftSamplerOptions,
   transformJobGraphToSourcePreservingDraft,
 } from '@/lib/job-graph-transformer.js';
-import { SchemaCreateJob, SchemaUpdateJob } from '@/openapi/openApiTypes';
+import {
+  SchemaCreateJob,
+  SchemaUpdateJob,
+  SchemaLogEvent,
+  SchemaLogsValuesSource,
+  LogEventType,
+  LogsValuesSourceType,
+} from '@/openapi/openApiTypes';
 import { JobExecution, JobProcessing } from '@/types';
 import { parseFloatArg, parseIntArg } from '@/lib/option-parsers.js';
+
+/** Name of the bounded sample source injected as the template input's `draftSource`. */
+const DRAFT_SOURCE_NAME = 'draft_source';
 
 export class JobDraftCommand implements ICommand {
   addToProgram(program: Command, mergeConfiguration: MergeConfiguration): void {
@@ -34,6 +45,9 @@ export class JobDraftCommand implements ICommand {
       .option('--sample-rate <n>', 'Sampler max allowed rate in messages/sec for the live draft (job-graph plans only)', parseFloatArg)
       .option('--sample-burst <n>', 'Sampler max burst limit in messages for the live draft (job-graph plans only)', parseIntArg)
       .option('--max-duration-seconds <n>', 'Stop the live draft after N seconds', parseIntArg)
+      // Template plans only: draft against these sample LogEvents (a bounded
+      // values-source) instead of live traffic, running as BATCH to completion.
+      .option('--sample-logs <file>', 'Draft against a JSON array (or NDJSON) of sample LogEvents instead of live traffic (template plans only); runs as BATCH')
       .action(async (planFile: string | undefined, options: JobDraftCommandOptions, command: Command) => {
         try {
           const merged = { ...command.parent?.opts(), ...options } as Record<string, string | boolean | number | string[]>;
@@ -53,19 +67,29 @@ export class JobDraftCommand implements ICommand {
             : await generatePlan(apiClient, options.jobId as string, { operations: [] });
 
           rejectSamplerFlagsOnTemplate(plan, options);
+          rejectSampleLogsOnJobGraph(plan, options);
 
           const limitations = draftVerificationLimitations(plan.patch);
+
+          // Sample-driven drafts replay the given LogEvents through the proposed
+          // pipeline as a bounded source — deterministic, unlike sparse live
+          // traffic — so they must run as BATCH (a bounded source can't run STREAMING).
+          const sampleLogs = options.sampleLogs !== undefined
+            ? await loadSampleLogs(options.sampleLogs)
+            : undefined;
 
           // Template drafts use server-side draftMode; raw job graphs are rewritten
           // locally to keep live sources, with a logs-event-sampler per source.
           const draftJob = plan.backend === 'template'
-            ? makeTemplateDraftJob(plan.proposed, plan.current.processing as JobProcessing | undefined)
+            ? makeTemplateDraftJob(plan.proposed, plan.current.processing as JobProcessing | undefined, sampleLogs)
             : makeJobGraphDraftJob(plan, options);
 
           if (!cliOptions.quiet) {
-            const note = plan.backend === 'job-graph'
-              ? ' (job-graph source-preserving live draft — external sink delivery is not verified)'
-              : '';
+            const note = sampleLogs !== undefined
+              ? ` (BATCH draft against ${sampleLogs.length} sample log(s))`
+              : plan.backend === 'job-graph'
+                ? ' (job-graph source-preserving live draft — external sink delivery is not verified)'
+                : '';
             console.error(
               `Submitting draft pipeline run (jobId ${plan.jobId}, baseVersion ${plan.baseVersion})${note}…`,
             );
@@ -191,15 +215,46 @@ function makeDraftJobSkeleton(jobGraph: SchemaUpdateJob['jobGraph'], processing:
   } as unknown as SchemaCreateJob;
 }
 
-/** Enable server-side draftMode on a template-backed proposed job. */
+/**
+ * Enable server-side draftMode on a template-backed proposed job. When
+ * `sampleLogs` is given, inject them as the template input's `draftSource` (a
+ * bounded logs-values-source) and force BATCH so the bounded source runs to
+ * completion; the injection happens on a clone, so `plan.proposed` — what
+ * `job:apply` PUTs to production — never carries a draftSource.
+ */
 function makeTemplateDraftJob(
   proposed: SchemaUpdateJob,
   processing: JobProcessing = JobProcessing.STREAMING,
+  sampleLogs?: SchemaLogEvent[],
 ): SchemaCreateJob {
   const cloned = structuredClone(proposed);
   const templateOp = findTemplateOperation(cloned);
   templateOp.draftMode = true;
-  return makeDraftJobSkeleton(cloned.jobGraph, processing);
+  if (sampleLogs === undefined) {
+    return makeDraftJobSkeleton(cloned.jobGraph, processing);
+  }
+  injectDraftSource(templateOp, sampleLogs);
+  // A bounded values-source can only run BATCH; the server rejects a bounded
+  // source on a STREAMING job.
+  return makeDraftJobSkeleton(cloned.jobGraph, JobProcessing.BATCH);
+}
+
+/**
+ * Set the template input's `draftSource` to a bounded logs-values-source over
+ * the given sample events. The server template then rewrites this into
+ * `draft_source -> parsers -> reducer -> logs_sync_sink` with per-stage
+ * sink-source tags.
+ */
+function injectDraftSource(
+  templateOp: { templateInputs?: Record<string, unknown> },
+  sampleLogs: SchemaLogEvent[],
+): void {
+  const draftSource: SchemaLogsValuesSource = {
+    type: LogsValuesSourceType.logs_values_source,
+    name: DRAFT_SOURCE_NAME,
+    values: sampleLogs,
+  };
+  readTemplateInput(templateOp).draftSource = draftSource;
 }
 
 /**
@@ -237,6 +292,86 @@ function resolveMaxDurationSeconds(options: JobDraftCommandOptions): number | un
     throw new Error('--max-duration-seconds must be a positive number of seconds.');
   }
   return value;
+}
+
+/**
+ * Sample-driven drafts inject a `draftSource` into the template input, so they
+ * only apply to template-backed plans; reject them on raw job-graph plans, which
+ * keep their live sources.
+ */
+function rejectSampleLogsOnJobGraph(plan: JobPlan, options: JobDraftCommandOptions): void {
+  if (options.sampleLogs === undefined) return;
+  if (plan.backend !== 'template') {
+    throw new Error(
+      '--sample-logs is only supported for template-backed pipelines; ' +
+        'this plan targets a raw job graph, which drafts against its live sources.',
+    );
+  }
+}
+
+/**
+ * Load sample LogEvents from a file, accepting either a JSON array of events or
+ * NDJSON (one event per line). Every event is stamped with `type: "log"` because
+ * LogEvent is polymorphic and the server rejects a values-source whose entries
+ * omit the type discriminator.
+ */
+async function loadSampleLogs(filePath: string): Promise<SchemaLogEvent[]> {
+  if (!(await fs.pathExists(filePath))) {
+    throw new Error(`Sample logs file not found: ${filePath}`);
+  }
+  const raw = (await fs.readFile(filePath, 'utf8')).trim();
+  if (raw.length === 0) {
+    throw new Error(`Sample logs file is empty: ${filePath}`);
+  }
+  const events = parseSampleLogs(raw, filePath);
+  if (events.length === 0) {
+    throw new Error(`Sample logs file contained no log events: ${filePath}`);
+  }
+  return events.map(withLogType);
+}
+
+/** Parse the file as a JSON array if possible, else as NDJSON. */
+function parseSampleLogs(raw: string, filePath: string): Record<string, unknown>[] {
+  const asJson = tryParseJson(raw);
+  if (asJson !== undefined) {
+    if (Array.isArray(asJson)) {
+      return asJson.map((e, i) => asEventObject(e, filePath, i));
+    }
+    // A lone JSON object is valid single-event NDJSON, so accept it rather than rejecting it;
+    // asEventObject rejects a non-object scalar with a clear message.
+    return [asEventObject(asJson, filePath, 0)];
+  }
+  // Not a JSON array: treat as NDJSON (one event per non-blank line).
+  const lines = raw.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  return lines.map((line, i) => {
+    const parsed = tryParseJson(line);
+    if (parsed === undefined) {
+      throw new Error(`Sample logs file ${filePath}: line ${i + 1} is not valid JSON`);
+    }
+    return asEventObject(parsed, filePath, i);
+  });
+}
+
+/** Parse JSON, returning undefined instead of throwing so callers can fall back. */
+function tryParseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
+/** Narrow a parsed sample entry to an object, failing loudly on a scalar/array. */
+function asEventObject(value: unknown, filePath: string, index: number): Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`Sample logs file ${filePath}: event ${index} is not a JSON object`);
+  }
+  return value as Record<string, unknown>;
+}
+
+/** Stamp the LogEvent polymorphic type discriminator, which the server requires on values-source entries. */
+function withLogType(event: Record<string, unknown>): SchemaLogEvent {
+  return { ...event, type: LogEventType.log } as unknown as SchemaLogEvent;
 }
 
 /** Sampler flags only apply to raw job-graph drafts; reject them on template plans. */

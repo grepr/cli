@@ -1,5 +1,5 @@
 ---
-description: Author a Flink-SQL transform on a Grepr log-reducer pipeline — reshape, enrich, mask, or filter logs row-by-row, derive metric-shaped logs via windowed aggregation, or run arbitrary supported SQL. Emits a set-sql-transform patch into a template transform slot (pre-parser, pre-warehouse, pre-exceptions) and routes through test-pipeline-change. SQL transforms are TEMPLATE-BACKED ONLY. Use for "add a SQL transform", "transform/reshape logs with SQL", "redact or mask fields with SQL", "logs to metrics", "aggregate logs with SQL".
+description: Author a Flink-SQL transform on a Grepr log-reducer pipeline — reshape, enrich, or filter logs row-by-row, derive metric-shaped logs via windowed aggregation, or run arbitrary supported SQL. Emits a set-sql-transform patch into a template transform slot (pre-parser, pre-warehouse, pre-exceptions) and routes through test-pipeline-change. SQL transforms are TEMPLATE-BACKED ONLY. Use for "add a SQL transform", "transform/reshape logs with SQL", "logs to metrics", "aggregate logs with SQL". For masking/redacting sensitive data, use grepr:change-masking (the masking operator) instead of SQL.
 allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr sql:validate), Bash(grepr docs:search), Bash(grepr docs:get), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:plan), Bash(grepr --conf * job:draft), Bash(grepr --conf * sql:validate), Bash(grepr --conf * docs:search), Bash(grepr --conf * docs:get), Read, Write, AskUserQuestion, grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs, grepr:docs-commands
 ---
 
@@ -15,6 +15,11 @@ transform slot. You author and validate the SQL, then hand the patch to
 `grepr:test-pipeline-change` — production writes happen only there, after
 explicit approval. Resolve the org config (`--conf`) once and reuse it — see
 `grepr:cli`.
+
+**Masking/redaction is not this skill's job.** To scrub sensitive substrings
+(PII, secrets, emails, card numbers), use `grepr:change-masking` — the masking
+operator is purpose-built for redaction, needs no SQL, and is dynamically
+reconfigurable. Reach for SQL only for genuine reshaping/enrichment/aggregation.
 
 ## Two hard boundaries
 
@@ -40,7 +45,7 @@ interrogate when the answer is obvious.
 
 | Spec field | What it decides | Ask only if unclear |
 |------------|-----------------|---------------------|
-| **Outcome** — transform-in-place / derive-a-new-stream / both | whole shape | decompose multi-part asks ("redact *and* count" = two outputs, one op) |
+| **Outcome** — transform-in-place / derive-a-new-stream / both | whole shape | decompose multi-part asks ("normalize *and* count" = two outputs, one op) |
 | **Scope** — which logs (service / tag / attribute, or all) | the Step 2 query + optional `gate` | yes, if not stated |
 | **Fields/text** — exactly what to read or change | the SQL columns | confirm against the real sample, never guess |
 | **Keep or replace originals?** | **`mainStream`** (the #1 failure point) | yes — see below |
@@ -71,13 +76,13 @@ routed by `outputRouting`); the *other* copy is the untouched original, governed
 by the required `mainStream`:
 
 - **`drop`** = **replace.** Original discarded; only the SQL output flows on. Use
-  for in-place changes (reshape, mask, enrich) that must *replace* the logs.
+  for in-place changes (reshape, enrich, categorize) that must *replace* the logs.
 - **`passthrough`** = **tap.** Original continues unchanged; the SQL output is an
   *additional* stream. Use to derive a new stream (logs→metrics, alerts) while
   logs flow on.
 
-Picking wrong is the signature failure: `passthrough` for an in-place mask ships
-the original **and** a changed copy (duplication + leak); `drop` for a metrics
+Picking wrong is the signature failure: `passthrough` for an in-place reshape
+ships the original **and** a changed copy (duplication); `drop` for a metrics
 tap **deletes your logs**. An optional `gate` predicate runs the SQL only on
 matching events (`drop` + `gate` = "transform the matches, pass the rest"); omit
 it to apply to all. **When a `gate` is set, do not mirror its predicate in the SQL** — the node
@@ -171,7 +176,8 @@ intend. For a safety/coverage change, a marker tag in the SELECT (`` 'v1' AS
 
 | Request | Where |
 |---------|-------|
-| Reshape / enrich / mask / filter / categorize, row-by-row | inline above — it's `SELECT … AS <field>, *` with the right `mainStream` |
+| Reshape / enrich / filter / categorize, row-by-row | inline above — it's `SELECT … AS <field>, *` with the right `mainStream` |
+| **Mask / redact sensitive data** | **`grepr:change-masking`** (the masking operator) — not SQL |
 | **Logs → metric-shaped logs** (windowed aggregation) | **`logs-to-metric.md`** |
 | Transform **+** derived metric in one op | `logs-to-metric.md` (two outputs, one `sql-operation`) |
 | Anything else in the dialect | `reference.md` |

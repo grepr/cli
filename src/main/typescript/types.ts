@@ -19,7 +19,7 @@ import {
   type SchemaOperation,
 } from './openapi/openApiTypes.js';
 
-export type AuthMethod = 'oauth' | 'client-credentials';
+export type AuthMethod = 'oauth' | 'client-credentials' | 'none';
 
 /** Backing source for `grepr query`: athena (grepr-raw-log-source) or flink (logs-iceberg-table-source). */
 export type QueryEngine = 'athena' | 'flink';
@@ -116,6 +116,16 @@ export interface JobDraftCommandOptions extends CliOptions {
   sampleBurst?: number;
   /** Wall-clock cap in seconds; the streaming sync job is aborted client-side after it. */
   maxDurationSeconds?: number;
+  /**
+   * Template backend only. Path to a JSON array (or NDJSON, one event per line)
+   * of LogEvents to draft the proposed pipeline against instead of live traffic.
+   * Injected as the template input's `draftSource` (a bounded logs-values-source)
+   * and forces the draft to run as BATCH so the bounded source runs to completion
+   * and streams its sink-source-tagged outputs back. This is the deterministic
+   * equivalent of drafting against a signal's sample, avoiding the HEARTBEAT-only
+   * result sparse live traffic produces.
+   */
+  sampleLogs?: string;
 }
 
 export interface ApiClientConfig {

@@ -21,8 +21,10 @@ import {
   SchemaPassthroughNode,
   SchemaSqlNode,
   SchemaSqlOperation,
+  SchemaMaskingOperator,
   SchemaTransforms,
   ConditionNodeKind,
+  MaskingOperatorType,
   DropNodeKind,
   PassthroughNodeKind,
   SqlNodeKind,
@@ -215,6 +217,17 @@ export type JobPatchOp =
        */
       gate?: SchemaEventPredicate;
     }
+  // Template-only masking ops. The masking operator is the template `input.masking`
+  // field; these set/clear it as a first-class op so callers never hand-write the
+  // escape-hatch path.
+  | {
+      op: 'set-masking';
+      /** The masking operator to install as `input.masking`; replaces any existing one. */
+      masking: SchemaMaskingOperator;
+    }
+  | {
+      op: 'clear-masking';
+    }
   | {
       op: 'add-source';
       /** Source operation appended to `input.sources`. */
@@ -395,6 +408,8 @@ const REQUIRED_OP_FIELDS: Record<JobPatchOp['op'], readonly (readonly [string, R
   'set-transform-chain': [['phase', 'string'], ['root', 'object']],
   'clear-transform-chain': [['phase', 'string']],
   'set-sql-transform': [['phase', 'string'], ['sqlOperation', 'object'], ['outputRouting', 'object'], ['mainStream', 'string']],
+  'set-masking': [['masking', 'object']],
+  'clear-masking': [],
   'add-source': [['source', 'object']],
   'remove-source': [['name', 'string']],
   // Target-conditional fields (vendor removal's `name`, sink shape) stay with the apply-time guards.
@@ -584,6 +599,10 @@ function applyOperation(input: SchemaLogReducerTemplateInput, op: JobPatchOp, in
       return applyClearTransformChain(input, op.phase, index);
     case 'set-sql-transform':
       return applySetSqlTransform(input, op.phase, op.sqlOperation, op.outputRouting, op.mainStream, op.gate, index);
+    case 'set-masking':
+      return applySetMasking(input, op.masking);
+    case 'clear-masking':
+      return applyClearMasking(input);
     case 'add-source':
       return applyAddSource(input, op.source, index);
     case 'remove-source':
@@ -662,6 +681,12 @@ function applyJobGraphOperation(jobGraph: SchemaGreprJobGraph, op: JobPatchOp, i
     case 'clear-transform-chain':
       throw new Error(
         `Operation ${index} (${op.op}): transform-chain edits are only supported for ` +
+          `template-backed log-reducer jobs in the CLI. This job is a direct job graph. `
+      );
+    case 'set-masking':
+    case 'clear-masking':
+      throw new Error(
+        `Operation ${index} (${op.op}): masking operator edits are only supported for ` +
           `template-backed log-reducer jobs in the CLI. This job is a direct job graph. `
       );
     case 'add-source':
@@ -1779,7 +1804,37 @@ function findTemplateGrokParser(
   return grok as SchemaGrokParser;
 }
 
-function applySetInputField(input: SchemaLogReducerTemplateInput, path: string, value: unknown, index: number): void {
+/**
+ * The escape-hatch path is relative to the template `input` root, but the job-graph shape
+ * exposes the same fields under `templateInputs.input.*`, so callers (especially LLMs) often
+ * prepend a redundant `input.`. No top-level template-input field is named `input`, so a single
+ * leading `input.` is always redundant and safe to drop; both `masking` and `input.masking` then
+ * resolve identically.
+ */
+function stripInputRoot(path: string): string {
+  return path.startsWith('input.') ? path.slice('input.'.length) : path;
+}
+
+/**
+ * Installs a masking operator as `input.masking`, replacing any existing one. Defaults the
+ * required `type` and `name` fields when omitted — the template input schema requires both, so an
+ * operator authored without a `name` would be rejected at plan/apply time.
+ */
+function applySetMasking(input: SchemaLogReducerTemplateInput, masking: SchemaMaskingOperator): void {
+  input.masking = {
+    ...masking,
+    type: MaskingOperatorType.masking_operator,
+    name: masking.name || 'masking_operator',
+  };
+}
+
+/** Removes the masking operator (`input.masking`); no-op if none is set. */
+function applyClearMasking(input: SchemaLogReducerTemplateInput): void {
+  delete input.masking;
+}
+
+function applySetInputField(input: SchemaLogReducerTemplateInput, rawPath: string, value: unknown, index: number): void {
+  const path = stripInputRoot(rawPath);
   const parts = splitPath(path, index);
   let cursor = input as unknown as Record<string, unknown>;
   for (let i = 0; i < parts.length - 1; i++) {
@@ -1800,8 +1855,8 @@ function applySetInputField(input: SchemaLogReducerTemplateInput, path: string, 
   cursor[parts[parts.length - 1] as string] = value;
 }
 
-function applyUnsetInputField(input: SchemaLogReducerTemplateInput, path: string, index: number): void {
-  const parts = splitPath(path, index);
+function applyUnsetInputField(input: SchemaLogReducerTemplateInput, rawPath: string, index: number): void {
+  const parts = splitPath(stripInputRoot(rawPath), index);
   let cursor = input as unknown as Record<string, unknown>;
   for (let i = 0; i < parts.length - 1; i++) {
     const next = cursor[parts[i] as string];
@@ -2425,6 +2480,7 @@ export function classifyPatch(patch: JobPatch): PatchClassification {
  */
 const INPUT_FIELD_TOUCHES: Record<keyof SchemaLogReducerTemplateInput, 'source' | 'sink' | 'transform'> = {
   sources: 'source',
+  draftSource: 'source',
   sinks: 'sink',
   processedLogsSink: 'sink',
   processedLogsSinkFilter: 'sink',
@@ -2448,7 +2504,7 @@ const INPUT_FIELD_TOUCHES: Record<keyof SchemaLogReducerTemplateInput, 'source' 
  * `transform` and previewed on a chain that never exercises it.
  */
 function classifyInputPath(path: string): 'source' | 'sink' | 'transform' | 'unknown' {
-  const top = (path.split('.')[0] ?? '').split('[')[0] ?? '';
+  const top = (stripInputRoot(path).split('.')[0] ?? '').split('[')[0] ?? '';
   return (top in INPUT_FIELD_TOUCHES) ? INPUT_FIELD_TOUCHES[top as keyof SchemaLogReducerTemplateInput] : 'unknown';
 }
 
@@ -2511,7 +2567,7 @@ export function findTemplateOperation(job: { jobGraph?: { vertices?: SchemaOpera
   return matches[0] as SchemaOperation & { draftMode?: boolean; templateInputs?: Record<string, unknown> };
 }
 
-function readTemplateInput(templateOp: { templateInputs?: Record<string, unknown> }): SchemaLogReducerTemplateInput {
+export function readTemplateInput(templateOp: { templateInputs?: Record<string, unknown> }): SchemaLogReducerTemplateInput {
   const inputs = templateOp.templateInputs;
   if (!inputs || typeof inputs !== 'object') {
     throw new Error('template-operation vertex has no templateInputs');

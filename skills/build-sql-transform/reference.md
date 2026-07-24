@@ -166,9 +166,9 @@ SQL runs continuously over an unbounded stream, not a batch:
 
 | Mistake | What happens | Fix |
 |---------|--------------|-----|
-| `outputName` with no underscore (`redactedlogs`) | passes the CLI parse check, **fails at draft** | add an underscore (`redacted_logs`) |
+| `outputName` with no underscore (`normalizedlogs`) | passes the CLI parse check, **fails at draft** | add an underscore (`normalized_logs`) |
 | Unbounded `GROUP BY` (no window TVF) | retract stream the sink can't take → draft errors | wrap in `TUMBLE`/`HOP`, group by `window_start, window_end, …` |
-| `passthrough` for an in-place change | original **and** changed copy both ship — duplication + leak, doubled volume | use `drop` |
+| `passthrough` for an in-place change | original **and** changed copy both ship — duplication, doubled volume | use `drop` |
 | `drop` for a metrics/derive tap | deletes all your logs | use `passthrough` |
 | `drop` + route to one narrow step (`log-reducer`) | logs reach only that step, stranded from lake/sinks | route to `data-warehouse` (full fan-out) at `pre-warehouse` |
 | Override column placed *after* `*` | the original value wins; your change silently no-ops | put the override column **before** `*` |
