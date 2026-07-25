@@ -3143,6 +3143,8 @@ export interface components {
       enabledSkills: string[];
       enabledTools: string[];
       /** Format: int32 */
+      maxTokens?: number;
+      /** Format: int32 */
       maxTurns?: number;
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       name: string;
@@ -3153,6 +3155,8 @@ export interface components {
       enabledSkills: string[];
       enabledTools: string[];
       /** Format: int32 */
+      maxTokens?: number;
+      /** Format: int32 */
       maxTurns?: number;
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       systemPrompt: string;
@@ -3161,6 +3165,8 @@ export interface components {
       enabledMcpIntegrations: components["schemas"]["AgentMcpIntegrations"][];
       enabledSkills: string[];
       enabledTools: string[];
+      /** Format: int32 */
+      maxTokens?: number;
       /** Format: int32 */
       maxTurns?: number;
       modelConfiguration: components["schemas"]["ModelConfiguration"];
@@ -11146,6 +11152,8 @@ export interface components {
       /** @enum {string} */
       role?: TranscriptMessageRole;
       text?: string;
+      /** Format: date-time */
+      timestamp?: string;
       toolCallId?: string;
       toolCalls?: components["schemas"]["TranscriptToolCall"][];
       toolName?: string;
