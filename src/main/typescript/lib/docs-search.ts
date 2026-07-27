@@ -1,4 +1,4 @@
-import { LocalDocumentIndex, DocumentTextSection, MetadataFilter } from 'vectra';
+import { EmbeddingsModel, LocalDocumentIndex, DocumentTextSection, MetadataFilter } from 'vectra';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { TransformersEmbeddings } from './transformers-embeddings.js';
@@ -31,6 +31,10 @@ export interface SearchOptions {
   contextTokens?: number;
 }
 
+export interface InitializableEmbeddings extends EmbeddingsModel {
+  initialize(): Promise<void>;
+}
+
 /**
  * Semantic search engine for Grepr documentation.
  *
@@ -55,7 +59,7 @@ export interface SearchOptions {
 export class DocsSearch {
   private index: LocalDocumentIndex | null = null;
   private indexPath: string;
-  private embeddings: TransformersEmbeddings;
+  private embeddings: InitializableEmbeddings;
 
   /**
    * Creates a new DocsSearch instance.
@@ -67,7 +71,7 @@ export class DocsSearch {
    *                    defaults to the bundled docs-index directory relative to
    *                    this file. Used primarily for testing with temporary indices.
    */
-  constructor(indexPath?: string) {
+  constructor(indexPath?: string, embeddings?: InitializableEmbeddings) {
     if (indexPath) {
       this.indexPath = indexPath;
     } else {
@@ -76,7 +80,28 @@ export class DocsSearch {
       this.indexPath = path.resolve(__dirname, '../docs-index');
     }
 
-    this.embeddings = new TransformersEmbeddings('Xenova/all-MiniLM-L6-v2', 512);
+    this.embeddings = embeddings ?? new TransformersEmbeddings('Xenova/all-MiniLM-L6-v2', 512);
+  }
+
+  private async openIndex(): Promise<LocalDocumentIndex> {
+    if (this.index) {
+      return this.index;
+    }
+
+    const index = new LocalDocumentIndex({
+      folderPath: this.indexPath,
+      embeddings: this.embeddings
+    });
+
+    if (!(await index.isIndexCreated())) {
+      throw new Error(
+        'Documentation index not found. The CLI package may be corrupted. ' +
+        'Please reinstall the CLI: npm install -g @grepr/cli'
+      );
+    }
+
+    this.index = index;
+    return index;
   }
 
   /**
@@ -91,24 +116,9 @@ export class DocsSearch {
    * @throws Error if the index is not found or corrupted. This typically indicates
    *         a corrupted CLI installation and the user should reinstall.
    */
-  async initialize(): Promise<void> {
-    if (this.index) {
-      return;
-    }
-
+  async initialize(): Promise<LocalDocumentIndex> {
     await this.embeddings.initialize();
-
-    this.index = new LocalDocumentIndex({
-      folderPath: this.indexPath,
-      embeddings: this.embeddings
-    });
-
-    if (!(await this.index.isIndexCreated())) {
-      throw new Error(
-        'Documentation index not found. The CLI package may be corrupted. ' +
-        'Please reinstall the CLI: npm install -g @grepr/cli'
-      );
-    }
+    return this.openIndex();
   }
 
   /**
@@ -138,13 +148,7 @@ export class DocsSearch {
    * @returns Array of search results, sorted by relevance (highest first)
    */
   async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
-    if (!this.index) {
-      await this.initialize();
-    }
-
-    if (!this.index) {
-      throw new Error('Failed to initialize index');
-    }
+    const index = await this.initialize();
 
     const {
       limit = 5,
@@ -156,7 +160,7 @@ export class DocsSearch {
 
     const filter = this.buildMetadataFilter(type);
 
-    const results = await this.index.queryDocuments(query, {
+    const results = await index.queryDocuments(query, {
       maxDocuments: limit,
       maxChunks,
       filter
@@ -211,15 +215,9 @@ export class DocsSearch {
    * @throws Error if document is not found in the index
    */
   async getDocument(uri: string): Promise<string> {
-    if (!this.index) {
-      await this.initialize();
-    }
+    const index = await this.openIndex();
 
-    if (!this.index) {
-      throw new Error('Failed to initialize index');
-    }
-
-    const docs = await this.index.listDocuments();
+    const docs = await index.listDocuments();
     const doc = docs.find(d => d.uri === uri);
 
     if (!doc) {
@@ -251,15 +249,9 @@ export class DocsSearch {
    * @returns Index metadata including document count and file path
    */
   async getIndexStats(): Promise<{ documentCount: number; indexPath: string }> {
-    if (!this.index) {
-      await this.initialize();
-    }
+    const index = await this.openIndex();
 
-    if (!this.index) {
-      throw new Error('Failed to initialize index');
-    }
-
-    const stats = await this.index.listDocuments();
+    const stats = await index.listDocuments();
 
     return {
       documentCount: stats.length,

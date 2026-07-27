@@ -1,0 +1,118 @@
+---
+description: Learn how to use Grepr-processed data and your observability tools to investigate and troubleshoot incidents.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Tutorial: Troubleshoot incidents with Grepr-processed data and your observability tool
+
+This tutorial describes how to use your observability tools to examine Grepr-processed log data, providing a powerful tool for investigating and troubleshooting issues in your infrastructure or applications.
+
+This tutorial describes using the Datadog UI to work with log data, but you can follow the same steps with any Grepr-supported observability tool. For the complete list of supported observability vendors, see [Supported integrations](/integrations/support-matrix).
+
+## Requirements
+
+To use the example in this tutorial, you must first complete the [Build your first Grepr pipeline](/tutorials/first-pipeline) tutorial, which creates the processed logs used by this tutorial.
+
+## Troubleshooting Example
+
+Suppose you need to find the root cause of a production incident. As part of your investigation, you need to view the raw log messages that Grepr aggregated into a summary message. To find the raw log messages, you can use the following steps:
+
+1. In the Datadog Log Explorer, open one of the summary messages. These are messages that start with `Repeats Nx in the past...`. Grepr replaces parameters that change between aggregated messages with a placeholder, such as `<number>`, `<timestamp>`, or `<any>`.
+
+   ![Summary message view in the Datadog Log Explorer.](/images/tutorials/troubleshooting/datadog-log-details.png)
+
+   In this example message, Grepr has identified a `timestamp` parameter and a `number` parameter that change between log messages. You can also see some Grepr-specific fields in the details, including:
+
+   - `firstTimestamp` and `lastTimestamp` are the timestamps of the first and last log message that Grepr aggregated into this summary message.
+   - `receivedTimestamp` is the timestamp when Grepr created this summary message.
+   - `patternId` is the identifier of the pattern matched by messages in this summary.
+   - `rawLogsUrl` is a URL that you can click on to see the raw log messages from the Grepr data lake that Grepr aggregated into this summary message.
+   - `repeatCount` is the number of log messages that Grepr aggregated into this summary message.
+
+1. To find the other messages that belong to this summary's pattern, hover over `patternId` and click **Filter by `@grepr.patternId:<pattern-id>`**, where `<pattern-id>` is the unique pattern identifier of the aggregated messages.
+
+   ![Filter messages in the Datadog Log Explorer detail view.](/images/tutorials/troubleshooting/datadog-log-filter.png)
+
+   This selection filters the logs to display only log messages with the same pattern as the selected message.
+
+    ![View of messages filtered by pattern in the Datadog Log Explorer.](/images/tutorials/troubleshooting/datadog-log-filtered.png)
+
+   <Callout>
+     You might see multiple summary messages with the same pattern ID. This is expected behavior and indicates that Grepr is actively aggregating these messages. For example:
+
+      - Frequent pattern: The pattern ID might be reused over long periods if the same pattern occurs frequently in your logs, resulting in multiple summary messages for the same pattern ID.
+      - Late-arriving data: If a message arrives after a summary message is created, Grepr creates a new summary message to include the late-arriving message, ensuring you receive the late-arriving data correctly.
+    </Callout>
+
+1. Reopen the summary message and click the URL in the **rawLogsUrl** field.
+
+   ![Raw log URL in the Datadog Log Explorer summary view.](/images/tutorials/troubleshooting/datadog-log-url.png)
+
+   Log Explorer opens and displays the results of a search for the raw messages belonging to the same hosts, service, and time period as the summarized messages, highlighting all the messages with the same pattern ID.
+
+   ![Raw log view in Log Explorer.](/images/tutorials/troubleshooting/grepr-raw-logs.png)
+
+1. To open a side panel displaying the details of a message, click one of the messages.
+
+   ![Log message detail in Log Explorer.](/images/tutorials/troubleshooting/grepr-raw-log-details.png)
+
+1. To load all these raw log messages to Datadog so that you can use the Datadog UI to search and analyze them, expand the menu next to **Search** in the top right of Log Explorer and select **Backfill**.
+
+   ![Selecting backfill from the Search menu.](/images/tutorials/troubleshooting/grepr-backfill.png)
+
+   Clicking **Backfill** starts a Grepr backfill job that loads the raw logs into Datadog. You can see the status of the job by clicking **Jobs** in the top bar of Log Explorer.
+
+   ![Viewing the status of a backfill job in Log Explorer.](/images/tutorials/troubleshooting/grepr-backfill-job.png)
+
+1. To view the backfilled messages in Datadog after the job completes, select the job in the **Jobs** menu. Selecting the job takes you to the Datadog Log Explorer, where you can view the backfilled messages. Because Datadog needs to index the new messages, there might be a short delay before they appear in the Datadog UI.
+
+   ![Datadog backfilled logs](/images/tutorials/troubleshooting/datadog-backfilled-logs.png)
+
+   Grepr automatically deduplicates messages when you run a backfill to prevent multiple copies of log messages if you backfill logs across multiple searches.
+
+   You can now use the Datadog Log Explorer to search and analyze the backfilled messages.
+
+<HiddenFAQ faqs={[
+  {
+    q: "How do I investigate production incidents with Grepr?",
+    a: "Use Grepr-processed data along with your observability platform to investigate incidents. When you find an aggregated log message in your observability tool, click on it to see Grepr metadata including the pattern ID, repeat count, and timestamps. Use this information to trace back to raw logs and perform root cause analysis."
+  },
+  {
+    q: "What are summary messages in Grepr logs?",
+    a: "Summary messages are aggregated log entries created by Grepr's log reducer. They start with 'Repeats Nx in the past...' and contain placeholders for varying fields (like <number>, <timestamp>, <any>). They represent multiple identical log patterns aggregated into a single message for volume reduction."
+  },
+  {
+    q: "What is the patternId field in Grepr logs?",
+    a: "The patternId is a unique identifier for the pattern of aggregated log messages. It allows you to find other log messages belonging to the same pattern in your observability platform. Filter logs by patternId to see all messages that follow the same pattern."
+  },
+  {
+    q: "How do I find all raw logs from an aggregated message?",
+    a: "Open the aggregated message in your observability platform and look for the rawLogsUrl field. Click this URL to open Log Explorer, which displays all raw messages from the data lake that belong to the same pattern, host, service, and time period."
+  },
+  {
+    q: "What information does Log Explorer show?",
+    a: "Log Explorer displays raw log messages from the data lake with the same pattern ID as your selected aggregated message. It shows the actual unprocessed logs that were aggregated, allowing you to see the original data for detailed analysis."
+  },
+  {
+    q: "What is the backfill feature and when should I use it?",
+    a: "Backfill loads raw logs from the Grepr data lake into your observability platform for analysis. Use backfill when you need to perform detailed investigation of raw logs, run complex queries, or share historical data with your team in your observability platform."
+  },
+  {
+    q: "How do I start a backfill job?",
+    a: "In Log Explorer, expand the menu next to 'Search' in the top right and select 'Backfill'. Grepr creates a backfill job that loads the raw logs into your observability platform. Monitor the job status in the Jobs menu."
+  },
+  {
+    q: "Does Grepr prevent duplicate logs when backfilling?",
+    a: "Yes. Grepr automatically deduplicates messages when you run a backfill to prevent multiple copies of the same log message if you backfill logs across multiple searches or time periods."
+  },
+  {
+    q: "How long does it take for backfilled logs to appear in my observability platform?",
+    a: "After a backfill job completes, there may be a short delay before backfilled logs appear in your observability platform because the platform needs to index the new messages. The time depends on your observability platform and the volume of logs being backfilled."
+  },
+  {
+    q: "What should I do if I see multiple summary messages with the same patternId?",
+    a: "Multiple summary messages with the same pattern ID is expected behavior. This indicates that Grepr is actively aggregating messages. It can happen when a pattern occurs frequently over long periods, or when late-arriving data triggers creation of a new summary message to include the delayed data."
+  }
+]} />

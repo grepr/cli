@@ -1,20 +1,39 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
-import { DocsSearch } from '../../../main/typescript/lib/docs-search.js';
-import { LocalDocumentIndex } from 'vectra';
-import { TransformersEmbeddings } from '../../../main/typescript/lib/transformers-embeddings.js';
+import { DocsSearch, InitializableEmbeddings } from '../../../main/typescript/lib/docs-search.js';
+import { EmbeddingsResponse, LocalDocumentIndex } from 'vectra';
 import { mkdirSync, rmSync } from 'fs';
-import { tmpdir } from 'os';
 import path from 'path';
+
+class TestEmbeddings implements InitializableEmbeddings {
+  public readonly maxTokens = 512;
+  public initializeCalls = 0;
+
+  async initialize(): Promise<void> {
+    this.initializeCalls++;
+  }
+
+  async createEmbeddings(inputs: string | string[]): Promise<EmbeddingsResponse> {
+    const keywords = ['grok', 'job', 'pipeline', 'datadog', 'integration', 'schema', 'api', 'log'];
+    const values = Array.isArray(inputs) ? inputs : [inputs];
+    return {
+      status: 'success',
+      output: values.map(value => {
+        const normalized = value.toLowerCase();
+        return keywords.map(keyword => normalized.includes(keyword) ? 1 : 0.01);
+      })
+    };
+  }
+}
 
 describe('DocsSearch Type Filtering Integration', () => {
   let docsSearch: DocsSearch;
   let tempIndexPath: string;
 
   beforeAll(async () => {
-    tempIndexPath = path.join(tmpdir(), `docs-search-test-${Date.now()}`);
+    tempIndexPath = path.resolve('build', `docs-search-test-${Date.now()}`);
     mkdirSync(tempIndexPath, { recursive: true });
 
-    const embeddings = new TransformersEmbeddings('Xenova/all-MiniLM-L6-v2', 512);
+    const embeddings = new TestEmbeddings();
     await embeddings.initialize();
 
     const index = new LocalDocumentIndex({
@@ -98,7 +117,7 @@ describe('DocsSearch Type Filtering Integration', () => {
       { docType: 'doc' }
     );
 
-    docsSearch = new DocsSearch(tempIndexPath);
+    docsSearch = new DocsSearch(tempIndexPath, embeddings);
     await docsSearch.initialize();
   });
 
@@ -335,6 +354,15 @@ describe('DocsSearch Type Filtering Integration', () => {
   });
 
   describe('getDocument', () => {
+    it('test_getDocument_shouldNotInitializeEmbeddings', async () => {
+      const embeddings = new TestEmbeddings();
+      const retrieval = new DocsSearch(tempIndexPath, embeddings);
+
+      await retrieval.getDocument('doc://getting-started.mdx');
+
+      expect(embeddings.initializeCalls).toBe(0);
+    });
+
     it('test_getDocument_existingUri_shouldReturnFullDocumentText', async () => {
       const content = await docsSearch.getDocument('doc://getting-started.mdx');
 

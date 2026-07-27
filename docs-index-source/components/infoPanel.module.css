@@ -1,0 +1,26 @@
+
+.button--top-right {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    padding: 5px;
+    border-radius: 5px;
+}
+
+.button--top-right:hover {
+    background-color: #f5f5f5;
+    cursor: pointer;
+}
+
+.copy-panel {
+    position: relative;
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px; 
+}
+
+.wrap-word {
+    white-space: pre-wrap;
+    word-break: break-word;
+}

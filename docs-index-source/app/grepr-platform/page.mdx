@@ -1,0 +1,128 @@
+---
+description: Get an overview of the Grepr platform core components that support real-time processing and analysis of logs, reducing log volumes, and long-term storage of raw logs.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Overview of the Grepr Platform
+
+The Grepr platform enables efficient collection, storage, processing, and analysis of log data. Because Grepr is built on a general-purpose stream processing engine, you can create processing pipelines for your logs using standard observability pipeline capabilities, such as filtering, parsing, transforming, and routing of processed logs. The Grepr log processing functionality optimizes logs shipped to observability platforms, reducing log volume and observability costs.
+
+This page provides an overview of the Grepr platform's core components and how to access its features. This page also has an overview of how the platform handles security, high availability, and scalability. Links to more detailed documentation for each topic are included.
+
+The Grepr platform uses a software as a service (SaaS) model. For larger deployments or for customers with strict compliance requirements, Grepr also offers a private cloud deployment model. Grepr runs in AWS for both models.
+
+## Supported regions [#grepr-supported-regions]
+
+<Callout type="info">
+  If you require an AWS region that Grepr does not support, contact [support@grepr.ai](mailto:support@grepr.ai).
+</Callout>
+
+The Grepr SaaS offering is available in the following AWS regions:
+
+| Region       | Location                    |
+| :----------- | :-------------------------- |
+| us-east-1    | US East (Northern Virginia) |
+| eu-central-1 | Europe (Frankfurt)          |
+
+## Understanding the Grepr processing and data models
+
+Grepr uses a flexible processing model that allows you to build complex log-processing pipelines and run queries. The processing model supports standard observability pipeline capabilities, including filtering, parsing, transforming, and routing of processed logs. Grepr also uses a standardized data model for processed log events, representing log data as records with fields and attributes. This data model enables efficient processing and querying of log data.
+
+See [The Grepr processing and data models](/grepr-platform/grepr-model).
+
+## Raw data storage in the Grepr data lake
+
+The Grepr data lake uses Amazon S3 for low-cost object storage of your full raw logs. You can use an S3 bucket provided by Grepr or a bucket in your own account. Logs are stored using Apache Parquet files and the Apache Iceberg table format, enabling efficient storage and querying. To query logs stored in the data lake, Log Explorer provides a user-friendly, visual interface.
+
+To learn more about the data lake, see [The Grepr data lake](/grepr-platform/data-lake).
+
+To learn more about querying log data in the data lake, see [Query log data in the Grepr data lake](/queries).
+
+For programmatic access, the Grepr CLI and REST API also support functionality for querying logs in the data lake. See [The Grepr CLI](/cli) and [Automate Grepr processing with the Grepr REST APIs](/apis).
+
+## Security in the Grepr platform
+
+The Grepr platform offers comprehensive security and compliance features to safeguard your data and fulfill enterprise security requirements. These features include secure authentication and identity management with OAuth 2.0, SOC 2 Type 2 compliance, HIPAA compliance, infrastructure and networking security, and data encryption.
+
+See [Security in the Grepr platform](/grepr-platform/security).
+
+## High availability and scalability
+
+The Grepr platform is designed for high availability, ensuring minimal downtime for your log processing pipelines. The platform is also designed for scalability, automatically adding and removing capacity as needed to match processing loads.
+
+See [How does Grepr ensure high availability?](/grepr-platform/high-availability).
+
+## Accessing Grepr functionality
+
+Grepr offers three primary access methods to interact with the platform's capabilities: a web-based user interface (UI), a comprehensive set of RESTful APIs, and a command-line interface (CLI). You can use any combination of these access methods based on your requirements and preferences.
+
+### The Grepr web-based user interface (UI)
+
+The Grepr UI provides:
+
+- A streamlined, task-oriented experience for creating and managing pipelines.
+- Visual tools for searching and exploring log data.
+- Dashboards that visualize pipeline performance and data flows.
+- Guided workflows for common observability tasks.
+
+### The Grepr REST API
+
+To access some advanced features and automate tasks, the REST API provides:
+
+- Complete programmatic control over all Grepr capabilities.
+- The ability to integrate Grepr into your existing workflows and tools.
+- Customization options for complex observability pipelines.
+- Support for infrastructure as code (IaC) and GitOps approaches.
+
+See [Automate Grepr processing with the Grepr REST APIs](/apis).
+
+### The Grepr command-line interface (CLI)
+
+The Grepr CLI allows you to manage jobs and run queries in the Grepr platform from the command line. You can also use the CLI in your scripts or other clients to automate tasks.
+
+See [The Grepr CLI](/cli).
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is the Grepr platform?",
+    a: "Grepr is a dynamic observability engine that enables efficient collection, storage, processing, and analysis of log data. It uses stream processing to create pipelines with capabilities such as filtering, parsing, transforming, and routing logs. Grepr is available as a SaaS model in AWS and as a private cloud deployment for larger organizations with compliance requirements."
+  },
+  {
+    q: "What regions does Grepr currently support?",
+    a: "The Grepr SaaS offering runs in the AWS us-east-1 and eu-central-1 regions. If you require support for a different AWS region or region-specific features, contact support@grepr.ai to discuss your requirements."
+  },
+  {
+    q: "What happens during an incident or alert with Grepr?",
+    a: "When an incident occurs or alerts are raised, Grepr can automatically ensure you have complete logs for debugging. It does this by temporarily increasing the granularity of related logs forwarded to your observability platform and by backfilling relevant logs from the raw data store. This capability can be triggered manually or automatically in response to monitoring alerts or specific log data matches."
+  },
+  {
+    q: "Where are my raw logs stored in Grepr?",
+    a: "Raw logs are stored in the Grepr data lake, which uses Amazon S3 for low-cost object storage. You can choose to use an S3 bucket provided by Grepr or a bucket in your own AWS account. Logs are stored using Apache Parquet files and the Apache Iceberg table format, providing efficient storage and querying."
+  },
+  {
+    q: "How do I interact with the Grepr platform?",
+    a: "You can interact with Grepr through three primary methods: the web-based UI for visual pipeline creation and log exploration, the REST API for programmatic control and automation, and the CLI for command-line management of jobs and queries. These can be used individually or in combination based on your needs."
+  },
+  {
+    q: "What security features does Grepr provide?",
+    a: "Grepr offers comprehensive security features including secure OAuth 2.0 authentication and identity management, SOC 2 Type 2 compliance, HIPAA compliance, infrastructure and networking security, and data encryption. These features safeguard your data and fulfill enterprise security requirements."
+  },
+  {
+    q: "How does Grepr ensure high availability?",
+    a: "Grepr is designed for high availability with minimal downtime for log processing pipelines. It runs on AWS with compute nodes deployed across three availability zones. Stateless services run on multiple replicas across zones with automatic scaling, and data pipelines are stateful with automatic failover and recovery from checkpoints."
+  },
+  {
+    q: "Can Grepr automatically scale to handle increased log volume?",
+    a: "Yes, the Grepr platform is designed for scalability. It automatically adds and removes capacity as needed to match processing loads. Streaming jobs automatically scale up and down, and batch jobs automatically execute at optimal parallelism levels to reduce latency without sacrificing efficiency."
+  },
+  {
+    q: "What is a Grepr pipeline?",
+    a: "A Grepr pipeline is an asynchronous, continuously-running job that ingests data from a source, processes it through transformations, and delivers it to one or more sinks. Pipelines are configured to run until stopped, allowing you to continuously collect, process, and forward log data based on your observability requirements."
+  },
+  {
+    q: "How do I get started with Grepr?",
+    a: "To get started, you need to understand the Grepr data model and processing concepts, configure integrations with your observability platforms and cloud storage, and create pipelines using the UI or APIs. You can also query logs stored in the data lake using Log Explorer or programmatically via the CLI or REST API."
+  }
+]} />

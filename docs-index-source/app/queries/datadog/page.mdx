@@ -1,0 +1,498 @@
+---
+description: Search logs using Datadog syntax with support for message searches, tag filtering, attribute queries, and boolean operators.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Search logs using a Datadog-like syntax
+
+The Grepr platform supports searching logs using a syntax similar to Datadog's log query syntax. This support allows you to filter and search log data using familiar Datadog queries and eases migration from or integration with existing Datadog-based workflows.
+
+For the complete reference to Datadog query syntax, see [Query Syntax](https://docs.datadoghq.com/tracing/trace_explorer/query_syntax).
+
+By default, queries search the message field of log entries, but you can also query specific tags and attributes.
+
+## Basic query structure
+
+```sql
+-- Simple text search (searches message field by default)
+error
+
+-- Explicit message field search
+message:error
+
+-- Tag search
+service:web-app
+
+-- Attribute search
+@user.id:12345
+```
+
+## Case sensitivity rules
+
+- **Message searches** are case-insensitive.
+- **Tag searches** are case-sensitive.
+- **Attribute searches** are case-sensitive.
+
+## Search message fields
+
+Message field queries perform full-text searches across the `message` field of log entries. These searches are case-insensitive and use word boundary matching.
+
+### Perform full-text searches
+
+```sql
+-- Search for "error" in message field (case-insensitive)
+error
+
+-- Explicit message field syntax
+message:error
+
+-- Both queries above are equivalent
+```
+
+### Search for phrases
+
+Use double quotes to search for exact phrases:
+
+```sql
+-- Search for exact phrase
+message:"connection timeout"
+
+-- Without quotes, this would search for logs containing both "connection" AND "timeout"
+message:connection timeout
+```
+
+### Examples
+
+```sql
+-- Find all error messages
+error
+
+-- Find specific error types
+message:"database connection failed"
+
+-- Find logs mentioning specific components
+message:authentication
+
+-- Case-insensitive matching
+message:ERROR  -- matches "error", "Error", "ERROR", etc.
+```
+
+## Wildcard queries
+
+Wildcard queries allow flexible pattern matching using `*` (zero or more characters) and `?` (single character).
+
+### Asterisk wildcard (`*`)
+
+```sql copy
+-- Contains pattern - matches any characters before/after
+*timeout*
+
+-- Prefix pattern - matches anything starting with "auth"
+auth*
+
+-- Suffix pattern - matches anything ending with "error"
+*error
+```
+
+### Question mark wildcard (`?`)
+
+```sql copy
+-- Single character wildcard
+f?o  -- matches "foo", "fao", "f1o", etc.
+
+-- Multiple single character wildcards
+te?t  -- matches "test", "text", "tent", etc.
+```
+
+### Complex patterns
+
+```sql copy
+-- Mixed wildcards
+*f?OO?  -- matches "afOOd", "1fOOx", etc.
+
+-- Multiple asterisks
+*auth*service*  -- matches logs containing "auth" followed by "service"
+```
+
+### Escape wildcards
+
+You generally cannot search for special characters in the message field. If you need to search for a literal `*` or `?`, you'll need to extract the value into an attribute and then search in that attribute.
+
+## Tag queries
+
+Tags in Grepr are key-value pairs that provide structured metadata about log entries. Tag searches are case-sensitive.
+
+### Search tag values
+
+```sql
+-- Search for specific tag value
+service:web-app
+
+-- Search for tag with dotted notation
+service.version:1.2.3
+
+-- Search for tag values with spaces (use quotes)
+environment:"staging environment"
+```
+
+### Check tag key existence
+
+Check if a tag key exists regardless of its value:
+
+```sql
+-- Check if 'service' tag exists
+tags:service
+
+-- Check if nested tag key exists
+tags:service.version
+```
+
+### Use wildcards with tag values
+
+```sql
+-- Tag values starting with "web"
+service:web-*
+
+-- Tag values ending with "app"
+service:*-app
+
+-- Tag values containing "prod"
+environment:*prod*
+```
+
+### Use wildcards with tag keys
+
+```sql
+-- Tag keys starting with "serv"
+tags:serv*
+
+-- Tag keys ending with "id"
+tags:*id
+```
+
+### Examples
+
+```sql
+-- Find logs from specific service
+service:user-authentication
+
+-- Find logs from production environment
+environment:production
+
+-- Find logs from any web service
+service:web-*
+
+-- Find logs that have a user ID tag
+tags:user.id
+
+-- Find logs from services in staging
+environment:staging AND service:*
+```
+
+## Attribute queries
+
+Attributes are structured data fields extracted from log messages. Attribute searches are case-sensitive and use the `@` prefix.
+
+### Basic attribute search
+
+```sql
+-- Search for specific attribute value
+@user.id:12345
+
+-- Search for nested attributes
+@request.method:GET
+
+-- Search for attributes with special characters
+@error.code:"AUTH_001"
+```
+
+### Search phrase attributes
+
+```sql
+-- Search for exact phrase in attribute
+@error.message:"database connection failed"
+
+-- Search for attribute containing spaces
+@user.name:"John Smith"
+```
+
+### Use wildcards with attributes
+
+```sql
+-- Attribute values starting with pattern
+@request.path:/api/&ast;
+
+-- Attribute values ending with pattern
+@file.name:*.log
+
+-- Attribute values containing pattern
+@error.message:*timeout*
+```
+
+### Query nested attributes
+
+Attributes can contain complex nested structures:
+
+```sql
+-- Search in arrays
+@tags.environment:production
+
+-- Search in nested objects
+@metadata.request.user_id:12345
+
+-- Search for string values
+@response.body:"success"
+```
+
+### Examples
+
+```sql
+-- Find logs from specific user
+@user.id:user123
+
+-- Find HTTP errors
+@response.status_code:500
+
+-- Find slow requests
+@request.duration:*slow*
+
+-- Find logs with specific error codes
+@error.code:AUTH_*
+
+-- Find logs from specific IP addresses
+@client.ip:192.168.*
+```
+
+## Boolean operators
+
+Combine multiple query conditions using boolean operators.
+
+### AND operator
+
+```sql
+-- Explicit AND
+service:web-app AND @user.id:12345
+
+-- Implicit AND (space-separated terms)
+service:web-app @user.id:12345
+
+-- Multiple conditions
+error AND service:auth AND @response.status:500
+```
+
+### OR operator
+
+```sql
+-- Search for either condition
+service:web-app OR service:api-gateway
+
+-- Multiple OR conditions
+@response.status:500 OR @response.status:502 OR @response.status:503
+
+-- Combine with other operators
+(service:web OR service:api) AND error
+```
+
+### NOT operator
+
+```sql
+-- Exclude with minus sign
+service:web-app -@user.id:12345
+```
+
+### Group conditions with parentheses
+
+```sql
+-- Group OR conditions
+(service:web-app OR service:api) AND error
+
+-- Complex grouping
+(error OR warning) AND (service:auth OR service:payment)
+
+-- Nested grouping
+((service:web OR service:api) AND error) OR @priority:high
+```
+
+### Must and must not operators
+
+```sql
+-- Must have (equivalent to AND)
++service:web-app +@user.id:12345
+
+-- Must not have (equivalent to NOT)
++service:web-app -@user.id:12345
+
+-- Complex requirements
++error +service:auth -@user.type:admin
+```
+
+### Range queries
+```sql
+-- Inclusive range
+@response.time:[100 TO 500]
+
+-- Exclusive range
+@response.time:{100 TO 500}
+
+-- Open-ended range
+@response.time:[* TO 300]
+@response.time:[200 TO *]
+
+-- On tags, range queries are lexicographical
+hostname:[jimmy TO tom]
+```
+
+### Comparison operators
+
+```sql
+-- Greater than
+@response.time:>300
+-- Less than
+@response.time:<100
+-- Greater than or equal to
+@response.time:>=200
+-- Less than or equal to
+@response.time:<=400
+
+-- On tags, comparisons are lexicographical
+hostname:>=jimmy
+hostname:<tom
+```
+
+## Special characters and escaping
+
+### Use quotes
+
+```sql copy
+-- Attributes with special characters
+@error.message:"Invalid input: user@domain.com"
+
+-- Tags with special characters
+component:"web-app@v1.2.3"
+```
+
+## Optimize query performance
+
+- **Minimize time range** to the smallest time window necessary for the query to optimize the amount of data scanned.
+- **Always specify the `service` tag** when applicable to reduce the search space and use the `host` tag where possible. This significantly improves performance and reduces query costs.
+- **Use specific tags and attributes** instead of broad message searches when possible.
+- **Combine multiple conditions** to narrow results effectively.
+- **Use wildcards judiciously** - they can be slower than exact matches.
+- **Use phrase searches** for multi-word terms to avoid unnecessary matches. Otherwise a query like `failed login` will match any log containing both "failed" and "login" anywhere in the message, which may produce many irrelevant results and is twice as expensive as `"failed login"`.
+
+## Limitations
+
+While Grepr supports most common Datadog query patterns, some advanced features are not available:
+
+### Fuzzy Search
+
+```sql
+-- NOT SUPPORTED: Fuzzy matching
+foobar~2
+
+-- ALTERNATIVE: Use wildcards
+*foobar* OR *fobar*
+```
+
+### Regular expressions
+```sql
+-- NOT SUPPORTED: Regex patterns
+/foo|bar/
+
+-- ALTERNATIVE: Use boolean operators
+foo OR bar
+```
+
+### Proximity searches
+```sql
+-- NOT SUPPORTED: Word proximity
+"foo bar"~2
+
+-- ALTERNATIVE: Use phrase search
+"foo bar"
+```
+
+### Alternative approaches
+
+For unsupported patterns, consider these alternatives:
+
+- **Instead of fuzzy search**: Use wildcards with common variations.
+- **Instead of regex**: Use boolean operators with multiple terms.
+- **Instead of proximity**: Use phrase searches or multiple terms.
+
+## Debug query results
+
+1. **Start simple**: Begin with basic queries and add complexity.
+2. **Check field names**: Verify tag and attribute names exist.
+3. **Test case sensitivity**: Remember tags and attributes are case-sensitive.
+4. **Use parentheses**: Group conditions clearly.
+
+## Reference
+
+### Syntax cheat sheet
+
+| Query Type | Syntax | Example |
+|------------|--------|---------|
+| Message search | `text` or `message:text` | `error` |
+| Phrase search | `"exact phrase"` | `"connection timeout"` |
+| Tag search | `tag:value` | `service:web-app` |
+| Tag existence | `tags:key` | `tags:service` |
+| Attribute search | `@attr:value` | `@user.id:123` |
+| Wildcard | `*` or `?` | `service:web-*` |
+| AND | `AND` or space | `error AND service:auth` |
+| OR | `OR` | `error OR warning` |
+| NOT | `NOT`, `-`, or `!` | `NOT @user.type:admin` |
+| Grouping | `(condition)` | `(error OR warning)` |
+
+### Operator precedence
+
+1. **Parentheses**: `()`.
+2. **NOT operators**: `NOT`, `-`, `!`.
+3. **AND operators**: `AND`, implicit space.
+4. **OR operators**: `OR`.
+
+Use parentheses to explicitly control precedence in complex queries.
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is the default search field in Datadog-like queries?",
+    a: "By default, queries search the message field of log entries. Simple text queries like 'error' search across the entire message field. You can explicitly specify the field using message:error or search other fields using tag:value or @attribute:value syntax."
+  },
+  {
+    q: "How do I search for exact phrases in messages?",
+    a: "Use double quotes around your phrase to search for exact matches. For example, \"connection timeout\" searches for logs containing that exact phrase. Without quotes, the query would search for logs containing both 'connection' AND 'timeout' separately, which may return unrelated results."
+  },
+  {
+    q: "Are message searches case-sensitive?",
+    a: "No, message searches are case-insensitive. A query like message:ERROR will match 'error', 'Error', 'ERROR', and all other case variations. However, tag and attribute searches are case-sensitive, so service:web-app will not match service:Web-App."
+  },
+  {
+    q: "What wildcards are supported in Datadog-like queries?",
+    a: "Grepr supports two wildcard types: asterisk (*) matches zero or more characters, and question mark (?) matches a single character. For example, service:web-* matches any service starting with 'web', and f?o matches 'foo', 'fao', etc. Wildcards work with tags, attributes, and message searches."
+  },
+  {
+    q: "How do I check if a tag exists without matching a specific value?",
+    a: "Use the tags: syntax to check for key existence. For example, tags:service checks if a 'service' tag exists regardless of its value. You can also use tags:service.version to check for nested tag keys."
+  },
+  {
+    q: "What are attributes and how are they different from tags?",
+    a: "Attributes are structured data fields extracted from log messages and are searched using the @ prefix (e.g., @user.id:12345). Tags are key-value metadata pairs searched without the @ prefix (e.g., service:web-app). Attributes and tags support different query patterns and have different case sensitivity rules."
+  },
+  {
+    q: "Can I use range queries with attributes?",
+    a: "Yes, Datadog-like syntax supports range queries on attributes using [value1 TO value2] syntax. Use square brackets for inclusive ranges ([100 TO 500]) and curly braces for exclusive ranges ({100 TO 500}). You can also use [* TO 300] for open-ended ranges."
+  },
+  {
+    q: "What boolean operators are available?",
+    a: "You can use AND (explicit or implicit with space), OR, and NOT (using -, !, or NOT keyword) to combine conditions. AND has higher precedence than OR. Use parentheses to group conditions and control precedence explicitly. For example, (error OR warning) AND service:auth requires either error or warning AND the service tag must be 'auth'."
+  },
+  {
+    q: "How do I exclude logs from my search?",
+    a: "Use the NOT operator with the minus sign (-) prefix, exclamation mark (!), or the NOT keyword. For example, service:web-app -@user.id:12345 returns logs from web-app service that don't have user.id of 12345. You can also use !(service:api) to exclude an entire condition."
+  },
+  {
+    q: "Which Datadog query features are not supported in Grepr?",
+    a: "Grepr does not support fuzzy search (foobar~2), regular expressions (/foo|bar/), or proximity searches (\"foo bar\"~2). For these patterns, use alternative approaches like wildcards instead of fuzzy search, boolean operators instead of regex, and phrase searches instead of proximity."
+  }
+]} />

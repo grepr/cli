@@ -1,0 +1,168 @@
+---
+description: Understand the data processing models, data models, and abstractions used by Grepr jobs, the types of Grepr jobs, processing modes for jobs, and the jobs lifecycle.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# The Grepr processing and data models
+
+At its core, Grepr is powered by a robust data processing engine that executes *jobs*. These jobs process individual units of data, called *events*.
+
+## Log event model
+
+Grepr uses a data model that makes it easy for you to conceptualize. Log events in Grepr support both structured and unstructured data. The unstructured part is stored in a top-level field called `message` while all structured data is under `attributes`. Additional labels or tags that can be used to identify the source of data and do quick filtering is under `tags`.
+
+Grepr pipeline operators operate on this data model. When using the UI, most of the details of the model are abstracted away. When using the API, you need to understand the model well to build a well-functioning pipeline.
+
+Each log event has the following properties:
+
+- **`id`**: A globally unique id that identifies the log event.
+- **`receivedTimestamp`**: Timestamp when Grepr received the event.
+- **`eventTimestamp`**: Timestamp when the event occurred, usually parsed from the event itself.
+- **`tags`**: A set of key-value pairs that can be used to filter and route events. Some of the commonly used tags are `host`, `service`, `environment`, etc. This is a map from a string key to a set of string values.
+- **`attributes`**: Structured data and fields that are associated with the event. These could be sent with the event from the source or extracted by Grepr from the message.
+- **`message`**: The log message itself.
+- **`severity`**: The severity of the log message. This is an integer, following the OpenTelemetry convention of 1-4 for `TRACE`, 5-8 for `DEBUG`, 9-12 for `INFO`, 13-16 for `WARN`, 17-20 for `ERROR`, and 21-24 for `FATAL`. Severity is usually sent along with the message, but may be parsed from the event too.
+
+An example log event in JSON would look like:
+
+```json copy
+{
+  "id": "0H19GZK97FTKS",
+  "eventTimestamp": "2024-08-21T04:21:14.062Z",
+  "receivedTimestamp": "2024-08-21T04:21:14.188Z",
+  "severity": 9,
+  "message": "State backend is set to heap memory",
+  "tags": {
+    "app": "greprdev-0gvrs39hhft9q",
+    "kube_ownerref_kind": "deployment",
+    "source": "grepr-query",
+    "organizationId": "greprdev",
+    "service": "grepr-query",
+    "pod_phase": "running",
+    "host": "ip-10-12-4-129.ec2.internal",
+    "image_tag": "0.1.0-3421150",
+    "container_id": "b743c4b78b8ec25c6c73ea03de443ebe19acf760d293dc4145bd31170768a216"
+  },
+  "attributes": {
+    "process": {
+      "thread": {
+        "name": "thread-0"
+      }
+    },
+    "ecs": {
+      "version": "1.2.0"
+    },
+    "timestamp": 1724214074114,
+    "status": "info"
+  }
+}
+```
+
+## Grepr job model [#grepr-job-model]
+
+All processing within Grepr is a *job*. Each job has a name, a desired state, a current state,
+and a job graph that describes the data sources, sinks, and the transformations on the data
+between the sources and sinks. These jobs can:
+- Ingest data continuously from various kinds of agents.
+- Execute queries on the Grepr data lake and return the result to the user.
+- Backfill data from the Grepr data lake back to observability vendors.
+
+### The job graph [#grepr-job-graph]
+
+Each job is a directed acyclic graph (DAG), consisting of vertices and edges. Vertices can be
+sources, sinks, or transforms. We often refer to vertices in the graph as operators as well.
+The Grepr UI abstracts away much of the complexity of job management into an app-like experience,
+so learning the details of these operators and how they work are not necessary.
+
+Each operator may have 0 or more inputs and outputs. Sinks have no outputs while sources have no inputs.
+All transforms have at least 1 input and 1 output. Many operators will require an integration
+to work, such as the Iceberg sink or Datadog source.
+
+### Job execution [#grepr-job-execution]
+
+Jobs have two properties that describe how they are executed: `Execution` and `Processing`.
+
+#### Execution
+Jobs have two execution modes: `SYNCHRONOUS` and `ASYNCHRONOUS`. Synchronous jobs are
+executed immediately and their result is streamed back to the caller. Asynchronous
+jobs are submitted and run in the background. The results of an asynchronous job
+end up in a preconfigured sink.
+
+#### Processing
+Jobs have two processing modes: `STREAMING` and `BATCH`. Streaming jobs execute continuously
+on the data as it arrives. They will continue running until they are stopped. Batch jobs
+have a bounded amount of data that arrives from the sources, which they will read and process,
+and then they will complete.
+
+When we mention "pipeline" in the docs, we mean `ASYNCHRONOUS` `STREAMING` jobs that will
+continuously receive data from a source, process it, and then deliver it to one or more sinks.
+Queries on the other hand are usually `SYNCHRONOUS` `BATCH` jobs that will return a result
+to the caller, although they can be `ASYNCHRONOUS` `BATCH` jobs too, such as backfill jobs.
+
+### Job lifecycle
+
+Jobs also have a lifecycle. The lifecycle of batch and streaming jobs are different. Batch jobs
+are submitted, processed, and then completed. Streaming jobs, on the other hand, have a long
+lifetime and will be running until they are stopped. However, they might need to be
+reconfigured, upgraded, stopped, and restarted for various reasons over their lifetimes, so their
+lifecycles are more complex.
+
+A user will specify the desired state for the job, and Grepr will try to make the current state
+of the job match the desired state. Grepr will automatically start, stop, reconfigure, and
+restart jobs as needed.
+
+### Autoscaling
+
+Streaming jobs automatically scale up and down to handle an increase or decrease in load and align
+execution cost with need. Batch jobs automatically execute at an optimal level of parallelism to
+reduce latency without sacrificing efficiency.
+
+During scale-up or scale-down periods for streaming jobs, there may be a few seconds of data
+processing delay, during which the pipeline is switching from the old deployment to the new
+deployment. At the same time, there may be an increase in data lag when there's an increase in load
+until the pipeline scales up to handle the increase. We aim to keep this lag to less than 5 minutes
+of delay in the worst case.
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is a log event in Grepr?",
+    a: "A log event in Grepr is a data unit containing unstructured message data and structured attributes. Each log event has a unique id, receivedTimestamp (when Grepr received it), eventTimestamp (when the event occurred), tags for filtering and routing, attributes for structured data fields, the message itself, and a severity level following OpenTelemetry conventions."
+  },
+  {
+    q: "How are log events structured in Grepr?",
+    a: "Log events support both structured and unstructured data. The unstructured message is stored in a top-level field called 'message', while all structured data is under 'attributes'. Labels or tags that identify the data source and enable quick filtering are stored under 'tags'. This model makes it easy to process logs whether they come in structured or unstructured form."
+  },
+  {
+    q: "What are the different components of a log event?",
+    a: "A log event includes: id (unique identifier), receivedTimestamp (when Grepr received it), eventTimestamp (when it occurred), tags (key-value pairs for filtering), attributes (structured data fields), message (the log text), and severity (following OpenTelemetry 1-24 scale). Each component serves a specific purpose in processing and analyzing the log."
+  },
+  {
+    q: "What is a Grepr job?",
+    a: "A Grepr job is a unit of processing work with a name, desired state, current state, and a job graph describing data sources, sinks, and transformations. Jobs can ingest data continuously from agents, execute queries on the data lake, or backfill data from the data lake to observability vendors. All processing within Grepr is implemented as jobs."
+  },
+  {
+    q: "What is a job graph?",
+    a: "A job graph is a directed acyclic graph (DAG) consisting of vertices and edges. Vertices can be sources (no inputs), sinks (no outputs), or transforms (at least 1 input and 1 output). The job graph describes the data flow from sources through transformations to sinks. The Grepr UI abstracts away the complexity of job graphs into an app-like experience."
+  },
+  {
+    q: "What is the difference between streaming and batch processing?",
+    a: "Streaming jobs execute continuously on data as it arrives and run until stopped, making them ideal for ongoing pipeline operations. Batch jobs have bounded input data from sources, process it, and then complete. Pipelines are typically asynchronous streaming jobs, while queries are usually synchronous batch jobs that return results to the caller."
+  },
+  {
+    q: "What are execution modes in Grepr?",
+    a: "Jobs have two execution modes: Synchronous jobs execute immediately and stream results back to the caller, while asynchronous jobs are submitted and run in the background with results delivered to a preconfigured sink. The choice of execution mode depends on whether you need immediate results or background processing."
+  },
+  {
+    q: "How does job autoscaling work?",
+    a: "Streaming jobs automatically scale up and down to handle increases or decreases in load and align execution cost with need. Batch jobs automatically execute at optimal parallelism levels to reduce latency without sacrificing efficiency. During scaling transitions, there may be a few seconds of processing delay, with a worst-case data lag target of less than 5 minutes."
+  },
+  {
+    q: "What is the lifecycle of a Grepr job?",
+    a: "Jobs have a lifecycle where you specify the desired state and Grepr works to match the current state to it. Batch jobs are submitted, processed, and complete. Streaming jobs have longer lifespans and may be reconfigured, upgraded, stopped, and restarted. Grepr automatically manages job state transitions and handles the complexity of job lifecycle management."
+  },
+  {
+    q: "How does severity work in the Grepr data model?",
+    a: "Severity is an integer following OpenTelemetry conventions: 1-4 for TRACE, 5-8 for DEBUG, 9-12 for INFO, 13-16 for WARN, 17-20 for ERROR, and 21-24 for FATAL. Severity is usually sent with the message from the source but may also be parsed from the event itself during processing."
+  }
+]} />

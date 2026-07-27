@@ -1,0 +1,118 @@
+---
+description: Process data in Grepr pipelines using built-in tools for parsing, filtering, enrichment, and transformation of log events.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Transform data in a Grepr pipeline
+
+A Grepr transform is a processing step that modifies, enriches, or restructures data as it flows through a pipeline. As records move through a pipeline, transforms allow you to parse structured and semi-structured data, filter records, and use a familiar SQL interface to perform more complex transformation of records as they move through a pipeline. Transforms are configured as pipeline steps that process data sequentially. Each transform receives input data, applies its logic, and passes the result to the next step in the pipeline.
+
+Most transforms are available in the Grepr pipelines UI. Some transforms are available only in the Grepr REST API or provide more capabilities when used with the API, such as [filters](#filter) and [branching the processing of records](#message-routing) based on query matches.
+
+The following sections describe the transforms available in Grepr pipelines.
+
+## Transform semi-structured records with the Grok parser [#grok-parser]
+
+The Grok transform parses unstructured text using pattern matching with regular expressions and named capture groups. Use this transform to extract fields from log lines, error messages, and other text-based data where you need to identify specific patterns and convert them to structured fields.
+
+See [Grok parser](/transforms/grok).
+
+## Convert JSON messages into structured objects [#json-parser]
+
+The JSON parser transforms JSON strings into structured JSON objects. This transform handles nested objects, arrays, and various data types, making it useful for processing API responses, configuration data, and structured log entries.
+
+See [Transform JSON strings into JSON objects](/transforms/json-parsing).
+
+## Restructure JSON objects with a remapper [#remapper]
+
+The remapper transform moves or copies attributes to top-level fields or to tags in a JSON object. You can also use rename rules to move attribute values from one path to another within the same event. In the pipelines UI, a remapper with customizable default attributes is automatically added to a pipeline.
+
+See [Remap JSON attribute fields to top-level log event fields](/transforms/remapper).
+
+## Transform records with SQL [#sql-transform]
+
+The SQL transform allows you to use ANSI standard SQL queries to filter, transform, and enrich data records. The SQL transform provides a familiar SQL interface to perform a number of data processing and transformation tasks.
+
+You can use the SQL transform in the Grepr UI or REST API. In the UI, the SQL transform is available when you configure filters.
+
+To learn about using the SQL transform in the Grepr API, see the [SQL Operation specification](/apis/api-spec#schema/SQLOperation).
+
+For a complete reference and examples, see [Transform events with SQL](/transforms/sql-transform).
+
+## Filter records based on conditions [#filter]
+
+The Filter transform includes or excludes data records based on specified conditions. You can create filters using familiar query interfaces, such as SQL, as well as Datadog and New Relic log query-like syntaxes.
+
+In the Grepr pipelines UI, filters are located in predefined locations in the pipeline. To learn how to configure filters, see [Filter events in a Grepr pipeline](/transforms/filter-events).
+
+To have more flexibility for where filters are included in a pipeline, use the REST API. See [LogsFilter](/apis/api-spec#schema/LogsFilter).
+
+## Reduce log volumes with dynamic aggregation [#reducer]
+
+The Grepr log reducer uses clustering algorithms to identify patterns in your log data and aggregate similar log messages. The output of this aggregation includes summaries and samples of similar messages. The log reducer is a core step in a log reduction pipeline, where it runs before processed log events are sent to your configured sinks. By sending summaries of similar messages rather than multiple events with redundant information, Grepr significantly reduces the volume of shipped logs and your observability costs. The log reduction pipeline also persists the complete set of raw logs to a low-cost data lake, enabling you to analyze and troubleshoot issues when necessary.
+
+To learn more about how Grepr reduces log volumes with dynamic aggregation, see [Reduce noise and improve the usability of your logs with the log reducer](/transforms/reducer).
+
+To learn how to create a log reduction pipeline, see [Tutorial: Build your first Grepr pipeline](/tutorials/first-pipeline).
+
+To learn how to use the resulting summarized log events in your observability platform along with raw logs stored in Grepr, see [Troubleshoot incidents with Grepr-processed data and your observability tool](/tutorials/troubleshooting-example).
+
+## Transform and enrich log messages with the REST API [#log-transform-action]
+
+You can use the LogTransformAction in the REST API to specify actions that transform log messages, such as adding or removing attributes and tags. See [LogTransformAction](/apis/api-spec#schema/LogTransformAction).
+
+## Route the processing of messages based on query matches [#message-routing]
+
+You can route log messages to be processed by different pipelines based on query matches. Because the pipelines UI doesn't support branching, Grepr recommends creating multiple pipelines that ingest data using the same source, and then use filters to route data to the correct pipeline.
+
+You can also use the REST API to create more complex pipeline configurations. See [LogsBranch](/apis/api-spec#schema/LogsBranch).
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What transforms are available in Grepr pipelines?",
+      a: "Grepr provides several transform types: Grok parser for parsing unstructured text with pattern matching, JSON parser for converting JSON strings into structured objects, remapper for restructuring JSON fields and attributes, SQL transform for complex filtering and enrichment using SQL queries, and Filter transform for conditional record processing. Most transforms are available in the UI, while some advanced options are available via REST API."
+    },
+    {
+      q: "When should I use the Grok parser transform?",
+      a: "Use the Grok parser when you need to extract structured data from unstructured text logs. It's ideal for parsing error messages, application logs, system logs, and other text-based data where you need to identify specific patterns and convert them into structured fields using regular expressions and named capture groups."
+    },
+    {
+      q: "When should I use the JSON parser transform?",
+      a: "Use the JSON parser when your log messages contain JSON strings that need to be converted into structured JSON objects. This is useful for processing API responses, configuration data, and structured log entries. The JSON parser handles nested objects, arrays, and various data types automatically."
+    },
+    {
+      q: "What is the remapper transform and when is it used?",
+      a: "The remapper transform moves or copies attributes to top-level fields or to tags in a JSON object. It's useful for standardizing log event structure by moving well-known fields like message, severity, and host from nested attributes to top-level fields. You can configure whether the source attribute is preserved or removed after remapping. The remapper also supports rename rules for moving attribute values from one path to another. The remapper is automatically added to pipelines in the UI with customizable default attributes."
+    },
+    {
+      q: "When should I use the SQL transform?",
+      a: "Use the SQL transform when you need complex filtering, transformation, or enrichment of log records. SQL provides a familiar interface for advanced operations like conditional logic, string manipulation, aggregations, and joining data. It's available in the UI for filters and via REST API for more flexibility."
+    },
+    {
+      q: "Can I combine multiple transforms in a pipeline?",
+      a: "Yes, transforms are configured as sequential pipeline steps. Each transform receives input from the previous step, applies its logic, and passes the result to the next step. This allows you to create complex data processing workflows by combining parsing (Grok), restructuring (remapper), and filtering/enrichment (SQL) transforms."
+    },
+    {
+      q: "What is the Filter transform used for?",
+      a: "The Filter transform includes or excludes data records based on specified conditions. You can use filters with SQL, Datadog, and New Relic-like query syntaxes. In the UI, filters are located in predefined pipeline positions, while the REST API provides more flexibility for filter placement."
+    },
+    {
+      q: "Can I use the REST API for more advanced transform options?",
+      a: "Yes, the REST API provides access to advanced transform options not available in the UI. For example, you can use LogTransformAction to add or remove attributes and tags, LogsBranch for complex message routing based on query matches, and more flexible filter placement. See the API specification for complete details on transform capabilities."
+    },
+    {
+      q: "How do I choose between Grok and SQL transforms?",
+      a: "Use Grok when you need pattern-based parsing of unstructured text to extract specific fields. Use SQL when you need complex conditional logic, calculations, string transformations, or filtering. Grok is specialized for text parsing, while SQL is more general-purpose for data manipulation and enrichment."
+    },
+    {
+      q: "How does Grepr reduce log volumes and observability costs?",
+      a: "Grepr uses clustering algorithms to identify patterns in log data and aggregates similar log messages. Instead of sending multiple redundant log events, Grepr sends summaries and samples of similar messages to your observability platform. This significantly reduces the volume of shipped logs while retaining the ability to analyze and troubleshoot issues. Raw logs are retained in a low-cost data lake for future reference."
+    },
+    {
+      q: "What happens if a transform fails on a record?",
+      a: "Transform behavior depends on the specific transform type and configuration. Parsing errors (like Grok or JSON parsing) typically skip records or add error attributes depending on your configuration. SQL transforms filter out records that don't match conditions. Review transform-specific documentation for error handling details."
+    }
+  ]}
+/>

@@ -1,0 +1,39 @@
+---
+description: Release notes for changes to the Grepr Intelligent Observability Data Engine released in November 2025, including new features, improvements, and bug fixes.
+---
+
+# Release notes for November 2025
+
+Grepr released these feature updates, improvements, and bug fixes in November 2025.
+
+## New features and improvements
+
+{/* ENGT-2868 */}
+### Enhanced support for searching logs when you use Grepr's Datadog and New Relic log query-like syntaxes
+
+**November 3, 2025**
+
+This release adds range queries and comparison operators to the support for searching logs with queries based on the Datadog and New Relic log query syntaxes. This release also fixes an issue with queries that include the negation of `OR` expressions. See [Search logs using a Datadog-like syntax](/queries/datadog) and [Search logs using a New Relic log query-like syntax](/queries/new-relic).
+
+{/* ENGT-2665 */}
+### Improvements to Log Explorer
+
+**November 3, 2025**
+
+This release includes updates to Log Explorer that make it easier for you to search logs by providing a single input for log data filters. The updated interface improves usability and streamlines the search experience when exploring log data.
+
+{/* ENGT-3010 */}
+### Materialization support in the SQL transform improves performance for complex queries
+
+**November 3, 2025**
+
+Materialization support is added to the SQL transform to optimize query performance when multiple downstream statements consume a table or view. You can use the `shouldMaterialize` option with view and table statements to prevent duplicate computation of those objects, improving performance for complex queries that reference the same intermediate results multiple times. To learn more, see [Transform events with SQL](/transforms/sql-transform).
+
+## Bug fixes
+
+{/* ENGT-3024, ENGT-3004 */}
+### Fixes to the Open Telemetry vendor integration form
+
+**November 3, 2025**
+
+This release includes fixes to the OpenTelemetry integration form in the Grepr UI. These fixes ensure the correct handling of any secret headers entered in the form.

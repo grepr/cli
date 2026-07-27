@@ -1,0 +1,112 @@
+---
+description: Release notes for changes to the Grepr Intelligent Observability Data Engine released in October 2025, including new features, improvements, and bug fixes.
+---
+
+# Release notes for October 2025
+
+Grepr released these feature updates, improvements, and bug fixes in October 2025.
+
+## New features and improvements
+
+{/* ENGT-2790 */}
+### Support for paging through large exception lists in the Grepr UI
+
+**October 28, 2025**
+
+An update to the Grepr pipelines UI allows you to page through exceptions that are part of the configuration for an integration. This change improves the usability of the exception management interface when an integration has a large number of exceptions configured. To learn more about integration exceptions, see [Prevent aggregation of messages used in your observability platform](/transforms/reducer/exceptions#vendor-exceptions).
+
+{/* ENGT-2957 */}
+### The SQL transform now includes a percentiles UDF
+
+**October 28, 2025**
+
+The SQL transform in Grepr pipelines now includes a `percentiles` user-defined function (UDF). This UDF enables you to calculate multiple percentiles for a specified numeric expression, allowing for more advanced statistical analysis and insights in your pipelines. See [Percentile functions](/transforms/sql-transform/sql-functions#percentiles-fn).
+
+{/* ENGT-2881 */}
+### Improved handling of complex JSON with the JSON parser
+
+**October 28, 2025**
+
+An updated JSON parser in Grepr pipelines improves handling of complex JSON structures, including nested objects and arrays. This enhancement enables more accurate parsing and extraction of fields from JSON log messages, allowing for improved log enrichment and analysis.
+
+{/* no ticket */}
+### Better comparison of job versions with an upgraded diff viewer
+
+**October 28, 2025**
+
+The job version comparison interface has been upgraded to use the Monaco Editor diff viewer, replacing the previous basic diff visualization libraries. The new diff viewer offers improved performance, advanced diff algorithms, and enhanced readability, featuring collapsible unchanged regions and improved syntax highlighting for JSON comparisons.
+
+{/* ENGT-2858 */}
+### Enhancements to simplify the configuration of JSON parsing
+
+**October 28, 2025**
+
+An update to the JSON parser form in the Grepr pipelines UI simplifies setup by adding configuration for processing nested JSON message paths.
+
+{/* ENGT-2727 */}
+### Improved performance for data lake tables with data skew
+
+**October 28, 2025**
+
+This release includes a reimplementation of the data partitioning framework for tables in the Grepr data lake. This change improves performance by enabling higher throughput when a table's data is distributed unevenly across partitions.
+
+{/* ENGT-2953 */}
+### Support for additional timestamp formats when you configure pipelines
+
+**October 28, 2025**
+
+Grepr pipelines now support converting the following timestamp formats to the top-level log event field, `eventTimestamp`. This support is available in any pipeline step that requires parsing timestamps, such as the Grok parser or attribute remapper:
+
+- Common Log Format with comma-separated milliseconds. For example, `2025-10-17 20:10:59,166`.
+- The Apache and NGINX Common Log Format. For example, `14/Oct/2025:15:19:04 +0000`.
+
+## Bug fixes
+
+{/* ENGT-2798 */}
+### Fix for errors during pipeline processing with late-arriving messages
+
+**October 28, 2025**
+
+This release fixes a bug that could cause errors when handling late-arriving messages during pipeline processing.
+
+{/* ENGT-2836 */}
+### Fix for incorrect handling of OTLP integration updates
+
+**October 28, 2025**
+
+Fixed a bug in the OTLP integration form where updating an existing integration would incorrectly use the integration ID instead of the name.
+
+{/* ENGT-2865 */}
+### Fix for incorrect handling of logical operators in Log Explorer
+
+**October 28, 2025**
+
+This release fixes a bug in Log Explorer queries that caused the `OR` and `|` operators to be replaced with `AND`.
+
+{/* ENGT-2801, ENGT-2846 */}
+### Fix for non-editable filter queries
+
+**October 28, 2025**
+
+This release fixes a bug that prevents editing the filter query that's configured on a pipeline sink.
+
+{/* ENGT-2612 */}
+### Fix for incorrect handling of non-alphanumeric characters in Grok patterns
+
+**October 28, 2025**
+
+This release fixes a bug in the Grok parser that prevented proper handling of pattern names containing non-alphanumeric characters such as hyphens, underscores, or special symbols. This change maintains backward compatibility while resolving parsing failures that could occur with some grok pattern configurations.
+
+{/* ENGT-2994 */}
+### Log Explorer now correctly displays attributes and tags for New Relic queries
+
+**October 28, 2025**
+
+This release fixes a bug preventing the Log Explorer suggestions panel from correctly displaying attributes and tags associated with New Relic queries.
+
+{/* ENGT-2393 */}
+### Fix to show limit exceeded errors in Log Explorer
+
+**October 28, 2025**
+
+This release fixes a bug that prevented "Limit exceeded" errors from being displayed in Log Explorer when a query exceeds resource limits. Now, when such errors occur, users will see a clear error message indicating that the query has exceeded the allowed limits.

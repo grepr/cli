@@ -1,0 +1,182 @@
+---
+description: Use the Grepr rule engine REST API to dynamically control log processing with event triggers, conditions, and automated actions.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Control log processing with the rule engine REST API
+
+The rule engine can dynamically affect the processing of logs based on the provided context. For example, when an incident occurs, you might want to stop log aggregation and backfill previously aggregated data for a particular service over a period of time.
+
+See the [API specification](/apis/api-spec#schema/LogsRuleEngine).
+
+## Configure the rule engine
+
+To define rule engine actions, use the following configuration options:
+
+| Variables  | Description                                                                                           |
+|:-----------|:------------------------------------------------------------------------------------------------------|
+| triggers   | Map of trigger id to [trigger](#rule-engine-triggers) objects. The ids are a unique name for the trigger.          |
+| conditions | Map of condition id to [condition](#rule-engine-conditions) objects. The ids are a unique name for the conditions. |
+
+### Example configuration
+
+Example definition of a rule engine as a vertex in the [Grepr job graph](/grepr-platform/grepr-model#grepr-job-graph):
+
+```json
+{
+  "name": "my-rule-engine",
+  "type": "rule-engine",
+  "triggers": {
+    "trigger1": {
+      "type": "event-predicate",
+      "predicate": {
+        "type": "datadog-query",
+        "query": "service:my-service"
+      },
+      "conditionIds": ["condition1"],
+      "duration": "5m",
+      "variables": {
+        "__host": "host" // Extracts host tag from the matching event
+      }
+    }
+  },
+  "conditions": {
+    "condition1": {
+      "actionRules": [
+        {
+          "type": "event-rule",
+          "actionPredicate": {
+            "type": "datadog-query",
+            "query": "host:__host" // Matches events with host tag value extracted from the event that fired trigger1
+          },
+          "actions": [
+            {
+              "type": "tag-action",
+              "order": 0,
+              "modification": "ADD",
+              "tagKey": "new-tag",
+              "values": ["new-value"] // Adds {new-tag: [new-value]} to tags
+            }
+          ]
+        },
+        {
+          "type": "job-rule",
+          "actions": [
+            {
+              "type": "backfill-job-action",
+              "name": "my_backfill_job",
+              "order": 1,
+              "backfillTimespan": "PT10M",
+              "jobTags": {
+                "job-type": "backfill"
+              },
+              "backfillQuery": { // Setting the query to define the context for the backfill
+                "type": "datadog-query",
+                "query": "host:__host"
+              },
+              "rawTableOperationName": "my_rawlogs_sink",
+              "dedupTableOperationName": "my_deduplogs_sink",
+              "sinkOperationName": "sink",
+              "limit": 50000
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+## Condition [#rule-engine-conditions]
+
+Conditions describe the state of the environment. When a condition is triggered, some actions can be taken by Grepr and, those are described by the condition itself. A condition has a duration, and actions can be taken when the condition starts or for all messages while the condition is ongoing depending on the type of the action.
+
+The actions are described in the condition as action rules. They can be of the following types:
+- `Event Action Rule`: This takes actions on events that match a certain predicate while the condition is active.
+- `Job Action Rule`: This executes a set of associated job actions when a condition is first triggered.
+
+### Event action rule
+
+This is executed on events that match a certain predicate, for the entire duration that the associated condition is active. The `Event Action Rule` is configured by specifying a predicate for matching events and a set of actions to take on matched events.
+
+As an example, the UI configures the rule engine and conditions such that, when there's an abnormal event or an external API call hits Grepr, events that are related to the incident are tagged with a special tag that tells the log reducer to skip aggregating them.
+
+### Job action rule
+
+A set of job actions that are executed **once** per associated condition. This means, if an already active condition is extended by the (re-)firing of a trigger, the job actions will not be executed again.
+
+As an example, the UI sets up the rule engine to kick off a backfill job when a trigger fires.
+
+## Trigger [#rule-engine-triggers]
+
+A trigger kicks off a one or more conditions. Triggers may continue to fire, and that would extend the activation time of the associated conditions. Each trigger has a unique identifier and is one of these types:
+
+- `Event Trigger`: This trigger is activated by a matching predicate on an event. The predicate is provided by the user as part of the rule engine configuration.
+- `External Trigger`: This trigger is activated by an external source, for example, an alert from an observability tool. These will allow users to feed external stimuli into the rule engine to take appropriate actions.
+- `Trace Sampling Trigger`: This trigger allows users to make sure that complete sets of log messages would be available in the observability tool for a sample set of traces. A trace can be a user ID, a request ID, an actual trace ID, or anything that the user wants to consider an "execution identifier". This trace ID can be an attribute or a tag.
+
+You can find the object model specification for the various trigger types in the [API specification](/apis/api-spec#tag/Triggers).
+
+### Variables
+
+Variables are defined as part of the trigger configuration. These are used to extract values from the event that fired the trigger. The extracted values could be used as context for the conditions that are activated by the trigger. For example, if the trigger is activated by an event with a `service` tag, the `service` tag value could be extracted and used in the conditions to perform actions on the events that have the same `service` tag value.
+
+It's a map from variable names to paths for variables to extract from a matching event. The way to reference an attribute is by using an `@` in the variable path. For example, `@syslog.appname` will extract the value of the attribute `syslog.appname` from the event. If `@` is not specified, the variable will be extracted from the tags of the event. For example, the path `app` will extract the value of the tag `app` from the event.
+
+The variable names must start with '__' and be unique.
+
+import { Callout } from 'nextra/components'
+
+<Callout type="info">
+`__timestamp` (and `__severity` for logs) is automatically extracted from the respective top level fields of the matching event and are available for use in conditions out of the box.
+</Callout>
+
+<Callout type="warning">
+If the path provided does not exist for a variable, the path itself will be taken as a literal value for the variable.
+</Callout>
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What is the main purpose of the Grepr rule engine?",
+      a: "The rule engine dynamically affects log processing based on provided context and defined conditions. When an incident occurs or external events trigger rules, the engine can automatically stop log aggregation, tag events, backfill data, or take other configured actions."
+    },
+    {
+      q: "What is a trigger in the rule engine and what types are available?",
+      a: "A trigger activates one or more conditions. Three trigger types exist: Event Trigger (activated by matching predicates on events), External Trigger (activated by external sources like observability platform alerts), and Trace Sampling Trigger (ensures complete log sets are available for sampled traces)."
+    },
+    {
+      q: "What is the difference between event-triggered and externally-triggered rules?",
+      a: "Event-triggered rules automatically fire based on log data matching specified predicates (e.g., service:my-service). External triggers allow you to manually invoke rules from external systems, enabling incident response workflows driven by your observability platform."
+    },
+    {
+      q: "How do conditions relate to triggers in the rule engine?",
+      a: "Conditions are activated by triggers and define what actions to take when those conditions are active. A trigger can activate multiple conditions, and conditions can have a defined duration that extends if the trigger continues to fire."
+    },
+    {
+      q: "What is the difference between event action rules and job action rules?",
+      a: "Event action rules execute on events matching a predicate for the entire duration the condition is active. Job action rules execute once per condition (not repeatedly). Event action rules are ideal for tagging; job action rules are ideal for backfill jobs."
+    },
+    {
+      q: "How do I extract values from events to use in conditions?",
+      a: "Use variables defined in the trigger configuration. Variables map from names to paths, using @ prefix for attributes (e.g., @syslog.appname) or no prefix for tags (e.g., app). The __timestamp and __severity variables are automatically extracted."
+    },
+    {
+      q: "Can I use extracted variables from triggers in action predicates?",
+      a: "Yes, variables extracted from trigger events can be used in condition action predicates. For example, if you extract __host from a triggering event, you can use host:__host in action predicates to match events with the same host value."
+    },
+    {
+      q: "What happens if a variable path doesn't exist in an event?",
+      a: "If the specified path doesn't exist, the path itself is taken as a literal value for the variable. This allows you to use static values in rules as a fallback."
+    },
+    {
+      q: "How do tag-action modifications work in the rule engine?",
+      a: "Tag-action modifications can ADD tags to events. You specify the tagKey, values to add, and the order in which the action executes. For example, adding a new-tag:[new-value] identifies events processed by specific rules."
+    },
+    {
+      q: "What is a backfill-job-action and when would I use it?",
+      a: "A backfill-job-action executes a backfill job when a condition triggers. It's useful for replaying historical data from a specific time period (backfillTimespan) for events matching the backfill query, helping with incident investigation."
+    }
+  ]}
+/>

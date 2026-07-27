@@ -1,0 +1,146 @@
+---
+description: Learn how to safely test data transformation changes to a running production pipeline with the Grepr live edit feature.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# View pipeline data flows and test changes with live edit
+
+The Grepr live edit feature allows you to:
+
+- Safely test changes to data transformations in a running production pipeline. Using live edit, you can make and test changes to the pipeline's data processing and transformations without impacting the processing of live data and the flow of that data to your observability tools. After you've validated your changes, you can apply those changes to the production pipeline.
+- See a live view of how data flows and is processed by the running production pipeline. You can use this capability to monitor the data flowing through your pipeline in real time, even if you're not making changes to the pipeline.
+
+The live edit feature works by creating a temporary copy of the current pipeline but excludes the sink, preventing duplicate data from being sent to your observability platform. Your changes run in the copy of the pipeline. The state of the data at each step of the copied pipeline can be seen in the live edit view. You can also use this view to compare the results of processing between the original and copy pipelines, allowing you to get fast feedback on your changes.
+
+<Callout type="info">
+  To ensure that the data passing through the pipeline copy doesn't exceed the UI's capacity, the pipeline copy receives a sampling of the pipeline data. To ensure the pipeline copy is receiving the data you need and the output data contains only the fields you need, you can use filter functionality in the live edit UI. See [Create a subset of data for testing using filters](#filter-source-data).
+</Callout>
+
+Any changes you make that are not applied to the production pipeline are visible only in the pipeline copy, and no data is sent to configured sinks or data lakes. When your changes are tested and ready to apply to production, you can apply them to the original pipeline.
+
+## Using live edit with your pipelines
+
+To use live edit:
+
+1. In the Grepr UI, go to the details page for your pipeline.
+1. In the lower right corner of the page, click the expand icon to open the **Pipeline Log Viewer**.
+
+   ![The Pipeline Log Viewer pane collapsed.](/images/pipelines/pipeline-log-viewer-collapsed.png)
+
+1. To create and start a temporary copy of your pipeline, in the expanded **Pipeline Log Viewer** pane, click the play icon.
+
+   ![The Pipeline Log Viewer pane expanded.](/images/pipelines/pipeline-log-viewer-expanded.png)
+
+1. Grepr creates a temporary copy of your pipeline and runs it using log events sampled from the original pipeline's source data. The **Pipeline Log Viewer** pane updates to show the status of the pipeline copy as it's created and started.
+
+   ![The Pipeline Log Viewer pane showing the status of the copy pipeline.](/images/pipelines/preview-pipeline-startup.png)
+
+1. When the temporary pipeline copy is provisioned and started, the **Pipeline Log Viewer** pane displays the raw logs sampled from the original pipeline's source data. You can use this view to examine logs at different stages of processing, and to test and validate changes to processing.
+
+   ![The Pipeline Log Viewer pane showing raw logs from the copy pipeline.](/images/pipelines/preview-pipeline-running.png)
+
+To examine logs at different stages of processing, use the **Left table link** or **Right table link** menus to select the stage of processing to view.
+
+![The Pipeline Log Viewer pane showing the processing step dropdown.](/images/pipelines/pipeline-log-viewer-processing-steps.png)
+
+To view details of a log event, click the event in the **Pipeline Log Viewer** pane to open the log detail pane. The log detail pane displays the contents of the selected log event at the selected processing steps. The top bar of the log detail pane displays the event type, such as `INFO`, `ERROR`, or `DEBUG`, and the timestamp of the log message.
+To view the state of the event in the selected processing step in the left table, click **LEFT**. To view the state of the event in the selected processing step in the right table, click **RIGHT**.
+Click **DIFF** to view a JSON comparison of the event state in the left and right panels.
+
+
+![The Pipeline Log Viewer log detail pane](/images/pipelines/pipeline-log-viewer-message-detail.png)
+
+## Create a subset of data for testing using filters [#filter-source-data]
+
+Because the pipeline copy is receiving a sampling of the source data to ensure that the UI's capacity is not exceeded, the **Pipeline Log Viewer** supports functionality to filter source data. This filtering functionality ensures you get the correct data required for your testing. You can also use this feature to select specific columns to include in tables created from the filtered data.
+
+To use the filter functionality, click the filter icon next to the stop icon. In the filter dialogue, select your preferred query syntax from the **Query language** menu, and enter your filter query in the **Sampler query** text box. To select the columns you want to see in a table created from the filtered data, add and remove column names in the **Table Columns** input.
+
+![The filter dialogue in the Pipeline Log Viewer.](/images/pipelines/filter-dialogue.png)
+
+## Example: Use live edit to add and test a pipeline filter
+
+You can use a local file containing logs for testing instead of streaming live data from the pipeline. This feature can be useful for tasks such as
+<Callout type="info">
+  - This example uses the pipeline created in the [Build your first Grepr pipeline](/tutorials/first-pipeline) tutorial. If you want to follow the example, first complete that tutorial.
+  - Although this example uses Datadog, you can use the live edit feature with any Grepr-supported observability platform. For the complete list of supported observability vendors, see [Supported integrations](/integrations/support-matrix).
+</Callout>
+
+In this example, you use the following steps to test a filter that removes any log messages received by your Grepr pipeline that are assigned the hostname `my-test-host-1`.
+
+1. In the Grepr UI, go to the details page for your running pipeline.
+1. In the left pane, click **Pre-parsing filter** to open the filter configuration, and click **Add** next to **Filters**.
+1. Make sure **Query language** is set to **Datadog**, and enter the following expression in the **Query** field:
+
+  ```bash copy
+  -host:my-test-host-1
+  ```
+
+   ![The Pre-parsing filter configuration pane with the filter expression entered.](/images/pipelines/pre-parsing-filter-configuration.png)
+
+1. _Do not_ click **Apply Changes**. Before applying the changes to the production pipeline, use the live edit feature to test and validate the filter.
+1. In the lower right corner of the page, click the expand icon to open the **Pipeline Log Viewer** and click the play icon to create and start a temporary copy of your pipeline with the filter added.
+1. In the **Pipeline Log Viewer** left table, click a log message from `my-test-host-1`. The log detail pane opens. Because the filter removes the log messages from the pipeline, only the **LEFT** table view is displayed.
+
+   ![The Pipeline Log Viewer log detail pane showing a message filtered out of the pipeline.](/images/pipelines/pipeline-log-viewer-filtered-message.png)
+
+1. When you complete validation of your change, click **Apply Changes**  to save the new configuration to the production pipeline.
+
+## Use a local file for testing
+
+You can use log events in a local file for testing instead of streaming live data from the pipeline. This can be useful when you want to test pipeline changes against a consistent set of log events, or if you want to test with specific log events that are not currently flowing through the pipeline.
+
+<Callout>
+  The log file must be formatted as JSON or plain text, and must not exceed 10 MB in size.
+</Callout>
+
+To upload a file for testing:
+
+1. In the **Pipeline Log Viewer** pane, next to the play icon, click **Live** and click the **UPLOAD** tab.
+1. Drag and drop the file to upload, or click the upload area to select the file.
+1. Click **Apply**
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is the Grepr live edit feature?",
+    a: "Live edit is a feature that allows you to safely test changes to data transformations in a running production pipeline without impacting live data. It creates a temporary copy of your pipeline that excludes sinks, preventing duplicate data from being sent to your observability platform while you test changes."
+  },
+  {
+    q: "How do I start using live edit?",
+    a: "To use live edit, go to the details page for your running pipeline, click the expand icon in the lower right corner to open the Pipeline Log Viewer, and then click the play icon to create and start a temporary copy of your pipeline with sampled data."
+  },
+  {
+    q: "Will live edit changes affect my production pipeline?",
+    a: "No. Changes made in live edit are only visible in the temporary pipeline copy and do not affect production. No data is sent to configured sinks or data lakes until you explicitly apply the changes to the production pipeline."
+  },
+  {
+    q: "What is the Pipeline Log Viewer?",
+    a: "The Pipeline Log Viewer is a pane in the pipeline details that displays logs sampled from the original pipeline's source data. It allows you to examine logs at different processing stages, see how transformations affect data, and compare results between the original and test pipelines."
+  },
+  {
+    q: "Can I see how data flows through each stage of my pipeline?",
+    a: "Yes. Use the Pipeline Log Viewer to examine logs at different stages of processing. Select the processing step from the Left table link or Right table menu to see data at that point. Click a log event to open the detail pane and view its state at different processing steps."
+  },
+  {
+    q: "Why does live edit use sampled data instead of all pipeline data?",
+    a: "Live edit uses sampled data to ensure the pipeline copy doesn't exceed the UI's capacity. This prevents performance issues while still providing representative data for testing. You can use filter functionality to select specific data needed for your testing."
+  },
+  {
+    q: "How do I filter the data shown in Pipeline Log Viewer?",
+    a: "Click the filter icon next to the stop icon in the Pipeline Log Viewer. In the filter dialog, select your preferred query language syntax and enter your filter query in the Sampler query text box. You can also add or remove column names in the Table Columns input to customize the displayed data."
+  },
+  {
+    q: "What does DIFF view show in the log detail pane?",
+    a: "DIFF view shows a JSON comparison of an event's state between the left and right panels of the Pipeline Log Viewer. This allows you to see exactly what changed when processing logs through different pipeline stages or comparing original versus modified pipelines."
+  },
+  {
+    q: "How do I apply tested changes to my production pipeline?",
+    a: "After you've validated your changes in live edit, click 'Apply Changes' in the pipeline editor to save the new configuration to the production pipeline. Your changes will be applied to the running pipeline."
+  },
+  {
+    q: "Can I use live edit to monitor data without making changes?",
+    a: "Yes. You can use live edit to see a live view of how data flows and is processed by your running production pipeline without making any modifications. This allows you to monitor pipeline behavior and performance in real-time."
+  }
+]} />

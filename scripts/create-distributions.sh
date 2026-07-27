@@ -43,6 +43,21 @@ cp -r "$CLI_DIR/scripts" "$SOURCE_DIR/"
 cp "$CLI_DIR/tsconfig.json" "$SOURCE_DIR/"
 cp "$CLI_DIR/eslint.config.mjs" "$SOURCE_DIR/"
 
+# The source distribution must contain the inputs required by its own build.
+DOCS_SOURCE_DIR="$CLI_DIR/docs-index-source"
+if [ ! -d "$DOCS_SOURCE_DIR" ]; then
+    DOCS_SOURCE_DIR="$CLI_DIR/../docs"
+fi
+if [ ! -d "$DOCS_SOURCE_DIR/app" ] || [ ! -d "$DOCS_SOURCE_DIR/components" ] || [ ! -f "$DOCS_SOURCE_DIR/public/openapi.json" ]; then
+    echo -e "${RED}Documentation build inputs not found at $DOCS_SOURCE_DIR${NC}"
+    exit 1
+fi
+mkdir -p "$SOURCE_DIR/docs-index-source/public"
+cp -r "$DOCS_SOURCE_DIR/app" "$SOURCE_DIR/docs-index-source/"
+cp -r "$DOCS_SOURCE_DIR/components" "$SOURCE_DIR/docs-index-source/"
+cp "$DOCS_SOURCE_DIR/public/openapi.json" "$SOURCE_DIR/docs-index-source/public/"
+rm -rf "$SOURCE_DIR/docs-index-source/app/release-notes"
+
 # Generate package.json from main package.json
 generate_source_package_json "$CLI_DIR" "$SOURCE_DIR"
 

@@ -1,0 +1,943 @@
+---
+description: Explore practical examples of transforming events with SQL in Grepr pipelines, from basic queries to advanced transformations.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# SQL transform examples
+
+## Basic usage
+
+### Identity query
+
+```sql
+SELECT * FROM logs
+```
+Return all log events unchanged.
+
+**Input:**
+```json
+{
+  "id": "0H19GZK97FTKS",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 9,
+  "message": "State backend is set to heap memory",
+  "tags": {
+    "service": ["grepr-query"],
+    "host": ["ip-10-12-4-129.ec2.internal"]
+  },
+  "attributes": {
+    "process": {
+      "thread": {
+        "name": "thread-0"
+      }
+    }
+  }
+}
+```
+
+**Output:**
+```json
+{
+  "id": "0H19GZK97FTKS",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 9,
+  "message": "State backend is set to heap memory",
+  "tags": {
+    "service": ["grepr-query"],
+    "host": ["ip-10-12-4-129.ec2.internal"]
+  },
+  "attributes": {
+    "process": {
+      "thread": {
+        "name": "thread-0"
+      }
+    }
+  }
+}
+```
+
+### Simple filtering
+
+```sql
+SELECT * FROM logs WHERE severity < 5
+```
+Filter events to include only those with severity less than 5 (TRACE level).
+
+**Input:**
+```json
+[
+  {
+    "id": "evt1",
+    "eventtimestamp": 1724214074062,
+    "receivedtimestamp": 1724214074188,
+    "severity": 1,
+    "message": "Debug trace message",
+    "tags": {"service": ["api"]},
+    "attributes": {}
+  },
+  {
+    "id": "evt2",
+    "eventtimestamp": 1724214074063,
+    "receivedtimestamp": 1724214074189,
+    "severity": 9,
+    "message": "Info level message",
+    "tags": {"service": ["api"]},
+    "attributes": {}
+  }
+]
+```
+
+**Output:**
+```json
+[
+  {
+    "id": "evt1",
+    "eventtimestamp": 1724214074062,
+    "receivedtimestamp": 1724214074188,
+    "severity": 1,
+    "message": "Debug trace message",
+    "tags": {"service": ["api"]},
+    "attributes": {}
+  }
+]
+```
+
+### Message transformation
+
+```sql
+SELECT UPPER(message) as message, * FROM logs
+```
+Convert all log messages to uppercase.
+
+<Callout type="warning">
+  When transforming existing fields to override the original value, the transformed column must come before the `*` wildcard in your SELECT clause. For example: `SELECT UPPER(message) as message, * FROM logs`
+</Callout>
+
+### Adding computed fields
+
+```sql
+SELECT *,
+  UPPER(message) as upper_message,
+  CHAR_LENGTH(message) as message_length,
+  severity * 10 as severity_scaled
+FROM logs
+```
+Add three new computed fields to the event attributes.
+
+**Input:**
+```json
+{
+  "id": "evt1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 9,
+  "message": "Processing request",
+  "tags": {"service": ["api"]},
+  "attributes": {
+    "userId": "12345"
+  }
+}
+```
+
+  **Output:**
+  ```json
+  {
+    "id": "evt1",
+    "eventtimestamp": 1724214074062,
+    "receivedtimestamp": 1724214074188,
+    "severity": 9,
+    "message": "Processing request",
+    "tags": {"service": ["api"]},
+    "attributes": {
+      "userId": "12345",
+      "upper_message": "PROCESSING REQUEST",
+      "message_length": 18,
+      "severity_scaled": 90
+    }
+  }
+  ```
+
+## Multi-statement examples
+
+### Basic multi-statement transform
+
+The following example shows how to create a multi-statement configuration that filters and transforms data. This example:
+
+1. Creates a `VIEW` that selects logs with severity >= 13.
+2. Produces an `OUTPUT` that transforms the filtered logs by uppercasing messages and adding a processing status.
+
+```json
+{
+  "type": "sql-operation",
+  "inputs": {
+    "logs": "LOG_EVENT"
+  },
+  "statements": [
+    {
+      "type": "sql_view",
+      "tableName": "high_severity_logs",
+      "sqlQuery": "SELECT * FROM logs WHERE severity >= 13"
+    },
+    {
+      "type": "sql_output",
+      "outputName": "processed_logs",
+      "outputType": "LOG_EVENT",
+      "sqlQuery": "SELECT *, UPPER(message) as message, 'processed' as processing_status FROM high_severity_logs"
+    }
+  ],
+  "watermarkDelay": "PT5S",
+  "globalStateTtl": "PT2M"
+}
+```
+
+### Complex multi-statement pipeline
+
+This example:
+
+1. Filters logs that have user IDs and extracts user and request IDs.
+2. Creates a summary of user activity counts.
+3. Enriches original logs with user activity summaries.
+4. Creates synthetic log events summarizing user activity.
+
+```json
+{
+  "type": "sql-operation",
+  "inputs": {
+    "logs": "LOG_EVENT"
+  },
+  "statements": [
+    {
+      "type": "sql_view",
+      "tableName": "parsed_logs",
+      "sqlQuery": "SELECT *, VARIANT_VALUE(attributes, '$.userId', 'BIGINT') as user_id, VARIANT_VALUE(attributes, '$.requestId', 'BIGINT') as request_id FROM logs WHERE VARIANT_VALUE_CONTAINS(attributes, 'userId', false)"
+    },
+    {
+      "type": "sql_view",
+      "tableName": "user_activity_summary",
+      "sqlQuery": "SELECT user_id, COUNT(*) as activity_count, MAX(eventtimestamp) as last_activity FROM parsed_logs GROUP BY user_id"
+    },
+    {
+      "type": "sql_output",
+      "outputName": "enriched_logs",
+      "outputType": "LOG_EVENT",
+      "sqlQuery": "SELECT p.*, s.activity_count, s.last_activity FROM parsed_logs p LEFT JOIN user_activity_summary s ON p.user_id = s.user_id"
+    },
+    {
+      "type": "sql_output",
+      "outputName": "user_summaries",
+      "outputType": "LOG_EVENT",
+      "sqlQuery": "SELECT user_id as id, last_activity as eventtimestamp, CURRENT_TIMESTAMP as receivedtimestamp, CONCAT('User ', user_id, ' had ', CAST(activity_count AS STRING), ' activities') as message, 9 as severity, 'user_activity' as `tags.summary_type`, activity_count FROM user_activity_summary"
+    }
+  ]
+}
+```
+
+## Advanced examples
+
+### Content-based filtering and enrichment
+
+```sql
+SELECT *,  -- Select all original fields
+  -- Add a category based on message content
+  CASE
+    WHEN message LIKE '%ERROR%' THEN 'error_detected'  -- If message contains "ERROR"
+    WHEN message LIKE '%WARN%' THEN 'warning_detected'  -- If message contains "WARN"
+    ELSE 'normal'  -- For all other messages
+  END as log_category,
+  -- Replace any IP-like address with placeholder text
+  REGEXP_REPLACE(message, '\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}', '<redacted>') as sanitized_message
+FROM logs
+WHERE severity >= 13  -- Only process WARN level and above (13-24)
+```
+
+**Input:**
+```json
+[
+  {
+    "id": "evt1",
+    "eventtimestamp": 1724214074062,
+    "receivedtimestamp": 1724214074188,
+    "severity": 17,
+    "message": "ERROR: Database connection to IP 192.1.23.32 failed",
+    "tags": {"service": ["database"]},
+    "attributes": {}
+  },
+  {
+    "id": "evt2",
+    "eventtimestamp": 1724214074063,
+    "receivedtimestamp": 1724214074189,
+    "severity": 9,
+    "message": "INFO: Processing complete",
+    "tags": {"service": ["api"]},
+    "attributes": {}
+  }
+]
+```
+
+**Output:**
+```json
+[
+  {
+    "id": "evt1",
+    "eventtimestamp": 1724214074062,
+    "receivedtimestamp": 1724214074188,
+    "severity": 17,
+    "message": "ERROR: Database connection to IP 192.1.23.32 failed",
+    "tags": {"service": ["database"]},
+    "attributes": {
+      "log_category": "error_detected",
+      "sanitized_message": "ERROR: Database connection to ip redacted failed",
+    }
+  }
+]
+```
+
+### Process log event attributes
+
+```sql
+SELECT *,  -- Select all original fields
+  -- Extract thread name from a nested path
+  VARIANT_VALUE(attributes, '$.process.thread.name', 'STRING') as thread_name,
+  -- Extract status field from attributes
+  VARIANT_VALUE(attributes, '$.status', 'STRING') as status_code
+FROM logs
+-- Only process logs that have a 'process' field in
+WHERE
+  VARIANT_VALUE_CONTAINS(attributes, 'process', true)
+```
+
+**Input:**
+```json
+[
+  {
+    "id": "evt1",
+    "eventtimestamp": 1724214074062,
+    "receivedtimestamp": 1724214074188,
+    "severity": 9,
+    "message": "Request processed",
+    "tags": {"service": ["api"]},
+    "attributes": {
+      "process": {
+        "thread": {
+          "name": "worker-1"
+        }
+      },
+      "status": "success"
+    }
+  },
+  {
+    "id": "evt2",
+    "eventtimestamp": 1724214074063,
+    "receivedtimestamp": 1724214074189,
+    "severity": 9,
+    "message": "Simple log message",
+    "tags": {"service": ["web"]},
+    "attributes": {
+      "simple": true
+    }
+  }
+]
+```
+
+**Output:**
+```json
+[
+  {
+    "id": "evt1",
+    "eventtimestamp": 1724214074062,
+    "receivedtimestamp": 1724214074188,
+    "severity": 9,
+    "message": "Request processed",
+    "tags": {"service": ["api"]},
+    "attributes": {
+      "process": {"thread": {"name": "worker-1"}},
+      "status": "success",
+      "thread_name": "worker-1",
+      "status_code": "success"
+    }
+  }
+]
+```
+
+### Time-Based Analysis
+
+```sql
+SELECT *,  -- Select all original fields
+  -- Extract the hour (0-23) from the event timestamp
+  EXTRACT(HOUR FROM eventtimestamp) as event_hour,
+  -- Extract the day of the month (1-31) from the event timestamp
+  EXTRACT(DAY FROM eventtimestamp) as event_day
+FROM logs
+```
+
+**Input:**
+```json
+{
+  "id": "evt1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 9,
+  "message": "Processing request",
+  "tags": {"service": ["api"]},
+  "attributes": {}
+}
+```
+
+**Output:**
+```json
+{
+  "id": "evt1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 9,
+  "message": "Processing request",
+  "tags": {"service": ["api"]},
+  "attributes": {
+    "event_hour": 4,
+    "event_day": 21
+  }
+}
+```
+
+### Multi-field transformations
+
+```sql
+SELECT
+  -- Explicitly select these core fields
+  id,
+  eventtimestamp,
+  receivedtimestamp,
+  tags,
+  attributes,
+  -- Transform the message by adding a suffix
+  CONCAT(message, ' [PROCESSED]') as message,
+  -- Increase severity by 1 (e.g., INFO becomes WARN)
+  severity + 1 as severity,
+  -- Store the original message in uppercase as a computed field
+  UPPER(message) as original_uppercase,
+  -- Store the original severity scaled by 100 as a computed field
+  severity * 100 as original_severity_scaled
+FROM logs
+```
+
+**Input:**
+
+```json
+{
+  "id": "evt1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 9,
+  "message": "user authenticated",
+  "tags": {"service": ["auth"]},
+  "attributes": {}
+}
+```
+
+**Output:**
+
+```json
+{
+  "id": "evt1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 10,
+  "message": "user authenticated [PROCESSED]",
+  "tags": {"service": ["auth"]},
+  "attributes": {
+    "original_uppercase": "USER AUTHENTICATED",
+    "original_severity_scaled": 900
+  }
+}
+```
+
+### Summarize a window of logs into a metric log [#logs-to-metric]
+
+You can aggregate log events within a window, such as a time-based window, into a summary log event that includes derived metrics in its attributes. This reduces a high volume of individual request logs to a single summary event for each window, while preserving the counts and statistics you want to chart or alert on.
+
+The following example groups HTTP request logs by request path into 1-minute event-time windows and computes the request count, the number of server errors, and the p50, p90, and p99 response times for each window, then adds the tag `grepr.messagetype: metrics` to the summary log event for easy filtering.
+
+```sql
+SELECT
+  -- Use the window start as the event time of the summary log event
+  window_start AS eventtimestamp,
+  -- Use the request base path as the summary message
+  VARIANT_VALUE(attributes, '$.base_path', 'STRING') AS message,
+  9 AS severity,
+  tags['service'][1] AS `tags.service`,
+  'metrics' AS `tags.grepr.messagetype`,
+  COUNT(*) AS request_count,
+  -- Count responses with a 5xx status code
+  SUM(CASE WHEN VARIANT_VALUE(attributes, '$.status_code', 'BIGINT') >= 500
+           THEN 1 ELSE 0 END) AS error_count,
+  -- Compute the p50, p90, and p99 response times
+  GREPR_PERCENTILES(VARIANT_VALUE(attributes, '$.response_time_ms', 'DOUBLE'), 0.5, 0.9, 0.99)
+    AS response_time_ms_percentiles
+FROM TABLE(
+  -- Group requests into 1-minute windows based on event time
+  TUMBLE(TABLE logs, DESCRIPTOR(eventtimestamp), INTERVAL '1' MINUTE)
+)
+-- One summary row per window, per request path
+GROUP BY window_start, window_end,
+         VARIANT_VALUE(attributes, '$.base_path', 'STRING'),
+         tags['service'][1]
+```
+
+The computed metric columns become attributes on the summary log event, and the `tags.` columns enclosed by backticks are added as tags to the summary log event. Always include `window_start` and `window_end` in the `GROUP BY`.
+
+This example windows on event time, so a request is counted in the window that contains its `eventtimestamp`. For other windowing options, such as hopping and session windows, or windowing on processing time to include late-arriving data, see [Windowing and aggregations](/transforms/sql-transform/sql-functions#windowing-and-aggregations).
+
+**Input:** a high-volume stream of individual request logs, for example:
+```json
+[
+  {
+    "id": "req1",
+    "eventtimestamp": 1724214005000,
+    "receivedtimestamp": 1724214005100,
+    "severity": 9,
+    "message": "GET /api/users?page=2 200",
+    "tags": {"service": ["web"]},
+    "attributes": {"base_path": "/api/users", "status_code": 200, "response_time_ms": 100}
+  },
+  {
+    "id": "req2",
+    "eventtimestamp": 1724214006000,
+    "receivedtimestamp": 1724214006100,
+    "severity": 17,
+    "message": "GET /api/users?page=5 500",
+    "tags": {"service": ["web"]},
+    "attributes": {"base_path": "/api/users", "status_code": 500, "response_time_ms": 940}
+  },
+  {
+    "id": "req3",
+    "eventtimestamp": 1724214007000,
+    "receivedtimestamp": 1724214007100,
+    "severity": 9,
+    "message": "POST /api/orders 200",
+    "tags": {"service": ["web"]},
+    "attributes": {"base_path": "/api/orders", "status_code": 200, "response_time_ms": 210}
+  },
+  ...
+]
+```
+
+**Output:** one summary log per request path for the minute, compressing thousands of request logs into two events:
+```json
+[
+  {
+    "id": "0J2M4XQ97FTKS",
+    "eventtimestamp": 1724214000000,
+    "receivedtimestamp": 1724214060000,
+    "severity": 9,
+    "message": "/api/users",
+    "tags": {
+      "service": ["web"],
+      "grepr.messagetype": ["metrics"]
+    },
+    "attributes": {
+      "request_count": 1200,
+      "error_count": 4,
+      "response_time_ms_percentiles": [120, 480, 950]
+    }
+  },
+  {
+    "id": "0J2M4XR15GABCD",
+    "eventtimestamp": 1724214000000,
+    "receivedtimestamp": 1724214060000,
+    "severity": 9,
+    "message": "/api/orders",
+    "tags": {
+      "service": ["web"],
+      "grepr.messagetype": ["metrics"]
+    },
+    "attributes": {
+      "request_count": 830,
+      "error_count": 0,
+      "response_time_ms_percentiles": [95, 220, 410]
+    }
+  }
+]
+```
+
+## Add tags to a log event [#add-tags-to-log-event]
+
+The SQL transform provides a special column-naming syntax to add tags to output log events. The values you assign to a tag can be either scalar or `ARRAY` types.
+
+Adding a tag that matches an existing tag causes the existing tag to be overwritten. Use `ARRAY_APPEND` to extend an existing set of tag values as shown in the example below.
+
+To learn more, see [Add tags to a `LOG_EVENT` using a special column syntax](/transforms/sql-transform/data-types#tags-column-syntax).
+
+### Add scalar tag values
+
+```sql
+SELECT *,
+  'production' as `tags.environment`,
+  tags['service'][1] as `tags.service`,
+  CASE WHEN severity >= 17 THEN 'high' ELSE 'normal' END as `tags.priority`
+FROM logs
+```
+
+**Input:**
+```json
+{
+  "id": "evt1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 17,
+  "message": "Database connection failed",
+  "tags": {"service": ["database", "mysql"]},
+  "attributes": {}
+}
+```
+
+**Output:**
+```json
+{
+  "id": "evt1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 17,
+  "message": "Database connection failed",
+  "tags": {
+    "service": ["database"],
+    "environment": ["production"],
+    "priority": ["high"]
+  },
+  "attributes": {}
+}
+```
+
+### Add multiple tag values with arrays
+
+This example adds multiple values to a new tag, adds additional values to an existing tag, and adds a new tag using a team name extracted from the input event:
+
+```sql
+SELECT *,
+  ARRAY['web', 'api', 'frontend'] as `tags.components`,
+  -- extends the existing 'service' tag with an additional value
+  ARRAY_APPEND(tags['service'], 'all_services') as `tags.service`
+  REGEXP_EXTRACT(message, 'team=([a-z]+)', 1) as `tags.team`
+FROM logs
+WHERE message LIKE '%team=%'
+```
+
+## Remove tags and attributes from log events [#remove-tags-and-attributes]
+
+Use `MAP_REMOVE_KEYS` to remove log event tag keys and `VARIANT_REMOVE_KEYS` to remove fields from log event attributes. If the returned value is used to create a `LOG_EVENT` output, you must place the replacement `tags` or `attributes` columns before `*`. If a replacement column comes after `*`, the original column from `*` takes precedence and the removal has no effect.
+
+```sql
+SELECT
+  MAP_REMOVE_KEYS(tags, 'container_id', 'pod_uid') AS tags,
+  VARIANT_REMOVE_KEYS(
+    attributes,
+    '$.kubernetes.pod.uid',
+    '$["datadog.trace_payload.hostname"]'
+  ) AS attributes,
+  *
+FROM logs
+```
+
+**Input:**
+```json
+{
+  "id": "evt1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 9,
+  "message": "Request processed",
+  "tags": {
+    "service": ["api"],
+    "container_id": ["container-123"],
+    "pod_uid": ["pod-123"]
+  },
+  "attributes": {
+    "kubernetes": {
+      "namespace": "payments",
+      "pod": {
+        "name": "checkout-0",
+        "uid": "pod-123"
+      }
+    },
+    "datadog.trace_payload.hostname": "worker-node-1"
+  }
+}
+```
+
+**Output:**
+```json
+{
+  "id": "evt1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 9,
+  "message": "Request processed",
+  "tags": {
+    "service": ["api"]
+  },
+  "attributes": {
+    "kubernetes": {
+      "namespace": "payments",
+      "pod": {
+        "name": "checkout-0"
+      }
+    }
+  }
+}
+```
+
+## Examples from production
+
+### Security log processing
+
+```sql
+SELECT *,
+  CASE
+    WHEN message LIKE '%authentication failed%' THEN 'auth_failure'
+    WHEN message LIKE '%unauthorized access%' THEN 'unauthorized'
+    WHEN message LIKE '%suspicious activity%' THEN 'suspicious'
+    ELSE 'normal'
+  END as security_category,
+  REGEXP_REPLACE(message, 'user=[^\\\\s]+', 'user=REDACTED') as sanitized_message
+FROM logs
+WHERE severity >= 17 -- ERROR level and above
+```
+
+**Input:**
+```json
+{
+  "id": "sec1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 17,
+  "message": "authentication failed for user=johndoe from IP 192.168.1.100",
+  "tags": {"service": ["auth"], "env": ["prod"]},
+  "attributes": {
+    "ip": "192.168.1.100",
+    "attempt": 3
+  }
+}
+```
+
+**Output:**
+```json
+{
+  "id": "sec1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 17,
+  "message": "authentication failed for user=johndoe from IP 192.168.1.100",
+  "tags": {"service": ["auth"], "env": ["prod"]},
+  "attributes": {
+    "ip": "192.168.1.100",
+    "attempt": 3,
+    "security_category": "auth_failure",
+    "sanitized_message": "authentication failed for user=REDACTED from IP 192.168.1.100"
+  }
+}
+```
+
+### Application performance monitoring
+
+```sql
+SELECT *,
+  CAST(REGEXP_EXTRACT(message, 'response_time=(\\\\d+)ms', 1) AS BIGINT) as response_time_ms,
+  CASE
+    WHEN message LIKE '%response_time=%ms' AND CAST(REGEXP_EXTRACT(message, 'response_time=(\\\\d+)ms', 1) AS BIGINT) > 1000 THEN 'slow'
+    ELSE 'normal'
+  END as performance_category
+FROM logs
+WHERE message LIKE '%response_time=%'
+```
+
+**Input:**
+```json
+{
+  "id": "perf1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 9,
+  "message": "API request completed with response_time=1250ms for endpoint /api/users",
+  "tags": {"service": ["api"], "endpoint": ["/api/users"]},
+  "attributes": {
+    "method": "GET",
+    "status_code": 200,
+    "user_id": "12345"
+  }
+}
+```
+
+**Output:**
+```json
+{
+  "id": "perf1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 9,
+  "message": "API request completed with response_time=1250ms for endpoint /api/users",
+  "tags": {"service": ["api"], "endpoint": ["/api/users"]},
+  "attributes": {
+    "method": "GET",
+    "status_code": 200,
+    "user_id": "12345",
+    "response_time_ms": 1250,
+    "performance_category": "slow"
+  }
+}
+```
+
+## COMPLETE_SPAN transform examples [#span-transform-examples]
+
+`COMPLETE_SPAN` transforms apply to trace data from Datadog Agent and OTLP sources.
+
+### Change the Datadog hostname for spans [#change-datadog-hostname]
+
+This example sets `datadog.trace_payload.hostname` to a custom value so you can rename hosts in the Datadog UI, while keeping the original `host.name` intact and saving it to `span.attributes['grepr.host']`.
+
+```sql
+SELECT *,
+  -- Updates an existing resource attribute
+  CASE
+    WHEN VARIANT_VALUE(resource.attributes, '$["host.name"]', 'STRING') IS NOT NULL
+    THEN VARIANT_BUILD(
+      '$["datadog.trace_payload.hostname"]', 'apm-host',
+      '$["host.name"]', 'dev-apm-host'
+    )
+    ELSE VARIANT_BUILD(
+      '$["datadog.trace_payload.hostname"]', 'apm-host'
+    )
+  END AS `resource.attributes`,
+  -- Adds a new attribute to the span
+  VARIANT_BUILD(
+    '$["grepr.host"]',
+    COALESCE(
+      VARIANT_VALUE(resource.attributes, '$["host.name"]', 'STRING'),
+      VARIANT_VALUE(resource.attributes, '$["datadog.trace_payload.hostname"]', 'STRING')
+    )
+  ) AS `span.attributes`
+FROM spans
+```
+
+Replace `<new-hostname>` with your normalized hostname value.
+
+### Omit nullable span metadata fields [#omit-nullable-span-metadata]
+
+If a `COMPLETE_SPAN` query omits nullable top-level metadata fields, Grepr sets the missing output fields to `NULL`. This allows SQL transforms written before new nullable metadata fields were added to keep working. When authoring new transforms, prefer `SELECT *` or include all current fields unless you intentionally want to clear the omitted metadata.
+
+```sql
+SELECT
+  receivedtimestamp,
+  eventtimestamp,
+  servicename,
+  resource,
+  instrumentationscope,
+  span
+FROM spans
+```
+
+Do not use this shortcut for nested `resource`, `instrumentationscope`, or `span` rows that you rebuild with `ROW(...)`. If you replace one of those nested rows, include every nested field in the current order. Grepr validates nested row shape before the pipeline starts.
+
+### Remove resource and span attributes [#remove-span-attributes]
+
+Use `VARIANT_REMOVE_KEYS` to remove fields from `COMPLETE_SPAN` resource attributes and span attributes. When you replace nested `COMPLETE_SPAN` fields, explicitly select each output column so that the replacement `resource` and `span` fields keep their expected names.
+
+```sql
+SELECT
+  receivedtimestamp,
+  eventtimestamp,
+  servicename,
+  ROW(
+    VARIANT_REMOVE_KEYS(
+      resource.attributes,
+      '$["cloud.account.id"]',
+      '$.kubernetes.pod.uid'
+    ),
+    resource.dropped_attributes_count,
+    resource.entity_refs
+  ) AS resource,
+  instrumentationscope,
+  ROW(
+    span.traceIdHigh,
+    span.traceIdLow,
+    span.spanId,
+    span.traceState,
+    span.parentSpanId,
+    span.operationName,
+    span.spanKind,
+    span.startTimeNanos,
+    span.endTimeNanos,
+    VARIANT_REMOVE_KEYS(
+      span.attributes,
+      '$["http.request.header.authorization"]',
+      '$["db.statement"]'
+    ),
+    span.droppedAttributesCount,
+    span.events,
+    span.droppedEventsCount,
+    span.links,
+    span.droppedLinksCount,
+    span.status,
+    span.flags,
+    span.spanKindByte
+  ) AS span,
+  tracesignature,
+  duration,
+  haserror,
+  percentilebucket,
+  samplingtype,
+  crit_path_ns,
+  crit_path_pct
+FROM spans
+```
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What does the identity query do and when is it useful?",
+      a: "The identity query SELECT * FROM logs returns all log events unchanged. It's useful as a base template for building more complex transforms, for testing pipeline configuration, or as a placeholder before adding transformation logic."
+    },
+    {
+      q: "How do I filter logs by severity in SQL?",
+      a: "Use a WHERE clause with severity comparisons. For example, SELECT * FROM logs WHERE severity < 5 filters for TRACE level logs, or SELECT * FROM logs WHERE severity >= 13 filters for WARN and above. Severity follows OpenTelemetry convention with values 1-24."
+    },
+    {
+      q: "What is the warning about transforming fields like message or severity?",
+      a: "When you want to override an original field (like transforming message to uppercase), the transformed column must appear BEFORE the * wildcard in your SELECT clause. For example: SELECT UPPER(message) as message, * FROM logs. Otherwise, the original value takes precedence."
+    },
+    {
+      q: "How do I add new computed fields to log events?",
+      a: "Use SELECT * with additional computed columns. For example: SELECT *, UPPER(message) as upper_message, CHAR_LENGTH(message) as msg_length FROM logs. The computed fields are automatically added to the event's attributes map in the output."
+    },
+    {
+      q: "What is a multi-statement SQL transform?",
+      a: "Multi-statement transforms allow you to create intermediate views and multiple outputs. You define sql_view statements to create temporary tables, then sql_output statements to transform and output results. This enables complex multi-step transformations with intermediate processing."
+    },
+    {
+      q: "How do I extract and transform JSON from attributes?",
+      a: "Use JSON_VALUE to extract scalar values and JSON_QUERY for objects. For example: JSON_VALUE(attributes, '$.userId' RETURNING STRING) as user_id extracts a user ID, or JSON_QUERY(attributes, '$.process') as process_info extracts nested objects. Use JSON_EXISTS to check if paths exist."
+    },
+    {
+      q: "How can I add tags to log events in SQL?",
+      a: "Use the special column-naming syntax with backticks: SELECT *, 'production' as `tags.environment` FROM logs adds a scalar tag. Use ARRAY for multiple values: ARRAY['web', 'api'] as `tags.components`. Use ARRAY_APPEND to extend existing tags: ARRAY_APPEND(tags['service'], 'billing') as `tags.service`."
+    },
+    {
+      q: "How do I sanitize or redact sensitive data from logs?",
+      a: "Use REGEXP_REPLACE to remove or mask sensitive information. For example: REGEXP_REPLACE(message, 'user=[^\\s]+', 'user=REDACTED') redacts usernames, or REGEXP_REPLACE(message, '\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}', '<redacted>') masks IP addresses."
+    },
+    {
+      q: "How do I extract numeric values from log messages?",
+      a: "Use REGEXP_EXTRACT to find patterns in messages, then CAST to convert to numbers. For example: CAST(REGEXP_EXTRACT(message, 'response_time=(\\d+)ms', 1) AS BIGINT) as response_time_ms extracts a response time value and converts to a long integer for calculations."
+    },
+    {
+      q: "How do I process logs based on time windows in SQL?",
+      a: "Use windowing table-valued functions: TUMBLE for fixed-size windows, HOP for overlapping windows, SESSION for activity-based grouping, or CUMULATE for expanding windows. For example: FROM TABLE(TUMBLE(TABLE logs, DESCRIPTOR(eventtimestamp), INTERVAL '5' MINUTES)) creates 5-minute windows. Always include window_time in GROUP BY."
+    },
+    {
+      q: "How do I turn logs into a metric?",
+      a: "Aggregate a window of logs into one summary log event that carries the metrics in its attributes, using functions such as COUNT(*) for counts and GREPR_PERCENTILES(...) for percentiles. Group by low-cardinality dimensions, such as a status code or a service name, along with the window boundaries. See Summarize a window of logs into a metric log for the full example."
+    }
+  ]}
+/>

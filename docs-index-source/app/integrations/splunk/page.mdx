@@ -1,0 +1,250 @@
+---
+description: Learn how to use the Grepr Splunk integration to ingest logs to a Grepr pipeline for processing and send the processed logs to your Splunk instance.
+vendor: Splunk
+---
+
+import { Callout } from 'nextra/components'
+import AddTeamAccess from '@/app/shared/add-team-access-to-integration.mdx'
+import IngestUrlConfig from '@/app/shared/configure-ingest-url.mdx'
+import IntegrationsInterchangeability from '@/app/shared/integrations-interchangeability.mdx'
+import { Tabs } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Configure Splunk connections with a Grepr integration
+
+The Grepr Splunk integration enables you to ingest logs into Grepr using a Grepr source, process the logs with a Grepr pipeline, and then send the processed logs to Splunk using a Grepr sink.
+
+The Grepr Splunk integration supports forwarding data through the following interfaces:
+
+- **Splunk's HTTP Event Collector (HEC)**: You can use any collector that supports HEC, including Fluent Bit, Fluentd, and the Splunk OpenTelemetry Collector.
+- **S2S over HTTP**: You can forward data from Splunk Universal Forwarders or Splunk Heavy Forwarders using S2S over HTTP. S2S over TCP is not supported.
+
+To send logs to a Grepr pipeline before forwarding them to your Splunk instance, change your collector configuration to send the logs to a Grepr endpoint URL rather than a Splunk HEC or S2S endpoint.
+
+In addition to using a Splunk integration to ingest log data with a Grepr source and send processed logs to Splunk with a Grepr sink, you can also use a Splunk HTTP source to ingest data from a Splunk instance into Grepr for processing. See [Ingest log data from Splunk using the Splunk HTTP source](#splunk-http-source).
+
+You can use the Grepr UI or REST API to add a Splunk integration. To learn how to create a Splunk integration in the Grepr UI and configure collectors to send logs to Grepr, see [Use a Splunk integration in a Grepr pipeline](#use-splunk-integration).
+
+To use the REST API, see the [Splunk Integration specification](/apis/api-spec#tag/Splunk-Integration).
+
+<Callout>
+  <IntegrationsInterchangeability />
+</Callout>
+
+## Requirements [#splunk-requirements]
+
+The Grepr integration for Splunk requires the following:
+
+- An HTTP Event Collector (HEC) token is required for both HEC and S2S. You can create an HEC token in the Splunk platform settings. See [Set up and use the HTTP Event Collector in Splunk Web](https://docs.splunk.com/Documentation/Splunk/latest/Data/UsetheHTTPEventCollector).
+- A Bearer token for authentication to the Splunk REST API is required for using a Splunk HTTP source to ingest data from a Splunk instance into Grepr. The user associated with the token must have the `search` and `rest_access_server_endpoints` capabilities. See [Ingest log data from Splunk using the Splunk HTTP source](#splunk-http-source).
+
+For details on creating tokens for the Splunk API, see [Create authentication tokens](https://help.splunk.com/en/splunk-enterprise/administer/manage-users-and-security/9.4/authenticate-into-the-splunk-platform-with-tokens/create-authentication-tokens).
+
+## Use a Splunk integration in a Grepr pipeline [#use-splunk-integration]
+
+Use the following steps to create a Splunk integration in the Grepr UI and use it in a pipeline to source and sink data.
+
+### Step 1: Create a Splunk integration [#create-splunk-integration]
+
+To create a Splunk integration in the Grepr UI:
+
+1. Go to the **Integrations** page in the Grepr UI and click **Add new** next to **Observability Vendors**.
+
+   ![The Integrations page in the Grepr UI.](/images/tutorials/first-pipeline/integrations-page.png)
+
+1. In the **Add Observability Vendor** dialog:
+   - In the **Type** menu, select **Splunk** .
+   - In the **Name** field, enter a name for the integration.
+   - In the **Ingest Auth token** field, enter your Splunk HEC token.
+   - In the **Splunk Host** field, enter the hostname for your Splunk instance.
+   - Optional: To use an HTTP source to ingest data, in the **REST API Search Bearer token** field, enter a Bearer token to authenticate against the Splunk API. The token must be associated with a user with the required permissions. See the [Requirements](#splunk-requirements).
+   - Optional: Use the **Validate SSL certificate** checkbox to turn validation of SSL certificates on or off when Grepr connects to your Splunk instance.
+1. Click **Create**.
+
+   ![Add a Splunk integration in the Grepr UI.](/images/tutorials/first-pipeline/integrations-new-splunk.png)
+
+    #### Optional: Grant team access to the integration
+
+    <AddTeamAccess />
+
+### Step 2: Add a source to your pipeline [#add-splunk-source]
+
+To add a source to your pipeline that uses the Splunk integration:
+
+1. In the Grepr UI, go to the details page for an existing pipeline or create a new pipeline from the homepage.
+1. In the left-hand navigation menu on the pipeline details page, click **Sources**.
+1. In the **Add source** dialog, select the Splunk integration in the **Source** menu.
+1. Click **Submit**.
+
+### Step 3: Forward logs to Grepr using HEC
+
+<IngestUrlConfig image_url='/images/integrations/ingestion-url-splunk.png' url='https://<integration-id>-<org-id>.ingest.grepr.ai/services/collector/event' />
+
+To see more information and configuration examples, select the tab for your preferred collector:
+
+<Tabs items={['Fluent Bit', 'Fluentd', 'OpenTelemetry Collector', 'Universal Forwarder']}>
+  <Tabs.Tab>
+
+    Fluent Bit can forward logs using the Splunk output plugin. To configure the plugin, set the `Host` value to the hostname from the Splunk integration's ingestion URL and the `Splunk_Token` value to your Splunk HEC token. The following is an example `OUTPUT` section from a Fluent Bit configuration file (`fluent-bit.conf`):
+
+    ```fluent copy filename="fluent-bit.conf"
+    [OUTPUT]
+       Name              splunk
+       Match             *
+       Host              <ingestion-host>
+       Port              443
+       TLS               On
+       TLS.Verify        On
+       Splunk_Token      <hec-token>
+    ```
+
+    Replace:
+    - `<ingestion-host>` with the hostname from your ingestion URL. Do not include the `https://` prefix or the path value. For example, if the ingestion URL is `https://0abc1defghij2-<org-id>.ingest.grepr.ai/services/collector/event`, set the value to `0abc1defghij2-<org-id>.ingest.grepr.ai`.
+    - `<hec-token>` with your Splunk HEC token.
+
+    To learn more about configuration settings for Fluent Bit, see the documentation for the [Fluent Bit Splunk output plugin](https://docs.fluentbit.io/manual/pipeline/outputs/splunk).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    Fluentd can send logs to Grepr using the `splunk_hec` output plugin. When you configure Fluentd, split the ingestion URL into the `hec_host`, `hec_port`, and `hec_endpoint` settings. The following is an example `match` directive from a Fluentd configuration file (`fluentd.conf`):
+
+    ```fluent copy filename="fluentd.conf"
+    <match your_tag.**> # Adjust your match pattern as needed
+      @type                     splunk_hec
+      protocol                  https
+      hec_host                  <ingestion-host>
+      hec_endpoint              services/collector/event
+      hec_port                  443
+      hec_token                 <hec-token>
+
+      <buffer> # Grepr recommends creating a buffer configuration for production deployments
+        @type memory # Or file for persistence
+        flush_interval 5s # Adjust as needed
+        chunk_limit_size 1m # Adjust as needed
+      </buffer>
+    </match>
+    ```
+
+    Replace:
+    - `your_tag.**` with the tag of the logs you want to forward to Grepr, or use `**` to match all tags.
+    - `<ingestion-host>` with the hostname from your ingestion URL. Do not include the `https://` prefix or the path value. For example, if the ingestion URL is `https://0abc1defghij2-<org-id>.ingest.grepr.ai/services/collector/event`, set the value to `0abc1defghij2-<org-id>.ingest.grepr.ai`.
+    - `<hec-token>` with your Splunk HEC token.
+
+    To learn more about the Splunk output plugin for Fluentd, including configuration settings, see the [fluent-plugin-splunk-hec documentation](https://github.com/splunk/fluent-plugin-splunk-hec#readme).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    The OpenTelemetry Collector can forward logs to Grepr using the `splunk_hec` exporter. In the OpenTelemetry collector configuration (`collector.yaml`), set the `endpoint` value to the ingestion URL:
+
+    ```yaml copy filename="config.yaml"
+    exporters:
+      splunk_hec:
+        token: <hec-token>
+        endpoint: <ingestion-url>
+
+    service:
+      pipelines:
+        logs:
+          receivers: [otlp] # Replace with your actual receiver(s)
+          processors: [batch] # Replace/add your actual processor(s)
+          exporters: [splunk_hec]
+    ```
+
+    Replace:
+    - `<hec-token>` with your Splunk HEC token.
+    - `<ingestion-url>` with the ingestion URL from your Splunk integration.
+
+    To learn more about the OpenTelemetry Collector and configuration settings, see the [Splunk HEC Exporter documentation](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/splunkhecexporter#readme).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    To forward logs using the Splunk Universal Forwarder or Heavy Forwarder, add an `[httpout]` section to your Splunk Heavy Forwarder or Universal Forwarder outputs configuration (`outputs.conf`) with the following settings:
+
+    - Set `httpEventCollectorToken` with an HEC token from your Splunk settings.
+    - Set `uri` to the hostname of the ingestion URL from your Grepr source. Omit the path from the ingestion URL and append the port `443`. The following is an example of a properly formatted value for the `uri` setting: `https://q0yf61xl3k2b1-orgid.app.grepr.ai:443`.
+
+    ```ini copy filename="outputs.conf"
+    [httpout]
+    httpEventCollectorToken = <hec-token>
+    uri = https://<ingestion-host>:443
+    ```
+
+    To load the new configuration, restart your forwarders.
+
+  </Tabs.Tab>
+</Tabs>
+
+### Step 4: Add a sink to your pipeline
+
+To add a sink to your pipeline that uses the Splunk integration to send processed logs to your Splunk instance:
+
+1. In the Grepr UI, go to the details page for your pipeline.
+1. In the left-hand navigation menu, click **Sinks**.
+1. In the **Add sink** dialog:
+   - Select the Splunk integration in the **Sink** menu.
+   - In the **Name** field, enter a name for the integration.
+   - In the **Additional tags** field, specify comma-separated tags to add to all log messages sent through this sink. You can use these tags to filter and organize logs in Splunk. For example: `processor:grepr,pipeline:my_pipeline,environment:production`.
+1. The **Index Configuration** section allows you to configure how logs are routed to Splunk indexes. Grepr follows a specific index routing logic to determine the destination index for each log:
+   - **Index override takes priority**: If an **Index override** value is provided, all logs flowing to this sink will use this index, regardless of any other index information.
+   - **Log-level index field**: If no **Index override** value is provided and an `index` field exists on the log (from an agent or transformations), that index is used.
+   - **Sink default index**: If no **Index override** value is provided, and no `index` field exists on the log, the **Default index** field specified in this sink configuration is used.
+   - **HEC token default**: If none of these conditions are met, the log is routed to the default index configured on the HEC token in your Splunk instance.
+1. Click **Submit**.
+
+   ![Configure a Splunk sink in the Grepr UI.](/images/integrations/splunk-sink.png)
+
+## Ingest log data from Splunk using the Splunk HTTP source [#splunk-http-source]
+
+You can use the Splunk HTTP source to read log data from a Splunk instance into Grepr. You can use this feature for tasks such as moving Splunk logs to another platform or testing Splunk log processing in Grepr without modifying forwarders.
+
+To configure and use a Splunk HTTP source in a pipeline:
+
+1. Create a Splunk integration that includes an authorization token for the Splunk REST API. See [Step 1: Create a Splunk integration](#create-splunk-integration).
+1. In your pipeline, add a server source that uses the Splunk integration. See [Step 2: Add a source to your pipeline](#add-splunk-source).
+
+## Limitations
+
+- The Splunk integration supports only Splunk HEC and S2S over HTTP. TCP connections, including S2S over TCP, are not supported.
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "How do I send logs from Splunk to Grepr for processing?",
+      a: "To send logs from Splunk to Grepr, change your collector configuration to send logs to the Grepr ingestion URL instead of your Splunk HEC endpoint. The ingestion URL format is https://<integration-id>-<org-id>.ingest.grepr.ai/services/collector/event. You can configure Fluent Bit, Fluentd, OpenTelemetry Collector, or Splunk Universal/Heavy Forwarders to use this endpoint."
+    },
+    {
+      q: "What is the difference between HEC and S2S for Splunk integration with Grepr?",
+      a: "HEC (HTTP Event Collector) is Splunk's standard HTTP-based log ingestion method supported by multiple collectors like Fluent Bit, Fluentd, and OpenTelemetry Collector. S2S (Source-to-Source) is Splunk's forwarding protocol for Universal Forwarders and Heavy Forwarders. Both are supported by Grepr over HTTP, but TCP connections including S2S over TCP are not supported."
+    },
+    {
+      q: "How do I configure Fluent Bit to forward logs to Grepr with a Splunk integration?",
+      a: "In your Fluent Bit configuration file, create an OUTPUT section with Name set to 'splunk', Host set to your Grepr ingestion hostname, Port set to 443, TLS enabled, and Splunk_Token set to your Splunk HEC token. The Host value should be the hostname portion of your ingestion URL without the https:// prefix or path."
+    },
+    {
+      q: "How can I configure index routing when sending processed logs back to Splunk?",
+      a: "When adding a Splunk sink, Grepr follows a priority order for index routing: first, any Index override value; second, the index field on the log itself; third, the Default index specified in the sink configuration; finally, the default index configured on your HEC token. You can set an Index override to route all logs to a specific index regardless of other settings."
+    },
+    {
+      q: "Can I use Splunk Universal Forwarder or Heavy Forwarder to send logs to Grepr?",
+      a: "Yes, you can use S2S over HTTP with Splunk Universal Forwarder or Heavy Forwarder. Add an httpout section to your outputs.conf with the Grepr ingestion URL, an HEC token, and port 443. TCP connections are not supported, so ensure you use HTTP/HTTPS endpoints only."
+    },
+    {
+      q: "What authentication is required for the Splunk integration with Grepr?",
+      a: "You need an HEC (HTTP Event Collector) token from Splunk for both HEC and S2S connections. Additionally, for log reduction and exception parsing features, you need a Bearer token for the Splunk REST API with search and rest_access_server_endpoints capabilities."
+    },
+    {
+      q: "How do I reduce storage costs with Grepr's Splunk integration?",
+      a: "Use the log reducer feature by configuring a Bearer token in your Splunk integration. Grepr queries your Splunk instance for alerts and dashboards, then uses those insights to identify and exclude redundant log messages from processing. This can significantly reduce the volume of logs stored and processed."
+    },
+    {
+      q: "Can I send logs to both Grepr and Splunk directly from my collectors?",
+      a: "Yes, you can dual-ship logs using multiple OUTPUT sections in Fluent Bit or multiple exporters in Fluentd and OpenTelemetry Collector. This allows you to send unprocessed logs directly to Splunk while simultaneously sending logs to Grepr for processing and transformation."
+    }
+  ]}
+/>

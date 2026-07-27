@@ -1,0 +1,356 @@
+---
+description: Learn how to create and use a New Relic integration to ingest logs to a Grepr pipeline for processing and send the processed logs to your New Relic instance.
+vendor: New Relic
+---
+
+import { Callout } from 'nextra/components'
+import AddTeamAccess from '@/app/shared/add-team-access-to-integration.mdx'
+import IngestUrlConfig from '@/app/shared/configure-ingest-url.mdx'
+import IntegrationsInterchangeability from '@/app/shared/integrations-interchangeability.mdx'
+import { Tabs } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Configure New Relic connections with a Grepr integration
+
+The New Relic integration enables you to ingest logs into Grepr with a Grepr source, process them with a Grepr pipeline, and then send the processed logs to New Relic with a Grepr sink.
+
+To send logs to a Grepr pipeline before forwarding the logs to New Relic, you change your collector configuration to send the logs to a Grepr endpoint URL instead of a New Relic endpoint. The Grepr New Relic integration supports the Fluent Bit and Fluentd collectors.
+
+You can use the Grepr UI or REST API to add a New Relic integration. To learn how to create a New Relic integration in the Grepr UI and configure collectors to send logs to Grepr, see [Use a New Relic integration in a Grepr pipeline](#use-newrelic-integration).
+
+To use the REST API, see the [New Relic Integration specification](/apis/api-spec#tag/New-Relic-Integration).
+
+<Callout>
+  <IntegrationsInterchangeability />
+</Callout>
+
+## Requirements
+
+- To create a New Relic integration, you must have a license key from your New Relic account. Use the same license key as the collectors that forward logs to New Relic. This key is required to authenticate the connection between Grepr and New Relic.
+- Optional: To enable Grepr's automatic exception parsing feature, you must have the Account ID and a user key from your New Relic account. See [Enable selective reduction with a New Relic integration](#enable-selective-reduction). The user key must match the one used by the New Relic collectors.
+
+## Enable selective reduction with a New Relic integration [#enable-selective-reduction]
+
+When you include a New Relic user key and account ID in your integration configuration, Grepr automatically tracks dashboards and alerts configured in your New Relic account. By parsing queries used in these dashboards and alerts and making them available as exceptions to the log reducer, Grepr can determine which messages should not be processed.
+
+To learn more about viewing parsed queries and determining which should be used as exceptions, see [Identify log events that should bypass aggregation](/integrations#passthrough-estimation).
+
+To learn more about Grepr log reduction, see [Reduce shipped data volumes with the Grepr log reducer](/transforms/reducer).
+
+## Use a New Relic integration in a Grepr pipeline [#use-newrelic-integration]
+
+To create a New Relic integration in the Grepr UI and use it in a pipeline to source and sink data, follow these steps:
+
+### Step 1: Create a New Relic integration
+
+To create a New Relic integration in the Grepr UI:
+
+1. Go to the **Integrations** page in the Grepr UI and click **Add new** next to **Observability Vendors**.
+
+   ![The Integrations page in the Grepr UI.](/images/tutorials/first-pipeline/integrations-page.png)
+
+1. In the **Add Observability Vendor** dialog:
+   - In the **Type** menu, select **New Relic**.
+   - In the **Name** field, enter a name for the integration.
+   - In the **License Key** field, enter the license key from your New Relic account. Use the same license key as the collectors that forward logs to New Relic. Do not enter a user key in this field.
+   - Optional: Enter the **Account ID** for your New Relic account. This value is only required if you choose to enable Grepr's automatic exception parsing feature.
+   - Optional: In the **User Key** field, enter a New Relic user key. Use the same user key that the New Relic collectors use. This value is only required if you choose to enable Grepr's automatic exception parsing feature.
+   - Optional: Specify how recently a dashboard must have been accessed to be included in automatic exception parsing. By default, Grepr checks for activity within the last 28 days.
+1. Click **Create**.
+
+   #### Optional: Grant team access to the integration
+
+   <AddTeamAccess />
+
+### Step 2: Add a source to your pipeline
+
+To add a source to your pipeline that uses the New Relic integration:
+
+1. In the Grepr UI, go to the details page for an existing pipeline or create a new pipeline from the homepage.
+1. In the left-hand navigation menu on the pipeline details page, click **Sources**.
+1. In the **Add source** dialog, select the New Relic integration in the **Source** menu.
+1. Click **Submit**.
+
+### Step 3: Configure log forwarding to Grepr [#configure-forwarding-to-grepr]
+
+<IngestUrlConfig image_url='/images/integrations/ingestion-url-newrelic.png' url='https://<integration-id>-<org-id>.ingest.grepr.ai/nr/log/v1' />
+
+To see more information and configuration examples, select the tab for your preferred log collector:
+
+<Tabs items={['Fluent Bit', 'Fluentd']}>
+  <Tabs.Tab>
+
+    Fluent Bit can forward logs using the New Relic output plugin. To configure the plugin, set the `endpoint` value to the ingestion URL from your integration and the `licenseKey` value to your New Relic license key. The following is an example `OUTPUT` section from a Fluent Bit configuration file (`fluent-bit.conf`):
+
+    ```fluent filename="fluent-bit.conf"
+    [OUTPUT]
+        Name       newrelic
+        Match      *
+        licenseKey <nr-license-key>
+        endpoint   <ingestion-url>
+    ```
+
+    Replace:
+    - `<nr-license-key>` with your New Relic license key.
+    - `<ingestion-url>` with the ingestion URL from your New Relic integration.
+
+    Fluent Bit can also be configured to dual-ship logs to New Relic and Grepr. To do this, add another `[OUTPUT]` section to the `fluent-bit.conf` file for New Relic.
+
+    <Callout type="warning">
+      The New Relic Fluent Bit output plugin supports only a single output configuration per license key. To dual-ship logs, you must use a different license key for the Grepr output configuration.
+    </Callout>
+
+    ```fluent copy filename="fluent-bit.conf"
+    # Send logs to New Relic directly
+    [OUTPUT]
+        Name       newrelic
+        Match      *
+        licenseKey <nr-license-key>
+
+    # Send logs to Grepr (must use a different license key)
+    [OUTPUT]
+        Name       newrelic
+        Match      *
+        licenseKey <nr-license-key-for-grepr>
+        endpoint   <ingestion-url>
+    ```
+
+    To learn more about configuration settings for Fluent Bit, see the documentation for the [Fluent Bit New Relic output plugin](https://docs.fluentbit.io/manual/pipeline/outputs/new-relic).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    Fluentd can forward logs to Grepr using the `fluent-plugin-newrelic` output plugin. To configure the plugin, add a `match` directive to the Fluentd configuration. The following is an example `match` directive from a Fluentd configuration file (`fluentd.conf`):
+
+    ```fluent copy filename="fluentd.conf"
+    <match your_tag.**> # Adjust your match pattern as needed
+      @type newrelic
+      license_key <nr-license-key>
+      base_uri <ingestion-url>
+    </match>
+    ```
+
+    Replace:
+    - `your_tag.**` with the tag of the logs you want to forward to Grepr, or use `**` to match all tags.
+    - `<nr-license-key>` with your New Relic license key.
+    - `<ingestion-url>` with the ingestion URL from your New Relic integration.
+
+    To dual-ship logs, use the `copy` output plugin:
+
+    ```fluent copy filename="fluentd.conf"
+    <match your_tag.**>
+      @type copy
+      <store>
+        @type newrelic
+        license_key <nr-license-key>
+        base_uri <ingestion-url>
+      </store>
+      <store>
+        @type newrelic
+        license_key <nr-license-key>
+      </store>
+    </match>
+    ```
+
+    To learn more about configuration settings for Fluentd, see the documentation for the [Fluentd New Relic output plugin](https://github.com/newrelic/newrelic-fluentd-output#readme).
+
+  </Tabs.Tab>
+</Tabs>
+
+## Migrate AWS logging from CloudWatch to New Relic with Grepr [#migrate-aws-cloudwatch]
+
+If your AWS services currently send logs to Amazon CloudWatch before forwarding them to New Relic, you can reduce your CloudWatch ingestion and storage costs by forwarding them to Grepr instead. This section describes how to configure common AWS services to forward logs to a Grepr pipeline for processing before delivering them to New Relic.
+
+Forwarding your AWS logs to New Relic with Grepr requires a New Relic integration. If you need to create a New Relic integration, see [Use a New Relic integration in a Grepr pipeline](#use-newrelic-integration).
+
+Although the changes vary depending on the AWS service, forwarding your AWS logs uses one of the following New Relic tools:
+
+- The [New Relic Lambda extension](https://github.com/newrelic/newrelic-lambda-extension) forwards Lambda function logs to a destination, such as your Grepr integration.
+- The [New Relic Fluent Bit output plugin](https://github.com/newrelic/newrelic-fluent-bit-output) forwards Amazon ECS container logs through AWS FireLens.
+- For services without a specific tool to forward logs to New Relic, you configure the service to write to Amazon S3 and then use the [New Relic S3 log forwarder Lambda](https://github.com/newrelic/aws_s3_log_ingestion_lambda).
+
+To see instructions for a specific AWS service, select the tab for that service:
+
+<Tabs items={['Lambda', 'Lambda@Edge', 'ECS', 'API Gateway', 'Other AWS services through S3']}>
+  <Tabs.Tab>
+
+    To forward Lambda function logs directly to Grepr for processing and forwarding to New Relic, use the [New Relic Lambda extension](https://github.com/newrelic/newrelic-lambda-extension). Use the following steps to install and configure the extension to forward logs to a source created from a Grepr New Relic integration:
+
+    1. To install the extension, follow the **Installation** instructions in the [newrelic-lambda-extension README](https://github.com/newrelic/newrelic-lambda-extension/blob/main/README.md).
+
+    1. Set the following environment variables for the function:
+
+       | Variable | Value |
+       |---|---|
+       | `NEW_RELIC_LOG_ENDPOINT` | The Grepr ingestion URL for your New Relic integration. To find the ingestion URL, see [Step 3: Configure log forwarding to Grepr](#configure-forwarding-to-grepr). |
+       | `NEW_RELIC_EXTENSION_SEND_FUNCTION_LOGS` | `true` |
+       | `NEW_RELIC_EXTENSION_SEND_EXTENSION_LOGS` | Optional. Set to `true` to forward the extension's logs in addition to the function logs. |
+
+    1. To stop sending the function's logs to CloudWatch, remove the `logs:CreateLogGroup`, `logs:CreateLogStream`, and `logs:PutLogEvents` permissions from the function's IAM execution role. To learn more about Lambda execution roles, see [Defining Lambda function permissions with an execution role](https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    Because Lambda@Edge does not support Lambda extensions, you cannot use the New Relic Lambda extension to forward Lambda@Edge logs. Instead, instrument your Lambda@Edge function to write batched logs directly to an Amazon S3 bucket and then forward the logs from S3 with the New Relic S3 log forwarder Lambda.
+
+    To migrate Lambda@Edge logging:
+
+    1. Update your Lambda@Edge function to write log records to an S3 bucket as newline-delimited text or NDJSON. To reduce per-invocation overhead, batch records in memory and write them as larger objects. To learn more, including the configuration and required permissions for your functions, see [Customizing at the edge with Lambda@Edge](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-at-the-edge.html).
+    1. Configure the S3 bucket as a source for the New Relic S3 log forwarder Lambda. See the **Other AWS services through S3** tab.
+
+  </Tabs.Tab>
+
+
+  <Tabs.Tab>
+
+    Use the [AWS FireLens log driver](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_firelens.html) with the [Fluent Bit New Relic output plugin](https://docs.fluentbit.io/manual/pipeline/outputs/new-relic) to forward Amazon ECS container logs directly to Grepr. Because Fluent Bit forwards logs directly, no CloudWatch or S3 infrastructure is required.
+
+    To migrate logging for an ECS service:
+
+    1. Update each ECS task definition to use the `awsfirelens` log driver and run a Fluent Bit log router container. To learn more about FireLens task definitions, see [Custom log routing](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_firelens.html).
+    1. Provide the log router container with a Fluent Bit configuration that includes a `[OUTPUT]` section for the New Relic plugin.
+
+       ```fluent filename="fluent-bit.conf"
+       [OUTPUT]
+           Name       newrelic
+           Match      *
+           licenseKey <nr-license-key>
+           endpoint   <ingestion-url>
+       ```
+
+       Replace:
+       - `<nr-license-key>` with your New Relic license key.
+       - `<ingestion-url>` with the Grepr ingestion URL for your New Relic integration. To find the ingestion URL, see [Step 3: Configure log forwarding to Grepr](#configure-forwarding-to-grepr).
+
+    To learn more about loading a custom Fluent Bit configuration with FireLens, see [Custom log routing configuration](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/firelens-taskdef.html).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    Amazon API Gateway does not support writing access logs directly to S3. Instead, you can deliver the logs to S3 through an Amazon Data Firehose delivery stream and then forward them from S3 with the New Relic S3 log forwarder Lambda.
+
+    To migrate API Gateway access logging:
+
+    1. Create an Amazon Data Firehose delivery stream that writes to an S3 bucket. The delivery stream name must begin with `amazon-apigateway-` to prevent API Gateway from rejecting it as an access log destination. In the destination configuration, enable the newline delimiter between records so the stream writes log files in NDJSON format. To learn more about creating a delivery stream with an S3 destination, see [Choose Amazon S3 for your destination](https://docs.aws.amazon.com/firehose/latest/dev/create-destination.html#create-destination-s3).
+    1. Update your API Gateway stage to send access logs to the Firehose delivery stream by setting the stream ARN as the access log destination. To learn more about access log settings, see [AccessLogSettings](https://docs.aws.amazon.com/apigateway/latest/api/API_AccessLogSettings.html) in the API Gateway API reference.
+    1. Configure the S3 bucket as a source for the New Relic S3 log forwarder Lambda. See the **Other AWS services through S3** tab.
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    For all other AWS services that support writing logs directly to S3, configure them to write logs to an S3 bucket and then use the [AWS Lambda for forwarding logs from S3](https://github.com/newrelic/aws_s3_log_ingestion_lambda) to send the logs to Grepr. The forwarder reads newline-delimited text, NDJSON, and CloudTrail JSON files, automatically decompresses gzip-compressed objects, and batches log events before sending them.
+
+    To set up the Lambda function to forward logs from S3 to Grepr:
+
+    1. Deploy the function from the AWS Serverless Application Repository or by deploying its SAM template. To learn more about deploying the forwarder, see [AWS Lambda for sending logs from S3](https://docs.newrelic.com/docs/logs/forward-logs/aws-lambda-sending-logs-s3/).
+    1. Set the following environment variables on the deployed Lambda function:
+
+       | Variable | Value |
+       |---|---|
+       | `LICENSE_KEY` | Your New Relic license key. Use the same key configured in your Grepr New Relic integration. |
+       | `NR_LOGGING_ENDPOINT` | The Grepr ingestion URL for your New Relic integration. |
+
+    1. Configure the Lambda to be invoked when new log objects arrive in the S3 bucket. To learn more about Lambda triggers for S3, see [Using an Amazon S3 trigger to invoke a Lambda function](https://docs.aws.amazon.com/lambda/latest/dg/with-s3-example.html).
+
+    To minimize cost and operational overhead, Grepr recommends the following:
+
+    - Write logs from all services to the same S3 bucket and prefix, and use a single forwarder deployment to handle all of them.
+    - Add an S3 lifecycle rule that expires log objects after one day. To learn more about lifecycle rules, see [Setting lifecycle configuration on a bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/how-to-set-lifecycle-configuration-intro.html).
+
+    The following AWS services are compatible with the Lambda forwarder. For each service, ensure that logs are output in the supported S3 log format. To learn more, see the AWS documentation links for each service.
+
+    | Service | S3 log format | AWS documentation | Notes |
+    |---|---|---|---|
+    | AWS CloudTrail | JSON | [Creating a trail](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-a-trail-using-the-console-first-time.html) | S3 is the default destination. Disable any CloudWatch Logs delivery configured on the trail. |
+    | VPC Flow Logs | Newline-delimited text | [Publishing flow logs to Amazon S3](https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs-s3.html) | Select the text log file format. The forwarder does not read Parquet files. |
+    | AWS WAF | NDJSON | [Logging AWS WAF web ACL traffic](https://docs.aws.amazon.com/waf/latest/developerguide/logging.html) |  |
+    | Amazon Route 53 Resolver query logs | NDJSON | [Managing Resolver query logging configurations](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resolver-query-logs-configurations.html) | Public hosted zone query logs do not support S3 as a direct destination. |
+    | Amazon MSK Provisioned | Newline-delimited text | [Broker log delivery](https://docs.aws.amazon.com/msk/latest/developerguide/msk-logging.html) | Changing the broker log configuration triggers a rolling broker restart. |
+    | Amazon Bedrock | NDJSON | [Monitor model invocation using Amazon CloudWatch Logs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-invocation-logging.html) |  |
+    | Amazon EMR | Newline-delimited text | [Configure cluster logging and debugging](https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-plan-debugging.html) | The S3 log URI can only be set at cluster creation. |
+    | AWS Elastic Beanstalk | Newline-delimited text | [Streaming instance logs to Amazon S3](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/AWSHowTo.cloudwatchlogs.html#AWSHowTo.cloudwatchlogs.streaming) |  |
+    | Amazon API Gateway | NDJSON | See the **API Gateway** tab | Requires an Amazon Data Firehose delivery stream with the newline delimiter enabled. |
+
+  </Tabs.Tab>
+</Tabs>
+
+## Limitations
+
+- The New Relic integration supports only HTTP/HTTPS connections. TCP connections are not supported.
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "How do I send logs from New Relic to Grepr for processing?",
+      a: "To send logs to Grepr before forwarding to New Relic, configure your collector to send logs to the Grepr ingestion URL instead of the New Relic endpoint. The ingestion URL format is https://<integration-id>-<org-id>.ingest.grepr.ai/nr/log/v1. You can use Fluent Bit or Fluentd collectors configured with the New Relic output plugin."
+    },
+    {
+      q: "What authentication credentials do I need for the New Relic integration?",
+      a: "You need a license key from your New Relic account for log ingestion. Optionally, to enable automatic exception parsing, you also need your New Relic Account ID and a user key. The user key must match the one your collectors use for authentication."
+    },
+    {
+      q: "How do I configure Fluent Bit to send logs to Grepr with a New Relic integration?",
+      a: "In your Fluent Bit configuration, create an OUTPUT section with Name set to 'newrelic', set the licenseKey to your New Relic license key, and set the endpoint to your Grepr ingestion URL. You can also configure multiple OUTPUT sections to dual-ship logs to both Grepr and New Relic directly."
+    },
+    {
+      q: "What is the automatic exception parsing feature for New Relic?",
+      a: "When you configure your New Relic integration with a user key and Account ID, Grepr automatically tracks dashboards and alerts in your New Relic account. Grepr parses the queries used in these dashboards and alerts and makes them available as exceptions to the log reducer, helping identify which messages should not be processed."
+    },
+    {
+      q: "How do I enable selective log reduction with New Relic?",
+      a: "Provide your New Relic Account ID and user key when creating the integration. Grepr will automatically sync with your New Relic dashboards and alerts. You can view the list of parsed exceptions by clicking the cloud sync icon under Actions on the Integrations page."
+    },
+    {
+      q: "How do I configure Fluentd to send logs to Grepr with a New Relic integration?",
+      a: "Add a match directive to your Fluentd configuration with @type set to 'newrelic', license_key set to your New Relic license key, and base_uri set to your Grepr ingestion URL. For dual-shipping, use the copy output plugin with multiple store sections for different destinations."
+    },
+    {
+      q: "Can I use New Relic integration to send processed logs back to New Relic?",
+      a: "Yes, you can add a sink to your Grepr pipeline that uses the New Relic integration. This allows logs to be ingested from New Relic sources, processed by Grepr pipelines, and then sent back to New Relic or other observability platforms."
+    },
+    {
+      q: "What is the advantage of using automatic exception parsing with New Relic?",
+      a: "Automatic exception parsing helps reduce log storage costs by identifying which log messages are tracked in your New Relic dashboards and alerts. The log reducer uses this information to avoid aggregating important messages while reducing redundant log volume, optimizing your observability costs."
+    },
+    {
+      q: "How often does Grepr sync with my New Relic dashboards and alerts?",
+      a: "You can specify how recently a dashboard must have been accessed to be included in automatic exception parsing. By default, Grepr checks for activity within the last 28 days, but you can adjust this setting when creating or updating your New Relic integration."
+    },
+    {
+      q: "Can I use the New Relic integration without the automatic exception parsing feature?",
+      a: "Yes, the automatic exception parsing feature is optional. You only need the license key to create and use a New Relic integration. The Account ID and user key are only required if you want to enable automatic exception parsing from your New Relic dashboards and alerts."
+    },
+    {
+      q: "How do I reduce CloudWatch costs when forwarding AWS logs to New Relic?",
+      a: "If your AWS services send logs to CloudWatch before forwarding them to New Relic, you can reduce CloudWatch ingestion and storage costs by forwarding the logs directly to a Grepr pipeline for processing and then on to New Relic. The setup varies by AWS service and uses one of three New Relic tools: the New Relic Lambda extension for AWS Lambda functions, the Fluent Bit New Relic output plugin with AWS FireLens for Amazon ECS container logs, or the New Relic S3 log forwarder Lambda for services that write logs to Amazon S3."
+    },
+    {
+      q: "How do I forward AWS Lambda function logs directly to Grepr?",
+      a: "Install the New Relic Lambda extension on your function, set the NEW_RELIC_LOG_ENDPOINT environment variable to your Grepr ingestion URL, and set NEW_RELIC_EXTENSION_SEND_FUNCTION_LOGS to true. To stop sending logs to CloudWatch, remove the logs:CreateLogGroup, logs:CreateLogStream, and logs:PutLogEvents permissions from the function's IAM execution role."
+    },
+    {
+      q: "How do I forward Lambda@Edge logs to Grepr?",
+      a: "Lambda@Edge does not support Lambda extensions, so the New Relic Lambda extension cannot be used. Instead, instrument your Lambda@Edge function to write batched log records directly to an S3 bucket and then use the New Relic S3 log forwarder Lambda to send the logs from S3 to Grepr."
+    },
+    {
+      q: "How do I forward Amazon ECS container logs to Grepr?",
+      a: "Use the AWS FireLens log driver with the Fluent Bit New Relic output plugin. Update each ECS task definition to use the awsfirelens log driver and run a Fluent Bit log router container, then provide a Fluent Bit configuration with an OUTPUT section that sets Name to newrelic, endpoint to your Grepr ingestion URL, and licenseKey to your New Relic license key. No CloudWatch or S3 infrastructure is required."
+    },
+    {
+      q: "How do I forward Amazon API Gateway access logs to Grepr?",
+      a: "API Gateway cannot write access logs directly to S3, so deliver them to S3 through an Amazon Data Firehose delivery stream and then use the New Relic S3 log forwarder Lambda to send them to Grepr. The Firehose delivery stream name must begin with amazon-apigateway- for API Gateway to accept it as an access log destination, and the Firehose destination must have the newline delimiter enabled so the logs are written in NDJSON format."
+    },
+    {
+      q: "Which AWS services can I forward logs from to Grepr through S3?",
+      a: "The New Relic S3 log forwarder Lambda supports AWS CloudTrail, VPC Flow Logs, AWS WAF, Amazon Route 53 Resolver query logs, Amazon MSK Provisioned, Amazon Bedrock, Amazon EMR, AWS Elastic Beanstalk, and Amazon API Gateway. Configure each service to write logs to an S3 bucket in newline-delimited text, NDJSON, or CloudTrail JSON format, and the forwarder reads and ships them to Grepr."
+    },
+    {
+      q: "What environment variables does the New Relic S3 log forwarder Lambda need to send logs to Grepr?",
+      a: "Set LICENSE_KEY to your New Relic license key, using the same key configured in your Grepr New Relic integration, and set NR_LOGGING_ENDPOINT to the Grepr ingestion URL for that integration."
+    }
+  ]}
+/>

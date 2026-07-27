@@ -1,0 +1,126 @@
+---
+description: Learn how to optimize your Google Cloud observability with Grepr and the Google Pub/Sub to Datadog feature.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Google Cloud Platform observability with Grepr
+
+To enhance your Google Cloud Platform (GCP) observability, you can stream GCP logs to Grepr, process and transform the logs using a Grepr pipeline, then forward the processed logs to any Grepr-supported observability platform. The Grepr integration with GCP uses Google's `Pub/Sub to Datadog` Dataflow template with a configured Grepr Datadog integration, and requires only minimal configuration changes to route logs through a Grepr pipeline. To learn more about the `Pub/Sub to Datadog` feature, see [Pub/Sub to Datadog template](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-datadog).
+
+## Requirements
+
+<Callout type="info">
+  The integration with GCP requires a Datadog integration configured in Grepr, including a valid Datadog API key. However, when you configure a Grepr pipeline using this integration, you can use any Grepr-supported sink. For example, a pipeline that sources GCP logs with a Datadog integration can use a Splunk integration as a sink.
+</Callout>
+
+To integrate Grepr with GCP and Datadog, you must have:
+
+- A Datadog API key for your account. You use the same API key in your Grepr integration and the GCP component configurations.
+- A Datadog integration configured in Grepr. See [Configure Datadog connections with a Grepr integration](/integrations/datadog).
+- A Grepr ingestion URL. This URL is available when you create a Grepr pipeline using the Datadog integration. To learn how to create a Grepr pipeline, see the [Build your first Grepr pipeline](/tutorials/first-pipeline) tutorial.
+- Completed the configuration of the GCP to Datadog infrastructure. See [Stream logs from Google Cloud to Datadog](https://cloud.google.com/architecture/partners/stream-cloud-logs-to-datadog). Make sure you have:
+  - A Pub/Sub topic and subscription for collecting logs and sending them to Grepr.
+  - A GCP Cloud Logging sink configured to route logs to your Pub/Sub topic.
+  - Correct GCP IAM permissions.
+
+## Configure the GCP and Datadog integration with Grepr
+
+To configure the integration, you modify the Google `Pub/Sub to Datadog` Dataflow template to send logs to Grepr instead of directly to Datadog:
+
+1. In the GCP Console, go to **Dataflow > Jobs > Create Job From Template**.
+1. Select **Pub/Sub to Datadog** from the available templates.
+1. In **Required Parameters**, enter the following value:
+   - `Datadog Logs API URL: <your-grepr-ingestion-url>`
+1. In **Optional Parameters**, enter the following value:
+   - `Logs API key: <your-datadog-api-key>`
+
+<Callout type="warning">
+  The `Logs API key` parameter in your Dataflow job must exactly match the Datadog API key configured in your Grepr Datadog integration. Mismatched API keys will cause authentication failures and prevent log delivery.
+</Callout>
+
+### Example configuration
+
+```yaml
+# Standard Datadog configuration:
+url: https://http-intake.logs.datadoghq.com/api/v2/logs
+apiKey: <datadog-api-key>
+
+# Modified for Grepr:
+url: https://<integration-id>-<org-id>.ingest.grepr.ai
+apiKey: <same-datadog-api-key>
+```
+
+To get the Grepr ingestion URL, go to your pipeline's source configuration page in the Grepr UI and click **Copy ingest URL**.
+
+![Accessing the ingestion URL in the Grepr pipeline UI.](/images/integrations/ingestion-url-datadog.png)
+
+## Verifying the integration
+
+After deploying your Dataflow job:
+
+1. **Check Dataflow Status**: Verify the job is running without errors in the GCP Console.
+2. **Monitor Grepr Pipeline**: In the Grepr UI, confirm your pipeline shows active log ingestion and processing metrics.
+3. **Verify Datadog Delivery**: Check that processed logs are arriving in Datadog with tags applied by Grepr. For example, `processor:grepr`.
+
+## Troubleshooting
+
+### Common issues
+
+- **Authentication Errors**: Verify the Datadog API key matches between the Grepr integration and the Dataflow job.
+- **Connection Failures**: Ensure Dataflow workers can reach the Grepr ingestion endpoint.
+- **Missing Logs**: Verify the Cloud Logging sink is properly routing logs to your Pub/Sub topic.
+
+### Monitoring
+
+Monitor the health of the integration with:
+- GCP Dataflow job metrics and logs.
+- Grepr pipeline throughput and processing metrics.
+- Datadog log intake monitoring.
+- Pub/Sub subscription metrics for backlog monitoring.
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "How do I stream logs from Google Cloud Platform to Grepr?",
+      a: "Use the Google Pub/Sub to Datadog Dataflow template configured with Grepr. Set up a Cloud Logging sink to route logs to a Pub/Sub topic. Then create a Dataflow job using the Pub/Sub to Datadog template, but configure it to send logs to your Grepr ingestion URL instead of directly to Datadog."
+    },
+    {
+      q: "What authentication is required for GCP integration with Grepr?",
+      a: "You need a Datadog API key that is configured in both your Grepr Datadog integration and your GCP Dataflow job. The API key must be identical in both places. Additionally, you need appropriate GCP IAM permissions to create Dataflow jobs and access Pub/Sub topics."
+    },
+    {
+      q: "What is the Pub/Sub to Datadog Dataflow template?",
+      a: "It is a Google-provided template that processes logs from a Pub/Sub topic and forwards them to Datadog. Grepr uses this template by configuring it to send logs to Grepr's ingestion endpoint instead, allowing you to process GCP logs through Grepr before final delivery."
+    },
+    {
+      q: "Do I need to use Datadog as my sink when using GCP integration with Grepr?",
+      a: "You must configure a Datadog integration in Grepr to use the GCP integration, but you can use any Grepr-supported sink for processed logs. For example, you can ingest GCP logs via Datadog integration and send processed logs to Splunk, New Relic, or other platforms."
+    },
+    {
+      q: "How do I configure the Pub/Sub to Datadog Dataflow job for Grepr?",
+      a: "In GCP Console, create a Dataflow job from the Pub/Sub to Datadog template. Set the Datadog Logs API URL to your Grepr ingestion URL (format: https://<integration-id>-<org-id>.ingest.grepr.ai) and the Logs API key to your Datadog API key. Ensure the key matches your Grepr Datadog integration."
+    },
+    {
+      q: "What happens if the Datadog API key doesn't match between Grepr and Dataflow?",
+      a: "If the API keys don't match, authentication will fail and logs will not be delivered. The mismatch prevents the Dataflow job from authenticating with Grepr, causing the integration to break. Always verify that the API key is identical in both your Grepr integration and your Dataflow job configuration."
+    },
+    {
+      q: "How do I set up the GCP infrastructure required for this integration?",
+      a: "You need to set up a Pub/Sub topic and subscription for log collection, configure a Cloud Logging sink to route logs to the Pub/Sub topic, and ensure your GCP IAM permissions allow creating and managing Dataflow jobs. See Google's documentation on streaming logs to Datadog for detailed infrastructure setup."
+    },
+    {
+      q: "How can I reduce costs using GCP logs with Grepr?",
+      a: "Process logs through Grepr pipelines to filter, aggregate, and reduce log volume before final storage. Use Grepr's log reducer to identify and exclude redundant messages. This reduces the volume of data stored in your final observability platform, lowering your overall observability costs."
+    },
+    {
+      q: "Can I transform GCP logs in Grepr before sending to Datadog?",
+      a: "Yes, that is the main benefit of the integration. Logs flow from GCP Cloud Logging through Pub/Sub to Grepr via Dataflow. In Grepr, you can apply transformations, filtering, log reduction, and other processing before sending to Datadog or other sinks."
+    },
+    {
+      q: "How do I monitor the GCP to Grepr integration?",
+      a: "Monitor the Dataflow job status in GCP Console for errors and processing metrics. In Grepr, check your pipeline's ingestion metrics to verify logs are arriving. Check your Dataflow job logs for any authentication or processing errors. Verify processed logs are appearing in your final sink platform."
+    }
+  ]}
+/>

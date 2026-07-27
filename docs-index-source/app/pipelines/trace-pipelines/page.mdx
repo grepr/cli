@@ -1,0 +1,264 @@
+---
+description: Create and manage trace reduction pipelines in Grepr to sample, transform, and reduce APM trace data before forwarding it to your observability platform.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Use a trace reduction pipeline for your APM data
+
+A _trace reduction pipeline_ processes the Application Performance Monitoring (APM) data produced by your applications and agents, transforming and reshaping it before forwarding it to your observability platform. As traces flow through the pipeline, Grepr applies any configured transformations and then samples them to forward a representative subset rather than the full volume. By forwarding fewer traces, a trace pipeline reduces the volume and cost of data sent to your observability platform, while retaining the complete set of raw traces in a Grepr data lake, so you keep full access to your APM data when you need it. A trace pipeline can also derive metrics from your trace data and forward them to Datadog, so you can track trends across your traces without forwarding every trace.
+
+This page details how to create and manage trace pipelines in the Grepr UI, including the steps in a trace pipeline and the settings available for each step. This page also explains how to search the traces stored in your data lake with Trace Explorer.
+
+## About APM data
+
+A trace pipeline operates on APM data, which captures how requests move through your applications and services. APM instrumentation automatically hooks into common frameworks, database drivers, and messaging layers to record operational data without requiring you to add logging statements to your code. The core units of APM data are traces and spans. A _trace_ is the full record of a request as it moves through your system, and a _span_ is a single operation within that trace, such as an HTTP call, a database query, or a call to another service. Each span records timing information, the service and operation it represents, a status, and identifiers linking it to its parent span and the trace it belongs to.
+
+APM data is useful for monitoring because it provides visibility into requests as they cross service boundaries. Because instrumentation defines a consistent structure for spans across different services and programming languages, you can follow a single request through a distributed system and identify where latency or errors occur. This consistency makes APM data well suited to monitoring performance, understanding cross-service request flows, and tracking error rates at scale.
+
+## Sampling in a trace pipeline [#trace-sampling]
+
+A trace pipeline reduces data volume primarily through _sampling_, which forwards a representative subset of traces instead of every trace. A trace pipeline uses two complementary types of sampling:
+
+- _Head-based sampling_ makes a sampling decision early, before Grepr assembles a complete trace. Head-based sampling is efficient and predictable, and you use it to keep or drop traces and spans based on rules that you define.
+- _Tail-based sampling_ makes a sampling decision after Grepr assembles a complete trace so that it can base the decision on characteristics of the whole trace, such as its total duration and whether any span reported an error.
+
+The sections [_](#head-sampling) and [_](#tail-sampling) describe how to configure each sampling type.
+
+To make tail-based sampling more precise, a trace pipeline groups traces by their _signature_. A signature is a canonical, deterministic record of the structure of a trace: the services and operations it invokes and the way those operations are nested. Rather than comparing every trace from the same endpoint against a single baseline, _signature sampling_ compares each trace only against others that followed the same execution path. Because traces that follow the same path have similar expected performance, this fine-grained grouping makes anomalies such as unusually slow traces easier to detect and produces more accurate sampling decisions for each path.
+
+Grepr builds a signature by recursively traversing the spans of an assembled trace, recording each span's operation name and a configurable set of key attributes, deduplicating identical sibling spans, and collapsing repeated operations so that loops do not distort the result. Because the same structure always produces the same signature, traces with the same shape share the same signature. During tail sampling, Grepr computes latency percentiles separately for each signature, so the performance tiers compare each trace against others of the same kind. To learn more about how signatures group traces during tail sampling, see [_](#key-attributes).
+
+A signature is a nested, text representation of the trace. Grepr represents each span as `(operation,{key_attributes},[child_spans])`, where the key attributes are `index:value` pairs and the index is the position of each attribute in the configured **Key Attribute Paths**. With the default paths, index `0` is `service.name` and index `1` is `http.method`. The child spans, sorted and deduplicated, are nested within the brackets.
+
+For example, a single span for a request handled by the `api` service produces the following signature:
+
+```text
+(GET /api/users,{0:api,1:GET},[])
+```
+
+A trace for a request that calls a database query, which has no `http.method` attribute, produces a nested signature:
+
+```text
+(GET /api/users,{0:api,1:GET},[(SELECT users,{0:api},[])])
+```
+
+## Supported sources and destinations [#supported-apm-integrations]
+
+Trace pipelines support Datadog and OpenTelemetry (OTLP) as both sources and destinations. You can ingest traces from the Datadog Agent or an OpenTelemetry collector, and forward processed traces to Datadog or to an OTLP-compatible destination. To learn more about configuring these connections, see [_](/integrations/datadog) and [_](/integrations/open-telemetry).
+
+## Configure trace sources [#apm-sources]
+
+A source ingests trace data arriving from your Datadog Agents or OpenTelemetry collectors into your pipeline. You use existing Datadog or OpenTelemetry integrations to add one or more sources when you configure a trace pipeline.
+
+When you use a Datadog source, you can also choose whether Grepr forwards Datadog APM stats or discards them. To send APM stats, turn on the **Forward APM stats to Datadog** option. To learn more, see [_](#datadog-metrics-stats).
+
+To learn how to create the integrations that back a source, see [_](/integrations).
+
+## Transform spans and traces with SQL [#apm-sql-transforms]
+
+Use the Grepr SQL transform when you need to restructure span attributes, derive new fields, or filter spans. You can apply SQL transforms before trace assembly, where they operate on individual spans, or after trace assembly, before the results are forwarded to sinks. In each case, you define one or more SQL views that filter, reshape, or enrich the data, and you connect the output of each view to the next step in the pipeline or to the pipeline sinks.
+
+To learn more about the SQL transform, see [_](/transforms/sql-transform).
+
+The input to your views is the `spans` table, which contains records of the `COMPLETE_SPAN` data type. The output type for your transforms is records of the `COMPLETE_SPAN` data type or, if your pipeline includes a Datadog sink, you can choose to output metrics as records of the `METRIC_DATA` type. See [_](/transforms/sql-transform/data-types#complete-span) and [_](/transforms/sql-transform/data-types#metric-data).
+
+The **Configure SQL Transformation** form displays queries you can use as examples to write your own queries. For more examples of SQL transforms with the `COMPLETE_SPAN` data type, see [_](/transforms/sql-transform/sql-transform-examples#span-transform-examples).
+
+To configure SQL transforms, on the **Configure SQL Transformation** form:
+
+- Click the plus sign and enter a descriptive name for the view and the SQL query to process input events.
+- Select **Spans** or **Metrics** as the output type. The output type sets the kind of data that the view produces: a view with the **Spans** output type produces spans, and a view with the **Metrics** output type produces metrics derived from the spans it processes.
+- Optionally select **Reuse calculation** to materialize the results of query processing for reuse in subsequent views.
+- In the **Outputs** section, connect each view to a destination that receives the results of its SQL processing. The output type determines the valid destinations for a view: A view with the **Spans** output type sends its results downstream to the next step in the pipeline, and a view with the **Metrics** output type sends its results to a Datadog sink. Because it's the only sink type that can receive metrics, your pipeline must include a Datadog sink. Grepr forwards the metrics to every Datadog sink that you configure.
+
+## Store raw traces in the data lake [#apm-data-lake]
+
+A trace pipeline persists the complete set of raw spans to a Grepr data lake, so that you retain full access to your input trace data even though the pipeline forwards only a sampled subset to your observability platform. You configure the data lake step by selecting the _dataset_ that identifies where Grepr stores the raw spans. Storing raw traces in the data lake also makes them searchable in [Trace Explorer](#trace-explorer) and retrievable for tasks such as [backfilling](#trace-actions).
+
+To learn more about how Grepr stores your raw telemetry data, see [_](/grepr-platform/data-lake).
+
+## Use head sampling to sample traces [#head-sampling]
+
+In a trace reduction pipeline, head sampling determines which data to keep early in the pipeline, before Grepr assembles a complete trace. Head sampling has two parts that you configure independently: trace head sampling and span head sampling.
+
+_Trace head sampling_ applies a single uniform sampling rate to the entire trace. You set a single rate between `0.0` and `1.0`, and Grepr retains each trace with that probability, keeping together all spans that share a trace. Trace head sampling has no filter, so it samples every trace at the same rate. Leave the rate blank to disable trace head sampling.
+
+_Span head sampling_ applies to individual spans and is an ordered list of rules. Each rule has a sampling rate between `0.0` and `1.0` and an optional SQL filter:
+
+- A rule with a SQL filter retains matching spans at the configured rate.
+- A rule without a filter samples spans uniformly at the configured rate.
+
+Grepr evaluates the rules from top to bottom and applies the first rule that matches a span. How Grepr handles the retained spans depends on whether tail sampling is configured:
+
+- When [tail sampling](#tail-sampling) is configured, the retained spans participate in trace assembly before Grepr forwards them.
+- When tail sampling is not configured, Grepr sends the retained spans directly to your sinks.
+
+If both trace head sampling and a span head sampling rule retain the same span, trace head sampling takes precedence. Both the trace head sampling rate and the span head sampling rates support up to five decimal places of precision.
+
+<Callout type="info">
+  To always forward specific spans, such as spans from a particular service, configure a span head sampling rule with a SQL filter that matches those spans and a rate of `1.0`.
+</Callout>
+
+## Use tail sampling to sample traces [#tail-sampling]
+
+Tail sampling makes a sampling decision after Grepr assembles a complete trace within a time window, so it can base the decision on the characteristics of the whole trace. Tail sampling includes dedicated settings for traces likely to be valuable for troubleshooting, along with performance-based sampling tiers that sample traces based on their latency.
+
+Several tail sampling settings accept durations in ISO-8601 duration format. For example, `PT20S` represents 20 seconds and `PT1M` represents one minute.
+
+### Sample error, incomplete, and long-running traces [#error-traces]
+
+Tail sampling applies the following rates to traces with characteristics that often make them valuable to retain:
+
+- **Error Sampling Rate** is the rate applied to traces where any span reports an error status. The default rate is `0.75`.
+- **Incomplete Sampling Rate** is the rate applied to structurally incomplete traces, which are traces that are missing a root span or that have orphaned parent references when the trace is emitted. The default rate is `0.5`. The **Max Trace Delay** setting controls when a trace is emitted by setting the idle gap between spans of the same trace. When no new span arrives within this window, the trace assembly session closes, and the trace is emitted. The default max trace delay is `PT20S`.
+- **Long-Running Trace Sampling Rate** is the rate applied to traces that are force-emitted because they keep receiving spans for longer than the **Max Session Length**. The default rate is `0.0`. The max session length sets the maximum lifetime of a trace assembly session before Grepr force-emits the trace as long-running, and it must be greater than the max trace delay. The default max session length is `PT1M`.
+
+### Sample by latency with performance-based tiers [#performance-tiers]
+
+Performance-based sampling tiers sample traces based on their latency, so you can forward a higher proportion of slow traces and a lower proportion of fast traces. You configure an ordered list of tiers, where each tier has a latency percentile, a sampling rate, and a label that Grepr records on the sampled spans. Grepr sorts the tiers by percentile, evaluating them from the highest percentile to the lowest.
+
+A trace pipeline includes the following default tiers:
+
+| Percentile | Sampling rate | Label |
+|:-----------|:--------------|:------|
+| P99 | 80% | `very_slow` |
+| P95 | 10% | `slow` |
+| P50 | 5% | `medium` |
+| P0 | 1% | `fast` |
+
+With these defaults, Grepr samples 80% of the traces at or above the 99th latency percentile and 1% of the fastest traces, which retains a representative sample while emphasizing the slowest traces.
+
+### Group traces by signature [#key-attributes]
+
+Grepr groups traces by their signature and computes latency percentiles separately for each group, rather than across all traces. The **Key Attribute Paths** setting defines the span attributes that Grepr includes in each signature, as well as the operation names and nesting of the trace. Including an attribute in the signature separates traces that differ by that attribute into different groups. You enter one attribute path per line, and by default, Grepr includes the `service.name` and `http.method` attributes.
+
+## Analyze the critical path [#critical-path]
+
+Critical path analysis annotates each span in an assembled trace with its self-time on the trace's critical path, helping you identify the operations that contribute most to a trace's total duration. Critical path analysis requires tail sampling to be configured because it runs on the traces that tail sampling assembles.
+
+You can configure the following settings:
+
+- **Analysis Sample Rate** is the fraction of assembled traces to analyze, between `0.0` and `1.0`. The default rate is `1.0`, which analyzes every assembled trace.
+- **Max Spans Analyzed** is an optional limit on the number of spans that Grepr analyzes per trace, up to a maximum of `5000`. When you don't set a limit, Grepr uses the default maximum of `5000`.
+
+Critical path analysis adds the following fields to each span on the critical path, which you can view in [Trace Explorer](#trace-explorer):
+
+- `crit_path_ns` is the span's self-time on the critical path, in nanoseconds. This is the time attributed to the span alone, excluding the time spent in the operations it calls.
+- `crit_path_pct` is the self-time as a percentage of the trace's total duration, calculated as `crit_path_ns` multiplied by 100 and divided by the trace duration, then rounded to two decimal places. The trace duration spans the entire trace, from the earliest span start to the latest span end. Because a span's self-time excludes the time spent in the operations it calls, the percentages across the spans on the critical path do not necessarily sum to 100%.
+
+Grepr sets these fields only on spans that fall on the critical path. Spans that are not on the critical path do not have these fields.
+
+## Backfill logs for sampled traces [#trace-actions]
+
+A trace pipeline can include actions that run on sampled traces. The logs backfill action retrieves the full set of logs for a representative sample of traces and forwards them to your observability platform, so that a sample of traces has complete logs available. Grepr collects the trace IDs of traces that match a SQL filter, then retrieves the corresponding logs from the data lake and forwards them.
+
+You configure the following settings for a logs backfill action:
+
+- An action ID that identifies the action.
+- The dataset that the logs are retrieved from.
+- A SQL filter that selects which traces to backfill logs for.
+- A backfill window, in ISO-8601 duration format, that sets the time range of logs to retrieve. The default window is `PT10M`.
+
+## Forward traces to your destinations [#apm-sinks]
+
+A sink forwards the processed traces to a destination. You configure one or more sinks, selecting a Datadog or OpenTelemetry integration as the destination. For each sink, you can specify additional attributes that Grepr adds to every trace it forwards. Because a pipeline can include more than one sink, you can forward the same processed traces to multiple destinations.
+
+Datadog and OpenTelemetry sinks both receive traces, but only Datadog sinks can receive metrics. If your pipeline includes a SQL view with the **Metrics** output type, you must configure a Datadog sink to receive those metrics. To learn more about producing metrics from your trace data with SQL, see [_](#apm-sql-transforms).
+
+To learn how to create the integrations that back a sink, see [_](/integrations).
+
+## Datadog APM metrics and stats [#datadog-metrics-stats]
+
+In addition to traces, Datadog APM data includes two other kinds of data, metrics and APM stats, which are distinct from traces and from each other:
+
+- Metrics are measurements that Grepr derives from your trace data as it flows through the pipeline, using a SQL transform. For example, you can produce a metric that counts requests or errors, or that records latency, aggregated over a time window. Because you define these metrics, they capture the specific measurements you want to track. Grepr can forward derived metrics only to a Datadog sink. To learn more, see [_](#apm-sql-transforms).
+- APM stats are the Rate, Errors, and Duration (RED) measurements that the Datadog Agent computes from all of your traces before any sampling, such as the request rate, error rate, and latency of each service and resource. When you use a Datadog source, Grepr forwards these stats to Datadog unmodified, so that Datadog's APM views remain accurate even though the pipeline forwards only a sampled subset of your traces. To learn more, see [_](#apm-sources).
+
+The key difference is where the data originates. Grepr produces metrics from your trace data inside the pipeline, while the Datadog Agent produces APM stats before the data reaches the pipeline, and Grepr passes them through unchanged.
+
+## Search traces with Trace Explorer [#trace-explorer]
+
+Because a trace pipeline stores the complete set of raw spans in your data lake, you can search and inspect those spans even when the pipeline forwards only a sampled subset to your observability platform. Use Trace Explorer to search the spans stored in a dataset, group them to find patterns, and view the details of individual spans and traces. You can open Trace Explorer from the data lake step of a pipeline.
+
+Trace Explorer provides the following search controls:
+
+- A query language, which can be a Datadog-like syntax or a New Relic log query-like syntax.
+- A query that filters spans by their fields and attributes.
+- A time range, which defaults to the last 10 minutes.
+- A result limit, which you can set to `2500`, `5000`, `10000`, or `25000`. The default limit is `10000`.
+- A sort order for the results.
+
+To learn more about the supported query syntaxes, see [_](/queries).
+
+### Search individual spans [#search-spans]
+
+The **Spans** view lists the individual spans that match your query, with columns for the start time, service, operation, trace ID, and duration of each span. Select a span to view its details.
+
+### Explore trace signatures [#trace-signatures]
+
+The **Signatures** view groups spans by their trace signature and shows aggregate statistics for each group, including the service, operation, signature, span count, average, minimum, and maximum duration, error rate, error count, and the time each signature was last seen. Use the **Signatures** view to identify the operations that are slowest or most error-prone, and then search the corresponding spans to investigate individual occurrences.
+
+### View span and trace details [#span-details]
+
+When you select a span, Trace Explorer displays a details panel with the span's attributes, resource information, and instrumentation scope. If tail sampling is configured, the panel also displays the performance tier label assigned by Grepr to the span. If critical path analysis is configured, the panel shows the span's critical path metrics. You can also view a trace as a waterfall of its spans, which shows the timing and nesting relationships between the spans in the trace.
+
+### Tips for using Trace Explorer [#trace-explorer-tips]
+
+- Limit the time range and use specific service and operation filters to reduce the amount of data that Grepr scans and to return results faster.
+- Start in the **Signatures** view to find the slowest or most error-prone operations, then inspect the matching spans to investigate specific traces.
+- Use the trace ID from a span to find all of the spans in the same trace.
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What is a trace reduction pipeline in Grepr?",
+      a: "A trace reduction pipeline processes APM data from your applications and agents, transforming and sampling traces before forwarding a representative subset to your observability platform. It reduces the volume and cost of forwarded data while retaining the complete set of raw traces in a Grepr data lake."
+    },
+    {
+      q: "What are traces and spans in APM data?",
+      a: "A trace is the full record of a request as it moves through your system, and a span is a single operation within that trace, such as an HTTP call, a database query, or a call to another service. Each span records timing information, the service and operation it represents, a status, and identifiers that link it to its parent span and the trace it belongs to."
+    },
+    {
+      q: "What is the difference between head-based and tail-based sampling?",
+      a: "Head-based sampling makes a sampling decision early, before Grepr assembles a complete trace, using rules that you define to keep or drop traces and spans. Tail-based sampling makes its decision after Grepr assembles a complete trace, so it can base the decision on characteristics of the whole trace, such as its total duration and whether any span reported an error."
+    },
+    {
+      q: "How does Grepr group traces by signature?",
+      a: "A signature is a canonical, deterministic record of the structure of a trace: the services and operations it invokes and the way those operations are nested. Grepr builds a signature by traversing the spans of an assembled trace, recording each span's operation name and a configurable set of key attributes, and collapsing repeated operations so that loops do not distort the result. During tail sampling, Grepr computes latency percentiles separately for each signature, so the performance tiers compare each trace against others of the same structure."
+    },
+    {
+      q: "What does a trace signature look like?",
+      a: "Grepr represents each span in a signature as (operation,{key_attributes},[child_spans]), where the key attributes are index:value pairs keyed by their position in the configured Key Attribute Paths, and the child spans are nested, sorted, and deduplicated within the brackets. For example, a single span for a request handled by the api service produces (GET /api/users,{0:api,1:GET},[]), and a request that then calls a database query produces (GET /api/users,{0:api,1:GET},[(SELECT users,{0:api},[])])."
+    },
+    {
+      q: "What is the difference between Datadog APM metrics and APM stats?",
+      a: "Metrics are measurements that Grepr derives from your trace data inside the pipeline using a SQL transform, such as a count of requests or errors over a time window, and forwards to a Datadog sink. APM stats are the Rate, Errors, and Duration (RED) measurements that the Datadog Agent computes from all of your traces before sampling. Grepr forwards APM stats to Datadog unmodified, so that Datadog's APM views stay accurate even when the pipeline forwards only a sampled subset of traces."
+    },
+    {
+      q: "What sources and destinations do trace pipelines support?",
+      a: "Trace pipelines support Datadog and OpenTelemetry (OTLP) as both sources and destinations. You can ingest traces from the Datadog Agent or an OpenTelemetry collector, and forward processed traces to Datadog or to an OTLP-compatible destination."
+    },
+    {
+      q: "Can I transform trace data with SQL?",
+      a: "Yes. You can apply a SQL transform before trace assembly, where it operates on individual spans, or after trace assembly, before the results are forwarded to sinks. You define one or more SQL views that filter, reshape, or enrich the data, using the spans table, which contains records of the COMPLETE_SPAN data type, as input."
+    },
+    {
+      q: "How does tail sampling decide which traces to keep?",
+      a: "Tail sampling applies dedicated rates to traces that contain errors, are structurally incomplete, or run longer than the maximum session length. It also applies performance-based tiers that sample traces according to their latency percentile, so that a higher proportion of slow traces and a lower proportion of fast traces are forwarded."
+    },
+    {
+      q: "What is critical path analysis in a trace pipeline?",
+      a: "Critical path analysis annotates each span in an assembled trace with its self-time on the trace's critical path, which helps you identify the operations that contribute most to a trace's total duration. It requires tail sampling to be configured, and it adds the crit_path_ns and crit_path_pct fields to each span on the critical path, which you can view in Trace Explorer."
+    },
+    {
+      q: "Can I still access traces that the pipeline does not forward?",
+      a: "Yes. A trace pipeline stores the complete set of raw spans in a Grepr data lake. You can search and inspect those spans in Trace Explorer, and you can use the logs backfill action to retrieve the full logs for a representative sample of traces."
+    },
+    {
+      q: "What is Trace Explorer?",
+      a: "Trace Explorer is a UI for searching the spans that a trace pipeline stores in your data lake. You can search individual spans, group spans by trace signature to find slow or error-prone operations, and view the details of individual spans and traces."
+    }
+  ]}
+/>

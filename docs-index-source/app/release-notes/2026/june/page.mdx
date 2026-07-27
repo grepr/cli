@@ -1,0 +1,80 @@
+---
+description: Release notes for new features, improvements, and bug fixes to the Grepr platform released in June 2026.
+---
+
+# Release notes for June 2026
+
+Grepr released these feature updates, improvements, and bug fixes in June 2026.
+
+## June 17, 2026
+
+{/* ENGT-3424 */}
+### New feature: Create log pipelines with a guided wizard
+
+You can now use a guided wizard that walks you through each step of configuring and creating a log reduction pipeline. The wizard is the default flow when you create a log reduction pipeline, but you can switch to the advanced configuration editor at any point as you go through the pipeline creation steps.
+
+## June 13, 2026
+
+{/* ENGT-4759 */}
+### New feature: Preview the job graph diff before submitting a pipeline
+
+When you edit or create a pipeline, you can now review a diff of the exact job graph that will be submitted before you confirm the changes. The confirmation dialog includes a side-by-side or unified view, an option to show unchanged lines, and a baseline version picker to compare the pending change against any earlier pipeline version.
+
+{/* ENGT-1901 */}
+### New feature: Copy a ready-to-use OTLP ingest URL with your token
+
+You can now copy a complete OTLP ingest URL with your integration token already filled in, from both the pipeline source view and the integration card menu. The token is fetched on demand when you copy, so you can paste the URL directly into an OpenTelemetry agent configuration. Retrieving the token in clear text requires the **Edit integration** permission and is recorded in the audit log as a security event.
+
+{/* ENGT-4698 */}
+### New feature: Time range picker on the integrations page
+
+The integrations page now has a time range picker in the top bar that lets you change the time range for integration metrics displayed on the integration cards, replacing the fixed per-card ranges. The picker uses the same presets and custom-range input as the pipeline overview pane on the pipeline details page, with a default range of 15 minutes.
+
+{/* ENGT-4823 */}
+### New feature: Filter spans by trace ID in the trace explorer
+
+You can now filter spans by trace ID in the trace explorer. Add a `traceId:` term to your query, including grouped values such as `traceId:(a OR b)`, or pass a `traceId` URL parameter to open the explorer with the filter already applied.
+
+{/* ENGT-4763 */}
+### Bug fix: Invited users could sign in with the wrong role
+
+An issue where accepting an invitation could intermittently sign users in with baseline Member permissions instead of the role they were invited with has been fixed.
+
+{/* ENGT-4794 */}
+### Bug fix: Logs from a SQL operation connected to the data lake were routed incorrectly
+
+An issue in which logs from a SQL operation with output connected to the **Data Lake** step were routed incorrectly in the pipeline job graph has been fixed. The output now correctly reaches the data lake sinks and continues through the step that follows the data lake.
+
+{/* ENGT-3720 */}
+### Bug fix: CLI list sorting was ignored for machine-readable output formats
+
+An issue where the `--sort` option on the CLI list commands was applied only to the default table output and ignored for the `raw`, `csv`, `pretty`, and `compact` formats has been fixed. Sorting is now applied consistently across all output formats.
+
+## June 10, 2026
+
+{/* ENGT-4730 */}
+### New feature: View pipeline metrics during transient and stopped states
+
+The pipeline overview now shows metrics while a pipeline is in a transient state, such as updating, restarting, or starting, and for stopped pipelines, instead of showing a loading spinner or an empty state. The pipeline's status also appears in the top bar on the pipeline overview page.
+
+## June 4, 2026
+
+{/* ENGT-4724 */}
+### New feature: Syntax highlighting for filter queries
+
+Query summaries on the pipeline filter page now render with the same query-language syntax highlighting used elsewhere in the UI, making queries easier to read. This update also fixes an issue where a `#` character in a query, such as `#011`, was treated as the start of a comment, greying out the rest of the query.
+
+{/* ENGT-4541 */}
+### New feature: Plan, validate, and apply edits to pipelines with the Grepr CLI
+
+You can now use the CLI commands `job:plan`, `job:draft`, and `job:apply` to plan, validate, and then apply changes to your pipelines. Using these commands, you can plan and test pipeline changes before you apply any changes to a production pipeline. When you've finished validating your changes, you can apply the changes  to the production pipeline. See [Preview and validate pipeline changes before applying them to production](/cli#job-edit-workflow).
+
+{/* ENGT-4727 */}
+### Bug fix: Pipeline cards reordered when a pipeline changed state
+
+An issue in which pipeline cards on the pipelines page were reshuffled whenever a pipeline changed state, such as during updates or restarts, has been fixed. Cards are now sorted alphabetically with stopped pipelines last, and only move when a pipeline is created, deleted, started, or stopped.
+
+{/* ENGT-4728 */}
+### Bug fix: Misleading pipeline action notifications
+
+An issue where pipeline start, stop, and save notifications could report that an action had completed before it actually finished has been fixed. Starting and stopping a pipeline now show an in-progress message, and saving shows that changes are being applied only when a redeploy is triggered.

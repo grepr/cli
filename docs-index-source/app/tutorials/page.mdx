@@ -1,0 +1,66 @@
+---
+description: Step-by-step tutorials for building data pipelines, configuring integrations, and implementing transforms in Grepr
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Learn how to use Grepr
+
+These tutorials provide hands-on guidance for building and configuring Grepr data pipelines. Each tutorial walks through specific tasks with practical examples, from basic pipeline creation to advanced data processing scenarios.
+
+## Build your first pipeline
+
+This tutorial covers the fundamentals of creating a Grepr pipeline. You'll learn how to configure a source, add transforms to process data, and set up a sink to output results. By the end, you'll understand the basic pipeline structure and workflow.
+
+See [Building your first pipeline](/tutorials/first-pipeline).
+
+## Troubleshoot incidents with Grepr-processed data
+
+Learn how to use Grepr to enhance your incident response workflows. This tutorial demonstrates how to use Grepr-processed data in an observability platform to quickly identify and troubleshoot issues.
+
+See [Troubleshoot incidents with Grepr-processed data and your observability tool](/tutorials/troubleshooting-example).
+
+## See how data flows through your pipelines and test changes
+
+Learn how to use the live edit feature in the Grepr pipelines UI to see in real-time how data flows through your pipelines. This tutorial also shows you how to use live edit to safely test changes to your pipeline processing.
+
+See [View pipeline data flows and test changes with live edit](/tutorials/live-edit).
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is the best way to get started with Grepr?",
+    a: "Start with the 'Build your first pipeline' tutorial, which covers fundamentals including configuring a source, adding transforms to process data, and setting up a sink for outputs. This provides foundational knowledge about Grepr's pipeline structure and workflow before moving to more advanced scenarios."
+  },
+  {
+    q: "Where do I find the available tutorials?",
+    a: "Tutorials are organized in the learning section and cover key topics: building your first pipeline, troubleshooting incidents with Grepr-processed data, and viewing pipeline data flows with live edit. Each tutorial is self-contained and focuses on specific tasks with practical examples."
+  },
+  {
+    q: "What will I learn in the first pipeline tutorial?",
+    a: "The 'Build your first pipeline' tutorial teaches you how to configure a source to ingest data, add transforms to process and modify that data, and set up a sink to output results to external systems. You'll understand the basic pipeline structure, how data flows through operations, and the fundamental Grepr workflow."
+  },
+  {
+    q: "How can I use Grepr to improve incident response?",
+    a: "The 'Troubleshoot incidents with Grepr-processed data' tutorial demonstrates how to enhance incident response workflows using Grepr-enriched data in your observability platform. It shows practical techniques for quickly identifying and troubleshooting issues using processed data."
+  },
+  {
+    q: "What is live edit and when should I use it?",
+    a: "Live edit is a feature in the Grepr pipelines UI that lets you see in real-time how data flows through your pipelines and safely test changes without deploying. The 'View pipeline data flows and test changes with live edit' tutorial shows how to use this for development, testing, and debugging pipeline logic."
+  },
+  {
+    q: "Do I need coding experience to use these tutorials?",
+    a: "The basic tutorials focus on configuration and UI usage, requiring no coding experience. However, advanced features like templates use JavaScript. Tutorials provide examples and step-by-step instructions that work for both beginners and experienced users. Start with basic tutorials and advance based on your needs."
+  },
+  {
+    q: "What prerequisites do I need before starting tutorials?",
+    a: "You should have access to a Grepr instance with appropriate permissions to create pipelines. Most tutorials assume basic familiarity with log data and observability concepts. Some advanced tutorials may require JavaScript knowledge or experience with your specific observability platform."
+  },
+  {
+    q: "Can I apply tutorial patterns to my own data?",
+    a: "Yes, tutorials provide generalizable patterns and best practices that you can adapt to your specific use cases. Each tutorial includes configurable examples and explains the underlying concepts so you can apply those patterns to your data sources, transforms, and sinks."
+  },
+  {
+    q: "How do I move from tutorials to production pipelines?",
+    a: "After completing tutorials, you can build on those foundations by creating more complex pipelines, using templates for reusability, implementing custom transforms, and integrating with your specific data sources and destinations. The REST API and CLI provide additional programmatic capabilities beyond the UI."
+  }
+]} />

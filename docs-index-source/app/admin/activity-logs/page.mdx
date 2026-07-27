@@ -1,0 +1,109 @@
+---
+description: Learn how to view and query system activity in Grepr, including job activity, user actions, security events, and audit events.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# View and search system activity in Grepr
+
+Use the **System Logs** page in the Grepr UI to monitor and audit activity in your Grepr environment. The **System Logs** UI lets you:
+
+- View the events captured for activity by Grepr resources, including jobs, integrations, datasets, and your organization.
+- Audit user activity in your Grepr environment. See [Track user activity with system logs](#audit-logs).
+- Filter logs by date and time, log type, status, and resource type.
+- Use full-text searches to find specific log messages.
+- Investigate and fix issues in your Grepr environment, such as pipeline failures.
+
+You can also access activity logs programmatically through the REST API. See the [Activity Logs specification](/apis/api-spec#tag/Activity-Logs).
+
+<Callout>
+  You must be an Admin or granted the required permissions to view system logs.
+</Callout>
+
+## Access system logs in the UI
+
+To access system logs in the Grepr UI:
+
+1. Sign in to the Grepr UI and click your profile icon in the top bar.
+1. In the menu, select **System Logs**.
+
+## Search and filter activity logs
+
+The system logs page defaults to the last 24 hours as the search time range. To view results for the default time range, click **Search**, or press `Control+enter` on Windows and Linux, or `Command+return` on macOS.
+
+In addition to date and time, you can use the following filters to control the logs returned:
+
+- **Log Type**: Narrow results to specific categories of activity.
+  - `INTEGRATION_IMPORT`: Events related to importing data from vendor integrations, including log events and exceptions.
+  - `INTEGRATION_STATISTICS`: Metrics and information related to integration activity.
+  - `JOB_EXECUTION`: Events related to pipeline job activity, including starts, stops, and failures.
+  - `USER_ACTIVITY`: Events recording user actions in the Grepr platform, such as creating or editing resources.
+  - `SECURITY_EVENT`: Security-related events, such as authentication attempts and permission changes.
+
+  When no log types are selected, the search returns events of all types.
+
+- **Status**: Filter by the severity level of the log event, `INFO`, `WARNING`, and `ERROR`. When no status is selected, the search returns events of all severity levels.
+
+- **Resource**: Narrow results to activity for specific resource types:
+  - `INTEGRATION`: Events associated with vendor and storage integrations.
+  - `JOB`: Events associated with pipeline jobs.
+  - `DATASET`: Events associated with data lake datasets.
+  - `TEMPLATE`: Events associated with pipeline templates.
+  - `ORGANIZATION`: Events associated with organization-level settings and configuration.
+  - `TEAM`: Events associated with team membership and access.
+  - `USER`: Events associated with user accounts and permissions.
+
+  When no resource type is selected, the search returns events for all resource types you have access to.
+
+- **Search Message**: Enter keywords or phrases to perform a full-text search of log messages.
+
+## View log results
+
+After running a search, results appear in a table with the following columns:
+
+- **Status**: The severity level of the log event — **INFO**, **WARNING**, or **ERROR** displayed with a color-coded indicator.
+- **Timestamp**: The date and time the event occurred.
+- **Message**: The message associated with the log event.
+
+As you scroll to the bottom of the table, additional results load automatically.
+
+To view the complete details of a log event, click any row in the results table. A panel opens, displaying the complete contents of the event, including all attributes and metadata associated with it. When the panel is open:
+
+- Use the Up arrow key and the Down arrow key to move between log entries.
+- Press `Esc` to close the panel.
+
+## Download log results
+
+To export your search results, click **Download ND-JSON** in the top-right corner of the page. Grepr downloads the current results as a file in Newline Delimited JSON (NDJSON) format, with one log event per line. The download includes only the results currently loaded in the table.
+
+## Track user activity with system logs [#audit-logs]
+
+The events captured by the Grepr system logs include a complete record of the user who performed the action, when it occurred, and whether it succeeded or failed. You can use these logs to track user activity in your Grepr environment, including changes to jobs, templates, integrations, datasets, and organization settings. You can also use these logs to monitor security-related events, such as authentication attempts and permission changes.
+
+There are two types of system logs that track user activity in the Grepr platform: user activity logs and security event logs. These logs capture changes to Grepr resources performed through the Grepr UI and the REST API. The specific changes recorded in audit logs include:
+
+- Jobs and templates: Create, update, and delete jobs or templates.
+- Datasets: Create, update, and delete datasets.
+- Vendor integrations: Create, update, and delete integrations. Manage log aggregation exceptions. Create, update, and delete impact estimation settings. Trigger a refresh of impact estimates.
+- Storage integrations: Create, update, and delete storage integrations.
+- Users: Create, update, and delete users. Update a user's organization-level role assignment.
+- Teams: Create, update, and delete teams. Add and remove users from a team. Update a team members role.
+- Invitations: Create and delete invitations.
+- Roles: Create, update, and delete roles.
+- API keys: Create or delete API keys.
+- Service accounts: Create, update, and delete service accounts. Regenerate service account secrets.
+- Organization & access settings: Update organization and access settings.
+- External triggers: Create, update, and delete external triggers.
+
+Audit log contents vary by event type. Depending on the operation, an audit log entry might include information such as:
+
+- The event type.
+- The user who performed the action.
+- The time of the action.
+- The HTTP method.
+- The API path.
+- Submitted request parameters.
+- Whether the action succeeded or failed.
+
+Sensitive information, such as passwords and API keys, is masked or redacted in audit logs.

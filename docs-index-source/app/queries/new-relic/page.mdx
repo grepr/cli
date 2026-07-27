@@ -1,0 +1,112 @@
+---
+description: Query log data using New Relic's Lucene-based syntax for text searches, field filtering, and logical operations with attributes and tags.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Search logs using a New Relic log query-like syntax
+
+New Relic's log query syntax is based on [Lucene](https://lucene.apache.org/core/), designed to enable fast, flexible search of log data. Grepr supports a syntax similar to a subset of the New Relic log query language. This guide outlines the key differences between Grepr's implementation and the complete New Relic log query syntax.
+
+For the full New Relic query language, refer to the [New Relic documentation](https://docs.newrelic.com/docs/logs/ui-data/query-syntax-logs/).
+
+## Supported behavior
+
+Grepr supports a simplified form of text and field-based search:
+
+- **Text search**: Simple unqualified text searches such as `error` are matched against the `message` field and all attributes.
+
+- **Exact phrase match**: Enclose text in double quotes to match an exact phrase:
+
+  ```bash
+  "connection refused"               # Match logs containing the exact phrase
+  field:"connection refused"         # Match the exact phrase in a specific field
+  ```
+
+- **Field-based search**: Grepr allows searching specific fields using `field:value` syntax. By default, these will search in attributes only, unless the field name starts with `tags.`.
+
+- **Logical operators**: Boolean operators `AND` and `OR` can be used to combine multiple conditions with `-` to negate conditions. For example,
+
+  ```bash
+  error AND warning           # Both "error" and "warning" must be present in message
+  error OR warning            # Either "error" or "warning" must be present in message
+  status:500 AND error        # Status code is 500 and message contains "error"
+  -req.status:200 AND error   # req.status is not 200 and message contains "error"
+  ```
+
+- **Existence operators**: The `has:` and `missing:` operators check for the presence or absence of field keys:
+
+  ```bash
+  has:field          # field exists
+  missing:field      # field does not exist
+  ```
+
+- **Negation operators**: The `-` prefix can be used to negate queries:
+
+  ```bash
+  -field:value        # Field does not equal value
+  -error              # Message does not contain "error"
+  ```
+
+- **Numeric comparisons**: Comparison operators such as `>`, `<`, `>=`, `<=` are supported on numerical fields:
+
+  ```bash
+  field:>30                     # Field value greater than 30
+  field:<10                     # Field value less than 10
+  field:>=30.0                  # Field value greater than or equal to 30.0
+  field:<=-10                   # Field value less than or equal to -10
+  ```
+
+  Refer to the [The Grepr processing and data models](/grepr-platform/grepr-model) for more about how attributes and tags are handled.
+
+- **Range searches**: Use syntax like `field:[value1 TO value2]` to search for values in ranges:
+
+  ```bash
+  field:[10 TO 20]              # Field value between 10 and 20 inclusive
+  field:{10 TO 20}              # Field value between 10 and 20 exclusive
+  field:[* TO 100]              # Field value less than or equal to 100
+  ```
+
+<HiddenFAQ faqs={[
+  {
+    q: "How does Grepr's log query syntax differ from New Relic's?",
+    a: "Grepr supports a simplified subset of New Relic's log query syntax, focusing on essential search capabilities. The core differences include: unqualified text searches match the message field and all attributes, and field-based searches use field:value syntax for attributes or tags.field:value for tags."
+  },
+  {
+    q: "What is the default search behavior for unqualified text?",
+    a: "Unqualified text searches like 'error' are matched against the message field and all attributes. To search a specific attribute, or to search tags, use explicit field:value or tags.field:value syntax."
+  },
+  {
+    q: "How do I search for an exact phrase with the log query syntax?",
+    a: "Enclose the text in double quotes to match an exact phrase. For example, \"connection refused\" matches logs containing that exact phrase. You can also match an exact phrase in a specific field using field:\"connection refused\"."
+  },
+  {
+    q: "How do I search attributes versus tags with the log query syntax?",
+    a: "Both attributes and tags are searched using field:value syntax. By default, field-based searches look in attributes first. To specifically search a tag, prefix the field name with 'tags.' (e.g., tags.service:web-app). To explicitly search an attribute, use the attribute name directly (e.g., req.status:200)."
+  },
+  {
+    q: "What logical operators are supported with the log query syntax?",
+    a: "Grepr supports AND and OR operators to combine conditions. You can negate conditions using the minus prefix (-). For example, 'error AND warning' requires both terms, 'error OR warning' requires either term, and '-req.status:200 AND error' excludes logs with status 200 that also contain 'error'."
+  },
+  {
+    q: "How do I check if a field exists or is missing?",
+    a: "Use the has: and missing: operators to check for field existence. The query 'has:field' matches logs where the field key exists, regardless of value. The query 'missing:field' matches logs where the field is not present."
+  },
+  {
+    q: "Can I perform numeric comparisons with the log query syntax?",
+    a: "Yes, Grepr supports comparison operators >, <, >=, and <= on numeric fields. For example, field:>30 matches logs where the field value is greater than 30. You can use field:<10 for less than or field:>=30.0 for greater than or equal to comparisons."
+  },
+  {
+    q: "What range query syntax does Grepr support?",
+    a: "Grepr supports range queries using [value1 TO value2] for inclusive ranges and {value1 TO value2} for exclusive ranges. You can also use open-ended ranges like field:[* TO 100] for values up to 100 or field:[100 TO *] for values of 100 and above."
+  },
+  {
+    q: "How do I negate a condition with the log query syntax?",
+    a: "Use the minus prefix (-) to negate conditions. For example, -field:value excludes logs where field equals value, and -error excludes logs containing 'error' in the message field. You can negate any condition including field existence (e.g., -has:field)."
+  },
+  {
+    q: "Can I use wildcards with tags with the log query syntax?",
+    a: "Yes, wildcards are supported with both attributes and tags. For example, tags.service:web-* matches any tag with key 'service' starting with 'web', and req.path:/api/* matches attribute paths starting with '/api/'. Use * to match zero or more characters. The ? character is treated as a literal character, not a wildcard."
+  }
+]} />
+

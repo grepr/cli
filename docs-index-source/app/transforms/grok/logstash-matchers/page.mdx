@@ -1,0 +1,983 @@
+---
+description: The Grok parser in the Grepr platform supports a comprehensive set of matchers, including all matchers from the Logstash Grok filter plugin. This page provides a reference to the supported Logstash matchers.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# The Grepr Grok parser: Logstash matchers
+
+This page provides a reference to the Logstash matchers supported by the Grok parser in the Grepr Platform, including descriptions and examples for each matcher. The Grok parser in the Grepr platform supports all matchers from the [Logstash Grok filter plugin](https://github.com/logstash-plugins/logstash-patterns-core/blob/main/patterns/ecs-v1/grok-patterns).
+
+The Grepr Grok parser also supports a number of Datadog-compatible matchers. See [The Grepr Grok parser: Datadog-compatible matchers](/transforms/grok/datadog-matchers).
+
+## User and email matchers
+
+### `USERNAME`
+
+Matches alphanumeric characters, dots, underscores, and hyphens typically found in usernames.
+
+**Examples:**
+
+```bash
+%{USERNAME:user}
+# Input:  john.doe-123
+# Output: {"user": "john.doe-123"}
+
+%{USERNAME:account_name}
+# Input:  admin_user
+# Output: {"account_name": "admin_user"}
+```
+
+### `USER`
+
+`USER` is an alias for `USERNAME` and matches the same pattern.
+
+**Examples:**
+
+```bash
+%{USER:username}
+# Input:  alice_2024
+# Output: {"username": "alice_2024"}
+```
+
+### `EMAILLOCALPART`
+
+Matches the local part of an email address (the part before the @ symbol), supporting RFC-compliant special characters.
+
+**Examples:**
+
+```bash
+%{EMAILLOCALPART:email_user}
+# Input:  john.doe+filter
+# Output: {"email_user": "john.doe+filter"}
+
+%{EMAILLOCALPART:recipient}
+# Input:  user_name-123
+# Output: {"recipient": "user_name-123"}
+```
+
+### `EMAILADDRESS`
+
+Matches a complete email address.
+
+**Examples:**
+
+```bash
+%{EMAILADDRESS:email}
+# Input:  john.doe@example.com
+# Output: {"email": "john.doe@example.com"}
+
+%{EMAILADDRESS:contact}
+# Input:  support+tickets@company.co.uk
+# Output: {"contact": "support+tickets@company.co.uk"}
+```
+
+## Number matchers
+
+### `INT`
+
+Matches signed or unsigned integer numbers.
+
+**Examples:**
+
+```bash
+%{INT:count}
+# Input:  42
+# Output: {"count": "42"}
+
+%{INT:offset}
+# Input:  -150
+# Output: {"offset": "-150"}
+```
+
+### `BASE10NUM`
+
+Matches base-10 decimal numbers, including integers and floating-point numbers.
+
+**Examples:**
+
+```bash
+%{BASE10NUM:value}
+# Input:  123.456
+# Output: {"value": "123.456"}
+
+%{BASE10NUM:temperature}
+# Input:  -98.6
+# Output: {"temperature": "-98.6"}
+```
+
+### `BASE16NUM`
+
+Matches hexadecimal numbers with an optional 0x prefix.
+
+**Examples:**
+
+```bash
+%{BASE16NUM:hex_value}
+# Input:  0xFF
+# Output: {"hex_value": "0xFF"}
+
+%{BASE16NUM:color_code}
+# Input:  A1B2C3
+# Output: {"color_code": "A1B2C3"}
+```
+
+### `BASE16FLOAT`
+
+Matches hexadecimal floating-point numbers.
+
+**Examples:**
+
+```bash
+%{BASE16FLOAT:hex_float}
+# Input:  0x1A.3F
+# Output: {"hex_float": "0x1A.3F"}
+```
+
+### `POSINT`
+
+Matches positive integers (excluding zero).
+
+**Examples:**
+
+```bash
+%{POSINT:port}
+# Input:  8080
+# Output: {"port": "8080"}
+
+%{POSINT:quantity}
+# Input:  100
+# Output: {"quantity": "100"}
+```
+
+### `NONNEGINT`
+
+Matches non-negative integers (including zero).
+
+**Examples:**
+
+```bash
+%{NONNEGINT:retry_count}
+# Input:  0
+# Output: {"retry_count": "0"}
+
+%{NONNEGINT:items}
+# Input:  42
+# Output: {"items": "42"}
+```
+
+## Text matchers
+
+### `SPACE`
+
+Matches zero or more whitespace characters.
+
+**Examples:**
+
+```bash
+User:%{SPACE}%{WORD:username}
+# Input:  User:   john
+# Output: {"username": "john"}
+```
+
+### `GREEDYDATA`
+
+Matches everything remaining on the line. Use with caution as it consumes all remaining text.
+
+**Examples:**
+
+```bash
+ERROR: %{GREEDYDATA:error_message}
+# Input:  ERROR: Connection failed: timeout after 30 seconds
+# Output: {"error_message": "Connection failed: timeout after 30 seconds"}
+```
+
+### `QUOTEDSTRING`
+
+<Callout type="warning">
+  To ensure you're using the Logstash matcher in the Grok parser and not the Datadog parser, use uppercase `QUOTEDSTRING`.
+</Callout>
+
+
+Matches text enclosed in double quotes, single quotes, or backticks, with support for escaped characters.
+
+**Examples:**
+
+```bash
+%{QUOTEDSTRING:message}
+# Input:  "Hello \"World\""
+# Output: {"message": "Hello \"World\""}
+
+%{QUOTEDSTRING:command}
+# Input:  `ls -la`
+# Output: {"command": "ls -la"}
+```
+
+## Identifier matchers
+
+### `URN`
+
+Matches URN (Uniform Resource Name) formatted identifiers per RFC 2141.
+
+**Examples:**
+
+```bash
+%{URN:resource_id}
+# Input:  urn:isbn:0451450523
+# Output: {"resource_id": "urn:isbn:0451450523"}
+
+%{URN:namespace_id}
+# Input:  urn:ietf:rfc:3986
+# Output: {"namespace_id": "urn:ietf:rfc:3986"}
+```
+
+## Network matchers
+
+### `CISCOMAC`
+
+Matches MAC addresses in Cisco format (groups of 4 hex digits separated by dots).
+
+**Examples:**
+
+```bash
+%{CISCOMAC:mac_address}
+# Input:  001b.4411.3ab7
+# Output: {"mac_address": "001b.4411.3ab7"}
+```
+
+### `WINDOWSMAC`
+
+Matches MAC addresses in Windows format (pairs of hex digits separated by hyphens).
+
+**Examples:**
+
+```bash
+%{WINDOWSMAC:mac_address}
+# Input:  00-1B-44-11-3A-B7
+# Output: {"mac_address": "00-1B-44-11-3A-B7"}
+```
+
+### `COMMONMAC`
+
+Matches MAC addresses in a standard format (pairs of hex digits separated by colons).
+
+**Examples:**
+
+```bash
+%{COMMONMAC:mac_address}
+# Input:  00:1B:44:11:3A:B7
+# Output: {"mac_address": "00:1B:44:11:3A:B7"}
+```
+
+### `HOSTPORT`
+
+Matches a hostname or IP address followed by a colon and port number.
+
+**Examples:**
+
+```bash
+%{HOSTPORT:server}
+# Input:  api.example.com:8080
+# Output: {"server": "api.example.com:8080"}
+
+%{HOSTPORT:endpoint}
+# Input:  192.168.1.1:443
+# Output: {"endpoint": "192.168.1.1:443"}
+```
+
+## Path matchers
+
+{/* Uncooment when ENGT-3469 is resolved:
+### `PATH`
+
+Matches file system paths (Unix or Windows).
+
+**Examples:**
+
+```bash
+%{PATH:file_path}
+# Input:  /var/log/application.log
+# Output: {"file_path": "/var/log/application.log"}
+
+%{PATH:win_path}
+# Input:  C:\Users\Admin\Documents\file.txt
+# Output: {"win_path": "C:\\Users\\Admin\\Documents\\file.txt"}
+```
+
+### `UNIXPATH`
+
+Matches Unix-style file paths.
+
+**Examples:**
+
+```bash
+%{UNIXPATH:log_file}
+# Input:  /home/user/logs/app.log
+# Output: {"log_file": "/home/user/logs/app.log"}
+
+%{UNIXPATH:directory}
+# Input:  /opt/application/config/
+# Output: {"directory": "/opt/application/config/"}
+```
+*/}
+
+### `WINPATH`
+
+Matches Windows-style file paths.
+
+**Examples:**
+
+```bash
+%{WINPATH:install_path}
+# Input:  C:\Program Files\Application
+# Output: {"install_path": "C:\\Program Files\\Application"}
+
+%{WINPATH:data_dir}
+# Input:  D:\Data\Files\
+# Output: {"data_dir": "D:\\Data\\Files\\"}
+```
+
+### `TTY`
+
+Matches Unix TTY device paths.
+
+**Examples:**
+
+```bash
+%{TTY:terminal}
+# Input:  /dev/pts/0
+# Output: {"terminal": "/dev/pts/0"}
+
+%{TTY:console}
+# Input:  /dev/tty1
+# Output: {"console": "/dev/tty1"}
+```
+
+## URI matchers
+
+### `URIPROTO`
+
+Matches URI protocol/scheme names.
+
+**Examples:**
+
+```bash
+%{URIPROTO:protocol}
+# Input:  https
+# Output: {"protocol": "https"}
+
+%{URIPROTO:scheme}
+# Input:  ftp
+# Output: {"scheme": "ftp"}
+```
+
+### `URIHOST`
+
+Matches the host portion of a URI, including an optional port.
+
+**Examples:**
+
+```bash
+%{URIHOST:host}
+# Input:  api.example.com:8080
+# Output: {"host": "api.example.com:8080"}
+
+%{URIHOST:server}
+# Input:  192.168.1.100
+# Output: {"server": "192.168.1.100"}
+```
+
+### `URIPATH`
+
+Matches the path portion of a URI.
+
+**Examples:**
+
+```bash
+%{URIPATH:request_path}
+# Input:  /api/v1/users
+# Output: {"request_path": "/api/v1/users"}
+
+%{URIPATH:endpoint}
+# Input:  /search/results.html
+# Output: {"endpoint": "/search/results.html"}
+```
+
+### `URIQUERY`
+
+Matches the query string portion of a URI (without the leading ?).
+
+**Examples:**
+
+```bash
+%{URIQUERY:query_params}
+# Input:  page=1&limit=10&sort=desc
+# Output: {"query_params": "page=1&limit=10&sort=desc"}
+```
+
+### `URIPARAM`
+
+Matches the query string portion of a URI, including the leading question mark.
+
+**Examples:**
+
+```bash
+%{URIPARAM:query}
+# Input:  ?user=john&action=login
+# Output: {"query": "?user=john&action=login"}
+```
+
+### `URIPATHPARAM`
+
+Matches a URI path with optional query parameters.
+
+**Examples:**
+
+```bash
+%{URIPATHPARAM:full_path}
+# Input:  /api/users?page=1
+# Output: {"full_path": "/api/users?page=1"}
+
+%{URIPATHPARAM:request}
+# Input:  /search/index.html
+# Output: {"request": "/search/index.html"}
+```
+
+### `URI`
+
+Matches complete URIs including protocol, host, path, and query parameters.
+
+**Examples:**
+
+```bash
+%{URI:url}
+# Input:  https://api.example.com:443/v1/users?active=true
+# Output: {"url": "https://api.example.com:443/v1/users?active=true"}
+
+%{URI:request_url}
+# Input:  http://localhost:8080/health
+# Output: {"request_url": "http://localhost:8080/health"}
+```
+
+## Date and time component matchers
+
+### `MONTH`
+
+Matches month names in various languages and formats.
+
+**Examples:**
+
+```bash
+%{MONTH:month_name}
+# Input:  January
+# Output: {"month_name": "January"}
+
+%{MONTH:mon}
+# Input:  Feb
+# Output: {"mon": "Feb"}
+```
+
+### `MONTHNUM`
+
+Matches month numbers (1-12) with or without leading zeros.
+
+**Examples:**
+
+```bash
+%{MONTHNUM:month}
+# Input:  3
+# Output: {"month": "3"}
+
+%{MONTHNUM:month_val}
+# Input:  12
+# Output: {"month_val": "12"}
+```
+
+### `MONTHNUM2`
+
+Matches two-digit month numbers with required leading zeros (01-12).
+
+**Examples:**
+
+```bash
+%{MONTHNUM2:month}
+# Input:  03
+# Output: {"month": "03"}
+
+%{MONTHNUM2:month_padded}
+# Input:  11
+# Output: {"month_padded": "11"}
+```
+
+### `MONTHDAY`
+
+Matches day of month with or without leading zeros (1-31).
+
+**Examples:**
+
+```bash
+%{MONTHDAY:day}
+# Input:  5
+# Output: {"day": "5"}
+
+%{MONTHDAY:date}
+# Input:  25
+# Output: {"date": "25"}
+```
+
+### `DAY`
+
+Matches day names in full or abbreviated format.
+
+**Examples:**
+
+```bash
+%{DAY:day_name}
+# Input:  Monday
+# Output: {"day_name": "Monday"}
+
+%{DAY:weekday}
+# Input:  Fri
+# Output: {"weekday": "Fri"}
+```
+
+### `YEAR`
+
+Matches 2-digit or 4-digit year values.
+
+**Examples:**
+
+```bash
+%{YEAR:year_val}
+# Input:  2024
+# Output: {"year_val": "2024"}
+
+%{YEAR:yr}
+# Input:  24
+# Output: {"yr": "24"}
+```
+
+### `HOUR`
+
+Matches hour values in 24-hour format (00-23).
+
+**Examples:**
+
+```bash
+%{HOUR:hour_val}
+# Input:  14
+# Output: {"hour_val": "14"}
+
+%{HOUR:hr}
+# Input:  09
+# Output: {"hr": "09"}
+```
+
+### `MINUTE`
+
+Matches minute values (00-59).
+
+**Examples:**
+
+```bash
+%{MINUTE:min}
+# Input:  30
+# Output: {"min": "30"}
+
+%{MINUTE:minutes}
+# Input:  05
+# Output: {"minutes": "05"}
+```
+
+### `SECOND`
+
+Matches second values, including leap seconds and optional fractional seconds.
+
+**Examples:**
+
+```bash
+%{SECOND:sec}
+# Input:  45
+# Output: {"sec": "45"}
+
+%{SECOND:seconds}
+# Input:  30.123
+# Output: {"seconds": "30.123"}
+```
+
+### `TIME`
+
+Matches time in HH:MM:SS or HH:MM:SS.mmm format.
+
+**Examples:**
+
+```bash
+%{TIME:timestamp}
+# Input:  14:30:45
+# Output: {"timestamp": "14:30:45"}
+
+%{TIME:event_time}
+# Input:  09:15:30.500
+# Output: {"event_time": "09:15:30.500"}
+```
+
+## Date format matchers
+
+### `DATE_US`
+
+Matches US date format (MM/DD/YYYY or MM-DD-YYYY).
+
+**Examples:**
+
+```bash
+%{DATE_US:date}
+# Input:  03/15/2024
+# Output: {"date": "03/15/2024"}
+
+%{DATE_US:event_date}
+# Input:  12-31-2023
+# Output: {"event_date": "12-31-2023"}
+```
+
+### `DATE_EU`
+
+Matches European date format (DD/MM/YYYY or DD.MM.YYYY).
+
+**Examples:**
+
+```bash
+%{DATE_EU:date}
+# Input:  15/03/2024
+# Output: {"date": "15/03/2024"}
+
+%{DATE_EU:birth_date}
+# Input:  25.12.2023
+# Output: {"birth_date": "25.12.2023"}
+```
+
+### `ISO8601_TIMEZONE`
+
+Matches the timezone portion of ISO 8601 timestamps.
+
+**Examples:**
+
+```bash
+%{ISO8601_TIMEZONE:tz}
+# Input:  +05:30
+# Output: {"tz": "+05:30"}
+
+%{ISO8601_TIMEZONE:timezone}
+# Input:  Z
+# Output: {"timezone": "Z"}
+```
+
+### `TIMESTAMP_ISO8601`
+
+Matches ISO 8601 formatted timestamps.
+
+**Examples:**
+
+```bash
+%{TIMESTAMP_ISO8601:timestamp}
+# Input:  2024-03-15T14:30:45Z
+# Output: {"timestamp": "2024-03-15T14:30:45Z"}
+
+%{TIMESTAMP_ISO8601:event_time}
+# Input:  2024-03-15 14:30:45+05:30
+# Output: {"event_time": "2024-03-15 14:30:45+05:30"}
+```
+
+### `DATE`
+
+Matches either US or European date formats.
+
+<Callout type="warning">
+  To use the Logstash `DATE` matcher in the Grok parser, you must use uppercase `DATE`. Lowercase `date` is reserved for the Datadog `date` matcher, which has different functionality. See [date](/transforms/grok/datadog-matchers#date-matcher).
+</Callout>
+
+**Examples:**
+
+```bash
+%{DATE:date_val}
+# Input:  03/15/2024
+# Output: {"date_val": "03/15/2024"}
+
+%{DATE:event_date}
+# Input:  15.03.2024
+# Output: {"event_date": "15.03.2024"}
+```
+
+{/* Uncooment when ENGT-3469 is resolved:
+### `DATESTAMP`
+
+Matches date and time combined in various formats.
+
+**Examples:**
+
+```bash
+%{DATESTAMP:timestamp}
+# Input:  03/15/2024 14:30:45
+# Output: {"timestamp": "03/15/2024 14:30:45"}
+
+%{DATESTAMP:event_timestamp}
+# Input:  15-03-2024 09:15:30
+# Output: {"event_timestamp": "15-03-2024 09:15:30"}
+```
+*/}
+
+### `TZ`
+
+Matches timezone abbreviations.
+
+**Examples:**
+
+```bash
+%{TZ:timezone}
+# Input:  PST
+# Output: {"timezone": "PST"}
+
+%{TZ:tz_abbr}
+# Input:  UTC
+# Output: {"tz_abbr": "UTC"}
+```
+
+### `DATESTAMP_RFC822`
+
+Matches RFC 822 formatted timestamps.
+
+**Examples:**
+
+```bash
+%{DATESTAMP_RFC822:timestamp}
+# Input:  Mon Mar 15 2024 14:30:45 PST
+# Output: {"timestamp": "Mon Mar 15 2024 14:30:45 PST"}
+```
+
+### `DATESTAMP_RFC2822`
+
+Matches RFC 2822 formatted timestamps.
+
+**Examples:**
+
+```bash
+%{DATESTAMP_RFC2822:timestamp}
+# Input:  Mon, 15 Mar 2024 14:30:45 +0000
+# Output: {"timestamp": "Mon, 15 Mar 2024 14:30:45 +0000"}
+```
+
+### `DATESTAMP_OTHER`
+
+Matches alternative date formats commonly found in logs.
+
+**Examples:**
+
+```bash
+%{DATESTAMP_OTHER:timestamp}
+# Input:  Mon Mar 15 14:30:45 PST 2024
+# Output: {"timestamp": "Mon Mar 15 14:30:45 PST 2024"}
+```
+
+### `DATESTAMP_EVENTLOG`
+
+Matches Windows Event Log timestamp format (YYYYMMDDHHmmss).
+
+**Examples:**
+
+```bash
+%{DATESTAMP_EVENTLOG:event_time}
+# Input:  20240315143045
+# Output: {"event_time": "20240315143045"}
+```
+
+## Syslog matchers
+
+### `SYSLOGTIMESTAMP`
+
+Matches syslog-style timestamps (Month Day HH:MM:SS).
+
+**Examples:**
+
+```bash
+%{SYSLOGTIMESTAMP:timestamp}
+# Input:  Mar 15 14:30:45
+# Output: {"timestamp": "Mar 15 14:30:45"}
+
+%{SYSLOGTIMESTAMP:log_time}
+# Input:  Jan  5 09:15:30
+# Output: {"log_time": "Jan  5 09:15:30"}
+```
+
+### `PROG`
+
+Matches program names in syslog messages.
+
+**Examples:**
+
+```bash
+%{PROG:program}
+# Input:  sshd
+# Output: {"program": "sshd"}
+
+%{PROG:process_name}
+# Input:  nginx
+# Output: {"process_name": "nginx"}
+```
+
+{/* Uncooment when ENGT-3469 is resolved:
+### `SYSLOGPROG`
+
+Matches program names with optional process IDs from syslog messages.
+
+**Examples:**
+
+```bash
+%{SYSLOGPROG}
+# Input:  sshd[12345]
+# Output: {"process": {"name": "sshd", "pid": 12345}}
+
+%{SYSLOGPROG}
+# Input:  nginx
+# Output: {"process": {"name": "nginx"}}
+```
+*/}
+
+### `SYSLOGHOST`
+
+Matches hostnames or IP addresses in syslog messages.
+
+**Examples:**
+
+```bash
+%{SYSLOGHOST:hostname}
+# Input:  server01.example.com
+# Output: {"hostname": "server01.example.com"}
+
+%{SYSLOGHOST:host}
+# Input:  192.168.1.100
+# Output: {"host": "192.168.1.100"}
+```
+
+{/* Uncooment when ENGT-3469 is resolved:
+### `SYSLOGFACILITY`
+
+Matches syslog facility and priority codes.
+
+**Examples:**
+
+```bash
+%{SYSLOGFACILITY}
+# Input:  <134>
+# Output: {"log": {"syslog": {"facility": {"code": 16}, "priority": 6}}}
+```
+
+### `SYSLOGBASE`
+
+Matches the common syslog message header format.
+
+**Examples:**
+
+```bash
+%{SYSLOGBASE} %{GREEDYDATA:message}
+# Input:  Mar 15 14:30:45 server01 sshd[12345]: User logged in
+# Output: {"timestamp": "Mar 15 14:30:45", "host": {"hostname": "server01"}, "process": {"name": "sshd", "pid": 12345}, "message": "User logged in"}
+```
+*/}
+
+
+### `HTTPDATE`
+
+Matches HTTP log date format.
+
+**Examples:**
+
+```bash
+%{HTTPDATE:date}
+# Input:  15/Mar/2024:14:30:45 -0700
+# Output: {"date": "15/Mar/2024:14:30:45 -0700"}
+```
+
+## Log level matchers
+
+### `LOGLEVEL`
+
+Matches various log level keywords in different cases.
+
+**Examples:**
+
+```bash
+%{LOGLEVEL:level}
+# Input:  ERROR
+# Output: {"level": "ERROR"}
+
+%{LOGLEVEL:severity}
+# Input:  Warning
+# Output: {"severity": "Warning"}
+
+%{LOGLEVEL:log_level}
+# Input:  info
+# Output: {"log_level": "info"}
+```
+
+## Shortcut matchers
+
+### `QS`
+
+The `QS` matcher is a shortcut for `QUOTEDSTRING` and matches text enclosed in quotes.
+
+**Examples:**
+
+```bash
+%{QS:message}
+# Input:  "Error occurred"
+# Output: {"message": "Error occurred"}
+
+%{QS:value}
+# Input:  'single quoted'
+# Output: {"value": "single quoted"}
+```
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What are Logstash matchers and how are they different from Datadog matchers?",
+      a: "Logstash matchers are predefined Grok patterns that come from the Logstash Grok filter plugin. They use uppercase names like USERNAME, INT, GREEDYDATA. Datadog matchers use lowercase names like boolean, date, number. Grepr supports both sets, allowing you to choose the matcher style you prefer."
+    },
+    {
+      q: "When should I use USERNAME vs USER matcher?",
+      a: "USERNAME and USER are interchangeable - USER is simply an alias for USERNAME. Both match alphanumeric characters, dots, underscores, and hyphens typically found in usernames. Use whichever naming convention you prefer."
+    },
+    {
+      q: "What is the EMAILLOCALPART matcher used for?",
+      a: "EMAILLOCALPART extracts the local part of an email address (the part before the @ symbol). It supports RFC-compliant special characters like dots and plus signs. Use this when you need to parse just the username portion of email addresses."
+    },
+    {
+      q: "How do number matchers in Logstash differ?",
+      a: "INT matches signed/unsigned integers, BASE10NUM matches base-10 decimals, BASE16NUM matches hexadecimal (with optional 0x prefix), BASE16FLOAT matches hex floating-point, POSINT matches positive integers (excluding zero), and NONNEGINT matches non-negative integers (including zero). All parse as strings, not numeric types."
+    },
+    {
+      q: "What is GREEDYDATA and when should I use it?",
+      a: "GREEDYDATA matches everything remaining on the line using .* regex. Use it with caution and typically as the last matcher in a pattern, since it's greedy and will consume all remaining text. Use more specific matchers when possible for better parsing control."
+    },
+    {
+      q: "Why should I use uppercase QUOTEDSTRING instead of lowercase quotedString?",
+      a: "Uppercase QUOTEDSTRING is the Logstash matcher that supports double quotes, single quotes, and backticks with proper escape character handling. The lowercase quotedString is a Datadog matcher with different behavior. Use uppercase QUOTEDSTRING to ensure you're using the Logstash version."
+    },
+    {
+      q: "What are network matchers available in Logstash?",
+      a: "Logstash network matchers include: CISCOMAC (Cisco format with dots), WINDOWSMAC (Windows format with hyphens), COMMONMAC (standard format with colons), HOSTPORT (hostname/IP plus port), and various URI matchers (URIPROTO, URIHOST, URIPATH, URIQUERY, URI). These handle different network identifier formats."
+    },
+    {
+      q: "How do date matchers work in Logstash?",
+      a: "Logstash includes matchers for specific date formats: DATE_US for US format (MM/DD/YYYY), DATE_EU for European format (DD/MM/YYYY), TIMESTAMP_ISO8601 for ISO 8601 timestamps, DATESTAMP_RFC822, DATESTAMP_RFC2822, and others. Use these for logs with standard date formats instead of custom regex patterns."
+    },
+    {
+      q: "What is the difference between DATE and date matchers?",
+      a: "Uppercase DATE is a Logstash matcher that matches either US or European date formats. Lowercase date is a Datadog matcher that parses dates using Java format patterns and converts to Unix timestamps. Use DATE for basic pattern matching, and the Datadog date matcher when you need timestamp conversion."
+    },
+    {
+      q: "How do URI matchers help with URL parsing?",
+      a: "URI matchers break down URL components: URIPROTO extracts protocol (http/https), URIHOST extracts host with optional port, URIPATH extracts path portion, URIQUERY extracts query parameters, URIPARAM includes the leading question mark, and URIPATHPARAM combines path and query. Use together to parse complete URLs or use URI to match the entire URL."
+    }
+  ]}
+/>

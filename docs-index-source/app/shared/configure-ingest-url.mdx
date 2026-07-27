@@ -1,0 +1,15 @@
+To send data to Grepr, you configure your collector or agent to send it to the ingestion URL for your Grepr integration, rather than to your observability vendor's platform. To find the ingestion URL when using the Grepr UI to configure your pipeline, go to the details page for the pipeline, click **Sources** in the left pane, and copy the **Ingest URL**.
+
+<br /><img src={props.image_url || '/images/integrations/ingest-url-datadog.png'} alt="Accessing the Grepr ingestion URL in the UI." />
+
+If you connect to Grepr through AWS PrivateLink, copy the private ingestion URL and use it in place of the public ingestion URL. To learn more about sending data to Grepr over AWS PrivateLink, see [Securely forward observability data to Grepr with AWS PrivateLink](/admin/private-link).
+
+When you use the API, you can construct the ingestion URL using the following format:
+
+<br /><code className="nextra-code"> {props.url || 'https://<integration-id>-<org-id>.ingest.grepr.ai'}</ code>
+
+Replace `<integration-id>` with the identifier of the vendor integration used by your pipeline and replace `<org-id>` with the identifier for your organization.
+
+To use the PrivateLink endpoint service, insert `.private` after the `ingest` host segment.
+
+Although all sources created from the same integration share the same ingestion URL, you can use a single integration to create sources for multiple pipelines. The Grepr platform ensures events are routed to the correct pipelines.

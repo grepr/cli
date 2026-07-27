@@ -1,0 +1,259 @@
+---
+description: Learn how the Grepr SQL transform supports the processing and transformation of log events in a Grepr pipeline.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Transform events with SQL
+
+You can use the SQL transform to process data with SQL statements. With support for multiple statement types and complex data flows, the SQL transform gives you a powerful and flexible way to process, filter, and enrich data using a familiar SQL syntax.
+
+The SQL transform complies with the ANSI SQL standard. It includes the full capabilities of Apache Flink SQL 2.2.0, including access to a comprehensive set of built-in functions and operators for data processing. This document describes a subset of the available capabilities. To learn more about Flink SQL, see [SQL](https://nightlies.apache.org/flink/flink-docs-release-2.2/docs/dev/table/sql/overview/) in the Flink 2.2.0 documentation.
+
+To learn how to use the SQL transform in the Grepr UI or the REST API, see [How do I use the SQL transform?](#sql-transform-usage).
+
+## When should I use the SQL transform?
+
+The SQL transform is ideal when you need to perform complex data transformations, filtering, or enrichment using a declarative SQL syntax, including:
+
+- Data normalization and standardization
+  - Message format standardization: Converting various log formats to a standard structure.
+  - Timestamp normalization: Converting different timestamp formats to standard milliseconds.
+  - Field standardization: Ensuring consistent field names and types across services.
+- Log enhancement and enrichment
+  - Computed metrics: Adding calculated fields like processing delays and error rates.
+  - Categorization: Adding severity levels, priority flags, or classification labels.
+  - Contextual data: Extracting and promoting key information from log messages.
+- Security and compliance
+  - Data redaction: Removing or masking sensitive information (passwords, tokens, PII).
+  - Audit trail enhancement: Adding tracking fields for compliance requirements.
+  - Anomaly flagging: Marking unusual patterns or suspicious activities.
+- Performance and monitoring
+  - SLA monitoring: Extracting response times and performance metrics.
+  - Error analysis: Categorizing and enriching error logs for better debugging.
+  - Trend analysis: Preparing log data for time-series analysis and alerting.
+- Data pipeline optimization
+  - Selective processing: Filtering logs to reduce downstream processing load.
+  - Format conversion: Converting logs for compatibility with downstream systems.
+  - Batch preparation: Aggregating and preparing data for batch analytics.
+
+## How does the SQL transform process data?
+
+The SQL transform processes data through one or more SQL statements. You specify SQL statements that define the data structure after processing, and the SQL transform processes the input data to transform it into those structures. You can configure the transform to send the results of running the SQL statement to either:
+
+- A `view`, which is a temporary table for intermediate results. Subsequent statements can then reference the `view` during their processing.
+- An `output` object, which converts the results of a view statement into a Flink DataStream object that downstream statements can consume. Each `output` must be assigned a unique name.
+
+`view` and `output` statements are defined as part of a configuration that also includes details such as:
+
+- Any `views` created by upstream statements that contain input data for the statement.
+- Tables to reference during processing that are part of a data lake dataset.
+
+When the SQL transform runs, it validates that:
+
+ - All `views` created by the transform  use unique names.
+ - At least one `output` object exists to produce results, and all `output` names in the transform are unique.
+
+## How do I use the SQL transform? [#sql-transform-usage]
+
+You use SQL transforms by adding them to your Grepr pipelines. To add a SQL transform to a pipeline in the Grepr UI, configure it in a pipeline filter configuration. See [Filter events in a Grepr pipeline](/transforms/filter-events).
+
+To add a transform in the REST API, you define the SQL transform as part of the pipeline's job graph using a [SqlOperation](/apis/api-spec#schema/SqlOperation). The SqlOperation has the following schema:
+
+```json
+{
+  "name": "<operation_name>",
+  "type": "sql-operation",
+  "inputs": {
+    "<input-tablename-1>": "<LOG_EVENT|VARIANT|COMPLETE_SPAN>",
+    "<input-tablename-2>": "<LOG_EVENT|VARIANT|COMPLETE_SPAN>",
+    "...": "..."
+  },
+  "statements": [
+    {
+      "type": "sql_view",
+      "tableName": "<output-object-name>",
+      "sqlQuery": "<sql-statement>",
+      "shouldMaterialize": boolean
+    },
+    {
+      "type": "sql_output",
+      "outputName": "<output-stream-name>",
+      "outputType": "<LOG_EVENT|VARIANT|COMPLETE_SPAN>",
+      "sqlQuery": "<sql-statement>"
+    }
+  ],
+  "availableDatasets": [
+    "<dataset-identifier-1>",
+    "<dataset-identifier-2>",
+    "..."
+  ],
+  "globalStateTtl": "<time-to-live-duration>",
+  "watermarkDelay": "<watermark-delay-duration>"
+}
+```
+
+| Field              | Type    | Description |
+|--------------------|---------|-------------|
+| `name`             | string  | A name identifying the SQL transform. This field is required. |
+| `type`             | string  | The type of operation. For the SQL transform, this value is always `sql-operation`. This field is required. |
+| `inputs`           | object  | Key-value pairs where the key is an input table name and the value is the data type. Each input table corresponds to an input stream that is connected to this operation in the job graph, and the type specifies the input's schema. Each input appears as a table that can be queried in SQL statements. |
+| `statements`       | array   | One or more SQL statements to run. Multiple statements run in the same order that you define them. Statements are either `view` statements or `output` statements. This field is required. See [How does the SQL transform process data?](#sql-transform-processing). |
+| `availableDatasets`| array   | Identifiers for datasets containing tables that the statements in this transform configuration can use. |
+| `globalStateTtl`   | string  | The global state time-to-live. When running stateful streaming jobs, any unused state that is not used after this time is dropped to reduce memory pressure. |
+| `shouldMaterialize`| boolean | Whether to materialize a query's result set. Use this option to force downstream transforms to reuse query results instead of re-running the query. |
+
+To learn about the SQL transform input and output types, see [SQL transform supported data types](/transforms/sql-transform/data-types).
+
+The following example of a SQL transform configuration creates a view named `error_logs` that filters for input log events with a severity of 13 or higher. It then creates an output stream named `critical_errors` that selects log events from the `error_logs` view where the message contains the string "CRITICAL":
+
+```json
+{
+  "name": "example_sql_operation",
+  "type": "sql-operation",
+  "inputs": {
+    "logs": "LOG_EVENT"
+  },
+  "statements": [
+    {
+      "type": "sql_view",
+      "tableName": "error_logs",
+      "sqlQuery": "SELECT * FROM logs WHERE severity >= 13",
+      "shouldMaterialize": false
+    },
+    {
+      "type": "sql_output",
+      "outputName": "critical_errors",
+      "outputType": "LOG_EVENT",
+      "sqlQuery": "SELECT * FROM error_logs WHERE message LIKE '%CRITICAL%'"
+    }
+  ],
+  "availableDatasets": [],
+  "globalStateTtl": "PT2M",
+  "watermarkDelay": "PT30S"
+}
+```
+
+## Performance considerations
+
+The following are best practices for optimizing query performance when using the SQL transform.
+
+### Query optimization
+
+- Use `WHERE` clauses early to filter data and reduce the resources required by complex queries.
+- Avoid `SELECT *` when possible. Instead, explicitly list the columns required for your processing.
+- Because they are CPU-intensive, limit the use of regular expressions on high-volume streams.
+
+The following is an inefficient query. This query applies a regular expression to all log messages, even when the message doesn't contain relevant content:
+
+```sql
+SELECT *,
+  REGEXP_EXTRACT(message, '(\\\\d{4}-\\\\d{2}-\\\\d{2})', 1) as date_extracted
+FROM logs
+```
+
+A better approach is to filter the logs first using a `WHERE` clause, and then apply the regular expression to the filtered logs:
+```sql
+SELECT *,  -- Only processes logs that likely contain dates
+  -- Regex only runs on pre-filtered logs (much more efficient)
+  REGEXP_EXTRACT(message, '(\\\\d{4}-\\\\d{2}-\\\\d{2})', 1) as date_extracted
+FROM logs
+WHERE message LIKE '%-%-%'  -- Quick pre-filter using simple pattern matching
+```
+
+Removing the `SELECT *` and explicitly listing only the required fields can further improve performance for this query.
+
+### Memory and state management
+
+- Computed fields increase the size of events and might impact downstream processing.
+- Complex aggregations require more memory. If necessary, reduce time-to-live values to reduce memory usage.
+- Because window operations buffer data, memory requirements increase with larger windows.
+- Because JSON operations allocate temporary objects, you should avoid using them in tight loops.
+
+### Resource usage patterns
+
+When you write SQL queries, consider the typical resource usage for common operations:
+
+- String operations, such as UPPER, LOWER, and CONCAT, have low CPU overhead.
+- Regular expression operations, such as REGEXP_REPLACE and REGEXP_EXTRACT, have high CPU overhead.
+- JSON operations, such as JSON_VALUE and JSON_QUERY, have moderate CPU overhead.
+- Mathematical operations have low CPU overhead.
+- Window aggregations have high memory usage during window buffering.
+
+## Error handling
+
+The SQL transform fails if:
+
+- The SQL syntax is invalid. Malformed SQL queries are rejected during parsing.
+- Field types are incompatible. For example, the standard fields in a log event must match their expected types when you include them in a query.
+- Runtime errors occur when running a query. For example, division by zero or an invalid regular expression.
+- JSON parsing errors occur, such as running invalid JSON operations on the attributes field.
+
+## Limitations
+
+### Streaming vs batch processing
+
+The SQL transform processes both streaming and batch data. Compared to batch processing, streaming has the following limitations:
+
+- `JOIN` operations are limited.
+- Complex aggregations or joins might require state management. Your pipeline can fail if the amount of state used for aggregations or joins becomes too large. You can manage the amount of state using the time-to-live configuration setting (`globalStateTtl`) in the SQL transform configuration. By default, `globalStateTtl` is set to 2 minutes.
+
+Windowing limitations:
+
+- Window functions require using windowing table-valued functions (TVFs), such as `TUMBLE`, `HOP`, `SESSION`, or `CUMULATE`.
+- You cannot use unbounded aggregations. Instead, use windowing for aggregations in streaming mode.
+
+Data ordering:
+
+- Events might arrive out of order. Consider using watermarks for time-based operations.
+- `ROW_NUMBER()` and ranking functions might not guarantee consistent ordering across restarts.
+
+## Next steps
+
+- To learn about using the SQL transform in the Grepr pipeline UI, see [Filter events in a Grepr pipeline](/transforms/filter-events).
+- To learn about supported data types for the SQL transform, see [SQL transform supported data types](/transforms/sql-transform/data-types).
+- To see examples of using the SQL transform, see [SQL transform examples](/transforms/sql-transform/sql-transform-examples).
+- To learn about using supported SQL functions and operators, see [SQL transform functions and operators](/transforms/sql-transform/sql-functions).
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is the SQL transform and what can it do?",
+    a: "The SQL transform is a Grepr component that processes log events using ANSI SQL statements, including Apache Flink SQL. It supports data normalization, log enrichment, security and compliance operations like data redaction, performance monitoring, and pipeline optimization using familiar SQL syntax."
+  },
+  {
+    q: "When should I use the SQL transform?",
+    a: "Use SQL transform for complex data transformations like format standardization, timestamp normalization, field enrichment with computed metrics, data redaction for security, anomaly flagging, SLA monitoring, error categorization, and selective filtering to reduce downstream processing."
+  },
+  {
+    q: "How do I create a SQL view versus a SQL output?",
+    a: "A view is a temporary table for intermediate results that subsequent statements can reference. An output converts the results of a view into a Flink DataStream object that downstream statements or pipeline sinks can consume. Each output must have a unique name and at least one output must exist in your SQL transform."
+  },
+  {
+    q: "Can I create multiple SQL statements in a single transform?",
+    a: "Yes. The SQL transform supports multiple SQL statements that run in the order you define them. Each statement can reference views created by previous statements or input tables, allowing you to build complex multi-stage data processing pipelines."
+  },
+  {
+    q: "What SQL standard does Grepr support?",
+    a: "The SQL transform complies with ANSI SQL standard and includes full capabilities of Apache Flink SQL 2.2.0. It supports SELECT, CREATE VIEW, GROUP BY, JOIN, window functions, and a comprehensive set of built-in functions and operators for data processing."
+  },
+  {
+    q: "How do I preserve original fields when transforming with SQL?",
+    a: "Include the wildcard character (*) in your SELECT statement to retain all fields from the original event. For example: SELECT *, CASE WHEN severity > 16 THEN 21 ELSE severity END as severity FROM logs keeps all original fields while transforming severity."
+  },
+  {
+    q: "How do I optimize SQL transform performance?",
+    a: "Filter data early with WHERE clauses before complex operations, avoid SELECT * when possible by listing only required columns, limit regex operations on high-volume streams, pre-filter before applying CPU-intensive operations like regex extraction, and materialize views when they are reused in multiple subsequent queries."
+  },
+  {
+    q: "What are views and when should I use shouldMaterialize?",
+    a: "Views are temporary tables containing intermediate results. Use shouldMaterialize: true when a view is referenced in multiple subsequent SQL statements to force results to be reused instead of re-running the query, improving performance for complex transformations."
+  },
+  {
+    q: "How do I handle late-arriving data in SQL transforms?",
+    a: "Use the watermarkDelay parameter in your SQL transform configuration to handle out-of-order data. Events that arrive later than the specified watermark delay are handled according to your Flink SQL configuration, typically being dropped or assigned to the nearest window."
+  },
+  {
+    q: "What happens if my SQL query fails?",
+    a: "The SQL transform fails if SQL syntax is invalid, field types are incompatible with schema expectations, runtime errors occur like division by zero, or JSON parsing errors happen. The pipeline will error and you should review the SQL statements and input data types to correct the issue."
+  }
+]} />

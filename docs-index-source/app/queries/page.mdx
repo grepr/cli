@@ -1,0 +1,71 @@
+---
+description: Search log data in the Grepr platform using query syntaxes similar to familiar query interfaces, such as the Datadog and New Relic log query syntaxes.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Query log data in the Grepr data lake
+
+Grepr provides multiple query interfaces to search and analyze log data stored in your Grepr data lake. You can use familiar query languages from popular observability platforms, making it easy to migrate existing queries or integrate with existing workflows. Each query interface supports different search patterns and filtering capabilities, enabling you to select the most suitable tool for your specific analysis needs.
+
+To use these query interfaces, you can use Log Explorer in the Grepr UI, the Grepr CLI, or the REST API.
+
+To access Log Explorer, from the Grepr UI home page, click **Logs** in the top navigation and select a dataset from the menu.
+
+To use the Grepr CLI or REST API, see [The Grepr CLI](/cli) or [Create and manage jobs with the Grepr REST API](/apis/job-creation-guide).
+
+## Search logs using a Datadog-like query syntax
+
+You can search and filter logs using Datadog's familiar query syntax. This interface supports full-text search across message fields, including wildcard matching, phrase searches, and field-specific queries, tag filtering with case-sensitive matching, attribute queries using the `@` symbol, and boolean operators for complex searches.
+
+See [Search logs using a Datadog-like syntax](/queries/datadog).
+
+## Search logs using a New Relic log query-like syntax
+
+You can search logs using a syntax similar to New Relic's Lucene-based syntax. Support for this syntax provides a familiar search experience for users of the New Relic log query syntax.
+
+See [Search logs using a New Relic log query-like syntax](/queries/new-relic).
+
+## Limitations
+
+- For some of the supported query interfaces, Grepr supports only a subset of the interface's functionality. To learn more about the limitations, see the documentation pages for each interface.
+
+<HiddenFAQ faqs={[
+  {
+    q: "What query syntaxes does Grepr support?",
+    a: "Grepr supports two query syntaxes: A Datadog-like query syntax and a New Relic log query-like syntax. Each syntax is optimized for users familiar with those platforms and provides similar filtering and search capabilities."
+  },
+  {
+    q: "Can I use Datadog queries directly in Grepr?",
+    a: "Grepr supports a subset of Datadog query syntax designed to be compatible with familiar Datadog queries. You can port many Datadog queries, though some advanced features are not supported. See the Datadog query documentation for details on limitations."
+  },
+  {
+    q: "What are the differences between query syntaxes in Grepr?",
+    a: "Datadog syntax focuses on message searches, tag queries, and attribute filtering with boolean operators. The New Relic log query syntax provides field-based search with logical operators and comparison operators. Choose based on your familiarity and use case."
+  },
+  {
+    q: "Which query interface is best for full-text search?",
+    a: "The Datadog-like syntax is excellent for full-text message searches, supporting phrase searches, wildcard matching, and case-insensitive matching. For more structured field-based searching, New Relic log queries with field:value syntax may be more efficient."
+  },
+  {
+    q: "How do I access the query interfaces?",
+    a: "You can use the query interfaces through three methods: Log Explorer in the Grepr UI (click Logs in navigation and select a dataset), the Grepr CLI, or the REST API. Log Explorer provides a visual interface for constructing and running queries."
+  },
+  {
+    q: "Can I combine query types in a single pipeline?",
+    a: "Each query interface is independent, so you use one syntax per query. However, you can use multiple query filters in a pipeline by chaining them in the job graph configuration. The REST API and pipelines support defining complex multi-stage filtering."
+  },
+  {
+    q: "What limitations should I be aware of?",
+    a: "Each query syntax supports only a subset of the original platform's functionality. Check the specific query interface documentation for detailed limitation information."
+  },
+  {
+    q: "Which query syntax is fastest?",
+    a: "Performance depends on your data and query patterns. Generally, using specific tag and attribute searches is faster than broad message searches. All syntaxes benefit from minimizing time ranges and specifying service/host tags. Exact matches outperform wildcard searches."
+  },
+  {
+    q: "Can I search nested data with these query syntaxes?",
+    a: "Yes, all query syntaxes support searching nested attributes and tags using dot notation. For example, @metadata.request.user_id:12345 searches nested structures. Datadog syntax uses the @ prefix for attributes and the New Relic log query syntax uses field:value format."
+  }
+]} />

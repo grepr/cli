@@ -21,8 +21,9 @@
  * - Proper context for understanding usage
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'fs';
 import path from 'path';
+import { resolveDocsDir } from './docs-source.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -245,27 +246,20 @@ function sanitizeFilename(name: string): string {
     .replace(/^-|-$/g, '');
 }
 
-async function convertOpenAPIToMarkdown(): Promise<void> {
+/** Rebuilds generated OpenAPI Markdown from the supplied specification. */
+export async function convertOpenAPIToMarkdown(
+  specPath?: string,
+  outputDir: string = path.resolve(__dirname, '../build/dist/openapi-docs')
+): Promise<void> {
   console.log('Converting OpenAPI spec to markdown...\n');
 
-  const specPath = path.resolve(__dirname, '../../../docs/public/openapi.json');
-  if (!existsSync(specPath)) {
-    console.warn(`⚠ OpenAPI spec not found: ${specPath}`);
-    console.warn('  Skipping OpenAPI conversion.\n');
-    return;
-  }
+  const resolvedSpecPath = specPath ?? path.join(resolveDocsDir(), 'public/openapi.json');
+  const spec: OpenAPISpec = JSON.parse(readFileSync(resolvedSpecPath, 'utf-8'));
 
-  const spec: OpenAPISpec = JSON.parse(readFileSync(specPath, 'utf-8'));
-
-  const outputDir = path.resolve(__dirname, '../build/dist/openapi-docs');
   const apiDir = path.join(outputDir, 'api');
   const schemasDir = path.join(outputDir, 'schemas');
 
-  if (existsSync(apiDir) && existsSync(schemasDir)) {
-    console.log('OpenAPI markdown docs already exist. Skipping conversion.\n');
-    return;
-  }
-
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(apiDir, { recursive: true });
   mkdirSync(schemasDir, { recursive: true });
 
@@ -329,12 +323,14 @@ async function convertOpenAPIToMarkdown(): Promise<void> {
   console.log(`  Output directory: ${outputDir}`);
 }
 
-convertOpenAPIToMarkdown().catch((error) => {
-  console.error('\n✗ Error converting OpenAPI spec:');
-  console.error(error instanceof Error ? error.message : String(error));
-  if (error instanceof Error && error.stack) {
-    console.error('\nStack trace:');
-    console.error(error.stack);
-  }
-  process.exit(1);
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  convertOpenAPIToMarkdown().catch((error) => {
+    console.error('\n✗ Error converting OpenAPI spec:');
+    console.error(error instanceof Error ? error.message : String(error));
+    if (error instanceof Error && error.stack) {
+      console.error('\nStack trace:');
+      console.error(error.stack);
+    }
+    process.exit(1);
+  });
+}

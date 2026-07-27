@@ -1,0 +1,27 @@
+.swaggerContainer {
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+
+.swaggerContainer code {
+    display: inline
+}
+
+.swaggerContainerDark {
+    filter: invert(88%) hue-rotate(180deg);
+}
+
+.swaggerContainerDark .microlight {
+    filter: invert(100%) hue-rotate(180deg);
+}
+
+.swaggerContainerDark {
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+
+.swaggerContainerDark code {
+    display: inline
+}

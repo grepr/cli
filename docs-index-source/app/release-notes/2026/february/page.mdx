@@ -1,0 +1,144 @@
+---
+description: Release notes for new features, improvements, and bug fixes to the Grepr platform released in February 2026.
+---
+
+# Release notes for February 2026
+
+Grepr released these feature updates, improvements, and bug fixes in February 2026.
+
+## February 27, 2026
+
+{/* ENGT-3651 */}
+### New feature: Configure source attribute preservation in the remapper
+
+You can now configure whether source attributes are preserved or removed after remapping. Each remapper type and individual attribute-to-attribute rule supports a **Preserve Source** option, giving you fine-grained control over attribute handling during remapping. See [Preserving the source attribute](/transforms/remapper#preserve-source-attribute).
+
+{/* ENGT-3666 */}
+### New feature: Improvements to diff views in the Grepr UI
+
+Viewing and interacting with diffs in the Grepr UI, such as comparing job versions,  is enhanced with an upgrade to a new rendering engine and interactive controls. You can now customize diff displays with options for themes, diff indicators, line highlighting, and layout.
+
+{/* ENGT-3710 */}
+### Bug fix: Create and update operations failed with empty payloads in Firefox
+
+An issue that caused Firefox browsers to send create or update requests with empty payloads has been fixed. This issue affected all create or update operations in the Grepr UI when using Firefox.
+
+{/* ENGT-3465, ENGT-3466 */}
+### Bug fix: Several issues with the pipeline log viewer
+
+Several issues affecting the **Pipeline Log Viewer** have been fixed:
+
+- Filters and selections no longer reset unexpectedly while logs refresh.
+- The diff view no longer crashes when logs contain large numeric fields.
+- Control states, including the restart button and pause-on-click behavior, now work correctly.
+- Unsaved pipeline changes are no longer overwritten when some background processes occur.
+
+{/* ENGT-3614 */}
+### Bug fix: Jobs page did not display the latest job versions
+
+An issue that prevented the jobs page from displaying the latest versions of some jobs has been fixed.
+
+{/* ENGT-3718 */}
+### Bug fix: Forms could be submitted multiple times, causing duplicate submissions
+
+**Submit** buttons in forms and confirmation dialogs are now disabled while a save operation is in progress, preventing unintended duplicate submissions.
+
+## February 26, 2026
+
+{/* ENGT-3602 */}
+### New feature: Extract typed values from `VARIANT` attributes at specific paths with the `VARIANT_VALUE` UDF
+
+You can now use the `VARIANT_VALUE` UDF in SQL transforms to extract scalar values from `VARIANT` attributes at specific JSON paths and convert them to typed SQL values. The `VARIANT_VALUE` UDF supports flexible path navigation by using dot or bracket notation and configurable error handling for missing paths and type-conversion errors. See [VARIANT functions: query and extract values](/transforms/sql-transform/sql-functions#variant-query-extract-fns).
+
+## February 18, 2026
+
+{/* ENGT-3369 */}
+### New feature: View and filter activity, integration, and audit logs in the Grepr UI
+
+You can now view and filter system logs in the Grepr UI, adding to the existing system log support in the Grepr REST API. The new **System Logs** page provides advanced filtering by date range, log types, and statuses, and Grepr resource types, along with full-text search and the ability to download logs as ND-JSON files. See [View and search system activity in Grepr](/admin/activity-logs). To use the API, see the [Activity Logs specification](/apis/api-spec#tag/Activity-Logs).
+
+{/* ENGT-3597 */}
+### New feature: Integration exceptions UI improvements
+
+The integration exceptions UI now includes syntax highlighting for log queries, automatic background fetching of exception pages, and dynamic column sizing. Text truncation in the exceptions list has also been improved, with expandable entries and a copy button for query strings. See [Identify log events that should bypass aggregation](/integrations#passthrough-estimation).
+
+{/* ENGT-3603 */}
+### New feature: Splunk integration enhancements support HEC profiles and add a Splunk health endpoint
+
+The Grepr Splunk integration now supports data ingestion from sources with content headers containing a Splunk HEC profile, such as Splunk Connect for Kafka sinks. To check the health of Grepr services, sources can now use a new Splunk health endpoint in the Grepr REST API.
+
+{/* ENGT-3625 */}
+### Bug fix: `tag:*` and `@attr:*` wildcard queries returned invalid results
+
+An issue where `tag:*` and `@attr:*` expressions in log queries returned invalid results has been fixed. With this fix, these queries correctly return `true` if the tag or attribute exists.
+
+## February 17, 2026
+
+{/* ENGT-3604 */}
+### New feature: Rename attributes in the attribute remapper
+
+You can now define rename rules in the attribute remapper to move attribute values from one path to another. Each rule supports optional predicate filters, so you can apply remappings conditionally based on query syntax. See [The remapper transform rename rules](/transforms/remapper#rename-rules).
+
+## February 13, 2026
+
+{/* ENGT-3491 */}
+### New feature: Integrate pipeline management into your IaC processes with the Grepr Terraform provider
+
+The Grepr Terraform provider is now available. The provider allows you to manage your Grepr pipelines and related resources using Terraform, enabling you to integrate pipeline management into your infrastructure as code (IaC) workflows. The provider supports creating, updating, and deleting pipelines through Terraform configurations, allowing you to define, deploy, and manage your pipelines in a consistent and repeatable manner. See [Manage Grepr pipelines with Terraform](/admin/terraform-provider).
+
+## February 12, 2026
+
+{/* ENGT-3086 */}
+### New feature: Improved search performance for large query results in Log Explorer
+
+Enhancements to query processing in Log Explorer improve performance and stability when queries return large datasets.
+
+{/* ENGT-3599 */}
+### Bug fix: Integration cards incorrectly showed all active pipelines as linked
+
+An issue where integration cards displayed all active pipelines as linked when no pipelines were associated with the integration has been fixed. Integration cards now correctly show only the pipelines that are linked to the integration.
+
+{/* ENGT-3577 */}
+### Bug fix: Invalid links shown for backfill jobs using a New Relic sink
+
+An issue that caused invalid links to be returned for backfill jobs using a New Relic sink has been fixed.
+
+## February 9, 2026
+
+{/* ENGT-3496 */}
+### New feature: Search for substrings in all `VARIANT` attributes with the `VARIANT_VALUE_CONTAINS` UDF
+
+You can now use the `VARIANT_VALUE_CONTAINS` UDF in SQL transforms to search for substrings in all attributes of a `VARIANT` data type. You can use this UDF to search all values in a `VARIANT`, or just specific attribute paths. See [VARIANT functions: query and extract values](/transforms/sql-transform/sql-functions#variant-query-extract-fns).
+
+{/* ENGT-3571 */}
+### Bug fix: Logs did not appear in the live edit reducer-to-sink step
+
+An issue in the live edit **Pipeline Log Viewer** that prevented logs from appearing in the reducer-to-sink step has been fixed.
+
+{/* ENGT-3569, ENGT-3529 */}
+### Bug fix: Exceptions did not display in the integration exceptions UI
+
+An issue that prevented exceptions from being displayed in the integration exceptions UI on initial page load, and another that caused the UI to stop responding, have been fixed.
+
+## February 6, 2026
+
+{/* ENGT-3399 */}
+### Bug fix: Members could not view users in the Grepr UI
+
+A bug that prevented Members from viewing users in the Grepr UI has been fixed. This fix ensures that the permissions, including the `view users` permission, are correctly applied.
+
+{/* ENGT-3446 */}
+### Bug fix: Several issues with pipeline configuration updates and start and stop operations
+
+Several issues related to pipeline configuration updates and the starting and stopping of pipelines have been fixed, improving the reliability of pipeline management:
+
+- Incorrectly attempting to start a pipeline during configuration updates to a pipeline in the `STOPPED` state.
+- Failing to start a pipeline when transitioning from `STOPPED` to `RUNNING` if there were pending configuration updates.
+- Failing to delete resources when stopping a pipeline.
+
+## February 3, 2026
+
+{/* ENGT-3478 */}
+### Bug fix: Log events bypassed the reducer step in the pipeline filter
+
+A bug in the pipeline filter step that caused some log events to bypass rather than go through the reducer step has been fixed. This fix ensures that logs are reliably and correctly processed.

@@ -1,0 +1,299 @@
+---
+description: Release notes for new features, improvements, and bug fixes to the Grepr platform released in May 2026.
+---
+
+# Release notes for May 2026
+
+Grepr released these feature updates, improvements, and bug fixes in May 2026.
+
+## May 31, 2026
+
+{/* ENGT-4599 */}
+### Behavioral change: Datadog-like queries using `!` and `-` in attribute values now conform to the Datadog behavior
+
+The Datadog-like query syntax now follows the Datadog behavior for queries that use `!` and `-` in unquoted attribute values. A `!` in the middle of a value, such as `@env:a!b`, is now interpreted as `@env:a AND NOT b`, and a leading `!` or `-`, such as `@env:!value`, is rejected as a parse error. This change requires updating any queries that treat these characters as literal text. See [Search logs using a Datadog-like syntax](/queries/datadog).
+
+{/* ENGT-4138, ENGT-4139 */}
+### New feature: Configure impact estimation per dataset
+
+Impact estimation is now configured per dataset rather than per integration, so a single configuration applies to all integrations and pipelines that write to that dataset. See [Identify log events that should bypass aggregation](/integrations#passthrough-estimation).
+
+{/* ENGT-4682 */}
+### Bug fix: Pipeline reduction percentage could disagree with the totals on the same card
+
+An issue has been fixed that could cause invalid reduction percentage calculations on the **Spans**, **Messages**, and **Bytes** cards in the pipeline details overview pane for a log or trace pipeline. Because of this issue, the displayed percentage didn't match the actual ratio between the totals displayed on the card.
+
+{/* ENGT-4683 */}
+### Bug fix: Datadog backfill links opened the wrong region
+
+The **View in Datadog** links generated for backfill jobs always used the Datadog `US1` site, even if your Datadog integration was in the `EU1`, `US3`, `US5`, `US1-FED`, or `AP1` sites. The links for logs and trace backfills now resolve to the correct site from the integration that backs each sink.
+
+{/* ENGT-4690 */}
+### Bug fix: Long filter queries overflowed their box on pipeline filter pages
+
+An issue has been fixed that caused long passthrough queries on the pre-parsing, post-parsing, or post-warehouse filter pages to render outside the code block.
+
+{/* ENGT-4701 */}
+### Bug fix: Estimation failures were not attributed to the affected dataset
+
+When an impact estimation job failed or was canceled, the resulting activity event appeared as a general organization-level event. The event is now attributed to the affected dataset, so you can see in your system logs which dataset's estimation failed.
+
+## May 23, 2026
+
+{/* ENGT-4565 */}
+### New feature: Head sampling rules for trace pipelines
+
+You can now define head sampling rules on a trace pipeline to retain spans based on a SQL predicate independent of the tail sampler's decisions, for example, to always keep spans where `http.status_code = 500`. Trace-scope rules retain whole matching traces, and span-scope rules retain individual matching spans even when the tail sampler would otherwise drop them. A new **Span Composition** chart in the pipeline details overview pane shows the percentage of the input spans emitted by the trace reducer, broken out by head-sampled, error, incomplete, and sampled categories.
+
+{/* ENGT-4555 */}
+### New feature: Quick links to your data from datasets and sinks
+
+Pages and elements in the Grepr UI, such as vendor integration cards and pipeline sink cards, now include direct links to view your data in either Log Explorer or Trace Explorer.
+
+{/* ENGT-4425 */}
+### New feature: NRQL-like queries accept numeric `SINCE` and `UNTIL` timestamps
+
+The NRQL-like syntax previously required epoch timestamps to be quoted, so unquoted values from copied New Relic queries failed to parse. Unquoted numeric `SINCE` and `UNTIL` timestamps are now accepted, and Grepr automatically handles second, millisecond, microsecond, and nanosecond magnitudes.
+
+{/* ENGT-4039 */}
+### New feature: Test pipeline changes with samples of your live data
+
+When you download logs to ND-JSON files from Log Explorer, you can now upload those files in the **Pipeline Log Viewer** on the pipeline details page. This feature lets you capture samples of your live log events and replay them to test and validate changes to your pipelines. See [View pipeline data flows and test changes with live edit](/tutorials/live-edit).
+
+{/* ENGT-4600, ENGT-4628 */}
+### New feature: Configure a self-hosted S3 data warehouse without leaving the app
+
+When you manually set up a self-hosted S3 data warehouse, the bucket resource policy and lifecycle policy guidance now render inline in the **Add Storage** form instead of linking to the documentation. Your bucket name and organization name are filled into the policy as you type, and the policy uses the correct IAM role name for your deployment's region, so you can copy and apply the resulting policy. To learn more about setting up S3 storage, see [Amazon S3](/integrations/aws-s3).
+
+{/* ENGT-4535, ENGT-4631 */}
+### Bug fix: Tag queries using the Datadog-like syntax did not match values with different casing
+
+Datadog stores most tag values in lowercase at ingest, but Grepr preserves the original casing, so a query such as `env:prod` failed to match events ingested as `env:PROD`. Tag-equality comparisons are now case-insensitive and match regardless of the stored casing, including values that contain uppercase characters, such as a `host` value, which previously matched nothing.
+
+{/* ENGT-4609 */}
+### Bug fix: Wildcard queries using the Datadog-like syntax errored on events missing the queried attribute
+
+"contains" and "ends-with" wildcard queries, such as `@field:*text*`, across multiple `OR` branches on the same field could throw an error when an event lacked the queried attribute, causing those events to pass through unprocessed instead of being evaluated correctly. These comparisons are now null-safe.
+
+{/* ENGT-4596 */}
+### Bug fix: The cursor jumped while editing a pipeline in JSON mode
+
+When you edited a pipeline in JSON mode, the editor reformatted your text with each keystroke and moved the cursor, making it difficult to type. Your cursor now stays where you place it while editing log, trace, and unknown pipelines.
+
+{/* ENGT-4614 */}
+### Bug fix: Filters on non-Datadog sinks were dropped after creating a pipeline
+
+An issue has been fixed that caused a filter you configured on an OTLP, Splunk, Sumo Logic, or New Relic sink to be dropped after pipeline creation.
+
+{/* ENGT-4561 */}
+### Bug fix: Live preview failed on repeated runs when uploading plain text logs
+
+An issue has been fixed that caused an error when re-running the preview of a plain text upload in the live edit UI.
+
+{/* ENGT-4510 */}
+### Bug fix: Grepr CLI flags and output formats did not behave as documented
+
+The following CLI issues have been resolved, ensuring that commands behave as documented and machine-readable output is safe to pipe:
+
+- The `job:list|jobs --all` command now returns the full list instead of re-applying the default filters, `--max-depth` is honored, and `--no-job-state` and `--no-timestamps` now take effect.
+- The `job:get --version` flag is renamed to `--for-version` so it no longer collides with the global `-V`, `job:to-test` no longer crashes and now writes to the file given by `-o`, and `job:update` accepts valid payloads without a spurious name error.
+- In the `compact`, `raw`, and `csv` formats, status messages and summary footers are now sent to standard error so that output parses cleanly through tools such as `jq`.
+
+{/* ENGT-4637 */}
+### Bug fix: Signup could fail intermittently with a reCAPTCHA error
+
+Signup could occasionally fail with a reCAPTCHA error when the verification ran before the reCAPTCHA library finished loading. Grepr now automatically retries, so signup completes reliably.
+
+{/* ENGT-4512 */}
+### Bug fix: Some actions were missing from your organization's activity logs
+
+An issue has been fixed that caused some actions, such as assigning and removing a role, to not be recorded in your organization's system logs.
+
+## May 16, 2026
+
+{/* ENGT-4321 */}
+### Behavioral change: New Relic log query-like queries treat `?` as a literal character
+
+For queries using the New Relic log query-like syntax, `?` is now treated as a literal character rather than a single-character wildcard, matching New Relic's own behavior. A query such as `message:a?b` now matches only the exact text `a?b` instead of an `a`, followed by any single character, followed by a `b`. The `*` wildcard is unaffected and continues to match any sequence of characters.
+
+{/* ENGT-4531 */}
+### Behavioral change: API validation errors now identify the field at fault
+
+When a request body fails JSON parsing or validation, the `400` response now includes the JSON path of the field at fault along with a descriptive message. This replaces the previous `Unable to process JSON` response, making malformed requests easier to debug.
+
+{/* ENGT-4500 */}
+### New feature: Permission-aware developer pages in the UI
+
+Pages in the The **Developer** section in the Grepr UI are now available to users based on the pages they have permission to use. Pages that the user doesn't have permission to use show a clear restricted-access message instead of a generic error, and no longer retry repeatedly when access is denied. Additionally, the **Monitor** page is available to all users.
+
+{/* ENGT-4469 */}
+### New feature: Filter logs by message length
+
+A new message-length filter matches log events with a message character length between configurable minimum and maximum values, inclusive. Either bounding value is optional. In Log Explorer, you can set the minimum and maximum length bounds from the search settings menu, and an applied bound is indicated with a chip.
+
+{/* ENGT-4497 */}
+### Bug fix: String comparisons on JSON attributes could fail because of stray quotes
+
+When an attribute extracted from JSON was used in a string context, such as inside `if()`, a string concatenation, or an equality check, the extracted value could retain its JSON encoding, including literal quote characters around a value such as `"hello"`. This caused comparisons and concatenations to mismatch unexpectedly. Extracted scalar values are now correctly unquoted, so these queries return the expected results.
+
+{/* ENGT-4447 */}
+### Bug fix: NRQL syntax queries using `contains()` with dot notation on tags never matched
+
+Queries using the NRQL-like syntax and the `contains()` function with an attribute value that used dot notation always returned no matches unless you used bracket syntax to reference the attribute, for example, `contains(tags['myattr'], 'target')`. Dot notation now behaves the same as bracket notation and correctly matches values within tag arrays.
+
+{/* ENGT-4403 */}
+### Bug fix: Datadog syntax numeric and range queries on multi-value attributes failed against the data lake
+
+Queries using the Datadog-like syntax that included numeric comparisons and ranges, such as `@count:>100` and `@duration:[10 TO 1000]`, failed when run against the data lake, and could miss matches when an attribute held a mix of numeric and non-numeric values. These queries now evaluate each value in a multi-value attribute independently and return the expected matches.
+
+{/* ENGT-4519 */}
+### Bug fix: Datadog syntax string range queries returned wrong results on multi-value attributes
+
+Queries using the Datadog-like syntax that included string range queries, such as `@env:[abc TO xyz]`, produced incorrect matches when the attribute held multiple values. Range matching now evaluates each value in a multi-value attribute against both bounds together, so a value matches only when it actually falls within the range.
+
+{/* ENGT-3497 */}
+### Bug fix: Empty Grok captures corrupted existing attributes
+
+When a Grok parsing rule captured an empty value for an attribute that already had a value, the empty capture was merged in and turned the existing value into a list. Empty captures are now skipped, so existing attribute values are preserved unchanged.
+
+{/* ENGT-4516 */}
+### Bug fix: Live edit failed on log reduction pipelines with an OpenTelemetry sink
+
+An issue causing failures when using live edit with a log reduction pipeline that used an OpenTelemetry sink is fixed. The preview now renders correctly for these pipelines.
+
+{/* ENGT-4556 */}
+### Bug fix: Instant filtering showed stale results after switching datasets
+
+Switching datasets in Log Explorer without running a new search left the results grid, instant filters, and autocomplete operating on the previously selected dataset. Switching datasets now clears these, so after you run **Search** you see only data for the newly selected dataset.
+
+{/* ENGT-4505 */}
+### Bug fix: SSO sign-in was rejected when auto-signup was disabled
+
+In organizations with auto-signup disabled, a first-time SSO sign-in was denied even when your group claims mapped to a role. SSO role and team mappings are now applied before the access check, so you can sign in when your login is provisioned only through mapped group claims. Comma-separated group claims from identity providers such as Okta are now normalized so they match per-group mapping rules.
+
+## May 9, 2026
+
+{/* ENGT-4367 */}
+### New feature: Filter, exclude, or copy any field directly from log details
+
+When you open the details of a log in Log Explorer, every tag tile and every field in the JSON tree now has an actions menu. From the menu, you can add a filter for the value, exclude the value, replace the current search, or copy the field or key-value pair to your clipboard. The generated filter uses the selected query syntax, so you see the exact query text that gets added to your search. Filters apply immediately to the results without requiring a backend round trip.
+
+{/* ENGT-4426 */}
+### Bug fix: Wildcard searches missed matches in some fields against the data lake
+
+Unprefixed wildcard searches such as `err*` or `*error` did not consistently match values stored in tag and attribute fields when run against the data lake. These searches now match correctly across message, attribute, and tag fields.
+
+{/* ENGT-3959 */}
+### Bug fix: Queries over all attribute values failed against the data lake
+
+Queries that scan across all attribute values, such as checking whether any attribute contains a given value, failed or returned no results when run against the data lake. These queries now run correctly, and a row with no attribute values is treated as an empty set rather than an unknown one.
+
+{/* ENGT-4421 */}
+### Bug fix: New Relic log query `NOT RLIKE` excluded rows with missing fields
+
+Queries using the New Relic log query-like syntax and the `NOT RLIKE` clause dropped rows whose target field was missing or empty instead of including them. These queries now return rows that have no value for the field, matching New Relic's behavior where a negated pattern match includes records that have nothing to match against.
+
+{/* ENGT-4463 */}
+### Bug fix: Displayed pipeline input rate higher than the actual value
+
+The input rate displayed in the UI for a pipeline could be approximately twice as high as the actual value. The displayed rate now reflects the actual volume of data entering the pipeline.
+
+## May 7, 2026
+
+{/* ENGT-4408 */}
+### Bug fix: Incorrect routing of data for sinks without defined filters
+
+An issue is fixed that caused incorrect routing of data when a pipeline had sinks that did not define a filter. Data is now routed correctly even when sinks don't define a filter.
+
+## May 6, 2026
+
+{/* ENGT-4202 */}
+### New feature: Request an SSO connection from the user management UI
+
+The **SSO** page in the user management UI now indicates whether your organization has an SSO connection configured. Organizations without one see a message and a button to request SSO setup from the Grepr team. The claim-mappings configuration appears only after a connection is enabled.
+
+{/* ENGT-4405 */}
+### Bug fix: Queries with negated terms skipped rows with missing fields
+
+Queries with a negated term, such as `-error` or `NOT @env:prod`, didn't return rows if a field included in the query was empty or missing. These queries now correctly return rows that have no value for the field, matching the expectation that a negated match includes records that have nothing to match against.
+
+## May 4, 2026
+
+{/* ENGT-4386 */}
+### Bug fix: Raw log links were not filtered by the pattern in the URL
+
+Opening a raw log link that included a pattern ID showed unfiltered results instead of only the logs for that pattern. Log Explorer now correctly applies the pattern filter from the URL.
+
+## May 3, 2026
+
+{/* ENGT-3892 */}
+### New feature: Fetch Grepr platform metrics with a Prometheus-compatible endpoint
+
+Grepr now provides an endpoint that exposes platform performance metrics in the Prometheus and OpenMetrics text exposition formats. You can scrape this endpoint with any monitoring tool that supports either format to monitor your Grepr pipelines alongside your other infrastructure. To learn more about configuring metric scraping, see [Monitor performance metrics](/grepr-platform/monitoring).
+
+{/* ENGT-4211 */}
+### New feature: The new Reader role provides finer-grained access control to Grepr resources
+
+The new Reader role lets you assign users view-only permissions on all organization resources. Users with the Reader role can view resources, such as pipelines and integrations, and can query logs, but cannot create, edit, or delete resources, and cannot run backfill jobs that send data to vendor integrations. See [Manage users in the Grepr platform](/admin/manage-users).
+
+{/* ENGT-4211 */}
+### New feature: Allow users to run backfill jobs without granting full access to integrations
+
+The new write permission on integrations grants users permission to send data through an integration configured as a pipeline sink. Use this permission to allow users to run backfill jobs through an integration without granting further permissions on the integration. See [Permissions in the Grepr platform](/grepr-platform/permissions).
+
+{/* ENGT-3410 */}
+### New feature: Upload log files in the **Pipeline Log Viewer**
+
+The **Pipeline Log Viewer** now supports uploading log files as an alternative to streaming live data. To test your pipeline configurations with sample data, you can upload files in JSON or plain text formats up to 10 MB in size. This is useful for validating pipeline behavior against known datasets without sending live data. See [View pipeline data flows and test changes with live edit](/tutorials/live-edit).
+
+{/* ENGT-3934 */}
+### New feature: View vendor sink HTTP delivery status in pipeline details
+
+The sinks pane on the pipeline details page now displays a stacked bar chart showing HTTP response status codes from requests to vendor platforms, grouped into 2xx, 4xx, 5xx, and other responses. This makes it easier to identify delivery issues with your downstream observability platforms.
+
+{/* ENGT-4335 */}
+### New feature: Combined CPU utilization and CPU hours on the pipeline overview
+
+The pipeline details overview pane now displays CPU utilization and CPU hours together in a single CPU card. The card includes a filled-area chart of vCPU usage with the total CPU hours displayed in the header, along with a help tooltip describing both metrics.
+
+{/* ENGT-4185 */}
+### New feature: Log Explorer improvements
+
+The classic Log Explorer view has been removed, and you now see only the updated view with instant filtering. The maximum result count is now capped at 25,000 to prevent browser performance issues with larger result sets. Additionally, table headers in Log Explorer now render correctly in dark mode.
+
+{/* ENGT-4147 */}
+### Bug fix: Log status remapper did not accept numeric severity values
+
+An issue where the log status remapper did not accept numeric severity values from OpenTelemetry sources and JSON loggers has been fixed. The status remapper now accepts numeric severity values that follow the OpenTelemetry severity numbering scheme, from 1 through 24.
+
+{/* ENGT-4330 */}
+### Bug fix: OpenTelemetry attribute keys containing dots were incorrectly split
+
+An issue where OpenTelemetry attribute keys containing literal dots, such as `foo.bar`, were incorrectly split into nested key-value lists during ingestion has been fixed. Attribute keys are now preserved as received.
+
+{/* ENGT-4227 */}
+### Bug fix: Premature logout when accepting an invitation
+
+An issue where accepting an invitation could log you out before your account was fully provisioned, leaving you without permissions, has been fixed.
+
+{/* ENGT-4220 */}
+### Bug fix: Intermittent `403` errors during concurrent updates to roles or integrations
+
+An issue where authorization checks would sometimes return 403 forbidden errors during concurrent role or integration updates has been fixed.
+
+## May 2, 2026
+
+{/* ENGT-4370 */}
+### New feature: Forward oversized log messages without reduction
+
+The log reducer can now treat messages longer than a configurable character threshold as exceptions, forwarding them through your pipeline unchanged instead of attempting to summarize them. This prevents very large log messages from impacting pipeline throughput. The threshold is configurable for each pipeline, and is disabled by default.
+
+{/* ENGT-4365 */}
+### Bug fix: Invalid URLs and resource IDs could hang or crash the app
+
+An issue that caused errors or timeouts when going to an unknown URL, or to a pipeline, metric, or team URL with an invalid ID has been fixed. You now see a not-found page explaining the error.
+
+{/* ENGT-4380 */}
+### Bug fix: Raw log links returned no results when using the New Relic log query syntax
+
+When you had the New Relic log query-like syntax set as your query language, clicking the raw log link on a summary produced a query in the wrong syntax, returning zero matches or a parse error. The link now generates a query in the correct syntax for the active query language.

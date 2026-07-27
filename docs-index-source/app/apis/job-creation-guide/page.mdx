@@ -1,0 +1,530 @@
+---
+description: Learn to create and manage jobs using the Grepr REST APIs, including using the API for batch queries, streaming pipelines, and production workflows.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Create and manage jobs with the Grepr REST API
+
+This guide helps developers build programs that create and manage Grepr jobs using our REST APIs. You can run a Grepr job synchronously or asynchronously, and as a batch or streaming operation.
+
+Grepr jobs are composed of a directed graph of operations that process log data. Each job has:
+
+- **Execution Mode**: `SYNCHRONOUS` or `ASYNCHRONOUS`.
+- **Processing Type**: `BATCH` or `STREAMING`.
+- **Job Graph**: A collection of vertices (operations) and edges (data flow connections).
+
+## Authentication
+
+All job operations require authentication using Bearer tokens. See [Authenticate to Grepr REST APIs](/apis/authentication) for details on obtaining access tokens.
+
+Include your token in API requests:
+```bash
+Authorization: Bearer <your_access_token>
+```
+
+## Job creation endpoints
+
+### Synchronous jobs
+```bash
+POST /v1/jobs/sync
+```
+Returns streaming results as ND-JSON. Connection stays open until the job completes. See the [API specification](/apis/api-spec#tag/Jobs/operation/submitSyncJob) for details.
+
+### Asynchronous jobs
+```bash
+POST /v1/jobs/async
+```
+Returns immediately with the job ID. Poll job status using the GET endpoint. See the [API specification](/apis/api-spec#tag/Jobs/operation/submitAsyncJob) for details.
+
+## Job management
+
+### Get job status
+```bash
+GET /v1/jobs/{id}?version={version}&resolved={boolean}
+```
+See the [API specification](/apis/api-spec#tag/Jobs/operation/getJob) for details.
+
+### Update job
+```bash
+PUT /v1/jobs/{id}
+```
+See the [API specification](/apis/api-spec#tag/Jobs/operation/updateJob) for details.
+
+### Delete job
+```bash
+DELETE /v1/jobs/{id}
+```
+See the [API specification](/apis/api-spec#tag/Jobs/operation/deleteJob) for details.
+
+### List jobs
+```bash
+GET /v1/jobs?execution={type}&processing={type}&state={states}
+```
+See the [API specification](/apis/api-spec#tag/Jobs/operation/getJobs) for details.
+
+## Job schema
+
+### CreateJob request
+```json
+{
+  "name": "my_job",
+  "execution": "SYNCHRONOUS|ASYNCHRONOUS",
+  "processing": "BATCH|STREAMING",
+  "jobGraph": {
+    "vertices": [...],
+    "edges": [...]
+  },
+  "tags": {
+    "environment": "production",
+    "team": "data-engineering"
+  },
+  "teamIds": ["team-id-1"]
+}
+```
+
+### Job graph structure
+
+The job graph uses a simplified edge format. Edges can be specified as:
+- Simple strings: `"source_op -> destination_op"`.
+- With specific outputs: `"source_op:else -> destination_op"`.
+
+```json
+{
+  "vertices": [
+    {
+      "name": "source_operation",
+      "type": "logs-iceberg-table-source",
+      // Operation-specific properties
+    },
+    {
+      "name": "transform_operation",
+      "type": "log-reducer",
+      // Operation-specific properties
+    },
+    {
+      "name": "sink_operation",
+      "type": "logs-sync-sink"
+    }
+  ],
+  "edges": [
+    "source_operation -> transform_operation",
+    "transform_operation -> sink_operation"
+  ]
+}
+```
+
+## Common job patterns
+
+### Data lake query (synchronous batch)
+
+Query historical log data from Grepr's data lake:
+
+```json
+{
+  "name": "data_lake_query",
+  "execution": "SYNCHRONOUS",
+  "processing": "BATCH",
+  "jobGraph": {
+    "vertices": [
+      {
+        "name": "source",
+        "type": "logs-iceberg-table-source",
+        "datasetId": "abc123def456",
+        "start": "2024-01-01T00:00:00Z",
+        "end": "2024-01-02T00:00:00Z",
+        "query": {
+          "type": "datadog-query",
+          "query": "service:my-service status:error"
+        },
+        "limit": 1000,
+        "reductionInterval": "PT2M",
+        "sortOrder": "UNSORTED"
+      },
+      {
+        "name": "sink",
+        "type": "logs-sync-sink"
+      }
+    ],
+    "edges": [
+      "source -> sink"
+    ]
+  },
+  "tags": {}
+}
+```
+
+### Streaming data processing (synchronous streaming)
+
+Process live data with rate limiting for testing:
+
+```json
+{
+  "name": "streaming_processor",
+  "execution": "SYNCHRONOUS",
+  "processing": "STREAMING",
+  "jobGraph": {
+    "vertices": [
+      {
+        "name": "source",
+        "type": "datadog-log-agent-source"
+      },
+      {
+        "name": "sampler",
+        "type": "logs-event-sampler",
+        "maxAllowedRate": 10.0,
+        "maxBurstLimit": 100
+      },
+      {
+        "name": "transform",
+        "type": "sql-transform",
+        "sqlQuery": "SELECT *, UPPER(message) as upper_message FROM logs WHERE severity <= 4"
+      },
+      {
+        "name": "sink",
+        "type": "logs-sync-sink"
+      }
+    ],
+    "edges": [
+      "source -> sampler",
+      "sampler -> transform",
+      "transform -> sink"
+    ]
+  },
+  "tags": {}
+}
+```
+
+### Production pipeline (asynchronous streaming)
+
+Complex production pipeline based on our reference implementation:
+
+```json
+{
+  "name": "production_pipeline",
+  "execution": "ASYNCHRONOUS",
+  "processing": "STREAMING",
+  "jobGraph": {
+    "vertices": [
+      {
+        "type": "datadog-log-agent-source",
+        "name": "datadog_source"
+      },
+      {
+        "type": "logs-filter",
+        "name": "pre_parser_filter",
+        "predicate": {
+          "type": "datadog-query",
+          "query": "-status:debug"
+        }
+      },
+      {
+        "type": "json-log-processor",
+        "name": "json_processor",
+        "maxNestedDepthForFields": 3
+      },
+      {
+        "type": "log-attributes-remapper",
+        "name": "attributes_remapper"
+      },
+      {
+        "type": "logs-branch",
+        "name": "branch_special_logs",
+        "predicate": {
+          "type": "datadog-query",
+          "query": "source:elb"
+        }
+      },
+      {
+        "type": "grok-parser",
+        "name": "grok_parser",
+        "grokParsingRules": [
+          "elb %{_date_access} %{_elb_name} %{_client_ip}:%{_client_port} %{_status_code}"
+        ],
+        "grokHelperRules": [
+          "_elb_name %{notSpace:elb.name}",
+          "_client_ip %{ipOrHost:network.client.ip}",
+          "_client_port %{integer:network.client.port}",
+          "_status_code %{integer:http.status_code}",
+          "_date_access %{timestampiso8601:timestamp}"
+        ]
+      },
+      {
+        "type": "log-reducer",
+        "name": "log_reducer",
+        "logReducerExceptions": [{
+          "type": "datadog-query",
+          "query": "skipAggregation:true"
+        }],
+        "partitionByTags": ["service"],
+        "partitionByAttributes": ["http.url_details.path", "http.method"],
+        "similarityThreshold": 80.0,
+        "dedupThreshold": 5,
+        "reductionTimeWindow": "PT120S",
+        "samplingConfig": {
+          "type": "window-based-logarithmic-sampling",
+          "logarithmBase": 2
+        },
+        "masks": [
+          ["timestamp", "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}"],
+          ["uuid", "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"]
+        ],
+        "enabledMasks": ["timestamp", "uuid"]
+      },
+      {
+        "type": "logs-iceberg-table-sink",
+        "name": "data_lake_sink",
+        "datasetId": "processed-logs-dataset"
+      },
+      {
+        "type": "datadog-log-sink",
+        "name": "datadog_sink",
+        "integrationId": "dd-integration-id",
+        "additionalTags": [
+          "processor:grepr",
+          "pipeline:production"
+        ]
+      }
+    ],
+    "edges": [
+      "datadog_source -> pre_parser_filter",
+      "pre_parser_filter -> json_processor",
+      "json_processor -> attributes_remapper",
+      "attributes_remapper -> branch_special_logs",
+      "branch_special_logs -> grok_parser",
+      "grok_parser -> log_reducer",
+      "branch_special_logs:else -> log_reducer",
+      "log_reducer -> data_lake_sink",
+      "log_reducer -> datadog_sink"
+    ]
+  },
+  "tags": {
+    "pipeline_type": "production"
+  }
+}
+```
+
+### Multi-source to multi-destination pipeline
+
+Process logs from multiple sources and send to different destinations:
+
+```json
+{
+  "name": "multi_pipeline",
+  "execution": "ASYNCHRONOUS",
+  "processing": "STREAMING",
+  "jobGraph": {
+    "vertices": [
+      {
+        "name": "datadog_source",
+        "type": "datadog-log-agent-source"
+      },
+      {
+        "name": "splunk_source",
+        "type": "splunk-log-agent-source",
+        "integrationId": "splunk-integration-id"
+      },
+      {
+        "name": "error_filter",
+        "type": "logs-filter",
+        "predicate": {
+          "type": "datadog-query",
+          "query": "status:error OR status:warning"
+        }
+      },
+      {
+        "name": "info_filter",
+        "type": "logs-filter",
+        "predicate": {
+          "type": "datadog-query",
+          "query": "status:info"
+        }
+      },
+      {
+        "name": "newrelic_sink",
+        "type": "newrelic-log-sink",
+        "integrationId": "nr-integration-id"
+      },
+      {
+        "name": "data_lake_sink",
+        "type": "logs-iceberg-table-sink",
+        "datasetId": "all-logs-dataset"
+      }
+    ],
+    "edges": [
+      "datadog_source -> error_filter",
+      "datadog_source -> info_filter",
+      "splunk_source -> error_filter",
+      "splunk_source -> info_filter",
+      "error_filter -> newrelic_sink",
+      "info_filter -> data_lake_sink"
+    ]
+  },
+  "tags": {}
+}
+```
+
+## Important considerations
+
+### Rate limiting for synchronous streaming jobs
+
+When creating synchronous streaming jobs, always include a [`logs-event-sampler`](/apis/api-spec#schema/LogsEventSampler) operation to limit the volume of data sent back to prevent overwhelming the client connection:
+
+```json
+{
+  "name": "rate_limiter",
+  "type": "logs-event-sampler",
+  "maxAllowedRate": 10.0,
+  "maxBurstLimit": 100,
+  "filter": {
+    "type": "datadog-query",
+    "query": "*"
+  }
+}
+```
+
+### Heartbeat management
+
+For synchronous jobs, the server sends periodic heartbeat tokens through the stream. Clients should respond by calling the [heartbeat endpoint](/apis/api-spec#tag/Jobs/operation/heartbeatSyncJob) to keep the connection alive:
+
+```bash
+POST /v1/jobs/sync/heartbeat
+Content-Type: application/json
+
+"<heartbeat-token>"
+```
+
+### Job states
+
+Monitor job progress through these states:
+
+- `PENDING`: Job accepted, waiting to start.
+- `STARTING`: Job transitioning to running state.
+- `RUNNING`: Job actively processing data.
+- `FINISHED`: Job completed successfully.
+- `FAILED`: Job encountered an error.
+- `CANCELLED`: Job was cancelled by user.
+
+### Error handling
+
+Handle these common HTTP status codes:
+
+- `200/201/202`: Success.
+- `400`: Invalid request (malformed job graph, invalid parameters).
+- `401`: Authentication required.
+- `409`: Conflict (concurrent update, resource already exists).
+- `404`: Job not found.
+
+## Code example
+
+### JavaScript example
+
+```javascript
+import ndjsonstream from 'can-ndjson-stream';
+
+const createSyncJob = async (jobPayload, token) => {
+  const response = await fetch('https://<your_org_id>.app.grepr.ai/api/v1/jobs/sync', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/x-ndjson'
+    },
+    body: JSON.stringify(jobPayload)
+  });
+
+  // Use ndjsonstream to parse the response
+  const stream = ndjsonstream(response.body);
+  const reader = stream.getReader();
+
+  while (true) {
+    const { done, value } = await reader.read();
+
+    // Handle heartbeat tokens
+    if (value?.jobState === 'HEARTBEAT' && value.heartbeatToken) {
+      // Send heartbeat (don't await to avoid blocking)
+      fetch('https://<your_org_id>.app.grepr.ai/api/v1/jobs/sync/heartbeat', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(value.heartbeatToken)
+      }).catch(e => console.error('Heartbeat error:', e));
+    }
+
+    // Process data events
+    if (value?.data) {
+      console.log('Received log:', value.data);
+    }
+
+    // Check job completion
+    if (value?.jobState === 'FINISHED') {
+      console.log('Job completed');
+    }
+
+    if (done) {
+      break;
+    }
+  }
+};
+```
+
+## Available operations
+
+Grepr supports a wide variety of sources, transforms, sinks, and special operations for building data processing pipelines. For a complete list of available operations and their configuration options, see the [API specification](/apis/api-spec).
+
+## Best practices
+
+- **Use appropriate rate limiting** for synchronous streaming jobs.
+- **Implement heartbeat handling** for long-running synchronous jobs.
+- **Monitor job states** and handle failures gracefully.
+- **Use meaningful job names** and tags for easier management.
+- **Test with small datasets** before running on production data.
+- **Set reasonable limits** on batch job result sizes.
+- **Use SQL transforms** for complex data transformations.
+- **Leverage templates** for reusable pipeline patterns.
+- **Use branching operations** to split data flows based on conditions.
+- **Chain operations logically** - filter before processing, parse before mapping.
+
+For more information, see the [API specification](/apis/api-spec) for complete endpoint documentation and operation details.
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is a Grepr job?",
+    a: "A Grepr job is a directed graph of operations that process log data. Each job specifies an execution mode (SYNCHRONOUS or ASYNCHRONOUS) and processing type (BATCH or STREAMING), along with vertices (operations) and edges (data flow connections)."
+  },
+  {
+    q: "What is the difference between SYNCHRONOUS and ASYNCHRONOUS jobs?",
+    a: "SYNCHRONOUS jobs stream results back to the client in real-time with ND-JSON format and hold the connection open until completion. ASYNCHRONOUS jobs return immediately with a job ID and can be monitored with separate API calls."
+  },
+  {
+    q: "What is BATCH vs STREAMING processing?",
+    a: "BATCH processing runs once over historical data with a defined start and end time. STREAMING processing runs continuously, consuming data from sources in real-time."
+  },
+  {
+    q: "How do I create a synchronous job?",
+    a: "Send a POST request to /v1/jobs/sync with a job definition including name, execution (SYNCHRONOUS), processing type, and jobGraph. Results stream back as ND-JSON."
+  },
+  {
+    q: "How do I create an asynchronous job?",
+    a: "Send a POST request to /v1/jobs/async with a job definition. The API returns immediately with a job ID. Poll the GET /v1/jobs/{id} endpoint to monitor progress."
+  },
+  {
+    q: "What is a job graph?",
+    a: "A job graph is a data flow specification with vertices (operations like sources, transforms, sinks) and edges (connections showing how data flows between operations)."
+  },
+  {
+    q: "What edge formats are supported?",
+    a: "Edges can be simple strings like 'source -> destination' or specify operation outputs like 'source:else -> destination' to direct conditional branches."
+  },
+  {
+    q: "How do I handle rate limiting for streaming jobs?",
+    a: "Include a logs-event-sampler operation with maxAllowedRate and maxBurstLimit to prevent overwhelming client connections in synchronous streaming jobs."
+  },
+  {
+    q: "How do I keep a synchronous job connection alive?",
+    a: "The server sends periodic heartbeat tokens. Call the heartbeat endpoint (/v1/jobs/sync/heartbeat) with the heartbeat token to keep the connection open."
+  },
+  {
+    q: "What are common HTTP status codes for job API calls?",
+    a: "200/201/202 for success, 400 for invalid requests, 401 for authentication errors, 409 for conflicts, and 404 for jobs not found."
+  }
+]} />

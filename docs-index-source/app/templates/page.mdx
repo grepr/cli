@@ -1,0 +1,1080 @@
+---
+description: Learn how to use JavaScript and Grepr templates to refactor common functionality into components that can be used across multiple pipelines.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Templates
+
+Templates in Grepr provide a powerful way to create reusable pipeline components using JavaScript. They enable you to define parameterized job subgraphs that can be used across multiple pipelines, promoting consistency and reducing the operational burden of updating multiple pipelines in similar ways.
+
+A template is a JavaScript script that generates a Grepr job graph dynamically based on input parameters. Templates can include conditional logic, loops, and complex data transformations to create sophisticated pipeline components that adapt to different use cases.
+
+## How templates work
+
+Templates work by executing JavaScript code in a secure sandboxed environment that returns a valid Grepr job graph. The template system follows this process:
+
+1. **Input validation**: Validates input parameters against a JSON schema to ensure type safety.
+2. **Script execution**: Executes the JavaScript template in a secure, isolated environment.
+3. **Graph generation**: The script returns a job graph that gets integrated into the parent pipeline.
+4. **Graph resolution**: Resolves nested templates and connects them to the parent pipeline.
+5. **Pipeline integration**: The generated subgraph replaces the template operation in the pipeline.
+
+Templates can be used in two primary ways:
+
+- **Development and testing**: Use the test API endpoint to validate template logic during development.
+- **Production pipelines**: Integrate templates into job graphs using the `TemplateOperation`.
+
+### Template resolution process
+
+When a pipeline containing template operations is executed, Grepr:
+
+1. **Identifies template operations** in the job graph.
+2. **Fetches template definitions** from the repository (latest version or specified version).
+3. **Validates input parameters** against the template's input schema.
+4. **Executes the JavaScript** with the provided inputs and user context.
+5. **Generates the subgraph** from the script output.
+6. **Resolves nested templates** recursively, up to 10 levels deep.
+7. **Connects inputs/outputs** based on the template's input/output mappings.
+8. **Renames operations** to avoid conflicts in the merged graph.
+
+## Template structure
+
+A template consists of several key components that work together to define a reusable pipeline component:
+
+### Core components
+
+- **Name and description**: Human-readable metadata for template identification.
+- **Input schema**: JSON schema defining expected parameters and their types.
+- **JavaScript template**: The script that generates the job graph.
+- **Input mappings**: How external connections map to internal operations.
+- **Output mappings**: How internal operations expose outputs to external consumers.
+- **Draft outputs**: Special outputs available only when running in draft mode.
+
+### Template schema definition
+
+```json copy
+{
+  "name": "Log Transform Template",
+  "description": "Adds configurable log transformations with filtering",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "tagKey": {
+        "type": "string",
+        "description": "The tag key to modify in log messages"
+      },
+      "threshold": {
+        "type": "number",
+        "description": "Numeric threshold for filtering",
+        "minimum": 0,
+        "maximum": 1000
+      },
+      "enableDebug": {
+        "type": "boolean",
+        "description": "Enable debug logging",
+        "default": false
+      }
+    },
+    "required": ["tagKey"]
+  },
+  "template": "<!-- JavaScript code here -->",
+  "inputs": {
+    "logEvents": "transform1:input",
+    "config": "transform1:config"
+  },
+  "outputs": {
+    "processedEvents": "transform2:output",
+    "metrics": "metrics:output"
+  },
+  "draftOutputs": [
+    {
+      "name": "debugOutput",
+      "description": "Debug information",
+      "vertex": "debug"
+    }
+  ]
+}
+```
+
+## JavaScript template guide
+
+Templates are written in JavaScript and must return a valid `GreprJobGraph` object. The JavaScript environment provides access to input parameters, user context, and various utility functions.
+
+### Available variables
+
+Templates have access to several built-in variables:
+
+- **Input parameters**: All parameters defined in `inputSchema` are available as variables.
+- **`draft`**: Boolean indicating if the template is running in draft mode.
+- **`user`**: Object containing information about the current user (e.g., `user.getName()`).
+
+### Basic template example
+
+```javascript copy
+// Simple template that creates a log transformation
+const graph = {
+  "vertices": [
+    {
+      "type": "log-transform",
+      "name": "transform1",
+      "transforms": [
+        {
+          "type": "tag-action",
+          "order": 0,
+          "modification": "ADD",
+          "tagKey": tagKey,
+          "values": [`processed-${threshold}`]
+        }
+      ]
+    },
+    {
+      "type": "log-transform",
+      "name": "transform2",
+      "transforms": [
+        {
+          "type": "tag-action",
+          "order": 1,
+          "modification": "SET",
+          "tagKey": "threshold",
+          "values": [threshold.toString()]
+        }
+      ]
+    }
+  ],
+  "edges": ["transform1 -> transform2"]
+};
+
+// Don't use a "return" statement; just output the object or its json directly
+graph;
+```
+
+### Template with conditional logic
+
+```javascript copy
+// Template that adapts based on input parameters and draft mode
+const result = {
+  "vertices": [
+    {
+      "type": "log-transform",
+      "name": "transform1",
+      "transforms": [
+        {
+          "type": "tag-action",
+          "order": 0,
+          "modification": "ADD",
+          "tagKey": tagKey,
+          "values": [`processed-${threshold}`]
+        }
+      ]
+    },
+    {
+      "type": "log-transform",
+      "name": "transform2",
+      "transforms": [
+        {
+          "type": "tag-action",
+          "order": 1,
+          "modification": "SET",
+          "tagKey": "processing_threshold",
+          "values": [threshold.toString()]
+        }
+      ]
+    }
+  ],
+  "edges": ["transform1 -> transform2"]
+};
+
+// Add filtering based on threshold
+if (threshold > 50) {
+  result.vertices.push({
+    "type": "logs-filter",
+    "name": "highThresholdFilter",
+    "query": {
+      "type": "simple-query",
+      "query": `threshold:>${threshold}`
+    }
+  });
+  result.edges.push("transform2 -> highThresholdFilter");
+}
+
+// Add debug vertex in draft mode
+if (draft) {
+  result.vertices.push({
+    "type": "log-transform",
+    "name": "debug",
+    "transforms": [
+      {
+        "type": "tag-action",
+        "order": 0,
+        "modification": "ADD",
+        "tagKey": "debug",
+        "values": ["true"]
+      }
+    ]
+  });
+  result.edges.push("transform1 -> debug");
+}
+
+// Add user context
+result.vertices.push({
+  "type": "log-transform",
+  "name": "userContext",
+  "transforms": [
+    {
+      "type": "tag-action",
+      "order": 0,
+      "modification": "ADD",
+      "tagKey": "created_by",
+      "values": [user.getName()]
+    }
+  ]
+});
+result.edges.push("transform2 -> userContext");
+
+result;
+```
+
+### Template with dynamic operations
+
+```javascript copy
+// Template that creates operations based on input arrays
+const operations = [];
+const edges = [];
+
+// Create transforms based on input configuration
+const transformConfigs = JSON.parse(transformationsJson);
+for (let i = 0; i < transformConfigs.length; i++) {
+  const config = transformConfigs[i];
+  const opName = `transform${i + 1}`;
+
+  operations.push({
+    "type": "log-transform",
+    "name": opName,
+    "transforms": [
+      {
+        "type": "tag-action",
+        "order": i,
+        "modification": config.modification || "ADD",
+        "tagKey": config.tagKey,
+        "values": config.values || ["default"]
+      }
+    ]
+  });
+
+  // Connect to previous operation
+  if (i > 0) {
+    edges.push(`transform${i} -> ${opName}`);
+  }
+}
+
+// Add a filter if enabled
+if (enableFiltering) {
+  operations.push({
+    "type": "logs-filter",
+    "name": "finalFilter",
+    "query": {
+      "type": "simple-query",
+      "query": "processed:true"
+    }
+  });
+
+  // Connect last transform to filter
+  if (operations.length > 1) {
+    edges.push(`transform${transformConfigs.length} -> finalFilter`);
+  }
+}
+
+({
+  "vertices": operations,
+  "edges": edges
+});
+```
+
+### Error handling in templates
+
+Templates should validate inputs and throw meaningful errors when validation fails. **Do not return a valid pipeline with invalid input** - this could result in a production pipeline running with incorrect configuration.
+
+```javascript copy
+// Template with proper error handling and validation
+// Validate required parameters
+if (!tagKey || tagKey.trim() === '') {
+  throw new Error('tagKey cannot be empty');
+}
+
+if (threshold < 0 || threshold > 1000) {
+  throw new Error('threshold must be between 0 and 1000');
+}
+
+// Validate that transformations array exists and has valid structure
+if (!Array.isArray(transformations) || transformations.length === 0) {
+  throw new Error('transformations must be a non-empty array');
+}
+
+for (let i = 0; i < transformations.length; i++) {
+  const config = transformations[i];
+  if (!config.tagKey || !config.operation) {
+    throw new Error(`Invalid transformation at index ${i}: missing tagKey or operation`);
+  }
+
+  if (!['ADD', 'SET', 'REMOVE'].includes(config.operation)) {
+    throw new Error(
+      `Invalid operation "${config.operation}" at index ${i}. Must be ADD, SET, or REMOVE`
+    );
+  }
+}
+
+// If validation passes, generate the pipeline
+const result = {
+  "vertices": [
+    {
+      "type": "log-transform",
+      "name": "processor",
+      "transforms": [
+        {
+          "type": "tag-action",
+          "order": 0,
+          "modification": "SET",
+          "tagKey": tagKey,
+          "values": [threshold.toString()]
+        }
+      ]
+    }
+  ],
+  "edges": []
+};
+
+result;
+```
+
+## Template API reference
+
+The Templates API provides lifecycle management for templates. All endpoints are available under `/v1/templates` and require authentication.
+
+### Create templates
+
+Create a new template using the `POST /v1/templates` endpoint:
+
+```bash copy
+curl -X POST "${GREPR_API_URL}/v1/templates" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Log Transform Template",
+    "description": "Adds configurable log transformations with conditional logic",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "tagKey": {
+          "type": "string",
+          "description": "Tag key to modify in log messages"
+        },
+        "threshold": {
+          "type": "number",
+          "description": "Numeric threshold for processing",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "enableDebug": {
+          "type": "boolean",
+          "description": "Enable debug outputs",
+          "default": false
+        }
+      },
+      "required": ["tagKey"]
+    },
+    "template": "const result = { vertices: [{ type: 'log-transform', name: 'transform1', transforms: [{ type: 'tag-action', order: 0, modification: 'ADD', tagKey: tagKey, values: [`processed-${threshold}`] }] }], edges: [] }; if (enableDebug) { result.vertices.push({ type: 'log-transform', name: 'debug', transforms: [{ type: 'tag-action', order: 0, modification: 'ADD', tagKey: 'debug', values: ['true'] }] }); result.edges.push('transform1 -> debug'); } result;",
+    "inputs": {
+      "logEvents": "transform1:input"
+    },
+    "outputs": {
+      "processedEvents": "transform1:output"
+    },
+    "draftOutputs": [
+      {
+        "name": "debugOutput",
+        "description": "Debug information",
+        "vertex": "debug"
+      }
+    ]
+  }'
+```
+
+### List templates
+
+Get all templates you have access to:
+
+```bash copy
+curl -X GET "${GREPR_API_URL}/v1/templates" \
+  -H "Authorization: Bearer ${JWT_TOKEN}"
+```
+
+Response includes metadata for each template:
+
+```json copy
+{
+  "items": [
+    {
+      "id": "template-12345",
+      "name": "Log Transform Template",
+      "description": "Adds configurable log transformations",
+      "version": 3,
+      "organizationId": "my-org",
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2024-01-16T14:20:00Z"
+    }
+  ]
+}
+```
+
+### Retrieve templates
+
+Get a specific template by ID with various options:
+
+```bash copy
+# Get latest version
+curl -X GET "${GREPR_API_URL}/v1/templates/template-12345?latest=true" \
+  -H "Authorization: Bearer ${JWT_TOKEN}"
+
+# Get specific version
+curl -X GET "${GREPR_API_URL}/v1/templates/template-12345?version=2" \
+  -H "Authorization: Bearer ${JWT_TOKEN}"
+
+# Get all versions
+curl -X GET "${GREPR_API_URL}/v1/templates/template-12345" \
+  -H "Authorization: Bearer ${JWT_TOKEN}"
+```
+
+### Update templates
+
+Update a template, which creates a new version:
+
+```bash copy
+curl -X PUT "${GREPR_API_URL}/v1/templates/template-12345" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Enhanced Log Transform Template",
+    "description": "Updated template with improved error handling",
+    "version": 4,
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "tagKey": {
+          "type": "string",
+          "description": "Tag key to modify"
+        },
+        "threshold": {
+          "type": "number",
+          "description": "Processing threshold",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "processingMode": {
+          "type": "string",
+          "description": "Processing mode",
+          "enum": ["strict", "permissive"],
+          "default": "permissive"
+        }
+      },
+      "required": ["tagKey", "threshold"]
+    },
+    "template": "updated JavaScript content with new processingMode logic"
+  }'
+```
+
+### Delete templates
+
+Delete a template and all its versions:
+
+```bash copy
+curl -X DELETE "${GREPR_API_URL}/v1/templates/template-12345" \
+  -H "Authorization: Bearer ${JWT_TOKEN}"
+```
+
+This is a dangerous operation. You can delete templates that are in use by active jobs. If you delete a template that is being used by a pipeline, that pipeline will not be able to restart or be updated since it won't find the template again. Always ensure templates are not in use before deletion.
+
+## Test templates
+
+The template test endpoint is crucial for development and validation. It allows you to execute template scripts with provided inputs and validate the output before deploying to production pipelines.
+
+### Test template endpoint
+
+Use `POST /v1/templates/test` to execute a template script:
+
+```bash copy
+curl -X POST "${GREPR_API_URL}/v1/templates/test" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "template": {
+      "name": "Test Template",
+      "description": "Template for testing purposes",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "tagKey": {
+            "type": "string",
+            "description": "Tag key to process"
+          },
+          "threshold": {
+            "type": "number",
+            "description": "Processing threshold",
+            "minimum": 0
+          }
+        },
+        "required": ["tagKey"]
+      },
+      "template": "({ vertices: [{ type: 'log-transform', name: 'transform1', transforms: [{ type: 'tag-action', order: 0, modification: 'ADD', tagKey: tagKey, values: [`processed-${threshold || 0}`] }] }], edges: [] })"
+    },
+    "input": {
+      "isDraft": false,
+      "values": {
+        "tagKey": "environment",
+        "threshold": 42
+      }
+    },
+    "checkValidGreprJobGraph": true
+  }'
+```
+
+### Test request parameters
+
+- **`template`**: The complete template object to test.
+- **`input.isDraft`**: Whether to run in draft mode (enables draft outputs).
+- **`input.values`**: Input values for the template parameters.
+- **`checkValidGreprJobGraph`**: If true, validates that the result is a valid `GreprJobGraph`.
+
+### Test response examples
+
+**Successful execution:**
+```json copy
+{
+  "vertices": [
+    {
+      "type": "log-transform",
+      "name": "transform1",
+      "transforms": [
+        {
+          "type": "tag-action",
+          "order": 0,
+          "modification": "ADD",
+          "tagKey": "environment",
+          "values": ["processed-42"]
+        }
+      ]
+    }
+  ],
+  "edges": []
+}
+```
+
+**Error response:**
+```json copy
+{
+  "error": "JavaScript execution failed: tagKey is not defined"
+}
+```
+
+### Advanced testing examples
+
+**Test with draft mode:**
+```bash copy
+curl -X POST "${GREPR_API_URL}/v1/templates/test" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "template": {
+      "name": "Draft-Aware Template",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "serviceName": { "type": "string" }
+        },
+        "required": ["serviceName"]
+      },
+      "template": "const result = { vertices: [{ type: 'log-transform', name: 'service', transforms: [{ type: 'tag-action', order: 0, modification: 'ADD', tagKey: 'service', values: [serviceName] }] }], edges: [] }; if (draft) { result.vertices.push({ type: 'log-transform', name: 'debug', transforms: [{ type: 'tag-action', order: 0, modification: 'ADD', tagKey: 'debug_service', values: [serviceName] }] }); result.edges.push('service -> debug'); } result;"
+    },
+    "input": {
+      "isDraft": true,
+      "values": {
+        "serviceName": "web-api"
+      }
+    },
+    "checkValidGreprJobGraph": true
+  }'
+```
+
+**Test complex templates with validation:**
+```bash copy
+curl -X POST "${GREPR_API_URL}/v1/templates/test" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "template": {
+      "name": "Complex Validation Template",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "transformations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tagKey": { "type": "string" },
+                "tagValue": { "type": "string" },
+                "operation": { "type": "string", "enum": ["ADD", "SET", "REMOVE"] }
+              },
+              "required": ["tagKey", "tagValue", "operation"]
+            }
+          }
+        },
+        "required": ["transformations"]
+      },
+      "template": "const vertices = []; const edges = []; transformations.forEach((t, i) => { vertices.push({ \"type\": \"log-transform\", \"name\": `transform${i+1}`, \"transforms\": [{ \"type\": \"tag-action\", \"order\": i, \"modification\": t.operation, \"tagKey\": t.tagKey, \"values\": [t.tagValue] }] }); if (i > 0) edges.push(`transform${i} -> transform${i+1}`); }); ({ \"vertices\": vertices, \"edges\": edges });"
+    },
+    "input": {
+      "isDraft": false,
+      "values": {
+        "transformations": [
+          {
+            "tagKey": "environment",
+            "tagValue": "production",
+            "operation": "ADD"
+          },
+          {
+            "tagKey": "processed",
+            "tagValue": "true",
+            "operation": "SET"
+          }
+        ]
+      }
+    },
+    "checkValidGreprJobGraph": true
+  }'
+```
+
+## Use templates in pipelines
+
+Templates are integrated into pipelines using the `TemplateOperation`. This operation type executes the template script and replaces itself with the generated subgraph during pipeline resolution.
+
+### Template operation configuration
+
+The `TemplateOperation` supports the following configuration:
+
+```json copy
+{
+  "type": "template-operation",
+  "name": "myTemplate",
+  "templateId": "template-12345",
+  "templateVersion": 2,
+  "templateInputs": {
+    "tagKey": "environment",
+    "threshold": 100,
+    "enableDebug": true
+  },
+  "draftMode": false
+}
+```
+
+### Template operation parameters
+
+- **`templateId`** (required): The ID of the template to use.
+- **`templateVersion`** (optional): Specific version to use. If omitted, uses the latest version.
+- **`templateInputs`**: Key-value pairs passed to the template script as variables.
+- **`draftMode`** (optional): Enables draft mode, which may add additional debug operations.
+
+### Complete pipeline example
+
+```json copy
+{
+  "vertices": [
+    {
+      "type": "logs-iceberg-table-source",
+      "name": "source",
+      "table": "logevent_raw_prod",
+      "processing": "STREAM",
+      "query": {
+        "type": "simple-query",
+        "query": "service:web-api"
+      }
+    },
+    {
+      "type": "template-operation",
+      "name": "enrichment",
+      "templateId": "template-12345",
+      "templateVersion": 3,
+      "templateInputs": {
+        "tagKey": "environment",
+        "threshold": 50,
+        "enableMetrics": true
+      },
+      "draftMode": false
+    },
+    {
+      "type": "template-operation",
+      "name": "filtering",
+      "templateId": "template-67890",
+      "templateInputs": {
+        "filterQuery": "status:error",
+        "samplingRate": 0.1
+      }
+    },
+    {
+      "type": "logs-sync-sink",
+      "name": "sink",
+      "integration": "datadog-prod"
+    }
+  ],
+  "edges": [
+    "source -> enrichment:logEvents",
+    "enrichment:processedEvents -> filtering:input",
+    "filtering:output -> sink"
+  ]
+}
+```
+
+### Template input/output mapping
+
+Templates define how external connections map to internal operations through input and output mappings:
+
+```json copy
+{
+  "inputs": {
+    "logEvents": "transform1:input",
+    "configData": "processor:config"
+  },
+  "outputs": {
+    "processedEvents": "transform2:output",
+    "metrics": "metrics:output",
+    "errors": "errorHandler:output"
+  }
+}
+```
+
+**Connection resolution:**
+
+- External `enrichment:logEvents` -> Internal `transform1:input`
+- Internal `transform2:output` -> External `enrichment:processedEvents`
+- Internal `metrics:output` -> External `enrichment:metrics`
+
+### Nested template support
+
+Templates can contain other template operations, enabling powerful composition patterns. Grepr resolves nested templates recursively, with a maximum depth of 10 levels to prevent infinite recursion.
+
+## Draft mode
+
+Draft mode is a special execution mode that enables templates to run in an alternate configuration with additional outputs. This is commonly used by the Grepr UI to show outputs from each stage when building a pipeline, allowing you to inspect intermediate results throughout the pipeline.
+
+### Enable draft mode
+
+Draft mode can be enabled in two ways:
+
+1. **Template operation**: Set `draftMode: true` in the template operation.
+2. **Test endpoint**: Set `input.isDraft: true` when testing templates.
+
+### Draft outputs
+
+Templates can define special outputs that are only available in draft mode:
+
+```json copy
+{
+  "draftOutputs": [
+    {
+      "name": "debugOutput",
+      "description": "Debug information for development",
+      "vertex": "debug"
+    },
+    {
+      "name": "metricsOutput",
+      "description": "Detailed metrics for analysis",
+      "vertex": "metrics"
+    }
+  ]
+}
+```
+
+### Draft mode template example
+
+```javascript copy
+const result = {
+  "vertices": [
+    {
+      "type": "log-transform",
+      "name": "processor",
+      "transforms": [
+        {
+          "type": "tag-action",
+          "order": 0,
+          "modification": "ADD",
+          "tagKey": "processed",
+          "values": ["true"]
+        }
+      ]
+    }
+  ],
+  "edges": []
+};
+
+// Add debug operations only in draft mode
+if (draft) {
+  result.vertices.push({
+    "type": "log-transform",
+    "name": "debug",
+    "transforms": [
+      {
+        "type": "tag-action",
+        "order": 0,
+        "modification": "ADD",
+        "tagKey": "debug_timestamp",
+        "values": [new Date().toISOString()]
+      },
+      {
+        "type": "tag-action",
+        "order": 1,
+        "modification": "ADD",
+        "tagKey": "debug_user",
+        "values": [user.getName()]
+      }
+    ]
+  });
+
+  result.vertices.push({
+    "type": "logs-sync-sink",
+    "name": "debugSink"
+  });
+
+  result.edges.push("processor -> debug");
+  result.edges.push("debug -> debugSink");
+}
+
+result;
+```
+
+## Security and sandboxing
+
+Templates execute in a secure JavaScript sandbox environment designed to prevent malicious code execution while providing necessary functionality for pipeline generation.
+
+### Security restrictions
+
+The JavaScript execution environment enforces several security restrictions:
+
+- **No file system access**: Cannot read, write, or access files.
+- **No network access**: Cannot make HTTP requests or connect to external services.
+- **No reflection access**: Cannot use Java reflection or access system classes.
+- **No class loading**: Cannot dynamically load classes or access class loaders.
+- **No system access**: Cannot access system properties or environment variables.
+- **No native code**: Cannot execute native code or shell commands.
+
+### Execution limits
+
+Templates are subject to execution limits to prevent resource exhaustion:
+
+- **Execution timeout**: Scripts are terminated if they exceed the configured timeout.
+- **Memory limits**: Scripts cannot consume excessive memory.
+- **CPU limits**: Long-running computations are interrupted.
+- **Instruction limits**: Scripts are monitored for excessive instruction execution.
+
+### Allowed Java objects
+
+Templates can access a limited set of Java objects:
+
+- **User object**: Access to information about the user (e.g., `user.getName()`).
+- **Input parameters**: All parameters defined in the template's input schema.
+- **Built-in JavaScript objects**: Standard JavaScript objects and functions.
+
+## Error handling and debugging
+
+Templates should handle edge cases gracefully and provide meaningful error messages. **Input validation should be done generally via the input JSON schema** that is defined with the template, but you can also add custom validation logic within the template script if needed.
+
+### Common error messages
+
+- **"Script execution returned null or undefined"**: Template didn't return a valid object.
+- **"JavaScript execution failed"**: Syntax error or runtime exception in the template.
+- **"Could not parse resolved template into a GreprJobGraph"**: Generated JSON is invalid.
+- **"Template not found"**: Template ID doesn't exist or user lacks access.
+- **"Input validation failed"**: Input parameters don't match the schema.
+
+## Version management
+
+Templates support versioning to enable safe updates, rollbacks, and concurrent development.
+
+### Version lifecycle
+
+- **Creation**: New templates start at version 1.
+- **Updates**: Each update creates a new version (versions are immutable).
+- **Deletion**: Previous versions are tombstoned but not physically deleted.
+- **Rollback**: Can reference any previous version in pipeline operations.
+
+### Version strategies
+
+**Development strategy:**
+
+- Use latest version during development and testing.
+- Pin to specific versions for production deployment.
+- Test new versions in staging before promoting to production.
+
+**Production strategy:**
+
+- Always pin to specific versions in production pipelines.
+- Plan version upgrades during maintenance windows.
+- Maintain rollback capability to previous versions.
+
+### Version compatibility
+
+```json copy
+{
+  "templateOperation": {
+    "type": "template-operation",
+    "name": "processor",
+    "templateId": "template-12345",
+    "templateVersion": 3,  // Pin to specific version
+    "templateInputs": {
+      "tagKey": "environment",
+      "threshold": 100
+    }
+  }
+}
+```
+
+### Version migration example
+
+```bash copy
+# Test new version
+curl -X POST "${GREPR_API_URL}/v1/templates/test" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -d '{"template": {"...": "new version"}, "input": {"...": "test data"}}'
+
+# Deploy new version
+curl -X PUT "${GREPR_API_URL}/v1/templates/template-12345" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -d '{"version": 4, "template": "new version content"}'
+
+# Update pipeline to use new version
+curl -X PUT "${GREPR_API_URL}/v1/jobs/job-12345" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -d '{"vertices": [{"type": "template-operation", "templateVersion": 4}]}'
+```
+
+## Best practices
+
+### Template design guidelines
+
+- **Single responsibility**: Each template should have a focused, well-defined purpose.
+- **Parameter validation**: Define input schemas with proper constraints.
+- **Error handling**: Include robust error handling for edge cases.
+- **Documentation**: Provide clear descriptions for templates and parameters.
+- **Testing**: Thoroughly test templates with various input combinations.
+
+### Development workflow
+
+- **Design first**: Plan template structure and parameters before coding.
+- **Iterative development**: Start simple and add complexity gradually.
+- **Test early**: Use the test endpoint throughout development.
+- **Version control**: Track template changes and maintain version history.
+- **Peer review**: Have other developers review complex templates.
+
+### Production deployment
+
+- **Version pinning**: Always specify exact versions in production pipelines.
+- **Gradual rollout**: Deploy new templates to staging before production.
+- **Monitoring**: Monitor template execution performance and error rates.
+- **Rollback planning**: Maintain ability to rollback to previous versions.
+- **Documentation**: Keep template documentation up-to-date.
+
+### Performance guidelines
+
+- **Optimize JavaScript**: Keep template scripts efficient and lightweight.
+- **Minimize nesting**: Avoid deeply nested template compositions.
+- **Cache results**: Cache template results where appropriate.
+- **Monitor resources**: Track memory and CPU usage of template execution.
+- **Regular cleanup**: Remove unused templates and old versions.
+
+## Troubleshoot templates
+
+### Common issues and solutions
+
+**Template not found errors:**
+
+- Verify template ID exists and user has access.
+- Check if template was deleted or access permissions changed.
+- Ensure correct organization context.
+
+**JavaScript execution failures:**
+
+- Validate JavaScript syntax using the test endpoint.
+- Check that all required parameters are provided.
+- Verify parameter types match the input schema.
+
+**Invalid job graph errors:**
+
+- Ensure template returns valid JSON structure.
+- Verify all required fields are present in vertices and edges.
+- Check that operation types are valid and exist in the system.
+
+**Version conflicts:**
+
+- Pin specific versions in production pipelines.
+- Plan version upgrades during maintenance windows.
+- Test new versions thoroughly before deployment.
+
+### Debug templates
+
+- **Test in isolation**: Use the templates test endpoint to validate template logic.
+- **Check input validation**: Verify input parameters match schema requirements.
+- **Use draft mode**: Enable draft mode to inspect intermediate outputs.
+- **Simplify complexity**: Remove complex logic to isolate the issue.
+- **Validate operations**: Ensure all operation types used are valid.
+
+More details on the Templates API are available in the [Templates API specification](/apis/api-spec#tag/Templates).
+
+<HiddenFAQ faqs={[
+  {
+    q: "What are Grepr templates?",
+    a: "Templates are reusable pipeline components written in JavaScript that generate Grepr job graphs dynamically. They enable you to define parameterized subgraphs that can be used across multiple pipelines, reducing duplication and making it easier to maintain consistent logic across your data processing infrastructure."
+  },
+  {
+    q: "How do I create a template?",
+    a: "Create a template using the POST /v1/templates endpoint with a JSON payload containing: name, description, inputSchema (JSON schema defining parameters), template (JavaScript code returning a GreprJobGraph), inputs/outputs mappings, and optional draftOutputs. You can also test templates before creation using the /v1/templates/test endpoint."
+  },
+  {
+    q: "What is the inputSchema in a template?",
+    a: "The inputSchema is a JSON schema that defines the parameters your template accepts. It specifies the type, description, and constraints for each input parameter. The schema is used for validation before template execution to ensure provided parameters are correct. Parameters can include strings, numbers, booleans, arrays, and objects."
+  },
+  {
+    q: "How do I write the JavaScript template code?",
+    a: "Write JavaScript code that returns a valid GreprJobGraph object. The script has access to all input parameters as variables, a draft boolean indicating draft mode, and a user object with user context. You don't use a return statement; just output the graph object directly at the end of the script. All code executes in a secure sandboxed environment."
+  },
+  {
+    q: "What variables are available inside template scripts?",
+    a: "Inside template scripts, you have access to: all inputSchema parameters as variables (e.g., if inputSchema defines 'tagKey', you can use tagKey directly), draft boolean indicating if running in draft mode, and user object containing user information like user.getName(). These are the only external variables available."
+  },
+  {
+    q: "Can templates include conditional logic?",
+    a: "Yes, templates can include full conditional logic. Use if statements, loops, and other JavaScript control flow to generate different pipeline structures based on input parameters or draft mode. For example, you can add different operations based on a threshold parameter or add debug operations only when draft is true."
+  },
+  {
+    q: "How are templates used in pipelines?",
+    a: "Templates are integrated into pipelines using the TemplateOperation type in your job graph. Specify the templateId, optional templateVersion, and templateInputs (key-value pairs). When the pipeline executes, Grepr resolves the template by executing its JavaScript with the provided inputs and replaces the template operation with the generated subgraph."
+  },
+  {
+    q: "What are input/output mappings and how do they work?",
+    a: "Input mappings define how external connections map to internal operations (e.g., \"logEvents\": \"transform1:input\"). Output mappings define which internal operations expose outputs (e.g., \"processedEvents\": \"transform2:output\"). These mappings allow the template to integrate seamlessly with surrounding pipeline operations through their specified inputs and outputs."
+  },
+  {
+    q: "What is draft mode and how is it used?",
+    a: "Draft mode is a special execution mode for templates that enables alternate configurations with additional debug outputs. You enable draft mode in template operations (draftMode: true) or in tests (input.isDraft: true). Templates can check the draft variable and add extra debug operations. This is used by the Grepr UI to show intermediate results during pipeline building."
+  },
+  {
+    q: "Can I nest templates within other templates?",
+    a: "Yes, templates can contain other template operations, enabling powerful composition patterns. Grepr resolves nested templates recursively with a maximum depth of 10 levels to prevent infinite recursion. This allows you to build complex, reusable pipeline components by composing simpler template building blocks."
+  },
+  {
+    q: "How do I test templates before deploying them?",
+    a: "Use the POST /v1/templates/test endpoint to execute a template script with test inputs. Provide the template definition, input values, and set checkValidGreprJobGraph to true for validation. The endpoint returns either the generated graph or an error message, allowing you to iterate on template logic safely."
+  },
+  {
+    q: "What security restrictions apply to template execution?",
+    a: "Template scripts execute in a secure sandbox with no file system access, no network access, no reflection, no class loading, no system access, and no native code execution. Scripts are also subject to execution timeouts and memory/CPU limits to prevent resource exhaustion. Only whitelisted Java objects (user and input parameters) are accessible."
+  }
+]} />

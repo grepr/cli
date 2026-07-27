@@ -1,0 +1,68 @@
+---
+description: Release notes for new features, improvements, and bug fixes to the Grepr platform released in April 2026.
+---
+
+# Release notes for April 2026
+
+Grepr released these feature updates, improvements, and bug fixes in April 2026.
+
+## April 16, 2026
+
+{/* ENGT-4129 */}
+### New feature: Set OpenTelemetry integration headers dynamically from log event attributes
+
+OpenTelemetry integrations now support HTTP headers whose values are dynamically extracted from log event attributes when events are sent. When you configure attribute-mapped headers for an OpenTelemetry integration, each batch of events sharing the same attribute values is sent in a single outbound request. Events that don't have the attribute set are sent without the header. To configure attribute-mapped headers, when you create or edit an OpenTelemetry integration, switch a header's source from **Static value** to **From attribute**in the headers section, and specify the attribute path. See [Step 1: Create an OpenTelemetry integration](/integrations/open-telemetry#step1-create-integration).
+
+## April 14, 2026
+
+{/* ENGT-3987 */}
+### New feature: Construct nested VARIANT data types from JSON path/value pairs with the `VARIANT_BUILD` UDF
+
+Grepr SQL transforms now support the `VARIANT_BUILD` function, which constructs a nested `VARIANT` value from one or more JSON path-value pairs. An example use of `VARIANT_BUILD` is to add or update attributes on a log event by selecting the result as an additional column, which is automatically merged into the event's `attributes` field. The function supports nested object paths, array index paths, and dynamic values from column references or other function results. To learn more, see [VARIANT functions: query, extract, and transform values](/transforms/sql-transform/sql-functions#variant-query-extract-fns).
+
+{/* ENGT-2173 */}
+### New feature: Map SSO claims to Grepr organization roles and team memberships
+
+You can now configure mappings from SAML SSO claims to Grepr organization roles and team memberships. When you sign in through SSO, your role and team assignments are reconciled to match the claim values provided by your identity provider, so roles and team memberships don't need to be managed separately in Grepr. See [Manage SSO claim mappings in the Grepr platform](/admin/manage-claim-mappings).
+
+{/* ENGT-4093 */}
+### New feature: View passthrough and exception percentages on log reduction pipelines
+
+The overview pane on the pipeline details page now includes a **Reducer stats** card that shows the passthrough and exception percentages over time. Both percentages are computed against the equivalent raw message volume, so they accurately represent the share of log volume that bypasses aggregation or is excluded because of aggregation exceptions. The exception percentage is highlighted when it exceeds zero, helping you quickly spot pipelines with active exceptions.
+
+{/* ENGT-4158 */}
+### Bug fix: Raw bytes line missing from pipeline bytes charts for longer time ranges
+
+An issue where the raw bytes line was missing from pipeline bytes charts for time ranges of four hours or longer has been fixed. The chart now consistently displays the raw bytes line across all time ranges.
+
+{/* ENGT-4150 */}
+### Bug fix: Signup flow forms hanging after submission and invalid deep links
+
+Two issues affecting the signup flow have been fixed. The signup, email verification, and create-organization pages no longer get stuck on a loading spinner. Direct links to pages such as `app.grepr.ai/integrations` without an organization subdomain now redirect to the home page with the original destination preserved, instead of showing a blank page.
+
+{/* ENGT-3336 */}
+### Bug fix: Pressing Enter removed already selected options in attribute remapper menus
+
+An issue in the attribute remapper dialog where pressing Enter in an autocomplete menu removed an already-selected option instead of adding the value you typed has been fixed. This issue affected the **Reserved attributes**, **Tag attribute paths**, and **Tag mapping locations** fields.
+
+## April 7, 2026
+
+{/* ENGT-2250 */}
+### Behavioral change: Edit permissions are revoked, and new `Deny Edit Permissions` built-in role assigned when trials expire
+
+Grepr now ships a built-in `Deny Edit Permissions` role that is automatically assigned to all members of an organization when the organization's trial expires. Users retain their existing view access but lose the ability to edit Grepr resources until the plan is renewed, with one exception: organization details remain editable, allowing an admin to submit a plan change request. When the plan is renewed, the `Deny Edit Permissions` role is removed, and original edit permissions are restored automatically.
+
+{/* ENGT-3992 */}
+### Bug fix: Redirect after logout caused the organization context to be dropped
+
+An issue that caused the organization context to be dropped when logging out after session expiration, requiring you to re-enter your organization ID, has been fixed. Logout redirects now preserve the organization subdomain and your current page location.
+
+{/* ENGT-3248 */}
+### Bug fix: Google sign-in flow failed for new user signups
+
+An issue affecting the Google sign-in flow for new user signups has been fixed.
+
+{/* ENGT-4083 */}
+### Bug fix: Repeated token refresh attempts in the authentication refresh token flow
+
+An issue with the authentication refresh token flow that could cause repeated token refresh attempts has been fixed.

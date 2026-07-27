@@ -1,0 +1,110 @@
+---
+description: Understand the lifecycle of a Grepr job, including the states and transitions for asynchronous streaming, batch jobs, and job management operations.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Track the lifecycle of jobs with the Grepr REST API
+
+Grepr makes APIs available to track the lifecycle of jobs through the `state` field returned as part of the Job APIs. The following sections describe the different lifecycles of jobs.
+
+## Asynchronous streaming jobs
+
+These are long-running jobs that are also known as pipelines.
+
+### Create job lifecycle [#job-create-lifecycle]
+
+The following states describe the lifecycle of an `ASYNCHRONOUS` `STREAMING` job submitted for creation:
+
+![Create Job lifecycle](/images/createJobLifecycle.png)
+
+- `PENDING`: The job has been submitted for creation but has not reached its desired state yet. Grepr allocates appropriate resources, starts the job, and ensures it's in a healthy state.
+- `RUNNING`: The job is running and processing data.
+- `STOPPED`: The job has been stopped and is not processing data. When it starts again, the job resumes processing with the most recent data received.
+- `FAILED`: The job failed to start. This failure could happen due to some invalid configuration of the job graph or errors in processing data. In this case, you can either resubmit or update the job after correction.
+
+### Update job lifecycle
+
+Job updates in Grepr are versioned. An update, therefore, means Grepr will update the state for both the version getting retired and the version getting deployed concurrently. Grepr additionally allows users to specify a `rollbackEnabled` parameter while updating the job. If set to `true`, Grepr will roll back the job to a potentially running previous version in case of a failure. You can use this parameter to ensure minimal downtime in data processing in case of a misconfiguration.
+
+A successful update job request will return a `202 Accepted` response with the updated job details and a bump in the job's version number.
+
+The following states describe the lifecycle of an `ASYNCHRONOUS` `STREAMING` job submitted for an update. It represents concurrent state transitions of the old and new job versions.
+
+![Update Job lifecycle](/images/updateJobLifecycle.png)
+
+In case of a failure in the new job version, Grepr will roll back to the old job version if `rollbackEnabled` is set to `true`. A new job version (2) is created using the same job graph as job version 0. It will follow the same state transitions as when creating a new job. For more information, see the [API specification](#job-create-lifecycle).
+
+The states in this case will be:
+- **Old job version**: 0, job state: `FINISHED`, desiredState: `FINISHED`.
+- **New job version**: 1, job state: `FAILED`, desiredState: `RUNNING`.
+- **Rollback job version**: 2, job state: `PENDING`, desiredState: `RUNNING`.
+
+### Delete job lifecycle
+
+The following states describe the lifecycle of an `ASYNCHRONOUS` `STREAMING` job submitted for deletion:
+
+![Delete Job lifecycle](/images/deleteJobLifecycle.png)
+
+## Batch jobs
+
+These are potentially short-lived jobs that support querying on user data. These are also defined as job graphs but work on scoped data.
+
+### Asynchronous batch jobs
+
+These support asynchronous operations on user data. Grepr exposes APIs to submit and track the lifecycle of these jobs. Since they're short-lived, updates and deletes are not supported on them. Once submitted, you can use the `GET /jobs` API to track the `state` attribute of the job.
+
+The following state transitions are possible:
+
+![Asynchronous Batch Job](/images/asyncBatchJob.png)
+
+One use-case for Async Batch Jobs is backfilling log data, which includes running a job to load data from the Grepr data lake back to your observability platform.
+
+### Synchronous batch jobs
+
+These support synchronous queries on user data. Grepr exposes APIs to submit these jobs and stream the results back to the client. The lifecycle of these jobs is simpler than the streaming jobs in that they are submitted, processed, and then completed. In some cases, where they're running beyond a max amount of time (default 30s), they will be cancelled.
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What does the PENDING state mean for a streaming job?",
+      a: "PENDING indicates the job has been submitted for creation but has not reached its desired state yet. Grepr is allocating appropriate resources, starting the job, and ensuring it reaches a healthy state before transitioning to RUNNING."
+    },
+    {
+      q: "What is the difference between STOPPED and FAILED states?",
+      a: "STOPPED means the job was intentionally stopped and is not processing data, but can be restarted to resume processing with the most recent data. FAILED means the job encountered an error during startup or processing, likely due to invalid configuration or processing errors, and needs correction before resubmission."
+    },
+    {
+      q: "How do job updates work and what are the version transitions?",
+      a: "Job updates are versioned operations. When you submit an update, the old version is retired while the new version is deployed concurrently. Both versions transition through states - the old to FINISHED and the new to RUNNING. If rollbackEnabled is true, the system automatically reverts to the old version on failure."
+    },
+    {
+      q: "What is rollbackEnabled and when should I use it?",
+      a: "rollbackEnabled is a parameter in job update requests that, when set to true, automatically rolls back the job to the previously running version if the new version fails. This ensures minimal downtime in data processing caused by misconfiguration."
+    },
+    {
+      q: "How does automatic rollback work if an update fails?",
+      a: "If a new job version fails and rollbackEnabled is true, Grepr creates a rollback version (version 2) using the same job graph as the previously working version (version 0). The rollback version follows the same state transitions as a new job creation."
+    },
+    {
+      q: "What states can a job enter during deletion?",
+      a: "During deletion, an ASYNCHRONOUS STREAMING job transitions through states like PENDING_DELETE and then FINISHED, ensuring a clean shutdown of the job and proper resource cleanup before the job is fully removed."
+    },
+    {
+      q: "What are the possible state transitions for asynchronous batch jobs?",
+      a: "Asynchronous batch jobs transition through states that track submission, processing, and completion. Unlike streaming jobs, they are short-lived and follow a simpler state progression optimized for query operations."
+    },
+    {
+      q: "Why do synchronous batch jobs have a timeout?",
+      a: "Synchronous batch jobs are designed for real-time queries and have a default maximum execution time of 30 seconds. This timeout prevents long-running queries from blocking the client and ensures responsive performance."
+    },
+    {
+      q: "How should I poll for job status updates?",
+      a: "Use the GET /jobs endpoint to retrieve the current job state and desiredState fields. Poll regularly (every few seconds is typical) until the job reaches its terminal state (RUNNING, FAILED, FINISHED, STOPPED, etc.)."
+    },
+    {
+      q: "Can I revert a failed job update to a specific previous version?",
+      a: "If rollbackEnabled was set during the update, Grepr automatically rolls back to the previous working version. If you need to revert to an older version manually, you can submit a new update with the desired configuration from that version."
+    }
+  ]}
+/>

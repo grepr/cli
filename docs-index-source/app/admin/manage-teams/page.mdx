@@ -1,0 +1,124 @@
+---
+description: Learn how to create and manage Grepr teams, assign users to teams, and use teams to control access to Grepr features.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Manage teams in the Grepr platform
+
+Teams allow you to organize users and resources in your organization. Team members can be assigned the Leader or Member roles. You can also use teams to control access to jobs, integrations, templates, and datasets.
+
+Team roles are separate from organization-level roles. A user can be a team Leader without being an organization-level administrator.
+
+You can manage teams in the Grepr UI or the REST API. This page describes how to manage teams in the UI. To use the API, see the [Teams specification](/apis/api-spec#tag/Teams).
+
+<Callout>
+  You must have the `view:users` permission to access the user management UI. This permission is granted to organization Admins and team Leaders.
+</Callout>
+
+## Team roles in the Grepr platform
+
+A user is assigned to a team with one of the following roles:
+
+- The Leader role has elevated permissions in the team and can manage team membership and team-scoped resources. These permissions include creating and editing jobs, integrations, templates, and datasets assigned to the team. Team Leaders can also view all organization resources, but only edit resources scoped to their team or teams.
+- A Member can view resources assigned to the team, run backfill jobs, and query logs, but does not have permissions to create or edit resources such as jobs, integrations, templates, or datasets assigned to the team.
+
+For details on the permissions for these roles, see [Permissions in the Grepr platform](/grepr-platform/permissions).
+
+## Grant team access to resources
+
+You can grant access to a team when you create or edit a resource, such as an integration, dataset, template, or job. When you grant a team access to a resource, team Leaders have edit permissions on the resource, and team Members have view permissions. To learn how to add team access when you create a resource, see the documentation for that resource. For example, to add teams to a Datadog integration, see [Configure Datadog connections with a Grepr integration](/integrations/datadog).
+
+To edit and use a job, such as a pipeline, a user must have access to all resources assigned to the job. Because of this requirement, if a job is assigned to a team, and the team Leader has edit permissions on the integration used as a source and sink in the job, but not on the dataset used in the job, the team Leader cannot edit or use the job.
+
+## Access team management features in the UI
+
+To manage teams in the Grepr UI:
+
+1. Sign in to the Grepr UI and click your profile icon in the top bar.
+1. In the menu, select **User Management**.
+1. On the **User Management** page, click **Teams** in the left pane.
+
+The **Teams** pane displays each team in your organization on a card. Each card includes the team name, number of team members, and options to manage or delete the team.
+
+Click **Manage** on any team card to view and manage team members.
+
+## Create a team
+
+To create a team:
+
+1. In the **Teams** pane, click **Create New Team**.
+1. In the **Create New Team** dialog, enter a name for the team.
+1. Click **Create**.
+
+## Add members to a team
+
+To add members to a team:
+
+1. In the **Teams** pane, click **Manage Team** in the team card.
+1. Click **Add Users**.
+1. Select one or more users to add as Leaders or Members.
+1. Click **Add Users**.
+
+## Remove members from a team
+
+1. In the **Teams** pane, find the member in the Team Members table.
+1. Click the trash icon next to their name.
+1. Click **Remove**.
+
+Removing a user from a team revokes their access to team-scoped resources.
+
+## Delete a team
+
+1. In the **Teams** pane, click the trash can icon in the team card.
+1. In the **Confirm Delete** dialog, click **Delete**.
+
+<Callout>
+  You can delete a team even if it has members. Before deleting a team, ensure the team doesn't have any dependencies on resources, such as integrations or jobs, assigned to it.
+</Callout>
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What is a team in Grepr and how does it differ from organization-level roles?",
+      a: "Teams are groups of users that allow you to organize and scope access to resources like jobs, integrations, templates, and datasets. Team roles (Leader/Member) are separate from organization-level roles (Admin/Member), allowing for more granular access control within teams."
+    },
+    {
+      q: "What permissions do team Leaders have compared to team Members?",
+      a: "Team Leaders have elevated permissions including creating and editing jobs, integrations, templates, and datasets assigned to the team. Team Members can only view resources assigned to the team, run backfill jobs, and query logs, but cannot create or edit team resources."
+    },
+    {
+      q: "Can a team Leader edit organization-level resources?",
+      a: "Team Leaders can view all organization resources, but can only edit resources that are scoped to their team. To edit organization-wide resources, they need organization-level Admin permissions."
+    },
+    {
+      q: "How do I grant a team access to resources like integrations or jobs?",
+      a: "When creating or editing a resource, you can assign it to one or more teams. Once assigned, Team Leaders have edit permissions and Team Members have view permissions on that resource."
+    },
+    {
+      q: "What happens if I try to use a job with multiple team dependencies?",
+      a: "A user must have access to all resources assigned to a job. If a job uses an integration and dataset from different teams, the user must be a member of both teams with appropriate permissions to use the job."
+    },
+    {
+      q: "Can I delete a team with active members?",
+      a: "Yes, you can delete a team even if it has members. However, you should first ensure the team has no dependencies on resources like integrations or jobs assigned to it."
+    },
+    {
+      q: "What happens to a user's access when I remove them from a team?",
+      a: "Removing a user from a team revokes their access to all team-scoped resources. They retain access to organization-level resources and resources assigned to other teams they are members of."
+    },
+    {
+      q: "Can a team be assigned to multiple jobs or integrations?",
+      a: "Yes, a single team can have access to multiple resources. When you grant a team access to a resource, that team can manage or view that resource depending on the team member's role (Leader or Member)."
+    },
+    {
+      q: "How do I change a user's role within a team from Member to Leader?",
+      a: "In the Teams pane, click 'Manage Team' on the team card, find the user in the Team Members table, and use the role management interface to update their role from Member to Leader."
+    },
+    {
+      q: "What is the recommended way to organize users into teams?",
+      a: "Organize teams based on functional areas, projects, or business units. This allows you to scope resources and permissions to specific groups, following the principle of least privilege and making access management simpler at scale."
+    }
+  ]}
+/>

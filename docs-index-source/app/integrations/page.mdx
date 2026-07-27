@@ -1,0 +1,222 @@
+---
+description: Learn how to configure how Grepr integrates with observability platforms and storage systems to support data ingestion, processing, and output in your pipelines.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Configure how Grepr integrates with observability platforms and cloud storage
+
+To support data ingestion and data output for your Grepr pipelines, you connect Grepr to external observability platforms and storage systems. To support these connections, the Grepr platform uses _integrations_. A Grepr integration provides the configuration details to connect to an external system, enabling data exchange between Grepr and that system.
+
+After configuring an integration, you can use it in your Grepr pipelines to create _sources_ to ingest data from agents and collectors, such as FluentD or the OpenTelemetry collector, and _sinks_ to send data to an observability platform or storage.
+
+You can use the Grepr UI or the REST API to create and manage integrations. To use the UI, see [Manage integrations in the Grepr UI](#manage-integrations-in-ui). To use the API, see the documentation for each [supported integration](#supported-integrations).
+
+## Integration types
+
+The Grepr platform includes two integration types:
+
+- Observability platform integrations: Connections to monitoring, logging, and APM platforms, such as Datadog, Splunk, New Relic, and Sumo Logic.
+- Cloud storage integrations: Connections to cloud storage. The Grepr data lake uses cloud storage to store your raw data and metadata.
+
+## Supported platform and storage integrations [#supported-integrations]
+
+The Grepr platform includes the following integrations. For details on configuring and using an integration, refer to the linked documentation page. For a complete list of supported integrations, supported functionality, and details on vendor-specific capabilities with some integrations, see [Grepr supported vendor and storage integrations](/integrations/support-matrix).
+
+### Datadog
+
+The Datadog integration connects to the Datadog observability platform and supports sourcing data from several Datadog-compatible collectors and sending processed data to Datadog.
+
+See [Configure Datadog connections with a Grepr integration](/integrations/datadog).
+
+### New Relic
+
+The New Relic integration connects to New Relic's observability platform. Use this integration to create sources that retrieve log data from New Relic collectors and sinks that send processed data to New Relic for monitoring and analysis.
+
+See [Configure New Relic connections with a Grepr integration](/integrations/new-relic).
+
+### Splunk
+
+The Splunk integration provides connectivity to Splunk through Splunk's HTTP Event Collector (HEC) or S2S over HTTP. This integration supports reading data from Splunk collectors and writing data to Splunk indexes.
+
+See [Configure Splunk connections with a Grepr integration](/integrations/splunk).
+
+### Sumo Logic
+
+The Sumo Logic integration connects to Sumo Logic's cloud-based log management and monitoring platform using a Sumo Logic HTTP Source. You can use the integration to create sources that ingest data from Sumo Logic collectors and sinks that send processed data to Sumo Logic.
+
+See [Configure Sumo Logic connections with a Grepr integration](/integrations/sumo-logic).
+
+### OpenTelemetry
+
+The Grepr OpenTelemetry integration lets you ingest logs and Application Performance Monitoring (APM) data into Grepr from a collector that supports the OpenTelemetry Protocol over HTTP, or OTLP/HTTP, process them with a Grepr pipeline, and then send the processed data to any observability vendor that accepts OTLP/HTTP requests.
+
+See [Configure connections to OpenTelemetry compatible platforms](/integrations/open-telemetry).
+
+### Grafana Cloud
+
+You can configure Grepr's OpenTelemetry integration to connect with Grafana Cloud using the OpenTelemetry Protocol (OTLP). Use an OpenTelemetry integration to create sources that ingest data from OTLP-compatible collectors and sinks that send processed log data to Grafana Cloud.
+
+See [Configure Grafana Cloud connections with a Grepr integration](/integrations/grafana).
+
+### Amazon CloudWatch
+
+You can configure Grepr's OpenTelemetry integration to connect with Amazon CloudWatch using the OpenTelemetry Protocol (OTLP). Use an OpenTelemetry integration to create sources that ingest data from OTLP-compatible collectors and sinks that send processed log data to a CloudWatch log group.
+
+See [Configure Amazon CloudWatch connections with a Grepr integration](/integrations/cloudwatch).
+
+### Google Cloud Platform (GCP)
+
+The GCP integration as a source enables you to stream logs from Google Cloud services to Grepr for processing and analysis, and then forward the processed logs to any sink created using a Grepr-supported integration, such as Datadog, Splunk, or New Relic.
+
+See [Google Cloud Platform observability with Grepr](/integrations/gcp).
+
+### Cloud storage
+
+The Grepr data lake uses Amazon S3 to store, manage, and support querying the raw data from your Grepr pipelines. Depending on your requirements, you can choose from two S3 integrations: a Grepr-hosted integration, which uses a Grepr-managed S3 bucket, and an integration that uses an S3 bucket in your account. Both integrations provide secure, managed, and efficient storage for your data, along with an optimized query interface.
+
+To configure the Grepr-hosted integration, you only need to assign a name to the integration. The Grepr platform manages the S3 bucket, including its deployment and configuration.
+
+Using the integration with your own S3 bucket requires that you deploy and configure an S3 bucket in your AWS account, but it provides more control over your data. See [Host a Grepr data lake with the Amazon S3 integration](/integrations/aws-s3).
+
+## Manage integrations in the Grepr UI [#manage-integrations-in-ui]
+
+The **Integrations** page displays your integrations as cards, organized by observability vendor integrations and storage integrations. In each section, cards are ordered by recent activity, with the most active integrations appearing first.
+
+![The Integrations page in the Grepr UI.](/images/tutorials/first-pipeline/integrations-page.png)
+
+In addition to the integration name and its type, for example, a Datadog integration, if the integration is assigned to one or more teams, the team names appear in the header of the card.
+
+You can get a visual overview of the health and usage of your integrations using the charts included on each integration card. If an integration has recent activity, such as requests received from agents by a vendor integration or the amount of data written to a storage integration, a time-series chart of that activity is shown on the card.
+
+- Observability vendor integrations display requests received from agents over the last 30 minutes, color-coded by HTTP status code.
+  - To view more detailed metrics or more details about a pipeline that uses the integration, select it from the **Pipelines** menu.
+
+- Storage integrations display data written to the integration over the last 24 hours, broken down by dataset.
+  - To view and query a dataset stored on a storage integration, select it from the **Datasets** menu.
+
+To view more details about the metrics in either chart type, hover over any point in the chart to see a tooltip with the value and timestamp for that point.
+
+### Add an integration
+
+To create an integration, click **Add new** next to the section heading for the type you want to add. To learn how to create and configure specific integrations, see the documentation for each [supported integration](#supported-integrations).
+
+### Edit an integration
+
+To edit an integration, click the three-dot menu on the integration card and select **Edit**. Update the fields in the dialog and click **Save**.
+
+### Delete an integration
+
+To delete an integration, click the three-dot menu on the integration card and select **Delete**. Confirm the deletion in the dialog that appears.
+
+### Identify log events that should bypass aggregation [#passthrough-estimation]
+
+When you create an integration with an observability vendor that supports _exception parsing_, Grepr automatically parses queries used by monitors, dashboards, or alerts in your observability vendor platform. You can use this list of queries to identify log messages that should be treated as _exceptions_ to log reduction in Grepr pipelines. In other words, messages that should bypass aggregation to ensure that critical alerts and dashboards continue to work as expected. To help with identifying exceptions, the Grepr UI displays a _passthrough percentage_ estimate for each query. This estimate is the percentage of events, over a configurable time window, that would bypass aggregation.
+
+You can also choose to automatically add and remove exceptions by enabling **Auto-sync exceptions** when you add the integration to your pipelines. To learn more about enabling and using auto-sync when you create or edit a pipeline, see [Prevent aggregation of messages used in your observability platform](/transforms/reducer/exceptions#vendor-exceptions).
+
+If an integration does not support exception parsing, the **Parsed Alerts** button on the integration card is disabled. See [Supported integrations: observability platforms](/integrations/support-matrix#supported-observability-integrations).
+
+To view the log queries parsed from an integration and configure passthrough estimation:
+
+1. On the **Integrations** page, on the card for a vendor integration that supports query parsing, click **Parsed Alerts**.
+
+   The **Parsed alert queries** dialog displays a table with the following columns:
+
+   - **Id**: The unique identifier for this alert.
+   - **Name**: The alert or dashboard name from your vendor.
+   - **Exception Type**: The type of vendor resource the query came from, such as a monitor or dashboard widget.
+   - **Query**: The log query extracted from the alert or dashboard.
+   - **Passthrough %**: The percentage of raw logs in your configured dataset that match this query. This value is displayed only if you've configured passthrough estimation.
+   - **Last Updated**: When the passthrough percentage was last calculated. Hover over the value to see the exact date and time.
+
+   You can filter the table by name or query text and filter by exception type using the multi-select filter in the **Exception Type** column. To manage which columns are visible, click the **Manage columns** icon in the upper-right corner of the table.
+
+1. To configure passthrough estimation and view the percentage of logs that would bypass aggregation for each query, click **Configure Passthrough Estimation**.
+
+   The **Passthrough Estimation Configuration** dialog lists the datasets that pipelines using the integration write to. Each row shows whether passthrough estimation is configured for that dataset and which pipelines use it.
+
+   <Callout>
+     When you configure passthrough estimation for a dataset, it applies to all integrations or pipelines that use that dataset as a sink.
+   </Callout>
+
+1. Expand the row for the dataset you want to configure.
+1. Under **Filter Query (Optional)**, select your preferred query syntax and enter a query to filter for logs to include in the estimation analysis. Use this field when your dataset contains logs from multiple sources, and you want Grepr to use only the logs relevant to this integration. Leave this field empty to include all logs in the dataset.
+1. In the **Lookback Duration** menu, select the time window for calculating percentages. Options range from 15 minutes to 24 hours. A shorter window scans less data, reducing costs, but may not be representative if your log patterns vary throughout the day. A longer window provides more representative results but increases the cost of the analysis queries.
+1. In the **Refresh Period** menu, select how often Grepr recomputes each estimation for this dataset. Options range from 1 hour to 30 days, with a default of 7 days. A shorter period uses more recent logs to calculate estimates, resulting in more up-to-date values, but increases query load on the data lake.
+1. In the **Log Limit** field, enter the maximum number of logs to scan per estimation run. The default is 10,000,000. Larger limits provide more representative results, but increase the cost of each estimation query.
+1. To save a new configuration, click **Enable**. To save edits to an existing configuration, click **Save changes**.
+
+Grepr's impact estimation cycle runs once an hour for any datasets due for refresh, based on each dataset's **Refresh Period**. New or recently changed queries are included in the next cycle. A first estimate typically appears within an hour, though it might take longer if a large number of queries are queued for processing.
+
+To stop estimating for a dataset, expand its row and click **Disable estimation**. The dataset remains in the list as **Not configured** so you can re-enable estimation later.
+
+### Interpret passthrough percentages
+
+<Callout>
+  Although two queries might use the same log events, their estimates will be equal. Additionally, the passthrough rate remains constant and is not the sum of the estimates. For example, if you enable exceptions for two queries that use the same log events, the passthrough rate doesn't double, but remains equal to the rate when only one exception is enabled.
+</Callout>
+
+The **Passthrough %** value for a query shows what fraction of your raw logs that alert would require to pass through without aggregation. Use these values to evaluate the impact of adding each alert as a pipeline exception:
+
+A percentage less than 1% is considered low, and an exception should have minimal impact on aggregation efficiency and storage.
+
+You should review carefully any percentage above 1% before creating an exception for the query.
+
+A dash (—) in the **Passthrough %** column indicates that no estimate is available yet, either because passthrough estimation is not configured, or because Grepr hasn't finished calculating the estimate. If passthrough estimation is configured, the first estimate typically appears within an hour, and later refreshes occur based on the dataset's **Refresh Period**.
+
+The **Passthrough Estimation Configuration** dialog also includes the **Recent Activity** table at the bottom. This section shows the most recent log events related to exception parsing, giving you visibility into recent integration activity without leaving the dialog. To view the complete log history for the integration, click **View all logs** to go to the **System Logs** page, pre-filtered to show all activity for the selected integration.
+
+### Configure passthrough estimation from a pipeline
+
+You can also configure passthrough estimation directly from a pipeline. On the pipeline details page, in the left-hand navigation menu, click **Exceptions**. In the **Actions** column for an **Avoid impacting dashboards/alerts** exception, click the **⋯** menu and select **Configure estimations** to open a dialog that includes all datasets configured as sinks for the pipeline. Any configuration changes you make to the dataset apply to every other integration or pipeline that populates that dataset.
+
+To have Grepr recompute impact percentages during the next impact estimation cycle, click the **⋯** menu and select **Reset estimations** to clear the cached impact percentages for the datasets configured as sinks for the pipeline. Use this when you've changed alert queries in your observability vendor and want updated estimates without waiting for the next scheduled refresh.
+
+## Limitations
+
+Grepr might split log events over 1MB, causing them to lose their original structured format. Each split event includes a common `grepr.splitOriginId` attribute if you need to reconstruct the original message.
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is a Grepr integration?",
+    a: "A Grepr integration provides the configuration details needed to connect Grepr to an external system, such as an observability platform or cloud storage. Integrations enable data exchange between Grepr and external systems, allowing you to create sources for data ingestion and sinks for data output in your pipelines."
+  },
+  {
+    q: "What types of integrations does Grepr support?",
+    a: "Grepr supports two integration types: observability platform integrations (connections to monitoring, logging, and APM platforms like Datadog, Splunk, New Relic, and Sumo Logic) and cloud storage integrations (connections to cloud storage for the Grepr data lake)."
+  },
+  {
+    q: "What is a source in a Grepr pipeline?",
+    a: "A source in a Grepr pipeline is an operator that ingests data from an external system or agent. Sources use integrations to connect to observability platforms or collectors like FluentD or OpenTelemetry to pull data into Grepr for processing."
+  },
+  {
+    q: "What is a sink in a Grepr pipeline?",
+    a: "A sink in a Grepr pipeline is an operator that outputs processed data to an external system. Sinks use integrations to send Grepr-processed logs to observability platforms, data lakes, or other storage systems based on your pipeline configuration."
+  },
+  {
+    q: "Can I use multiple integrations in a single pipeline?",
+    a: "Yes, you can configure pipelines with multiple sources to ingest data from different platforms and multiple sinks to send processed data to different destinations. This flexibility allows you to build complex multi-source, multi-destination data processing workflows."
+  },
+  {
+    q: "Which observability platforms does Grepr support?",
+    a: "Grepr supports integrations with Datadog, Splunk, New Relic, Sumo Logic, Grafana Cloud, and Google Cloud Platform (GCP). Each integration enables different source and sink capabilities depending on the platform's features and capabilities."
+  },
+  {
+    q: "How do I configure a Grepr integration?",
+    a: "To configure an integration, you need to provide connection details specific to your external system, such as API keys, tokens, endpoints, or credentials. The specific steps vary by integration type. Detailed instructions for each integration are available in the platform-specific documentation pages."
+  },
+  {
+    q: "What is the Grepr data lake integration?",
+    a: "The Grepr data lake uses Amazon S3 to store raw log data. You can configure either a Grepr-hosted integration (using a Grepr-managed S3 bucket) where you only provide a name, or an integration with your own AWS account (requiring you to configure and manage the S3 bucket yourself for more control)."
+  },
+  {
+    q: "What happens to logs older than 48 hours from external sources?",
+    a: "Grepr might drop incoming data from external integration sources with timestamps older than 48 hours. This limitation helps optimize storage and processing while allowing you to retain raw logs in the data lake for longer-term analysis."
+  },
+  {
+    q: "What happens when a log event is larger than 1MB?",
+    a: "If a log event exceeds 1MB, Grepr might split it into smaller events, which can cause them to lose their original structured format. Each split event includes a common 'grepr.splitOriginId' attribute that you can use to reconstruct the original message from its component parts."
+  }
+]} />

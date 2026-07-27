@@ -1,0 +1,307 @@
+---
+description: Connect Grepr to observability vendors for standardized telemetry data collection and forwarding using the OpenTelemetry Protocol over HTTP, or OTLP/HTTP.
+vendor: OpenTelemetry
+---
+
+import { Callout } from 'nextra/components'
+import AddTeamAccess from '@/app/shared/add-team-access-to-integration.mdx'
+import IngestUrlConfig from '@/app/shared/configure-ingest-url.mdx'
+import IntegrationsInterchangeability from '@/app/shared/integrations-interchangeability.mdx'
+import { Tabs } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Configure connections to OpenTelemetry-compatible platforms
+
+The Grepr OpenTelemetry integration enables you to ingest telemetry data into Grepr from a collector that supports the OpenTelemetry Protocol over HTTP, or OTLP/HTTP, process the data with a Grepr pipeline, and then send the processed data to any observability vendor that accepts OTLP/HTTP requests. The OpenTelemetry integration supports logs and Application Performance Monitoring (APM) data, including traces and metrics.
+
+To send logs or APM data to a Grepr pipeline for processing, change your collector configuration to send them to a Grepr endpoint URL instead of your vendor's OTLP/HTTP endpoint. The Grepr OpenTelemetry integration works with any collector that supports OTLP/HTTP, including the OpenTelemetry Collector and Fluent Bit.
+
+The Grepr endpoint URL requires a Grepr-generated token for authentication. When you create an OpenTelemetry integration, Grepr automatically generates this token. In the UI, the token is displayed in a dialog after you create the integration. You must copy this token and include it in your collector configuration. When you use the REST API to create the integration, the token is returned in the response.
+
+You can use the Grepr UI or REST API to add an OpenTelemetry integration. To learn how to create an OpenTelemetry integration in the Grepr UI and configure collectors to send data to Grepr, see [_](#use-opentelemetry-integration). To learn how to configure OpenTelemetry-compatible vendor integrations, see [Use an OTLP/HTTP compatible vendor integration in a Grepr pipeline](#vendor-otel-configuration).
+
+To use the REST API, see the [OpenTelemetry Integration specification](/apis/api-spec#tag/OpenTelemetry-Integration).
+
+<Callout>
+  <IntegrationsInterchangeability />
+</Callout>
+
+## Requirements
+
+Creating and configuring an OpenTelemetry integration requires the URL of the HTTP/HTTPS endpoint where your observability vendor accepts OpenTelemetry data.
+
+## Use an OpenTelemetry integration in a Grepr pipeline [#use-opentelemetry-integration]
+
+Use the following steps to create an OpenTelemetry integration in the Grepr UI and use the integration as a source and sink in a pipeline.
+
+### Step 1: Create an OpenTelemetry integration [#step1-create-integration]
+
+To create an OpenTelemetry integration in the Grepr UI:
+
+1. Go to the **Integrations** page in the Grepr UI and click **Add new** next to **Observability Vendors**.
+
+   ![The Integrations page in the Grepr UI.](/images/tutorials/first-pipeline/integrations-page.png)
+
+1. In the **Add Observability Vendor** dialog:
+   - In the **Type** menu, select **Open Telemetry**.
+   - In the **Name** field, enter a name for the integration.
+   - In the **Endpoint** field, enter the URL for the HTTP/HTTPS endpoint.
+   - Optional: To add any required headers, for example, authentication headers such as `Authorization: Bearer <token>` or `X-API-Key: <api-key>`:
+     - In the **HTTP Headers** section, click **Add Header** to open the **Add New Header** card.
+     - To use a fixed value for the header, in the **Source** menu, select **Static Value** and enter the **Header Name** and **Header Value**.
+     - To set the header value using an attribute from processed log events, in the **Source** menu, select **From Attribute**, enter the **Header Name** and **Attribute Path**.
+     - To store the value securely and mask it in the UI, click the lock icon. Use this option for all sensitive values, such as API keys or tokens.
+     - Click **Save**.
+1. Click **Create**.
+1. After clicking **Create**, the **Grepr Token** dialog appears with a Grepr-generated token. Click the **Copy to Clipboard** icon to copy the token. This token is required when you configure your collector to send data to Grepr.
+1. Click **Confirm** to close the dialog.
+
+   #### Optional: Grant team access to the integration
+
+   <AddTeamAccess />
+
+When you select **From Attribute** to set a header value, Grepr groups log events that share the same attribute value into the same outbound request, sets the header to that value, and forwards the events to your vendor's endpoint. Events with different values for the attribute are sent in separate requests with the corresponding header values. Use this option when downstream routing or tenancy depends on a per-log value, such as a Kubernetes namespace or a tenant identifier.
+
+If a log event does not have the configured attribute, or the attribute value fails Grepr's validation, for example, because it contains control characters or exceeds the maximum length, Grepr delivers the event but omits the header from the request.
+
+You can add both static and attribute-sourced headers to the same integration. Grepr merges them on each outbound request.
+
+### Step 2: Add a source to your pipeline
+
+To add a source to your pipeline that uses the OpenTelemetry integration, select the integration when you create a pipeline. For an existing pipeline, go to the pipeline details page and in the left-hand navigation menu, click **Sources** and select the integration.
+
+### Step 3: Configure forwarding to Grepr [#configure-forwarding-to-grepr]
+
+<IngestUrlConfig image_url='/images/integrations/ingestion-url-otel.png' url='https://<integration-id>-<org-id>.ingest.grepr.ai/otlp/<grepr-token>' />
+
+Replace `<grepr-token>` with the token generated when you created the OpenTelemetry integration in Step 1.
+
+To see configuration examples for sending data to Grepr, select the tab for your preferred collector:
+
+<Tabs items={['OpenTelemetry Collector (logs)', 'OpenTelemetry Collector (traces)', 'Fluent Bit']}>
+  <Tabs.Tab>
+
+    The OpenTelemetry Collector can send logs to Grepr using the `otlphttp` exporter. In the OpenTelemetry collector configuration, set the endpoint to the ingestion URL from your OpenTelemetry integration:
+
+    ```yaml copy filename="config.yaml"
+    exporters:
+      otlphttp:
+        endpoint: <ingestion-url>
+
+    service:
+      pipelines:
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp]
+    ```
+
+    Replace `<ingestion-url>` with the ingestion URL from your OpenTelemetry integration.
+
+    For dual shipping, you need to create two exporters: one to send logs to Grepr, and another to send logs directly to your vendor's platform. Your exporter for Grepr only includes Grepr's ingestion endpoint, with any needed headers configured in the Grepr UI. Your exporter for the vendor's platform includes the vendor's endpoint and the necessary headers.
+
+    ```yaml copy filename="config.yaml"
+    exporters:
+      otlphttp/grepr:
+        endpoint: <ingestion-url>
+
+      otlphttp/vendor:
+        endpoint: <vendor-otlp-endpoint>
+        headers:
+          authorization: "Bearer <vendor-token>"
+
+    service:
+      pipelines:
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp/grepr, otlphttp/vendor]
+    ```
+
+    Replace:
+    - `<ingestion-url>` with the ingestion URL from your OpenTelemetry integration.
+    - `<vendor-otlp-endpoint>` with your vendor's OTLP/HTTP endpoint URL.
+    - `<vendor-token>` with your vendor's authentication token.
+
+    To learn more about configuration settings for the OpenTelemetry Collector, see the [OTLP/HTTP Exporter documentation](https://github.com/open-telemetry/opentelemetry-collector#readme).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    Similar to log forwarding, the OpenTelemetry Collector can send APM events to Grepr using the `otlphttp` exporter. In your collector configuration, add a `traces` pipeline that uses the `otlphttp` exporter. The exporter appends the path `/v1/traces` to the ingestion URL.
+
+    ```yaml copy filename="config.yaml"
+    exporters:
+      otlphttp:
+        endpoint: <ingestion-url>
+
+    service:
+      pipelines:
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp]
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp]
+    ```
+
+    Replace `<ingestion-url>` with the ingestion URL from your OpenTelemetry integration.
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    Fluent Bit can forward logs to Grepr using the OpenTelemetry output plugin. To configure the plugin:
+
+    - Set the `host` value using only the hostname of the ingestion URL from your OpenTelemetry integration, omitting the `https://` prefix and the path value.
+    - Set the `logs_uri` value to the ingestion URL path and append `/v1/logs`.
+
+    For example, if your ingestion URL is `https://YWNQbQSarRBsa-<org-id>.ingest.grepr.ai/otlp/uUasjYpMJdpQZ9cNlLEtthuXNRp6n3ND_xND80PVXNk=`, set the `host` value to `YWNQbQSarRBsa-<org-id>.ingest.grepr.ai` and the `logs_uri` value to `/otlp/uUasjYpMJdpQZ9cNlLEtthuXNRp6n3ND_xND80PVXNk=/v1/logs`. The following is an example `OUTPUT` configuration for the OpenTelemetry plugin from a Fluent Bit configuration file (`fluent-bit.conf`):
+
+    ```fluent copy filename="fluent-bit.conf"
+    [OUTPUT]
+      name                 opentelemetry
+      match                *
+      host                 <integration-id>-<organization-id>.ingest.grepr.ai
+      port                 443
+      logs_uri             /otlp/<grepr-token>/v1/logs
+      tls                  On
+      tls.verify           On
+    ```
+
+    To learn more about configuration settings for Fluent Bit, see the documentation for the [Fluent Bit OpenTelemetry output plugin](https://docs.fluentbit.io/manual/data-pipeline/outputs/opentelemetry).
+
+  </Tabs.Tab>
+</Tabs>
+
+## Use an OTLP/HTTP compatible vendor integration in a Grepr pipeline [#vendor-otel-configuration]
+
+The following tabs show the integration configurations required to connect Grepr to an observability vendor's OTLP/HTTP endpoint. To connect to a vendor not listed here:
+
+1. In your vendor's documentation, find their OTLP/HTTP endpoint URL and any required authentication headers.
+1. Create an OpenTelemetry integration in Grepr using your vendor's endpoint URL and headers. For instructions, see [_](#step1-create-integration).
+1. Configure your collector to send data to Grepr. For instructions, see [_](#configure-forwarding-to-grepr).
+
+<Tabs items={['Datadog', 'Sumo Logic', 'Grafana Cloud', 'Amazon CloudWatch']}>
+  <Tabs.Tab>
+
+    To send OpenTelemetry data to Datadog from Grepr, configure your integration to use the Datadog OTLP endpoint and required headers.
+
+    **Integration Configuration:**
+    - **Endpoint URL**: `https://http-intake.logs.datadoghq.com/api/v2/logs`
+    - **Headers**:
+      - `dd-protocol`: `otlp`
+    - **Secret Headers**:
+      - `dd-api-key`: `<dd-api-key>`
+
+    Replace `<dd-api-key>` with your Datadog API key.
+
+    For more information, see [Datadog OTLP Logs Intake Endpoint](https://docs.datadoghq.com/opentelemetry/setup/intake_endpoint/otlp_logs/). To use Grepr's native Datadog integration instead of OpenTelemetry, see [Configure Datadog connections with a Grepr integration](/integrations/datadog).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    To send OpenTelemetry data to Sumo Logic from Grepr, configure your integration to use the Sumo Logic OTLP/HTTP source endpoint.
+
+    **Integration Configuration:**
+    - **Endpoint URL**: Your Sumo Logic OTLP/HTTP source URL. For example, `https://collectors.sumologic.com/receiver/v1/otlp/<sumo-unique-id>`. Replace `<sumo-unique-id>` with the unique identifier from your Sumo Logic OTLP/HTTP source.
+
+    For more information, see [Sumo Logic's OTLP documentation](https://help.sumologic.com/docs/send-data/hosted-collectors/http-source/otlp/). To use Grepr's native Sumo Logic integration instead of OpenTelemetry, see [Configure Sumo Logic connections with a Grepr integration](/integrations/sumo-logic).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    To send OpenTelemetry data to Grafana Cloud from Grepr, configure your integration to use the Grafana Cloud OTLP endpoint and an access policy token.
+
+    **Integration Configuration:**
+    - **Endpoint URL**: Your Grafana Cloud OTLP endpoint. For example, `https://otlp-gateway-prod-us-west-0.grafana.net/otlp`.
+    - **Secret Headers**:
+      - `Authorization`: `Bearer <grafana-access-token>`
+
+    Generate the Grafana access token from a Grafana Cloud Access Policy with write access to logs. To create a token, in your Grafana Cloud account, go to **Home > Administration > Users and access > Cloud access policies**.
+
+    For detailed setup instructions, including configuration examples for Grafana Alloy, the OpenTelemetry Collector, and the Grafana Agent, see [_](/integrations/grafana).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    To send OpenTelemetry data to Amazon CloudWatch from Grepr, configure your integration to use the CloudWatch OTLP/HTTP endpoint, bearer token authentication, and JSON encoding.
+
+    **Integration Configuration:**
+    - **Endpoint URL**: `https://logs.<region>.amazonaws.com`
+    - **Secret Headers**:
+      - `Authorization`: `Bearer <bearer-token>`
+    - **Headers**:
+      - `x-aws-log-group`: `<log-group-name>`
+      - `x-aws-log-stream`: `<log-stream-name>`
+    - **Output encoding**: `JSON`
+
+    The log group must have bearer token authentication enabled and the log stream must exist before you send logs.
+
+    To learn more about integrating Grepr with CloudWatch, including configuration examples, see [_](/integrations/cloudwatch).
+
+  </Tabs.Tab>
+</Tabs>
+
+## Security considerations
+
+Grepr validates all headers you configure on an OpenTelemetry integration for potential security issues, including CRLF injection, control characters, and other attacks. Otherwise, when configuring OpenTelemetry integrations:
+
+- Always use secret headers for sensitive information like API keys, tokens, or passwords.
+- Ensure endpoint URLs use HTTPS for secure data transmission.
+- Avoid using reserved headers. Some HTTP headers are reserved and cannot be set for security reasons.
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "How do I create an OpenTelemetry integration with Grepr?",
+      a: "In the Grepr UI, go to Integrations and click Add new. Select OpenTelemetry, enter a name, and provide the URL for your vendor's OTLP/HTTP endpoint. Optionally add HTTP headers for authentication. After creation, Grepr generates a token that you must include in your collector configuration at the ingestion endpoint."
+    },
+    {
+      q: "What is the purpose of the Grepr token in OpenTelemetry integrations?",
+      a: "The Grepr token is automatically generated during OpenTelemetry integration creation and is required for authentication. It ensures that only authorized collectors can send data to your Grepr pipeline. The token must be appended to the ingestion URL in the format: https://<integration-id>-<org-id>.ingest.grepr.ai/otlp/<grepr-token>"
+    },
+    {
+      q: "Can I use OpenTelemetry integration with any observability vendor?",
+      a: "Yes, the OpenTelemetry integration works with any vendor that accepts the OpenTelemetry Protocol (OTLP) over HTTP. This includes Grafana Cloud, Sumo Logic with OTLP source, Datadog, and many others. Check your vendor's documentation for their OTLP/HTTP endpoint URL."
+    },
+    {
+      q: "How do I configure the OpenTelemetry Collector to send logs to Grepr?",
+      a: "Configure the otlphttp exporter in your collector.yaml with the Grepr ingestion endpoint. Set the endpoint to https://<integration-id>-<org-id>.ingest.grepr.ai/otlp/<grepr-token>. Add the exporter to your logs pipeline along with your receivers and processors."
+    },
+    {
+      q: "How do I send traces to Grepr with an OpenTelemetry integration?",
+      a: "Add a traces pipeline to your OpenTelemetry Collector configuration that uses the same otlphttp exporter as your logs pipeline, with the endpoint set to your Grepr ingestion URL. The exporter sends trace data to the /v1/traces path under the ingestion URL."
+    },
+    {
+      q: "How do I set up dual-shipping with OpenTelemetry integration?",
+      a: "Create two exporters in your OpenTelemetry Collector configuration: one otlphttp/grepr pointing to your Grepr ingestion endpoint, and another otlphttp/vendor pointing to your vendor's OTLP endpoint with appropriate headers. Include both in your logs pipeline to send logs to both destinations."
+    },
+    {
+      q: "What headers do I need for OpenTelemetry integration with Datadog?",
+      a: "For Datadog, configure the integration with the endpoint https://http-intake.logs.datadoghq.com/api/v2/logs. Add a dd-protocol header set to otlp, and add a dd-api-key header set to your Datadog API key. Store the API key securely by clicking the lock icon when you add the header."
+    },
+    {
+      q: "How do I send logs to Sumo Logic via OpenTelemetry integration?",
+      a: "Configure the integration with your Sumo Logic OTLP/HTTP source URL, for example, https://collectors.sumologic.com/receiver/v1/otlp/<sumo-unique-id>. Replace <sumo-unique-id> with the unique identifier from your Sumo Logic OTLP/HTTP source."
+    },
+    {
+      q: "How do I protect sensitive headers in OpenTelemetry integrations?",
+      a: "Click the lock icon for any header that contains a sensitive value such as an API key, token, or password. Grepr stores these values securely and masks them in the UI. Do not include sensitive information in non-secret headers."
+    },
+    {
+      q: "What OpenTelemetry collectors are supported with Grepr?",
+      a: "Grepr's OpenTelemetry integration works with any collector that supports the otlphttp exporter and can send to OTLP/HTTP endpoints. This includes the OpenTelemetry Collector, Fluent Bit, and Grafana Alloy."
+    },
+    {
+      q: "How do I send logs to Amazon CloudWatch with an OpenTelemetry integration?",
+      a: "Configure the integration with the endpoint https://logs.<region>.amazonaws.com and add three headers: an Authorization header set to Bearer <token> and stored securely with the lock icon, an x-aws-log-group header set to your log group name, and an x-aws-log-stream header set to your log stream name. Set Output encoding to JSON. You must enable bearer token authentication on the CloudWatch log group and create the log stream before sending logs."
+    }
+  ]}
+/>

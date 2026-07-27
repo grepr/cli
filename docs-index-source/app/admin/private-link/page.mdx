@@ -1,0 +1,132 @@
+---
+description: Learn how to use Grepr's AWS PrivateLink endpoint service to send data to Grepr over private AWS networking instead of the public internet.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Securely forward observability data to Grepr with AWS PrivateLink
+
+You can securely send your observability data to Grepr over private AWS networking using Grepr's PrivateLink endpoint service. The endpoint service is available in the `us-east-1` region.
+
+AWS PrivateLink lets a service provider offer a service to other AWS accounts through an _endpoint service_. An endpoint service makes the provider's service available in an AWS Region without exposing it to the public internet. The AWS account that uses an endpoint service is a _service consumer_. Grepr is the service provider for its ingestion endpoint service, and your AWS account is the service consumer.
+
+As a service consumer, you connect to the Grepr endpoint service by creating an _interface VPC endpoint_ in your own virtual private cloud (VPC). The interface endpoint provisions network interfaces with private IP addresses in the subnets you specify, and traffic to the endpoint service flows through those interfaces over the AWS private network.
+
+Connecting to Grepr through PrivateLink provides the following benefits:
+
+- Ingest traffic stays on the AWS private network and never traverses the public internet, which reduces your exposure to network-based threats.
+- You can send data to Grepr without an internet gateway, a NAT device, or public IP addresses for your ingest traffic.
+- Keeping traffic on the AWS private network can reduce data transfer costs compared to routing ingest traffic over the public internet.
+
+## Requirements [#requirements]
+
+To connect to Grepr's PrivateLink endpoint service, you must have:
+
+- An AWS account with a VPC in the `us-east-1` region.
+- Your VPC must span at least one of the following availability zones: `use1-az1`, `use1-az2`, or `use1-az6`.
+- The VPC must have private DNS enabled. Enabling private DNS on the endpoint lets the private ingestion URL resolve to the interface endpoint from your VPC.
+- One or more subnets in those availability zones to host the interface endpoint network interfaces.
+- Permission in your AWS account to create interface VPC endpoints and security groups.
+- The private ingestion URL from the Grepr integration that's used to create sources in your pipelines.
+- To use Terraform to configure your VPC requires the Terraform CLI version 1.0 or later.
+
+## Set up your VPC [#set-up-vpc]
+
+To connect to Grepr's endpoint service, create an interface VPC endpoint in your VPC that points to the endpoint service.
+
+The following Terraform configuration looks up the subnets in the supported availability zones, creates a security group that allows TLS traffic to the endpoint, and creates the interface VPC endpoint:
+
+```hcl copy filename="main.tf"
+data "aws_subnets" "endpoint" {
+  filter {
+    name   = "vpc-id"
+    values = [var.consumer_vpc_id]
+  }
+  filter {
+    name   = "availability-zone-id"
+    values = ["use1-az1", "use1-az2", "use1-az6"]
+  }
+}
+
+resource "aws_security_group" "ingestion_endpoint" {
+  name        = "grepr-ingestion-privatelink"
+  description = "Egress to the Grepr ingestion PrivateLink endpoint service over TLS:443."
+  vpc_id      = var.consumer_vpc_id
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.consumer_vpc_cidr] # callers inside the VPC reaching the ENIs
+    description = "TLS from in-VPC clients to the interface endpoint ENIs."
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_vpc_endpoint" "ingestion" {
+  vpc_id              = var.consumer_vpc_id
+  service_name        = "com.amazonaws.vpce.us-east-1.vpce-svc-096296e52f78a0df0"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = data.aws_subnets.endpoint.ids
+  security_group_ids  = [aws_security_group.ingestion_endpoint.id]
+  private_dns_enabled = true # required for clients to resolve "*.ingest.private.grepr.ai"
+  tags                = { Name = "grepr-ingestion-endpoint" }
+}
+```
+
+Replace `var.consumer_vpc_id` with your VPC ID and `var.consumer_vpc_cidr` with the configured CIDR blocks for your VPC.
+
+After you apply the configuration, the interface endpoint connects to Grepr's endpoint service. When the endpoint reaches the `Available` state, you can send data to Grepr through it.
+
+## Use the private ingestion URL [#use-private-url]
+
+To send data to Grepr through your interface endpoint, configure your collector or agent with the _private ingestion URL_ instead of the public ingestion URL. The private ingestion URL has the same format as the public ingestion URL, with `.private` inserted after the `ingest` host segment:
+
+<br /><code className="nextra-code">https://&lt;integration-id&gt;-&lt;org-id&gt;.ingest.private.grepr.ai</code>
+
+The token and path are the same as the public ingestion URL, so only the host changes. To get the private ingestion URL from the Grepr UI:
+
+- On the details page for your pipeline, click **Sources** in the left pane. The **Sources** pane lists both a **Public** and a **Private** ingest URL, each with its own copy button. Copy the **Private** ingest URL.
+- Alternatively, on the **Integrations** page, open the menu on the vendor card for your integration and select **Copy Private Ingestion URL**.
+
+After you copy the private ingestion URL, set it as the ingestion URL in your collector or agent configuration. To learn more about configuring a collector or agent to send data to a Grepr ingestion URL, see [Configure vendor and storage connections](/integrations).
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What is an AWS PrivateLink endpoint service?",
+      a: "An AWS PrivateLink endpoint service is a service that a provider makes available to other AWS accounts within a Region without exposing it to the public internet. Grepr publishes an endpoint service for ingestion. As a service consumer, you connect to it by creating an interface VPC endpoint in your own VPC, and traffic flows over the AWS private network."
+    },
+    {
+      q: "What is a service consumer in AWS PrivateLink?",
+      a: "A service consumer is the AWS account that uses an endpoint service published by a provider. When you connect to Grepr over PrivateLink, your AWS account is the service consumer and Grepr is the service provider."
+    },
+    {
+      q: "What are the benefits of connecting to Grepr over AWS PrivateLink?",
+      a: "Ingest traffic stays on the AWS private network and never traverses the public internet, which reduces exposure to network-based threats. You can send data to Grepr without an internet gateway, NAT device, or public IP addresses for ingest traffic, and keeping traffic on the AWS private network can reduce data transfer costs."
+    },
+    {
+      q: "Which AWS Regions and availability zones does Grepr's PrivateLink endpoint service support?",
+      a: "Grepr's PrivateLink endpoint service is offered in the us-east-1 region. Your VPC must span at least one of the availability zones use1-az1, use1-az2, or use1-az6."
+    },
+    {
+      q: "What is the format of the private ingestion URL?",
+      a: "The private ingestion URL has the same format as the public ingestion URL, with .private inserted after the ingest host segment, for example, https://<integration-id>-<org-id>.ingest.private.grepr.ai. The token and path are the same as the public ingestion URL, so only the host changes."
+    },
+    {
+      q: "Where do I find the private ingestion URL?",
+      a: "You can copy the private ingestion URL from the Grepr UI. On the details page for your pipeline, click Sources in the left pane and copy the Private ingest URL. You can also open the menu on the vendor card for your integration on the Integrations page and select Copy Private Ingestion URL."
+    },
+    {
+      q: "Why does my private ingestion URL fail to resolve?",
+      a: "The private ingestion URL resolves to your interface endpoint only when private DNS is enabled on the endpoint. Make sure private_dns_enabled is set to true on the interface VPC endpoint, and confirm that the endpoint is in the Available state."
+    }
+  ]}
+/>

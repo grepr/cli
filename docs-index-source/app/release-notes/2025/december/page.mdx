@@ -1,0 +1,83 @@
+---
+description: Release notes for changes to the Grepr Intelligent Observability Data Engine released in December 2025, including new features, improvements, and bug fixes.
+---
+
+# Release notes for December 2025
+
+Grepr released these feature updates, improvements, and bug fixes in December 2025.
+
+## New features and improvements
+
+{/* ENGT-3117 */}
+### Save processed data in the Grepr data lake
+
+**December 15, 2025**
+
+You can now add a dataset as a sink when you configure your Grepr log pipelines. When you add a dataset as a sink, Grepr saves the processed log events to your data lake. A dataset sink makes your processed events available for viewing, testing, and analysis in Log Explorer, along with the raw logs that Grepr automatically stores in the data lake.
+
+{/* ENGT-3037 */}
+### Use SQL to transform log events in Grepr pipelines
+
+**December 15, 2025**
+
+You can now use the SQL transform in your Grepr pipelines to perform complex transformations on log events using SQL queries. Using the SQL transform, you can transform all events or a subset of events based on specific criteria. You can then make the transformed events available for further processing in your pipeline or for storage in the Grepr data lake.
+
+To learn more about the SQL transform, see [Transform events with SQL](/transforms/sql-transform). To learn more about using the SQL transform in a Grepr pipeline, see [Filter events in a Grepr pipeline](/transforms/filter-events).
+
+{/* ENGT-3067, ENGT-3071, ENGT-3093 */}
+### Edit the JSON defining your Grepr pipelines directly in the Grepr UI
+
+**December 15, 2025**
+
+You can now edit the JSON that defines your Grepr job graphs directly in the Grepr UI. This new feature allows you to make advanced configuration changes that the pipelines UI doesn't support. To edit the JSON for a job graph in the Grepr UI, click **Jobs** in the top bar, click the three-dot menu in the **Actions** column for the job you want to edit, and then click **Edit JSON**.
+
+{/* ENGT-2923, ENGT-3168 */}
+### Log reduction is updated to support numeric attribute aggregation strategies, a composite strategy, and similarity thresholds
+
+**December 15, 2025**
+
+Log reduction now supports sum, min, max, and average aggregation strategies for numeric attributes, allowing you to compute aggregate values across summarized logs. These strategies can also be combined using the new composite strategy for more complex merging behavior. You can also set a similarity threshold when configuring log reduction. These options are available when you edit the reducer in the pipelines UI. To learn more, see [Reduce shipped data volumes with the Grepr log reducer](/transforms/reducer).
+
+{/* ENGT-3097, ENGT-3083 */}
+### Share links to Log Explorer search results
+
+**December 15, 2025**
+
+You can now share a link to the results of a search query in Log Explorer. To share a link, click **Share** in the top-right corner of Log Explorer after running a query. The shared link preserves the current query, including search parameters and selected columns.
+
+{/* ENGT-3089 */}
+### Increase in the maximum number of records that can be returned in query results
+
+**December 15, 2025**
+
+When you submit a search query in Log Explorer or through the Grepr REST API, the maximum number of records that can be returned is increased from 10,000 to 100,000. This change allows you to retrieve larger datasets when exploring log data stored in the Grepr data lake.
+
+{/* ENGT-3104 */}
+### The UI now redirects you to your requested page after you log in
+
+**December 15, 2025**
+
+When you request a specific page in the Grepr UI while not logged in, the UI now redirects you to that page after you log in. Previously, after logging in, you were redirected to the UI home page.
+
+{/* ENGT-3023 */}
+### The Grepr CLI is updated with usability enhancements and additional commands
+
+**December 15, 2025**
+
+Updates to the Grepr CLI include usability improvements and new commands for managing Grepr jobs, integrations, and datasets. To learn more, see [The Grepr CLI](/cli).
+
+## Bug fixes
+
+{/* ENGT-3084 */}
+### Fix to Sumo Logic sinks to ensure logs are sent with correct timestamps
+
+**December 15, 2025**
+
+This release fixes an issue that caused Sumo Logic sinks to forward logs without a correct event timestamp.
+
+{/* ENGT-3115 */}
+### Fix for CLI error messaging when a streaming job fails
+
+**December 15, 2025**
+
+This release includes a change to the Grepr CLI that ensures a descriptive error message is returned to the user on certain failures in streaming jobs.

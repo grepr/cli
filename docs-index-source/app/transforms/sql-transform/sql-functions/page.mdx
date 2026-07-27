@@ -1,0 +1,1152 @@
+---
+description: The Grepr SQL transform supports a comprehensive set of functions and operators. Learn about this support and see examples of using functions and operators with the SQL transform.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# SQL transform functions and operators
+
+This page provides a reference to SQL operators and functions supported by the Grepr SQL transform. Although this page describes a subset of available functions, the SQL transform supports the complete Flink SQL function library. For details on all supported functions, see [System (Built-in) Functions](https://nightlies.apache.org/flink/flink-docs-release-2.2.0/docs/dev/table/functions/systemfunctions/).
+
+## SQL operators
+
+The SQL transform supports all standard SQL operators available in Flink SQL 2.2.0:
+
+## Comparison operators
+
+- `=`: Equal to
+- `<>` or `!=`: Not equal to
+- `<`: Less than
+- `<=`: Less than or equal to
+- `>`: Greater than
+- `>=`: Greater than or equal to
+- `BETWEEN value1 AND value2`: Range comparison
+- `NOT BETWEEN value1 AND value2`: Negated range comparison
+
+### Examples
+
+```sql
+SELECT * FROM logs WHERE severity = 17
+SELECT * FROM logs WHERE severity BETWEEN 13 AND 20
+SELECT * FROM logs WHERE eventtimestamp > 1724214074000
+```
+
+## Logical operators
+
+- `AND`: Logical AND
+- `OR`: Logical OR
+- `NOT`: Logical NOT
+
+### Examples
+
+```sql
+SELECT * FROM logs WHERE severity > 16 AND message LIKE '%error%'
+SELECT * FROM logs WHERE severity = 17 OR severity = 21
+SELECT * FROM logs WHERE NOT (severity < 5)
+```
+
+## Pattern matching operators
+
+- `LIKE 'pattern'`: SQL pattern matching with `%` (any chars) and `_` (single char)
+- `NOT LIKE 'pattern'`: Negated pattern matching
+- `SIMILAR TO 'regex'`: Regular expression matching
+- `NOT SIMILAR TO 'regex'`: Negated regex matching
+
+### Examples
+
+```sql
+SELECT * FROM logs WHERE message LIKE '%failed%'
+SELECT * FROM logs WHERE message LIKE 'Error: ___'  -- exactly 3 chars after "Error: "
+SELECT * FROM logs WHERE message SIMILAR TO '^[A-Z]+:'  -- starts with uppercase letters and colon
+```
+
+## `NULL` handling operators
+
+- `IS NULL`: Check for `NULL` values
+- `IS NOT NULL`: Check for non-`NULL` values
+
+### Examples
+
+```sql
+SELECT * FROM logs WHERE attributes IS NOT NULL
+SELECT * FROM logs WHERE VARIANT_VALUE(attributes, '$.userId', 'BIGINT') IS NULL
+```
+
+## Arithmetic operators
+
+- `+`: Addition
+- `-`: Subtraction
+- `*`: Multiplication
+- `/`: Division
+- `%` or `MOD()`: Modulo
+
+### Examples
+
+```sql
+SELECT *, severity * 10 as severity_scaled FROM logs
+```
+
+## Function compatibility with Flink SQL
+
+The SQL transform uses Apache Flink SQL 2.2.0 and is ANSI SQL compliant. Here are important function compatibility notes:
+
+### Timestamp functions
+
+- **Use:** `TO_TIMESTAMP_LTZ(timestamp_in_millis, 3)` to convert millisecond timestamps to TIMESTAMP
+- **Don't use:** `TIMESTAMP_MILLIS()`. This function is not available in Flink SQL 2.2.0. Use `TO_TIMESTAMP_LTZ()` instead.
+
+### String functions
+
+- **Available:** Most standard SQL string functions are supported, including`REGEXP_REPLACE()`, `UPPER()`, `LOWER()`, `CONCAT()`, `CHAR_LENGTH()`, `LEFT()`, and `RIGHT()`.
+
+### Date and time functions
+
+- **Available:** Standard date and time functions, such as`EXTRACT()`, `CURRENT_TIMESTAMP`, and `DATE_FORMAT()`, are supported.
+- **Note:** Always convert millisecond timestamps first using `TO_TIMESTAMP_LTZ()`.
+
+### JSON functions
+
+- **Available:** `JSON_VALUE()`, `JSON_EXISTS()` for extracting data from JSON strings.
+
+For a complete list of available functions, see [System (Built-in) Functions](https://nightlies.apache.org/flink/flink-docs-release-2.2.0/docs/dev/table/functions/systemfunctions/).
+
+## Available SQL functions
+
+### String functions
+
+#### Case manipulation
+
+- **`UPPER(string)`**: Converts string to uppercase
+  ```sql
+  SELECT UPPER(message) as upper_message FROM logs
+  -- Input: "Error occurred" → Output: "ERROR OCCURRED"
+  ```
+
+- **`LOWER(string)`**: Converts string to lowercase
+  ```sql
+  SELECT LOWER(message) as lower_message FROM logs
+  -- Input: "Error OCCURRED" → Output: "error occurred"
+  ```
+
+- **`INITCAP(string)`**: Capitalizes first letter of each word
+  ```sql
+  SELECT INITCAP(message) as title_case FROM logs
+  -- Input: "user login failed" → Output: "User Login Failed"
+  ```
+
+#### String extraction and manipulation
+
+- **`SUBSTR(string, start [, length])`**: Extracts substring
+  ```sql
+  SELECT SUBSTR(message, 1, 10) as msg_prefix FROM logs
+  SELECT SUBSTR(message, 5) as msg_suffix FROM logs  -- from position 5 to end
+  ```
+
+- **`CONCAT(string1, string2, ...)`**: Concatenates strings
+  ```sql
+  SELECT CONCAT('[', severity, '] ', message) as formatted_message FROM logs
+  ```
+
+- **`CONCAT_WS(separator, string1, string2, ...)`**: Concatenates with separator
+  ```sql
+  SELECT CONCAT_WS(' | ', tags['host'][1], tags['service'][1], message) as combined FROM logs
+  ```
+
+- **`TRIM([BOTH | LEADING | TRAILING] [characters] FROM string)`**: Removes specified characters
+  ```sql
+  SELECT TRIM(message) as clean_message FROM logs  -- removes whitespace
+  SELECT TRIM(LEADING '0' FROM id) as clean_id FROM logs  -- removes leading zeros
+  ```
+
+- **`REPLACE(string, search, replacement)`**: Replaces all occurrences
+  ```sql
+  SELECT REPLACE(message, 'ERROR', 'ALERT') as modified_message FROM logs
+  ```
+
+- **`REGEXP_REPLACE(string, pattern, replacement)`**: Regex-based replacement
+  ```sql
+  SELECT REGEXP_REPLACE(message, '\\\\d{4}-\\\\d{2}-\\\\d{2}', 'YYYY-MM-DD') as sanitized FROM logs
+  SELECT REGEXP_REPLACE(message, 'user=[^\\\\s]+', 'user=REDACTED') as redacted FROM logs
+  ```
+
+#### String information functions
+
+- **`CHAR_LENGTH(string)` or `LENGTH(string)`**: Returns character count
+  ```sql
+  SELECT CHAR_LENGTH(message) as msg_length FROM logs
+  SELECT LENGTH(message) as msg_length FROM logs  -- Alternative syntax
+  ```
+
+- **`POSITION(substring IN string)`**: Finds substring position (1-based)
+  ```sql
+  SELECT POSITION('error' IN LOWER(message)) as error_pos FROM logs
+  ```
+
+- **`ASCII(string)`**: Returns ASCII value of first character
+  ```sql
+  SELECT ASCII(LEFT(message, 1)) as first_char_code FROM logs
+  ```
+
+### Advanced string functions [#advanced-string-fns]
+
+- **`LPAD(string, length, pad_string)`**: Left-pads string
+  ```sql
+  SELECT LPAD(CAST(severity AS STRING), 3, '0') as padded_severity FROM logs
+  -- Input: "9" → Output: "009"
+  ```
+
+- **`RPAD(string, length, pad_string)`**: Right-pads string
+  ```sql
+  SELECT RPAD(tags['service'][1], 10, '-') as padded_service FROM logs
+  ```
+
+- **`LEFT(string, length)`**: Returns leftmost characters
+  ```sql
+  SELECT LEFT(message, 10) as msg_prefix FROM logs
+  ```
+
+- **`RIGHT(string, length)`**: Returns rightmost characters
+  ```sql
+  SELECT RIGHT(message, 10) as msg_suffix FROM logs
+  ```
+
+- **`REGEXP_EXTRACT(string, pattern [, group])`**: Extracts regex match
+  ```sql
+  SELECT REGEXP_EXTRACT(message, 'response_time=(\\\\d+)ms', 1) as response_time FROM logs
+  SELECT REGEXP_EXTRACT(message, 'user=([^\\\\s]+)', 1) as username FROM logs
+  ```
+
+### VARIANT functions: query, extract, and transform values [#variant-query-extract-fns]
+
+- **`VARIANT_VALUE_CONTAINS(attributes, search_string, isCaseInsensitive)` or `VARIANT_VALUE_CONTAINS(attributes, 'searchString', isCaseInsensitive, Array<Array<String>>)`**: Searches for a substring in all `STRING` values stored in a `VARIANT` value, with optional case insensitivity and path filtering.
+
+  You can use this function to search for specific values in the `attributes` field of log events, which is stored as a `VARIANT` data type. The function returns `TRUE` if the search string is found in any of the `STRING` values in the `VARIANT`, and `FALSE` otherwise. You can also specify an array of paths to limit the search to specific attributes.
+
+  ```sql
+  -- Select logs with any attribute containing SERVER, using case sensitive matching
+  SELECT * FROM logs WHERE VARIANT_VALUE_CONTAINS(attributes, 'SERVER', false)
+  -- Select logs which have any attributes matching the paths "kubernetes" or "version" and contain the value 'v2', using case-insensitive matching
+  SELECT * FROM logs WHERE VARIANT_VALUE_CONTAINS(attributes, 'v2', true, ARRAY[ARRAY['kubernetes'], ARRAY['version']])
+  -- Select logs containing the string production in the kubernetes.labels.app.k8s.io/namespace path or the container_name path, using case-sensitive matching
+   SELECT * FROM logs
+     WHERE VARIANT_VALUE_CONTAINS(attributes, 'production', false,
+       ARRAY[
+         ARRAY['kubernetes', 'labels', 'app.k8s.io/namespace'],
+         ARRAY['container_name']
+       ]
+     );
+  ```
+
+- **`VARIANT_TO_JSON(variant)`**: Converts a VARIANT value to a JSON string
+  ```sql
+  SELECT VARIANT_TO_JSON(attributes) as attributes_json FROM logs
+  ```
+
+- **`VARIANT_VALUE(variant, path, return_type)`**
+- **`VARIANT_VALUE(variant, path, return_type, on_empty, empty_default)`**
+- **`VARIANT_VALUE(variant, path, return_type, on_empty, empty_default, on_error, on_error_default)`**
+  - Extracts a scalar value from a VARIANT type at the specified path and returns it as the specified type. The `path` argument should be formatted using JSON path syntax. You can use this UDF to extract values from the `attributes` field of log events.
+  - To specify nested fields, you can use dot notation, such as `$.property`, or bracket notation, such as `$['property']`.
+  - Extracted values can be converted to SQL types, including STRING, BOOLEAN, DATE, TIMESTAMP, BINARY, and numeric types.
+  - The `VARIANT_VALUE()` function handles missing paths and type conversion errors, with options to return NULL, an error, or a default value.
+
+  ```sql
+  -- Extract HTTP status code as an integer
+  SELECT VARIANT_VALUE(attributes, '$.http.status', 'INT') as status_code FROM logs;
+
+  -- Extract HTTP status as an integer with a default value if the path is empty
+  SELECT VARIANT_VALUE(attributes, '$.http.status', 'INT', 'DEFAULT', 0) FROM logs;
+
+  -- Extract from a nested path using dot notation
+  SELECT VARIANT_VALUE(attributes, '$.user.id', 'BIGINT') as user_id,
+         VARIANT_VALUE(attributes, '$.user.name', 'STRING') as user_name
+  FROM logs;
+
+  -- Extract from a deeply nested path using dot notation
+  SELECT VARIANT_VALUE(attributes, '$.level1.level2.level3.value', 'STRING') as deeply_nested FROM logs;
+
+  -- Extract from a path containing special characters using bracket notation
+  SELECT VARIANT_VALUE(attributes, '$["app.kubernetes.io/name"]', 'STRING') as app_name FROM logs;
+
+  -- Extract from a path containing special characters using dot and bracket notation
+  SELECT VARIANT_VALUE(attributes, '$.labels["app.k8s.io/namespace"]', 'STRING') as namespace
+    FROM logs;
+
+  -- Return a default string if path doesn't exist
+  SELECT VARIANT_VALUE(attributes, '$.nonexistent.path', 'STRING', 'DEFAULT', 'not_found') as safe_value
+    FROM logs;
+
+  -- Return NULL if path is empty or a conversion error occurs
+  SELECT VARIANT_VALUE(attributes, '$.string_number', 'INT', 'NULL', null, 'NULL', null) as parsed_or_null FROM logs
+
+  -- CASE expressions with VARIANT_VALUE
+  SELECT *,
+    CASE
+      WHEN VARIANT_VALUE(attributes, '$.http.status', 'INT') >= 500 THEN 'server_error'
+      WHEN VARIANT_VALUE(attributes, '$.http.status', 'INT') >= 400 THEN 'client_error'
+      WHEN VARIANT_VALUE(attributes, '$.http.status', 'INT') >= 200 THEN 'success'
+      ELSE 'unknown'
+    END as status_category
+  FROM logs
+  WHERE VARIANT_VALUE(attributes, '$.http.status', 'INT') IS NOT NULL;
+
+  -- Multiple extractions in one query
+  SELECT *,
+    VARIANT_VALUE(attributes, '$.http.status', 'INT') as status,
+    VARIANT_VALUE(attributes, '$.http.method', 'STRING') as method,
+    VARIANT_VALUE(attributes, '$.response_time_ms', 'BIGINT') as latency,
+    VARIANT_VALUE(attributes, '$.is_cached', 'BOOLEAN') as cached
+  FROM logs
+  WHERE VARIANT_VALUE(attributes, '$.http.status', 'INT') IS NOT NULL;
+  ```
+
+- **`VARIANT_REMOVE_KEYS(variant, path1, path2, ...)`**: Removes one or more values from a `VARIANT` data type and returns the modified `VARIANT`. The values to remove are specified by strings containing JSON paths.
+
+    Use this function to remove fields from log event attributes, span resource attributes, span attributes, or any other `VARIANT` value. For example, stripping high-cardinality, frequently changing, or sensitive values such as personally identifiable information from the `attributes` field of log events.
+
+    - In addition to the `VARIANT` input, this function requires at least one path argument.
+    - Each path must be a literal string constant in JSON path syntax. Each path must start with a property, such as `$.foo`, and cannot be the root path `$` alone.
+    - To specify nested fields for removal, such as `$.kubernetes.pod_uid`, use dot notation.
+    - To specify a key containing dots (`.`) or other special characters, use bracket notation, such as `$["datadog.trace_payload.hostname"]`.
+    - Dot notation and bracket notation can be combined in one path: each dot segment navigates one level of object nesting, and each bracketed segment matches a single literal key at its position in the path. For example, the path `$.k8s.pod_uid` matches a `pod_uid` key inside a nested `k8s` object, but does not match a top-level key literally named `k8s.pod_uid`. To match a literal `k8s.pod_uid` key nested inside a `wrap` object, use `$.wrap["k8s.pod_uid"]`.
+    - Paths are case-sensitive.
+    - Wildcards, recursive descent, and array index steps, such as `$.items[0]`, are not supported. Arrays are opaque, so you can remove an array property, such as `$.items`, but you cannot remove a field from every object inside an array.
+    - If the input `variant` is `null`, if the input has no object at the specified path, or if a path doesn't match a key, the input value is returned unchanged.
+    - When you alias the return value from the function to a `LOG_EVENT` field, such as `attributes`, and also select `*`, you must place the function and column alias before the `*` wildcard character. If you place them after, the original column from `*` takes precedence and the removal has no effect.
+    - Object nesting depth is limited to 256 levels. Subtrees deeper than that limit are left unchanged.
+
+    ```sql
+    -- Remove nested and flat keys from log attributes
+    SELECT
+      VARIANT_REMOVE_KEYS(
+        attributes,
+        '$.kubernetes.pod.uid',
+        '$["datadog.trace_payload.hostname"]'
+      ) AS attributes,
+      *
+    FROM logs;
+
+    -- Remove a sensitive flat attribute from span attributes
+    SELECT VARIANT_REMOVE_KEYS(
+      span.attributes,
+      '$["http.request.header.authorization"]'
+    ) AS cleaned_span_attributes
+    FROM spans;
+    ```
+
+- **`VARIANT_BUILD(path1, value1, path2, value2, ...)`**: Constructs a nested `VARIANT` value from one or more JSON path and value pairs.
+
+You can use this function to add or update attributes on a log event. When the resulting `VARIANT` is selected as a column in your `SELECT` clause that isn't one of the standard LogEvent fields, its nested structure is automatically merged into the output event's `attributes` field. Values passed to `VARIANT_BUILD` are merged into any existing attributes at the same paths. To learn more about how nonstandard computed columns are automatically added to the event's `attributes` map, see [LogEvent fields](#fields).
+
+- The function requires an even number of arguments greater than or equal to 2, where each pair consists of a path followed by a value.
+- Each path must be a literal string constant in JSON path syntax. The path must start with a property, for example, $.body` and not just `$`., or start with an array index, such as `$[0]`.
+- Values can be dynamic expressions, such as column references or function results.
+- To specify nested fields, use dot notation, such as `$.body.message`, or bracket notation, such as `$["body"]["message"]`.
+- To target array elements, include array index steps in the path, such as `$.items[0]`. Sparse indices, such as `$.items[0]` and `$.items[2]`, produce arrays with `null` values in any unfilled positions.
+- When multiple pairs share an intermediate path, they're combined into a single nested structure. If two pairs specify the same terminal path, the last value provided is used.
+- A `null` value produces an explicit `null` at the corresponding path.
+
+```sql
+-- Add a single nested attribute by injecting the message column at $.body.message
+SELECT *, VARIANT_BUILD('$.body.message', message) AS merged_attrs FROM logs;
+
+-- Build a nested object with multiple properties under a shared path
+SELECT *, VARIANT_BUILD('$.status.code', 200, '$.status.message', 'OK') AS merged_attrs
+FROM logs;
+
+-- Build an array using indexed paths
+SELECT *, VARIANT_BUILD('$.items[0]', 'first', '$.items[1]', 'second') AS merged_attrs
+FROM logs;
+
+-- Build an array of objects by combining indexed paths and nested properties
+SELECT *, VARIANT_BUILD(
+  '$.entries[0].key', 'a',
+  '$.entries[0].val', 1,
+  '$.entries[1].key', 'b'
+) AS merged_attrs FROM logs;
+
+-- Use a path with special characters by using bracket notation
+SELECT *, VARIANT_BUILD('$["app.kubernetes.io/name"]', 'my-app') AS merged_attrs FROM logs;
+
+-- Inject a value extracted from another VARIANT into a new path
+SELECT *, VARIANT_BUILD(
+  '$.grepr.host',
+  VARIANT_VALUE(attributes, '$["datadog.trace_payload.hostname"]', 'STRING')
+) AS merged_attrs FROM logs;
+```
+
+### Numeric functions
+
+#### Basic mathematical functions
+
+- **`ABS(numeric)`**: Returns absolute value
+  ```sql
+  SELECT ABS(severity: 12) as severity_diff FROM logs
+  ```
+
+- **`MOD(numeric1, numeric2)`**: Returns remainder
+  ```sql
+  SELECT MOD(severity, 4) as severity_mod FROM logs
+  ```
+
+- **`POWER(base, exponent)`**: Returns base raised to exponent
+  ```sql
+  SELECT POWER(severity, 2) as severity_squared FROM logs
+  ```
+
+- **`SQRT(numeric)`**: Returns square root
+  ```sql
+  SELECT SQRT(severity) as severity_sqrt FROM logs
+  ```
+
+- **`SIGN(numeric)`**: Returns sign (-1, 0, 1)
+  ```sql
+  SELECT SIGN(receivedtimestamp - eventtimestamp) as delay_sign FROM logs
+  ```
+
+#### Rounding functions
+
+- **`ROUND(numeric [, precision])`**: Rounds to specified decimal places
+  ```sql
+  SELECT ROUND(severity / 3.0, 2) as severity_ratio FROM logs
+  ```
+
+- **`FLOOR(numeric)`**: Rounds down to nearest integer
+  ```sql
+  SELECT FLOOR(severity / 4.0) as severity_group FROM logs
+  ```
+
+- **`CEIL(numeric)` or `CEILING(numeric)`**: Rounds up to nearest integer
+  ```sql
+  SELECT CEIL(severity / 4.0) as severity_group_up FROM logs
+  SELECT CEILING(severity / 4.0) as severity_group_up FROM logs  -- Alternative syntax
+  ```
+
+#### Logarithmic and exponential functions
+
+- **`LN(numeric)` or `LOG(numeric)`**: Natural logarithm
+- **`LOG10(numeric)`**: Base-10 logarithm
+- **`LOG2(numeric)`**: Base-2 logarithm
+- **`EXP(numeric)`**: Exponential function (e^x)
+- **`LOG(base, numeric)`**: Logarithm with specified base
+
+#### Trigonometric functions
+
+- **`SIN(numeric)`**, **`COS(numeric)`**, **`TAN(numeric)`**: Trigonometric functions
+- **`ASIN(numeric)`**, **`ACOS(numeric)`**, **`ATAN(numeric)`**: Inverse trigonometric functions
+- **`DEGREES(radians)`**, **`RADIANS(degrees)`**: Angle conversion
+
+### Date and time functions
+
+#### Current time functions
+
+- **`CURRENT_TIMESTAMP`**: Returns current timestamp in local timezone
+- **`LOCALTIME`**: Returns current SQL time
+- **`CURRENT_DATE`**: Returns current SQL date
+- **`UNIX_TIMESTAMP()`**: Returns current Unix timestamp in seconds
+
+#### Time extraction
+
+- **`EXTRACT(unit FROM temporal)`**: Extracts time component
+  ```sql
+  SELECT EXTRACT(HOUR FROM eventtimestamp) as event_hour FROM logs
+  SELECT EXTRACT(DAY FROM eventtimestamp) as event_day FROM logs
+  SELECT EXTRACT(YEAR FROM eventtimestamp) as event_year FROM logs
+  ```
+  Available units: MILLENNIUM, CENTURY, DECADE, YEAR, QUARTER, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND
+
+#### Time conversion functions
+
+- **`TO_TIMESTAMP_LTZ(numeric, precision)`**: Converts epoch timestamp to TIMESTAMP_LTZ
+  ```sql
+  SELECT TO_TIMESTAMP_LTZ(VARIANT_VALUE(attributes, '$.timestamp', 'BIGINT'), 3) as event_time FROM logs  -- 3 for milliseconds
+  ```
+
+- **`UNIX_TIMESTAMP(timestamp)`**: Converts timestamp to Unix timestamp (seconds)
+  ```sql
+  SELECT UNIX_TIMESTAMP(eventtimestamp) as unix_time FROM logs
+  ```
+
+- **`TO_TIMESTAMP(string [, format])`**: Parses string to timestamp
+  ```sql
+  SELECT TO_TIMESTAMP(VARIANT_VALUE(attributes, '$.timestamp', 'BIGINT'), 'yyyy-MM-dd HH:mm:ss') as parsed_time FROM logs
+  ```
+
+### Conditional functions
+
+#### `IF` conditional
+
+- **`IF(condition, true_value, false_value)`**: Simple conditional
+  ```sql
+  SELECT IF(severity > 16, 'HIGH', 'NORMAL') as priority FROM logs
+  ```
+
+#### CASE expressions
+
+- **`CASE WHEN condition THEN result [WHEN condition THEN result] ELSE result END`**
+  ```sql
+  SELECT *,
+    CASE
+      WHEN severity <= 4 THEN 'TRACE'
+      WHEN severity <= 8 THEN 'DEBUG'
+      WHEN severity <= 12 THEN 'INFO'
+      WHEN severity <= 16 THEN 'WARN'
+      WHEN severity <= 20 THEN 'ERROR'
+      ELSE 'FATAL'
+    END as severity_level
+  FROM logs
+  ```
+
+- **`CASE value WHEN value1 THEN result1 WHEN value2 THEN result2 ELSE default END`**
+  ```sql
+  SELECT *,
+    CASE severity
+      WHEN 1 THEN 'TRACE'
+      WHEN 9 THEN 'INFO'
+      WHEN 17 THEN 'ERROR'
+      ELSE 'OTHER'
+    END as severity_name
+  FROM logs
+  ```
+
+#### NULL handling functions
+
+- **`COALESCE(value1, value2, ...)`**: Returns first non-NULL value
+  ```sql
+  SELECT COALESCE(VARIANT_VALUE(attributes, '$.userId', 'BIGINT'), 'unknown') as user_id FROM logs
+  ```
+
+- **`NULLIF(value1, value2)`**: Returns NULL if values are equal
+  ```sql
+  SELECT NULLIF(severity, 0) as non_zero_severity FROM logs
+  ```
+
+### Comparison functions
+
+- **`GREATEST(value1, value2, ...)`**: Returns maximum value
+  ```sql
+  SELECT GREATEST(severity, 10) as min_severity FROM logs
+  ```
+
+- **`LEAST(value1, value2, ...)`**: Returns minimum value
+  ```sql
+  SELECT LEAST(severity, 20) as max_severity FROM logs
+  ```
+
+### JSON functions
+
+#### JSON validation
+
+- **`string IS JSON [VALUE | SCALAR | ARRAY | OBJECT]`**: Validates JSON format
+  ```sql
+  SELECT * FROM logs WHERE attributes IS JSON OBJECT
+  ```
+
+#### JSON path functions
+
+<Callout>
+  The `attributes` field is updated to use the `VARIANT` data type, and not JSON. Although you can use these JSON functions to access values in the `attributes` field, these examples are intended only to demonstrate the use of these functions. To access values in the `attributes` field, Grepr recommends using the `VARIANT` functions. See [VARIANT functions: query, extract, and transform values](#variant-query-extract-fns).
+</Callout>
+
+- **`JSON_EXISTS(json_string, path)`**: Checks if JSON path exists
+  ```sql
+  SELECT * FROM logs WHERE JSON_EXISTS(attributes, '$.process.thread')
+  ```
+
+- **`JSON_VALUE(json_string, path [RETURNING type] [ON ERROR | ON EMPTY])`**: Extracts scalar value
+  ```sql
+  SELECT JSON_VALUE(attributes, '$.userId' RETURNING STRING) as user_id FROM logs
+  SELECT JSON_VALUE(attributes, '$.responseTime' RETURNING INTEGER) as response_time FROM logs
+  SELECT JSON_VALUE(attributes, '$.isSuccess' RETURNING BOOLEAN) as success FROM logs
+  ```
+
+- **`JSON_QUERY(json_string, path [RETURNING type] [ON ERROR | ON EMPTY])`**: Extracts JSON objects/arrays
+  ```sql
+  SELECT JSON_QUERY(attributes, '$.process') as process_info FROM logs
+  SELECT JSON_QUERY(attributes, '$.tags[*]') as all_tags FROM logs
+  ```
+
+#### JSON construction
+
+- **`JSON_OBJECT([KEY key VALUE value] ...)`**: Creates JSON object
+  ```sql
+  SELECT JSON_OBJECT('severity' VALUE severity, 'timestamp' VALUE eventtimestamp) as event_summary FROM logs
+  ```
+
+- **`JSON_ARRAY([value1, value2, ...])`**: Creates JSON array
+  ```sql
+  SELECT JSON_ARRAY(severity, EXTRACT(HOUR FROM eventtimestamp), tags['host'][1]) as event_array FROM logs
+  ```
+
+### Hash functions
+
+- **`MD5(string)`**: Returns MD5 hash
+  ```sql
+  SELECT MD5(CONCAT(id, message)) as content_hash FROM logs
+  ```
+
+- **`SHA1(string)`**: Returns SHA-1 hash
+- **`SHA256(string)`**: Returns SHA-256 hash
+  ```sql
+  SELECT SHA256(message) as message_hash FROM logs
+  ```
+
+### Aggregate functions
+
+#### Basic aggregations
+
+- **`COUNT([DISTINCT] expression)`**: Counts rows/distinct values
+  ```sql
+  SELECT COUNT(*) as total_logs FROM logs
+  SELECT COUNT(DISTINCT tags['service'][1]) as unique_services FROM logs
+  ```
+
+- **`SUM([DISTINCT] expression)`**: Sums numeric values
+- **`AVG([DISTINCT] expression)`**: Calculates average
+- **`MIN(expression)`**: Finds minimum value
+- **`MAX(expression)`**: Finds maximum value
+  ```sql
+  SELECT tags['service'][1] as service, COUNT(*) as log_count, AVG(severity) as avg_severity FROM logs GROUP BY tags['service'][1]
+  ```
+
+### Statistical functions
+
+- **`STDDEV_POP(expression)`**: Population standard deviation
+- **`STDDEV_SAMP(expression)`**: Sample standard deviation
+- **`VAR_POP(expression)`**: Population variance
+- **`VAR_SAMP(expression)`**: Sample variance
+
+### Percentile functions [#percentiles-fn]
+
+- **`GREPR_PERCENTILES(numeric_expression, percentile1, percentile2, ...)`**: Calculates specified percentiles
+  ```sql
+  -- Calculate median (50th percentile) and 95th percentile for response times
+  -- Note that arrays are 1-indexed in SQL
+  SELECT
+    tags['service'][1] as service,
+    GREPR_PERCENTILES(JSON_VALUE(attributes, '$.response_time' RETURNING DOUBLE), 0.5, 0.95) as percentiles
+  FROM logs
+  WHERE JSON_EXISTS(attributes, '$.response_time')
+  GROUP BY tags['service'][1]
+  ```
+
+  **Features:**
+  - Supports multiple percentile values in a single function call.
+  - Uses exact calculation for small datasets (< 1000 values) for precision.
+  - Automatically switches to KLL sketches for large datasets with ±1.65% error guarantee.
+  - Handles NULL values gracefully by ignoring them.
+  - Returns an array of doubles corresponding to the requested percentiles.
+  - Percentile ranks must be between 0.0 and 1.0 (e.g., 0.5 for median, 0.95 for 95th percentile).
+
+### Collection functions [#collection-fns]
+
+- **`MAP_REMOVE_KEYS(map, key1, key2, ...)`**: Removes one or more top-level keys from a `MAP<STRING, ARRAY<STRING>>` value and returns the modified map.
+
+  This function operates on the same map type used by the `tags` field of a log event and can be used to remove log event tags. For example, you can use this function to drop frequently changing or high-cardinality tags, such as a `container_id` tag that changes on every restart, from a log event before it's written to a destination.
+
+  - The function requires at least one key argument, in addition to the map input.
+  - Each key must be a literal string constant. Keys are matched against the map's top-level keys. Nested paths are not supported.
+  - Key matching is case-sensitive and matches exact key names, not substrings.
+  - When you alias the return value from the function to `tags` and also select `*`, you must place the function and column alias before the `*` wildcard character. If you place them after the `*`, the original `tags` column from `*` takes precedence and the removal has no effect.
+  - If the input map is `null`, if the input map is empty, or if no key matches, the input map is returned unchanged.
+
+  ```sql
+  -- Drop a single tag
+  SELECT
+    MAP_REMOVE_KEYS(tags, 'container_id') AS tags,
+    *
+  FROM logs;
+
+  -- Drop multiple tags in one call
+  SELECT
+    MAP_REMOVE_KEYS(tags, 'container_id', 'pod_uid') AS tags,
+    *
+  FROM logs;
+  ```
+
+- **`COLLECT(expression)`** - Collects values into a MULTISET, when output as an attribute, this becomes a map from stringified value to count of occurences.
+- **`LISTAGG(expression [, separator])`** - Concatenates values with separator
+  ```sql
+  -- Returns a comma-separated list of unique hosts per service
+  SELECT tags['service'][1] as service, LISTAGG(DISTINCT tags['host'][1], ',') as hosts FROM logs GROUP BY tags['service'][1]
+  ```
+- **`ARRAY_AGG(expression)`** - Collects values into an ARRAY
+- **`ORDERED_ARRAY_AGG(expression, 'ASC' | 'DESC', sortkey, [, 'ASC' | 'DESC', sortkey]*)`**: Collects values into an ordered array, where one or more keys specify the sort order. The array values are sorted in the order that the keys are defined. You can use this function to collect log messages, ordered by time, to reconstruct a sequence of events. For example, events in a specific service or user session that occur within a time interval.
+  ```sql
+  -- Returns rows of (service tag, array of log IDs ordered by event timestamp descending)
+  SELECT tags['service'][1] as service,
+         ORDERED_ARRAY_AGG(id, 'DESC', eventtimestamp) as recent_log_ids
+  FROM logs
+  GROUP BY tags['service'][1]
+  ```
+
+  <Callout>
+    The `ORDERED_ARRAY_AGG` function is supported only in Grepr SQL transforms and is not part of the Flink SQL distribution.
+  </Callout>
+
+### Windowing and aggregations [#windowing-and-aggregations]
+
+To aggregate streaming data with Flink SQL, use windowing functions. To learn more, see [Windowing table-valued functions (Windowing TVFs)](https://nightlies.apache.org/flink/flink-docs-release-2.2.0/docs/dev/table/sql/queries/window-tvf/).
+
+#### Window functions (streaming)
+
+For streaming data processing, Flink SQL provides windowing table-valued functions (TVFs). These functions create windows over time-based or count-based intervals, allowing you to perform streaming aggregations over subsets of data.
+
+**Important**: When using streaming windowed aggregations along with `GROUP BY`, you must include `window_time` as a group-by key.
+
+#### Tumbling windows
+
+Fixed-size, non-overlapping windows:
+```sql
+-- Get a breakdown of log count per severity per service in 5-minute windows
+SELECT
+  window_start as eventtimestamp,     -- Window start as event time
+  CONCAT('Window summary: ', service, ' had ', CAST(log_count AS STRING), ' logs with severity ',
+         CAST(severity AS STRING)) as message,  -- Descriptive message
+  severity,
+  MAP['service', ARRAY[service], 'window_type', ARRAY['tumbling']] as tags,  -- Service and window type tags
+  window_start, -- turns into an attribute
+  window_end,   -- turns into an attribute
+  log_count    -- turns into an attribute
+FROM (
+  SELECT
+    window_start,                   -- Start time of each 5-minute window
+    window_end,                     -- End time of each 5-minute window
+    tags['service'][1] as service,  -- Group by service name
+    severity,                       -- and severity
+    COUNT(*) as log_count           -- Count total logs in each window
+  FROM TABLE(
+    -- Create 5-minute windows based on event timestamp
+    TUMBLE(TABLE logs, DESCRIPTOR(eventtimestamp), INTERVAL '5' MINUTES)
+  )
+  -- Group results by window and service to get aggregates per service per window
+  GROUP BY window_start, window_end, severity, tags['service'][1]
+)
+```
+
+#### Hopping (sliding) windows
+
+Fixed-size windows that can overlap:
+```sql
+-- Convert hopping window analysis into system health LogEvents
+SELECT
+  -- Generate synthetic LogEvent fields for each window health report
+  MD5(CONCAT(CAST(window_start AS STRING), 'system_health')) as id,
+  UNIX_TIMESTAMP(window_end) * 1000 as eventtimestamp,  -- Window end as event time
+  UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000 as receivedtimestamp,
+  CONCAT('System health: ', CAST(log_count AS STRING), ' total logs across ',
+         CAST(service_count AS STRING), ' services') as message,
+  -- Set severity based on activity level
+  CASE
+    WHEN log_count < 100 THEN 13  -- WARN: Low activity
+    WHEN log_count > 10000 THEN 13  -- WARN: High activity
+    ELSE 9  -- INFO: Normal activity
+  END as severity,
+  MAP['analysis_type', ARRAY['system_health'], 'window_type', ARRAY['hopping']] as tags,
+  JSON_OBJECT(
+    'window_start' VALUE CAST(window_start AS STRING),
+    'window_end' VALUE CAST(window_end AS STRING),
+    'total_log_count' VALUE log_count,
+    'active_service_count' VALUE service_count,
+    'activity_level' VALUE CASE
+      WHEN log_count < 100 THEN 'low'
+      WHEN log_count > 10000 THEN 'high'
+      ELSE 'normal'
+    END,
+    'analysis_type' VALUE 'hopping_window_health'
+  ) as attributes,
+  'system' as service,  -- Synthetic service for system-wide metrics
+  'health-monitor' as host  -- Synthetic host for health monitoring
+FROM (
+  SELECT
+    window_start,  -- Start time of each window
+    window_end,    -- End time of each window
+    COUNT(*) as log_count,                    -- Total logs in this window
+    COUNT(DISTINCT tags['service'][1]) as service_count  -- Number of unique services in this window
+  FROM TABLE(
+    HOP(
+      TABLE logs,
+      DESCRIPTOR(eventtimestamp),
+      INTERVAL '1' MINUTE,  -- Window slides every 1 minute
+      INTERVAL '5' MINUTES  -- Each window covers 5 minutes of data
+    )
+    -- This creates overlapping 5-minute windows that move forward every minute
+  )
+  -- Group by window boundaries to get one result per window
+  GROUP BY window_start, window_end
+)
+-- This converts each health summary into a proper LogEvent
+```
+
+#### Session windows
+
+Group events by activity sessions:
+```sql
+WITH
+  sessionlogs AS (
+    SELECT
+      *,  -- Select all original LogEvent fields
+      tags['service'][1] as service  -- Extract service name for session grouping
+    FROM logs
+  )
+-- Convert session analysis into session summary LogEvents
+SELECT
+  -- Generate synthetic LogEvent fields for each session summary
+  MD5(CONCAT(CAST(window_start AS STRING), service, 'session')) as id,
+  window_end as eventtimestamp,  -- Session end as event time
+  CURRENT_TIMESTAMP as receivedtimestamp,
+  CONCAT('Session completed for ', service, ': ', CAST(session_events AS STRING),
+         ' events over ', CAST(session_duration_s AS STRING), ' seconds') as message,
+  -- Set severity based on session length and activity
+  CASE
+    WHEN session_events < 5 THEN 5      -- DEBUG: Short session
+    WHEN session_events > 1000 THEN 13  -- WARN: Very active session
+    ELSE 9                              -- INFO: Normal session
+  END as severity,
+  MAP['service', ARRAY[service], 'session_type', ARRAY['activity_session']] as tags,
+  JSON_OBJECT(
+    'session_start' VALUE window_start,
+    'session_end' VALUE window_end,
+    'session_duration_seconds' VALUE session_duration_s,
+    'event_count' VALUE session_events,
+    'events_per_second' VALUE ROUND(session_events / session_duration_s, 2),
+    'analysis_type' VALUE 'session_summary',
+    'session_messages' VALUE session_messages
+  ) as attributes
+FROM (
+  SELECT
+    window_start,  -- When this session started
+    window_end,    -- When this session ended
+    TIMESTAMPDIFF(SECOND, window_end, window_start) AS session_duration_s,
+    service,       -- Service name for this session
+    COUNT(*) as session_events,  -- Number of events in this session
+    ORDERED_ARRAY_AGG(message, 'ASC', eventtimestamp) as session_messages  -- Ordered messages in this session
+  FROM TABLE(
+    SESSION(
+      TABLE sessionlogs PARTITION BY service,  -- Create separate sessions for each service
+      DESCRIPTOR(eventtimestamp),
+      INTERVAL '10' MINUTES  -- If no events for 10 minutes, end the session
+    )
+    -- Groups consecutive events into sessions based on time gaps
+  )
+  -- Group by session boundaries and service
+  GROUP BY window_start, window_end, service
+)
+-- This converts each session summary into a proper LogEvent
+```
+
+#### Cumulative windows
+
+Windows that expand incrementally:
+```sql
+SELECT
+  window_start,
+  window_end,
+  service,
+  COUNT(*) as cumulative_count
+FROM TABLE(
+  CUMULATE(
+    TABLE logs,
+    DESCRIPTOR(eventtimestamp),
+    INTERVAL '1' HOUR,   -- step size
+    INTERVAL '1' DAY     -- max window size
+  )
+)
+GROUP BY window_start, window_end, tags['service'][1]
+```
+
+### Analytical Window functions
+
+#### Ranking functions
+- **`ROW_NUMBER() OVER (window_spec)`**: Sequential row numbers
+- **`RANK() OVER (window_spec)`**: Ranking with gaps
+- **`DENSE_RANK() OVER (window_spec)`**: Ranking without gaps
+- **`PERCENT_RANK() OVER (window_spec)`**: Percentage rank
+
+```sql
+SELECT *,  -- Include all original fields
+  -- Assign sequential numbers to events in each service (newest first)
+  ROW_NUMBER() OVER (ORDER BY eventtimestamp) as event_sequence
+FROM logs
+```
+
+### `GROUP BY` clause
+
+#### Basic grouping
+
+The example below groups messages by service and severity, counting the number of logs in each group for each minute. This is a common operation to summarize log data.
+
+```sql
+WITH parsed AS (
+  SELECT
+    tags['service'][1] as service,  -- Extract service name
+    severity,                       -- Extract severity level
+    eventtimestamp                  -- Use event timestamp for windowing
+  FROM logs
+),
+aggregated AS (
+  SELECT
+    service,                 -- Service name
+    severity,                -- Severity level
+    COUNT(*) as evtcount,       -- Count of logs in each group
+    MIN(eventtimestamp) as first_event,    -- Earliest event in group
+    MAX(eventtimestamp) as last_event      -- Latest event in group
+  FROM TABLE(TUMBLE(TABLE parsed, DESCRIPTOR(eventtimestamp), INTERVAL '1' MINUTE))
+  GROUP BY window_start, window_end, service, severity  -- Group by service and severity
+)
+SELECT
+  last_event as eventtimestamp,     -- Use the latest event time as the summary event time
+  CONCAT('Service ', service, ' severity ', CAST(severity AS STRING), ' had ',
+         CAST(evtcount AS STRING), ' events') as message,  -- Descriptive summary message
+  severity,  -- Use the grouped severity level
+  MAP['service', ARRAY[service], 'analysis_type', ARRAY['group_summary']] as tags,
+  JSON_OBJECT(
+    'event_count' VALUE evtcount,
+    'first_event' VALUE first_event,
+    'last_event' VALUE last_event,
+    'analysis_type' VALUE 'service_severity_summary'
+  ) as attributes
+FROM aggregated
+```
+
+#### `HAVING` clause
+
+Filters groups after aggregation. The example below creates new log messages when the error count exceeds a threshold. This is an example of the complex alerting rules you can create with SQL.
+```sql
+-- Convert error count analysis into alert LogEvents
+WITH parsed AS (
+  SELECT
+    tags['service'][1] as service,  -- Extract service name
+    severity,                       -- Extract severity level
+    eventtimestamp                  -- Use event timestamp for windowing
+  FROM logs
+),
+-- HAVING filters groups, WHERE filters individual rows
+aggregated AS (
+  SELECT
+    service,                 -- Service name
+    COUNT(*) as error_count  -- Count of error-level logs
+  FROM TABLE(HOP(TABLE parsed, DESCRIPTOR(eventtimestamp), INTERVAL '1' MINUTE, INTERVAL '10' MINUTES))
+  WHERE severity >= 17  -- First filter: only ERROR level logs (17+)
+  GROUP BY window_start, window_end, service  -- Group by service to count errors per service
+  HAVING COUNT(*) > 100 -- Second filter: only show services with 100+ errors
+)
+SELECT
+  CONCAT('HIGH ERROR ALERT: Service ', service, ' has ',
+         CAST(error_count AS STRING), ' error-level events') as message,
+  21 as severity,  -- FATAL level for high error count alerts
+  MAP['service', ARRAY[service], 'alert_type', ARRAY['high_error_count'],
+      'severity_level', ARRAY['FATAL']] as tags,
+  JSON_OBJECT(
+    'error_count' VALUE error_count,
+    'error_threshold' VALUE 100,
+    'severity_filter' VALUE 'ERROR_LEVEL_17_PLUS',
+    'alert_reason' VALUE 'error_count_exceeded_threshold',
+    'analysis_type' VALUE 'error_count_monitoring'
+  ) as attributes
+FROM aggregated
+```
+
+### Advanced grouping
+
+#### `GROUPING SETS`
+
+Create multiple aggregation levels. The example below creates multiple reporting hierarchy levels using grouping sets, resulting in varied granularity summarizations.
+
+```sql
+-- Convert multi-level aggregations into hierarchy report LogEvents
+-- Start by extracting all the items we care about from the LogEvents
+WITH parsed AS (
+  SELECT
+    tags['service'][1] as service,  -- Extract service name
+    tags['host'][1] as host,        -- Extract host name
+    severity,                       -- Extract severity level
+    eventtimestamp                  -- Use event timestamp for windowing
+  FROM logs
+),
+-- Execute the aggregation
+WITH aggregated AS (
+  SELECT
+    window_start,  -- Start of the aggregation window
+    service,       -- Service name
+    host,          -- Host name
+    severity,      -- Severity level
+    COUNT(*) as log_count  -- Count of logs in this aggregation level
+  FROM TABLE(TUMBLE(TABLE parsed, DESCRIPTOR(eventtimestamp), INTERVAL '10' SECONDS))
+  GROUP BY window_start, window_end, GROUPING SETS (
+    (service, host, severity),  -- Most detailed: by service + host + severity
+    (service, severity),        -- Medium detail: by service + severity (all hosts combined)
+    (service),                  -- Less detail: by service only (all hosts and severities)
+    ()                          -- Least detail: total count (no grouping)
+  )
+)
+-- Create nice messages and attributes for each aggregation level
+SELECT
+  window_start as eventtimestamp,  -- window time as eventtimestamp
+  -- Create descriptive message based on aggregation level
+  CASE
+    WHEN service IS NOT NULL AND host IS NOT NULL AND severity IS NOT NULL
+    THEN CONCAT('Detailed: ', service, '@', host, ' severity=', CAST(severity AS STRING), ' count=', CAST(log_count AS STRING))
+    WHEN service IS NOT NULL AND severity IS NOT NULL
+    THEN CONCAT('Service summary: ', service, ' severity=', CAST(severity AS STRING), ' count=', CAST(log_count AS STRING))
+    WHEN service IS NOT NULL
+    THEN CONCAT('Service total: ', service, ' count=', CAST(log_count AS STRING))
+    ELSE CONCAT('Grand total: ', CAST(log_count AS STRING), ' logs')
+  END as message,
+  MAP[
+    'service', ARRAY[COALESCE(service, 'ALL')],
+    'host', ARRAY[COALESCE(host, 'ALL')],
+    'report_type', ARRAY['hierarchy_summary'],
+    'aggregation_level', ARRAY[
+      CASE
+        WHEN service IS NOT NULL AND host IS NOT NULL AND severity IS NOT NULL THEN 'detailed'
+        WHEN service IS NOT NULL AND severity IS NOT NULL THEN 'service_severity'
+        WHEN service IS NOT NULL THEN 'service_total'
+        ELSE 'grand_total'
+      END
+    ]
+  ] as tags,
+  JSON_OBJECT(
+    'service' VALUE COALESCE(service, 'ALL'),
+    'host' VALUE COALESCE(host, 'ALL'),
+    'severity' VALUE COALESCE(severity, -1),
+    'log_count' VALUE log_count
+  ) as attributes
+FROM aggregated
+)
+```
+
+#### `ROLLUP`
+
+Generate hierarchical aggregations. Generates all prefixes of the grouping columns. This is a batch example:
+
+```sql
+SELECT
+  tags['service'][1] as service,
+  tags['host'][1] as host,
+  COUNT(*) as log_count
+FROM logs
+GROUP BY ROLLUP (tags['service'][1], tags['host'][1])
+-- Generates: (service, host), (service), ()
+```
+
+#### `CUBE`
+
+Generate all possible combinations of the grouping columns. This is a batch example:
+
+```sql
+SELECT
+  tags['service'][1] as service,
+  severity,
+  COUNT(*) as log_count
+FROM logs
+GROUP BY CUBE (tags['service'][1], severity)
+-- Generates: (service, severity), (service), (severity), ()
+```
+
+### Event-Level Analytical functions
+
+#### Event ranking in service
+
+```sql
+-- Add ranking information to individual log events
+SELECT *,  -- Include all LogEvent fields
+  -- Add ranking of events in each service by severity
+  RANK() OVER (PARTITION BY tags['service'][1] ORDER BY severity DESC) as severity_rank_in_service,
+  -- Add row numbers to events in each service (most recent first)
+  ROW_NUMBER() OVER (PARTITION BY tags['service'][1] ORDER BY eventtimestamp DESC) as event_sequence,
+  -- Add the severity of the previous event in this service
+  LAG(severity, 1) OVER (PARTITION BY tags['service'][1] ORDER BY eventtimestamp) as prev_event_severity
+FROM logs
+-- This returns individual LogEvents with additional analytical context
+```
+
+## Important rules
+
+### LogEvent fields [#fields]
+
+Your SQL query can return any combination of LogEvent fields, but when specified, they **must** be of the acceptable types:
+
+- `id` (`STRING`): Globally unique identifier for the log event.
+- `eventtimestamp` (`BIGINT` or `TIMESTAMP_LTZ` or `TIMESTAMP`): When `BIGINT`, milliseconds since Unix epoch when event occurred.
+- `receivedtimestamp` (`BIGINT` or `TIMESTAMP_LTZ` or `TIMESTAMP`): WHEN `BIGINT`, milliseconds since Unix epoch when Grepr received the event.
+- `message` (`STRING`): The log message content.
+- `severity` (`INT`): The severity level of the event. This is a value between 1 and 24, following the OpenTelemetry convention.
+- `tags` (`MAP<STRING, ARRAY<STRING>>`): Key-value pairs for filtering and routing.
+- `attributes` (`VARIANT`): Object containing semi-structured data.
+
+**Additional fields**: Any extra computed columns are automatically added to the event's `attributes` map.
+
+### Default values for omitted fields
+
+When core LogEvent fields are omitted from your SELECT clause, the original values from the input events are preserved. However, if you're creating entirely new events, for example, during windowed aggregations, the following is the default behavior when field values are not specified:
+
+- `id`: Generated unique identifier if not provided.
+- `eventtimestamp`: Current timestamp if not provided.
+- `receivedtimestamp`: Current timestamp if not provided.
+- `message`: Empty string if not provided.
+- `severity`: 9 (INFO level) if not provided.
+- `tags`: Empty map if not provided.
+- `attributes`: Empty VARIANT if not provided.
+
+**Note:** In most cases, you'll want to use `SELECT *` or include specific fields to preserve data from the input events.
+
+### Examples
+
+```sql
+-- Updates only message, all other fields preserved
+SELECT *, UPPER(message) as message FROM logs
+-- Updates message and severity, adds computed field into attributes
+SELECT *, UPPER(message) as message, severity + 1 as severity, CHAR_LENGTH(message) as msg_length FROM logs
+```
+
+### Handling attributes fields
+
+- **Use JSON functions** (JSON_VALUE, JSON_QUERY, JSON_EXISTS) to work with attributes.
+- **Type conversion** is automatic for basic types (string, number, boolean).
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What operators are supported in SQL transforms?",
+      a: "SQL transforms support comparison operators (=, <>, <, <=, >, >=, BETWEEN), logical operators (AND, OR, NOT), pattern matching (LIKE, NOT LIKE, SIMILAR TO), NULL handling (IS NULL, IS NOT NULL), and arithmetic operators (+, -, *, /, MOD). These follow standard SQL syntax."
+    },
+    {
+      q: "What is the difference between LIKE and SIMILAR TO operators?",
+      a: "LIKE uses SQL pattern matching with % for any characters and _ for single character. SIMILAR TO uses regular expression matching for more complex patterns. Use LIKE for simple wildcard matching and SIMILAR TO when you need regex power."
+    },
+    {
+      q: "How do I convert millisecond timestamps in SQL transforms?",
+      a: "Use TO_TIMESTAMP_LTZ(timestamp_in_millis, 3) where 3 indicates millisecond precision. Do not use TIMESTAMP_MILLIS() as it's not available in Flink SQL 2.2.0. This function converts epoch milliseconds to TIMESTAMP_LTZ for time-based operations."
+    },
+    {
+      q: "What string functions are available for text manipulation?",
+      a: "Available string functions include: UPPER, LOWER, INITCAP for case conversion; SUBSTR, CONCAT, CONCAT_WS for extraction/concatenation; TRIM, REPLACE, REGEXP_REPLACE for cleanup/modification; and CHAR_LENGTH, POSITION, LEFT, RIGHT for information/extraction."
+    },
+    {
+      q: "How do I use JSON functions with the attributes field?",
+      a: "Use JSON_VALUE(attributes, '$.fieldName') to extract scalar values, JSON_QUERY(attributes, '$.field') for objects/arrays, and JSON_EXISTS(attributes, '$.field') to check if a path exists. Remember attributes is a JSON string, not a JSON object, so these functions are necessary to parse it."
+    },
+    {
+      q: "What are aggregate functions and when do I use them?",
+      a: "Aggregate functions include COUNT, SUM, AVG, MIN, MAX, and statistical functions. Use them with GROUP BY to summarize data across multiple rows. For example, COUNT(*) counts total rows, COUNT(DISTINCT field) counts unique values, and AVG(field) calculates averages within groups."
+    },
+    {
+      q: "How do windowing functions work in SQL transforms?",
+      a: "Windowing functions create time-based or count-based groupings of events for streaming aggregations. Use TUMBLE for fixed-size non-overlapping windows, HOP for overlapping sliding windows, SESSION for activity-based sessions, and CUMULATE for expanding windows. Always include window_time in GROUP BY when using TVFs."
+    },
+    {
+      q: "What is the GREPR_PERCENTILES function?",
+      a: "GREPR_PERCENTILES calculates specified percentiles (like median with 0.5 or 95th with 0.95) from numeric data. It automatically handles small datasets exactly and switches to KLL sketches for large datasets with ±1.65% error guarantee. Returns an array of percentile values, with 1-based indexing."
+    },
+    {
+      q: "How do conditional functions like CASE and IF work?",
+      a: "CASE expressions support two forms: CASE WHEN condition THEN result for complex logic, and CASE value WHEN value1 THEN result for simple matching. The IF function provides simpler binary conditions: IF(condition, true_value, false_value). COALESCE returns the first non-NULL value."
+    },
+    {
+      q: "What is the ORDERED_ARRAY_AGG function used for?",
+      a: "ORDERED_ARRAY_AGG collects values into an ordered array based on sort keys. For example, ORDERED_ARRAY_AGG(message, 'ASC', eventtimestamp) collects messages ordered by timestamp. This is useful for reconstructing event sequences. It's specific to Grepr SQL transforms and not part of standard Flink SQL."
+    }
+  ]}
+/>

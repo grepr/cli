@@ -1,0 +1,140 @@
+---
+description: Learn how to deploy and configure an Amazon S3 bucket to host a Grepr data lake in your account.
+---
+
+import { Callout, Code, Pre, Tabs } from 'nextra/components'
+import AddTeamAccess from '@/app/shared/add-team-access-to-integration.mdx'
+import AwsResourcePolicy from '@/app/shared/aws-resource-policy.mdx'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+export const usResourcePolicy = <AwsResourcePolicy rolename="customer-role-{your-org-name}" />
+export const euResourcePolicy = <AwsResourcePolicy rolename="customer-role-euc1-{your-org-name}" />
+
+# Host a Grepr data lake with the Amazon S3 integration
+
+Grepr uses Amazon S3 as storage for the Grepr data lake. You can use a Grepr-hosted S3 bucket or a self-hosted S3 bucket in your AWS account. When you choose Grepr-hosted, you provide a name for the bucket, and Grepr manages its configuration and deployment. Using a self-hosted bucket requires creating and configuring it, but it gives you control over your data to meet security and compliance requirements.
+
+A single S3 bucket can host one or more data lakes. Grepr recommends starting with a single S3 bucket and adding buckets only if necessary. For example, to isolate data based on access requirements.
+
+To learn more about the Grepr data lake, see [The Grepr data lake](/grepr-platform/data-lake).
+
+Whether you use a Grepr-hosted bucket or a self-hosted bucket, you configure a Grepr storage integration to enable access to the bucket from your pipelines. This page describes how to configure an S3 bucket in your AWS account for use with a self-hosted storage integration, and how to create a storage integration for a Grepr-hosted or self-hosted bucket.
+
+To use a Grepr-hosted bucket, skip to [Create a storage integration in the Grepr UI](#create-storage-integration-ui). If you're using a self-hosted bucket, the following section explains how to create and configure it.
+
+## Create and configure an S3 bucket for a self-hosted storage integration
+
+The Grepr platform supports both automatic and manual methods for setting up an S3 bucket for a self-hosted storage integration. When you select the automatic option, Grepr uses CloudFormation to create and configure the required resources in your AWS account, including:
+
+- Creating a new S3 bucket specifically for your Grepr storage integration.
+- Configuring the necessary permissions and policies.
+- Granting access to an organization-specific role within Grepr. This organization-specific role is only assumed by Grepr jobs processing data for your organization, ensuring complete isolation from other Grepr customers.
+
+Grepr recommends using the automatic option because, in addition to automating the setup process, it ensures repeatability and reduces the chance of misconfiguration. To use the automatic option, see [Create a storage integration in the Grepr UI](#create-storage-integration-ui).
+
+If you have an existing bucket or want full control over the bucket creation and configuration, choose the manual option. See [Manually set up an S3 bucket and resources](#create-bucket-manually).
+
+<Callout>
+  The instructions in this document include creating a role in your account that grants access to your S3 bucket and assigning this role to a Grepr account principal. This role is only assumed by Grepr jobs acting on behalf of your organization, ensuring isolation between tenants. Alternatively, you can create a role in your own account and grant the required access for a Grepr principal to assume that role. For help, contact [support@grepr.ai](mailto:support@grepr.ai).
+</Callout>
+
+## Create a storage integration in the Grepr UI [#create-storage-integration-ui]
+
+To create a storage integration in the Grepr UI:
+
+1. In the Grepr UI, click **Integrations** in the top navigation bar.
+1. On the **Integrations** page, click **Add New** next to **Storage** to access the **Add Storage** dialog.
+1. In the **Type** menu, select **Grepr-hosted** or **Self-hosted S3**.
+1. If you select **Grepr-hosted**, in the **Name** field, enter a name for the integration and click **Create**.
+1. If you select **Self-hosted S3**:
+   - In the **Name** field, enter a name for the integration.
+   - In the **Bucket Name** field, enter the name of your S3 bucket.
+   - In the **Region** menu, select a region based on your location.
+   - Under **S3 Bucket Connection**, select **Automatic** or **Manual**.
+     - If you select **Automatic**, click **Go To CloudFormation** to complete the creation and configuration of the bucket.
+     - If you select **Manual**, follow the instructions in [Manually set up an S3 bucket and resources](#create-bucket-manually).
+1. Click **Create**.
+
+   ### Optional: Grant team access to the integration
+
+   <AddTeamAccess />
+
+## Manually set up an S3 bucket [#create-bucket-manually]
+
+<Callout type="info">
+  During query processing, Grepr might store transient objects with the `query-results/` prefix. To reduce storage costs, these transient objects should be removed periodically. To ensure these objects are automatically removed, Grepr recommends adding a lifecycle policy when you configure the S3 bucket. When you configure the policy:
+
+  - Add a filter on the prefix `query-results/`, making sure to include the trailing `/` so the filter isn't applied to other objects.
+  - Select the `Expire current version of objects` action.
+  - For `Days after object creation`, Grepr recommends setting the value to 1 day.
+
+  See the [AWS put-bucket-lifecycle documentation](https://docs.aws.amazon.com/cli/latest/reference/s3api/put-bucket-lifecycle.html).
+</Callout>
+
+To use an existing bucket or deploy S3 bucket resources using a tool other than CloudFormation:
+
+1. Create a bucket if one doesn't already exist. You must create the bucket in a supported region. See [Supported regions](/grepr-platform#grepr-supported-regions).
+1. Attach the resource policy for your bucket's region, replacing `{your-bucket-name}` with the bucket's name and `{your-org-name}` with your organization name.
+
+   <Tabs items={['US region', 'EU region']}>
+     <Tabs.Tab>
+       <Pre data-filename="bucket-policy.json" data-copy="" data-language="json">
+         <Code data-language="json">{usResourcePolicy}</Code>
+       </Pre>
+     </Tabs.Tab>
+
+     <Tabs.Tab>
+       <Pre data-filename="bucket-policy.json" data-copy="" data-language="json">
+         <Code data-language="json">{euResourcePolicy}</Code>
+       </Pre>
+     </Tabs.Tab>
+   </Tabs>
+
+## Limitations
+
+The Grepr SaaS offering is available only in supported AWS regions. See [Supported regions](/grepr-platform#grepr-supported-regions).
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What are the differences between Grepr-hosted and self-hosted S3 buckets?",
+      a: "Grepr-hosted buckets are managed by Grepr, requiring only a name during setup. Self-hosted buckets in your AWS account give you full control for security and compliance requirements. Self-hosted buckets require manual configuration of permissions and IAM roles but allow you to manage your data location and access."
+    },
+    {
+      q: "How do I create a Grepr-hosted storage integration?",
+      a: "In the Grepr UI, go to Integrations and click Add New next to Storage. Select Grepr-hosted, enter a name for the integration, and click Create. Grepr automatically manages the S3 bucket creation and configuration. This is the simplest option and recommended for most users."
+    },
+    {
+      q: "How do I set up a self-hosted S3 bucket for Grepr?",
+      a: "You can use the automatic CloudFormation method or manual setup. For automatic setup, Grepr uses CloudFormation to create and configure the bucket with proper permissions and IAM roles. For manual setup, create an S3 bucket in a supported AWS region, attach the required resource policy, and configure permissions as documented."
+    },
+    {
+      q: "What IAM permissions does Grepr need to access my S3 bucket?",
+      a: "Grepr needs ListBucket, GetBucketLocation, PutObject, GetObject, DeleteObject, and tagging permissions (PutObjectTagging, DeleteObjectTagging). These are granted to an organization-specific role that Grepr uses. The role is only assumed by Grepr jobs processing data for your organization."
+    },
+    {
+      q: "Can I use an existing S3 bucket for Grepr storage?",
+      a: "Yes, if you have an existing S3 bucket, you can configure it for use with Grepr by attaching the required resource policy. The bucket must be in a supported AWS region. You will need to provide the bucket name and configure permissions for the Grepr organization role to access it."
+    },
+    {
+      q: "What is the organization-specific role in AWS?",
+      a: "The organization-specific role is an IAM role in your AWS account that only Grepr jobs acting on behalf of your organization can assume. This ensures complete isolation between Grepr customers and prevents one organization's jobs from accessing another organization's data."
+    },
+    {
+      q: "How do I reduce S3 storage costs with Grepr?",
+      a: "Configure a lifecycle policy to automatically delete transient query-results with the prefix 'query-results/'. Set these objects to expire after 1 day. This removes temporary objects created during query processing, significantly reducing storage costs without affecting your permanent data lake."
+    },
+    {
+      q: "Why does Grepr create query-results objects in my S3 bucket?",
+      a: "During query processing, Grepr stores transient results temporarily in S3 with the 'query-results/' prefix. These are working files used during computation and are not needed after processing completes. A lifecycle policy automatically removes them to optimize storage costs."
+    },
+    {
+      q: "Can I grant my own role access to assume the Grepr organization role?",
+      a: "Yes, you can create a role in your own account and grant it permissions to assume the Grepr organization-specific role. This allows you to have additional control and flexibility over how your infrastructure accesses the S3 bucket. Contact support@grepr.ai for guidance on this setup."
+    },
+    {
+      q: "How many data lakes can I host in a single S3 bucket?",
+      a: "A single S3 bucket can host one or more data lakes. Grepr recommends starting with a single S3 bucket and adding additional buckets only if needed, for example to isolate data based on different access requirements or security boundaries."
+    }
+  ]}
+/>

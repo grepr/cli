@@ -1,0 +1,230 @@
+---
+description: Learn how the Grepr remapper is used to transform and standardize log event fields during pipeline processing.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Remap JSON attribute fields to top-level log event fields
+
+The remapper transform moves or copies log event attributes to top-level log event fields, such as `message` or `eventTimestamp`, or to tags. You can also rename attributes by moving a value from one attribute path to another. See [The remapper transform rename rules](#rename-rules).
+
+When you use the Grepr UI to create a pipeline, a remapper that transforms a default set of commonly used fields is automatically added to the pipeline, but you can modify which fields are transformed based on your requirements.
+
+## Example remapper transformation
+
+For example, this event:
+
+```json
+{
+  "id": "ABCDEF",
+  "eventTimestamp": 1765481731051,
+  "message": "",
+  "severity": "",
+  "tags": {},
+  "attributes": {
+    "syslog": {
+      "severity": "10",
+      "appname": "test name"
+    },
+    "status": "5",
+    "msg": "message 1",
+    "timestamp": {
+      "ms_since_epoch": 1765481730000
+    },
+    "eventTime": " "
+  }
+}
+```
+
+Would be transformed using the default configuration to:
+
+```json
+{
+  "id": "ABCDEF",
+  "eventTimestamp": 1765481731051,
+  "message": "message 1",
+  "severity": "5",
+  "tags": {
+    "service": "test name"
+  },
+  "attributes": {
+    "syslog": {
+      "severity": "10",
+      "appname": "test name"
+    },
+    "status": "5",
+    "timestamp": {
+      "ms_since_epoch": 1765481730000
+    },
+    "eventTime": " ",
+    "greprMeta": {
+      "messageAttributePath": "msg"
+    }
+  }
+}
+```
+
+- `severity` uses `status: "5"` instead of `syslog.severity: "10"` because `status` has a higher priority in the default configuration.
+- `tags.service` uses `syslog.appname: "test name"`.
+- The attribute `msg` is removed because it's remapped to the top-level `message` field and the `message` field has preserve source disabled by default.
+  - The `greprMeta.messageAttributePath` attribute is added to indicate which attribute was used for the remapped `message` field.
+  - If the message attribute is a nested field, for example, `log.msg`, only the msg field is removed. The parent `log` object remains, even if it is empty.
+- Other remapped attributes like `status` and `syslog.appname` remain in their original locations because their corresponding fields have preserve source enabled by default.
+- `timestamp: {}` and `eventTime: " "` are not used because they do not contain a valid timestamp value.
+
+## The remapper transform default configuration
+
+The following is the default remapper configuration. The **Transformed attribute or tag** column shows the field name in the transformed event after the input event is processed. The **Preserve source** column indicates whether the source attribute is kept in the original location after its value is copied to the target field, and **Default paths searched** are where the remapper looks in the input event for fields to transform.
+
+| Transformed attribute or tag | Preserve source | Default paths searched                                                                                                         |
+|:-----------------------------|:----------------|:-------------------------------------------------------------------------------------------------------------------------------|
+| `timestamp`                  | yes             | `date`, `@timestamp`, `T`, `syslog.timestamp`, `eventTime`, `_timestamp`, `Timestamp`, `published_date`, `timestamp`           |
+| `host`                       | yes             | `hostname`, `sourceIPAddress`, `host`, `kubernetes.host`, `syslog.hostname`                                                    |
+| `service`                    | yes             | `dd.service`, `kubernetes.labels.app`, `service`, `eventSource`, `kubernetes.labels.k8s-app`, `syslog.appname`                 |
+| `status`                     | yes             | `severity`, `level`, `syslog.severity`, `log.level`, `L`, `status`                                                             |
+| `message`                    | no              | `msg`, `log`, `message`, `M`                                                                                                   |
+| `trace ID`                   | yes             | `dd.trace_id`, `contextMap.dd.trace_id`, `otelTraceId`                                                                         |
+
+You can toggle the **Preserve source** setting for each field in the pipelines UI. When preserve source is enabled, the source attribute remains in its original location after the value is copied to the target field. When disabled, the source attribute is removed after remapping. For example, the `message` field has preserve source disabled by default, so the original `msg` attribute is deleted after being copied to the top-level `message` field.
+
+Tag mappings also support the preserve source option. You can configure whether the source attribute is kept or removed after its value is copied to a tag.
+
+For the full list of default configuration settings, see the [LogAttributesRemapper specification](/apis/api-spec#schema/LogAttributesRemapper).
+
+## The remapper transform rename rules [#rename-rules]
+
+To move or copy an attribute value from one path to another path, use a _rename rule_. Rename rules move an attribute value from one path to another in the same log event. Each rule has a **Preserve source** setting that controls whether the source attribute is kept or removed after its value is copied to the target path. If the target path already exists, its value is overwritten.
+
+To add rename rules in the pipelines UI, click **JSON Parser** in the navigation menu, click **Edit** next to **Attribute Remapper**, then select the **Rename Rules** tab. Rules can be reordered by dragging them, and they are applied in order from top to bottom.
+
+### Example rename rule
+
+Given the following attributes:
+
+```json
+{
+  "attributes": {
+    "request": {
+      "method": "POST",
+      "path": "/api/users"
+    }
+  }
+}
+```
+
+A rename rule with source `request.method` and target `http_method` produces:
+
+```json
+{
+  "attributes": {
+    "request": {
+      "path": "/api/users"
+    },
+    "http_method": "POST"
+  }
+}
+```
+
+The source field `request.method` is removed, while sibling fields like `request.path` are preserved.
+
+### Preserving the source attribute [#preserve-source-attribute]
+
+When **Preserve source** is disabled on a rename rule, the source attribute is removed after its value is copied to the target. To keep the source attribute in its original location, enable the **Preserve source** checkbox on the rule. This copies the value to the target path without removing the original.
+
+Using the same example above, with **Preserve source** enabled, the result would be:
+
+```json
+{
+  "attributes": {
+    "request": {
+      "method": "POST",
+      "path": "/api/users"
+    },
+    "http_method": "POST"
+  }
+}
+```
+
+The value is copied to `http_method`, but `request.method` remains in its original location.
+
+### Conditional rename rules
+
+Each rename rule can include an optional filter query. When a filter is set, the rule only applies to log events that match the query. This allows you to define multiple rules for the same source attribute with different filters, so each rule targets a different subset of events.
+
+For example, you could configure two rules for the same source `origin`:
+
+- `origin` → `cloud.provider` when the filter matches `env:production`
+- `origin` → `debug.origin` when the filter matches `env:staging`
+
+Because the filters are mutually exclusive, only one rule applies per event.
+
+### Rule ordering
+
+Rename rules are applied sequentially in the order they appear. If two rules share the same source attribute, the first matching rule removes the source value. Subsequent rules for the same source will not find a value unless their filters prevent the earlier rule from applying.
+
+See the [AttributeRemappingRule specification](/apis/api-spec#schema/AttributeRemappingRule).
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What does the remapper transform do?",
+      a: "The remapper transform moves or copies attributes from nested JSON structures to top-level log event fields (like message, severity, host, timestamp) or to tags. This standardizes log event structure and makes important fields easily accessible for filtering, searching, and display."
+    },
+    {
+      q: "Is the remapper automatically applied in the Grepr UI?",
+      a: "Yes, when you create a pipeline using the Grepr UI, a remapper is automatically added with a set of predefined default attributes for well-known field names. You can modify this configuration based on your specific requirements."
+    },
+    {
+      q: "What are the default field mappings for the remapper?",
+      a: "The default configuration includes mappings for: timestamp (from date, @timestamp, syslog.timestamp, etc.), host (from hostname, sourceIPAddress, kubernetes.host), service (from dd.service, kubernetes.labels.app, syslog.appname), status (from severity, level, log.level), message (from msg, log, message), and trace ID (from dd.trace_id, otelTraceId)."
+    },
+    {
+      q: "How does field priority work in the remapper?",
+      a: "The remapper uses priority to select which source attribute to map when multiple candidates exist. For example, if both 'status' and 'syslog.severity' are present, the remapper uses the one with higher priority. The default configuration specifies priority ordering for well-known fields."
+    },
+    {
+      q: "What happens to the original attribute after remapping?",
+      a: "This depends on the Preserve source setting for each field. When preserve source is enabled, the original attribute remains in its original location after the value is copied to the target. When disabled, the source attribute is removed. For example, the message field has preserve source disabled by default, so the original 'msg' attribute is deleted after being copied to the top-level message field. Most other fields like timestamp, host, and status have preserve source enabled by default, so their source attributes are kept."
+    },
+    {
+      q: "How do I customize the remapper configuration?",
+      a: "You can modify the default attribute names and their priority by editing the remapper configuration. This allows you to map custom field names from your logs to standard top-level fields. Access these settings when configuring the remapper step in your pipeline."
+    },
+    {
+      q: "What is greprMeta and why is it added?",
+      a: "greprMeta is a metadata field added by the remapper to track remapping information. It includes messageAttributePath, which indicates which attribute was used for the remapped message field. This provides an audit trail of where the message content originated from."
+    },
+    {
+      q: "Can I remap attributes to tags instead of top-level fields?",
+      a: "Yes, the remapper can copy or move attributes to the tags section of a log event. For example, you can map syslog.appname to a tag like tags.service. This is useful for adding contextual information for filtering and categorization without cluttering the top-level fields."
+    },
+    {
+      q: "What happens if a remapping source field is empty or has an invalid value?",
+      a: "The remapper handles invalid values gracefully. For timestamp fields, if the value doesn't contain a valid timestamp, it's not used for remapping. Empty values are also skipped. The remapper continues to the next priority option if the current source field is invalid."
+    },
+    {
+      q: "Can I use the remapper with nested field paths?",
+      a: "Yes, the remapper supports nested field paths like syslog.severity and kubernetes.host. When remapping a nested field, only the immediate field is removed from the parent object if the removal setting is true. Parent objects are preserved even if they become empty after field removal."
+    },
+    {
+      q: "What are rename rules and how do they differ from the default remapper?",
+      a: "Rename rules move or copy an attribute value from one path to another within the attributes of a log event. Unlike the default remapper, which maps attributes to top-level fields like message or severity, rename rules restructure attributes without changing top-level fields. By default, the source attribute is removed after the value is copied to the target, but you can enable Preserve source on each rule to keep the original attribute."
+    },
+    {
+      q: "Can I apply a rename rule conditionally?",
+      a: "Yes, each rename rule supports an optional filter query. When a filter is set, the rule only applies to events that match the query. This allows you to create multiple rules for the same source attribute with different filters targeting different subsets of events."
+    },
+    {
+      q: "Does the order of rename rules matter?",
+      a: "Yes, rename rules are applied sequentially from top to bottom. If two rules share the same source, the first matching rule removes the source value and later rules for the same source will not find a value to move. Use filters to ensure only one rule matches per event when sharing a source attribute."
+    },
+    {
+      q: "Can I reorder rename rules?",
+      a: "Yes, you can drag and drop rename rules in the Grepr UI to change their execution order. Rules are applied from top to bottom, so the order determines which rule takes effect first when multiple rules could match."
+    },
+    {
+      q: "What does Preserve source do?",
+      a: "Preserve source controls whether the original attribute is kept or removed after its value is copied to the target. When enabled, the source attribute stays in its original location alongside the new target. When disabled, the source attribute is removed after remapping. This setting is available on reserved attribute mappings, tag mappings, and individual rename rules."
+    }
+  ]}
+/>

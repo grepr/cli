@@ -1,0 +1,268 @@
+---
+description: Learn how to configure a Grepr OpenTelemetry integration to connect with Grafana Cloud, enabling you to ingest logs to a Grepr pipeline for processing and send the processed logs to your Grafana Cloud instance.
+vendor: Grafana
+---
+
+import { Callout } from 'nextra/components'
+import AddTeamAccess from '@/app/shared/add-team-access-to-integration.mdx'
+import IngestUrlConfig from '@/app/shared/configure-ingest-url.mdx'
+import IntegrationsInterchangeability from '@/app/shared/integrations-interchangeability.mdx'
+import { Tabs } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Configure Grafana Cloud connections with a Grepr integration
+
+To connect Grepr to Grafana Cloud, use the Grepr OpenTelemetry integration to ingest logs into your Grepr pipelines for processing and send the processed logs to an OTLP endpoint in your Grafana Cloud account.
+
+To send logs to a Grepr pipeline before forwarding them to Grafana Cloud, you change your collector configuration to send the logs to a Grepr endpoint URL instead of the Grafana Cloud OTLP endpoint. The Grepr OpenTelemetry integration supports several Grafana-compatible collectors, including the Grafana Alloy collector, the OpenTelemetry Collector, and Grafana Agent (EOL).
+
+You can use the Grepr UI or REST API to create an OpenTelemetry integration configured for Grafana Cloud. To learn how to create an OpenTelemetry integration in the Grepr UI and configure collectors to send logs to Grepr, see [Use an OpenTelemetry integration in a Grepr pipeline](#use-otel-integration-with-grafana).
+
+<Callout>
+  <IntegrationsInterchangeability />
+</Callout>
+
+## Requirements
+
+To connect Grepr with Grafana Cloud using an OpenTelemetry integration, you need:
+
+- A Grafana Cloud Access Policy token with write access to logs. See [Grafana Cloud Access Policies](https://grafana.com/docs/grafana-cloud/security-and-account-management/authentication-and-permissions/access-policies/).
+- A Grafana Cloud OTLP Endpoint. See [Send data to the Grafana Cloud OTLP endpoint](https://grafana.com/docs/grafana-cloud/send-data/otlp/send-data-otlp/).
+
+## Use an OpenTelemetry integration with Grafana in a Grepr pipeline [#use-otel-integration-with-grafana]
+
+### Step 1: Create an OpenTelemetry integration
+
+To create an OpenTelemetry integration configured for Grafana Cloud in the Grepr UI:
+
+1. Go to the **Integrations** page in the Grepr UI and click **Add new** next to **Observability Vendors**.
+1. In the **Add Observability Vendor** dialog:
+   - In the **Type** menu, select **Open Telemetry**.
+   - In the **Name** field, enter a name for the integration. Grepr recommends naming it descriptively so it's easy to identify. For example, `grafana-cloud-prod-logs`.
+   - In the **Base Endpoint URL** field, enter your Grafana Cloud OTLP endpoint URL.
+   - Click **Add Header**.
+     - In the **Header Name** field, enter `Authorization`.
+     - In the **Header Value** field, enter `Bearer <your-grafana-access-token>`. Replace `<your-grafana-access-token>` with the token generated from your Grafana Cloud Access Policy.
+     - Select the **Make header secret** checkbox.
+1. Click **Create**.
+
+   ![Open Telemetry Modal](/images/integrations/otlp_modal.png)
+
+1. Save the `GREPR TOKEN` displayed in the confirmation dialog securely.
+
+   #### Optional: Grant team access to the integration
+
+   <AddTeamAccess />
+
+### Step 2: Add a source to your pipeline
+
+To add a source to your pipeline that uses the OpenTelemetry integration:
+
+1. In the Grepr UI, go to the details page of an existing pipeline or create a new pipeline from the homepage.
+1. In the left-hand navigation menu, click **Sources**.
+1. In the **Add source** dialog, select your OpenTelemetry integration in the **Source** menu.
+1. Click **Submit**.
+
+### Step 3: Configure log forwarding to Grepr
+
+<IngestUrlConfig url="https://<integration-id>-<org-id>.ingest.grepr.ai/otlp/<grepr-token>" image_url="/images/integrations/grafana_source.png" />
+
+Replace `<grepr-token>` with the token you saved after creating the OpenTelemetry integration in Step 1.
+
+To see more information and configuration examples, select the tab for your preferred log collector:
+
+<Tabs items={['Grafana Alloy', 'OpenTelemetry Collector', 'Grafana Agent (EOL)']}>
+  <Tabs.Tab>
+
+    Grafana Alloy is the recommended collector for connecting to Grafana Cloud. It replaces the end-of-life Grafana Agent and provides enhanced performance and capabilities.
+
+    To configure Grafana Alloy to send logs to Grepr, use the OTLP exporter pointing to Grepr's ingestion endpoint.
+
+    Configuration (`config.alloy`):
+
+    ```shell filename="config.alloy"
+    otelcol.exporter.otlphttp "grepr" {
+      client {
+        endpoint = "<ingestion-url>"
+      }
+    }
+
+    otelcol.receiver.otlp "default" {
+      http {}
+      grpc {}
+
+      output {
+        logs = [otelcol.exporter.otlphttp.grepr.input]
+      }
+    }
+    ```
+
+    Replace `<ingestion-url>` with the full ingestion URL provided by the Grepr UI.
+
+    To configure dual shipping, create two exporters:
+
+    ```shell
+    otelcol.exporter.otlphttp "grepr" {
+      client {
+        endpoint = "<ingestion-url>"
+      }
+    }
+
+    otelcol.exporter.otlphttp "grafana" {
+      client {
+        endpoint = "<your-grafana-otlp-endpoint>"
+        headers = {
+          "Authorization" = "Bearer <your-grafana-access-token>"
+        }
+      }
+    }
+
+    otelcol.receiver.otlp "default" {
+      http {}
+      grpc {}
+
+      output {
+        logs    = [
+          otelcol.exporter.otlphttp.grepr.input,
+          otelcol.exporter.otlphttp.grafana.input
+        ]
+      }
+    }
+    ```
+
+    Replace `<your-grafana-otlp-endpoint>` with your Grafana Cloud OTLP endpoint and `<your-grafana-access-token>` with your Grafana Cloud access token.
+
+    To learn more about Grafana Alloy configuration, see the [Grafana Alloy documentation](https://grafana.com/docs/alloy/latest/).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    The OpenTelemetry Collector can send logs to Grepr using the `otlphttp` exporter.
+
+    To configure the OpenTelemetry Collector to send logs to Grepr's ingestion endpoint, update your collector configuration (`collector.yaml`):
+
+    ```yaml copy filename="config.yaml"
+    exporters:
+      otlphttp:
+        endpoint: <ingestion-url>
+
+    service:
+      pipelines:
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp]
+    ```
+
+    Replace `<ingestion-url>` with the full ingestion URL provided by the Grepr UI.
+
+    To configure dual shipping:
+
+    ```yaml copy filename="config.yaml"
+    exporters:
+      otlphttp/grepr:
+        endpoint: <ingestion-url>
+
+      otlphttp/grafana:
+        endpoint: <your-grafana-otlp-endpoint>
+        headers:
+          Authorization: Bearer <your-grafana-access-token>
+
+    service:
+      pipelines:
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp/grepr, otlphttp/grafana]
+    ```
+
+    Replace `<your-grafana-otlp-endpoint>` with your Grafana Cloud OTLP endpoint and `<your-grafana-access-token>` with your Grafana Cloud access token.
+
+    To learn more about OpenTelemetry Collector configuration, see the [OpenTelemetry Collector documentation](https://opentelemetry.io/docs/collector/).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    <Callout type="warning">
+      Grafana Agent is end-of-life as of November 1, 2025. Grepr recommends migrating to Grafana Alloy for new and existing deployments.
+    </Callout>
+
+    To configure Grafana Agent to send logs to Grepr, use the OTLP exporter in your agent configuration.
+
+    Configuration (`agent.yaml`):
+
+    ```yaml filename="agent.yaml"
+    logs:
+      configs:
+        - name: default
+          clients:
+            - url: <ingestion-url>
+    ```
+
+    Replace `<ingestion-url>` with the full ingestion URL provided by the Grepr UI.
+
+  </Tabs.Tab>
+</Tabs>
+
+## Advanced configuration
+
+### Custom headers
+
+If your Grafana Cloud setup requires additional headers other than the Authorization header, you can add them in the Grepr UI when creating your OpenTelemetry integration:
+
+- Non-secret headers: Add in the **HTTP Headers** section.
+- Secret headers: Add in the **HTTP Headers** section and select the **Make header secret** checkbox.
+
+### Endpoint overrides
+
+For advanced use cases, you can use the **Advanced** mode in the Grepr UI to specify separate endpoints for logs and traces:
+
+- **Logs Endpoint Override**: Specify a custom logs endpoint (if different from base endpoint + `/v1/logs`).
+- **Traces Endpoint Override**: Specify a custom traces endpoint (if different from base endpoint + `/v1/traces`).
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "How do I connect Grepr to Grafana Cloud?",
+      a: "Create an OpenTelemetry integration in Grepr with your Grafana Cloud OTLP endpoint and configure an Authorization header with your Grafana Cloud Access Policy token. The ingestion URL format is https://<integration-id>-<org-id>.ingest.grepr.ai/otlp/<grepr-token>. Configure your collector to send logs to this URL."
+    },
+    {
+      q: "What is required to set up Grafana Cloud integration with Grepr?",
+      a: "You need a Grafana Cloud Access Policy token with write access to logs and your Grafana Cloud OTLP endpoint URL. The token is used for authentication between Grepr and Grafana Cloud. You can create access policies in Grafana Cloud under Home > Administration > Users and access > Cloud access policies."
+    },
+    {
+      q: "How do I configure Grafana Alloy to send logs to Grepr?",
+      a: "Grafana Alloy is the recommended collector for Grafana Cloud. Configure the otelcol.exporter.otlphttp component with your Grepr ingestion endpoint. For dual-shipping, add a second exporter pointing to your Grafana Cloud OTLP endpoint with the Authorization header containing your Grafana access token."
+    },
+    {
+      q: "Can I use OpenTelemetry Collector with Grafana Cloud and Grepr?",
+      a: "Yes, the OpenTelemetry Collector can be used with Grafana Cloud. Configure the otlphttp exporter with your Grepr ingestion endpoint. For dual-shipping to both Grepr and Grafana Cloud, add multiple exporters to your logs pipeline with appropriate endpoint URLs and headers."
+    },
+    {
+      q: "What is Grafana Agent and why is it end-of-life?",
+      a: "Grafana Agent is an older collector that has reached end-of-life as of November 1, 2025. Grepr recommends migrating to Grafana Alloy, which provides enhanced performance, better feature support, and ongoing maintenance. Grafana Alloy is the successor and recommended collector for new deployments."
+    },
+    {
+      q: "How do I migrate from Grafana Agent to Grafana Alloy with Grepr?",
+      a: "Update your collector configuration to use Grafana Alloy and configure the otelcol.exporter.otlphttp component to point to your Grepr ingestion endpoint. Grafana Alloy uses the same OTLP protocol as the OpenTelemetry Collector, making migration straightforward."
+    },
+    {
+      q: "What custom headers can I add to my Grafana Cloud OpenTelemetry integration?",
+      a: "You can add non-secret headers in the HTTP Headers section and secret headers (like API keys or authentication tokens) in the HTTP Headers section with the Make header secret checkbox selected. Secret headers are stored securely and masked in the UI."
+    },
+    {
+      q: "Can I use different endpoints for logs and traces with Grafana Cloud?",
+      a: "Yes, for advanced use cases, you can use Advanced mode in the Grepr UI to specify separate Logs Endpoint Override and Traces Endpoint Override if your Grafana Cloud setup requires different endpoints for different signal types."
+    },
+    {
+      q: "How do I reduce Grafana Cloud storage costs with Grepr?",
+      a: "Configure your Grepr pipeline with a Grafana Cloud source and sink. Use Grepr's transformation and log reducer features to filter, enrich, and aggregate logs before sending them back to Grafana Cloud. This reduces the volume of data stored in Grafana Cloud."
+    },
+    {
+      q: "What is the advantage of using Grepr with Grafana Cloud?",
+      a: "Grepr enables advanced log processing, filtering, and aggregation using its log reducer and transformation features. By processing logs through Grepr before storing in Grafana Cloud, you can reduce storage costs, improve log quality, and gain deeper insights into your logs without additional Grafana expense."
+    }
+  ]}
+/>

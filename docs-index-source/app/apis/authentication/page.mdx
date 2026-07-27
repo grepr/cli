@@ -1,0 +1,139 @@
+---
+description: Learn how to authenticate against the Grepr REST APIs.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Authenticate to Grepr REST APIs
+
+By default, most endpoints in the Grepr REST APIs are restricted and can be accessed only by using credentials with the required permissions. To obtain credentials, create a Grepr service account. See [Manage Grepr service accounts](/admin/service-accounts).
+
+The credentials consist of:
+
+- **client ID**: A unique identifier for your service account.
+- **client secret**: A secret key to authenticate your service account.
+
+You use these these credentials to obtain an access token for API authentication.
+
+The exception to the access restrictions for the Grepr APIs is the `POST /v1/triggers` endpoint to create external triggers.
+
+## Obtain an access token for Grepr REST APIs
+
+Grepr uses [Auth0](https://auth0.com/) as the identity provider for authentication. To obtain an access token to use with Grepr APIs, you send a request to the `token` endpoint:
+
+`POST https://auth.grepr.ai/oauth/token` endpoint.
+
+The following example submits a token request using the `curl` command. `client-id` and `client-secret` are the credentials from your service account:
+
+```bash copy
+curl --url https://auth.grepr.ai/oauth/token \
+--header 'content-type: application/json' \
+--data '{
+  "client_id": "<client-id>",
+  "client_secret": "<client-secret>",
+  "audience": "service",
+  "grant_type": "client_credentials"
+}'
+```
+
+Example response:
+
+```json
+{
+    "access_token": "<access-token>",
+    "token_type": "Bearer",
+    "expires_in": "86400",
+    "scope": "service"
+}
+```
+
+<Callout type="info">
+  - The access token has access to all APIs that Grepr provides to its customers. However, if you need to restrict access to specific APIs, you can reduce the access scope of a token. For help, contact [support@grepr.ai](mailto:support@grepr.ai).
+  - The access token has a limited lifetime of 86400 seconds, which is equivalent to 24 hours. You must obtain a new token when it expires.
+  - Keep the credentials you receive and the auth token secure. To prevent unauthorized access, do not expose these values in your client-side code or commit them to a version control repository.
+</Callout>
+
+## Use the access token with the Grepr API
+
+To authenticate against the Grepr APIs, include the access token as a `Bearer` token in the `Authorization` header of all API requests. If you submit a request using an expired token, a `401 Unauthorized` response is returned, and you must obtain a new access token.
+
+The following example uses the `curl` command to get all `Asynchronous` `Streaming` jobs from the `jobs` endpoint.
+
+```bash copy
+curl "https://<your_org_id>.app.grepr.ai/api/v1/jobs?processing=STREAMING&execution=ASYNCHRONOUS" \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <your_access_token>"
+```
+
+Example response:
+
+```json
+{
+  "items": [
+    {
+      "id": "0ABC123DEF456",
+      "name": "Demo Job",
+      "version": 0,
+      "organizationId": "grepr",
+      "execution": "ASYNCHRONOUS",
+      "processing": "STREAMING",
+      "state": "RUNNING",
+      "desiredState": "RUNNING",
+      "jobGraph": {
+        "vertices": [],
+        "edges": []
+      },
+      "createdAt": "2021-09-01T00:00:00Z",
+      "updatedAt": "2021-09-01T00:00:00Z",
+      "tags": {
+        "createdUsing": "API",
+        "createdByUser": "Hardworking Beaver"
+      }
+    }
+  ]
+}
+```
+
+<HiddenFAQ faqs={[
+  {
+    q: "How do I authenticate to the Grepr REST API?",
+    a: "You authenticate using OAuth 2.0 with Auth0. Obtain a client_id and client_secret from Grepr support, then exchange them for an access token. Include the token as a Bearer token in the Authorization header of API requests."
+  },
+  {
+    q: "How do I get API credentials?",
+    a: "Create a service account in the Grepr UI by navigating to Developer > Service Accounts. This provides you with a client_id and client_secret for authentication. Alternatively, contact the Grepr support team at support@grepr.ai."
+  },
+  {
+    q: "What is the token endpoint URL?",
+    a: "The token endpoint for obtaining access tokens is: POST https://auth.grepr.ai/oauth/token"
+  },
+  {
+    q: "How long are access tokens valid?",
+    a: "Access tokens are valid for 86400 seconds, which is equivalent to 24 hours. You must obtain a new token when it expires."
+  },
+  {
+    q: "What is the correct format for the Authorization header?",
+    a: "Include the access token as a Bearer token in the Authorization header: Authorization: Bearer <your_access_token>"
+  },
+  {
+    q: "What grant type should I use for API authentication?",
+    a: "Use the client_credentials grant type for API authentication. This is the standard grant type for server-to-server authentication."
+  },
+  {
+    q: "What is the audience parameter in the token request?",
+    a: "The audience parameter in token requests should be set to 'service' to authenticate against the Grepr APIs."
+  },
+  {
+    q: "Can I restrict the scope of an access token?",
+    a: "Yes, you can reduce the access scope of a token to restrict it to specific APIs. Contact support@grepr.ai for help configuring token scopes."
+  },
+  {
+    q: "What happens if I use an expired token?",
+    a: "If you submit a request with an expired token, the API returns a 401 Unauthorized response. You must obtain a new access token and retry the request."
+  },
+  {
+    q: "Where should I store API credentials?",
+    a: "Never expose API credentials in client-side code or commit them to version control. Store them securely in environment variables, secret management systems, or secure configuration files with restricted access."
+  }
+]} />

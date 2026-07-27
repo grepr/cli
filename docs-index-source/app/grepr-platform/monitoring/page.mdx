@@ -1,0 +1,106 @@
+---
+description: Scrape Grepr pipeline performance metrics into the monitoring tool of your choice using an endpoint that serves the Prometheus and OpenMetrics text exposition formats.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Monitor performance metrics
+
+Grepr provides a REST API endpoint that allows you to send periodic `GET` requests, or _scrapes_, to return key performance metrics for your organization. Use this endpoint to import these metrics to the monitoring tool of your choice. See the [scrape endpoint](/apis/api-spec#tag/Status-Metrics/operation/scrapePrometheus) in the REST API specification.
+
+## Requirements [#requirements]
+
+Before you configure scraping, make sure you have the following:
+
+- A Grepr service account that has the Reader role assigned. The scrape endpoint requires authentication, and the Reader role provides the minimum permissions needed to read metrics from the endpoint. To learn more, including how to create the required service account, see [Manage service accounts](/admin/service-accounts). To learn more about roles in Grepr, see [Permissions in the Grepr platform](/grepr-platform/permissions).
+- A monitoring tool that supports scraping the Prometheus or OpenMetrics text exposition format, such as Prometheus. Authentication to the Grepr scrape endpoint uses the OAuth2 client credentials grant flow, so your monitoring tool must also support OAuth2 client credentials.
+
+## Configure scraping [#configure-scraping]
+
+The following example shows the configuration for a Prometheus server. To use a different monitoring tool, adapt the same values to that tool's scrape configuration format.
+
+To set up scraping in Prometheus:
+
+1. Add the following job to the `scrape_configs` section of your `prometheus.yml`:
+
+   ```yaml copy filename="prometheus.yml"
+   scrape_configs:
+     - job_name: grepr
+       scrape_interval: 1m
+       scrape_timeout: 30s
+       honor_timestamps: true
+       metrics_path: /api/v1/metrics/scrape
+       scheme: https
+       static_configs:
+         - targets:
+             - app.grepr.ai
+       oauth2:
+         client_id: <service-account-client-id>
+         client_secret: <service-account-client-secret>
+         token_url: https://<your-auth-domain>/oauth/token
+         endpoint_params:
+           audience: service
+   ```
+
+1. Replace the placeholders with the values from the service account you created:
+   - `<service-account-client-id>`: the client ID from your service account.
+   - `<service-account-client-secret>`: the client secret from your service account.
+   - `<your-auth-domain>`: the auth domain Grepr uses for your tenant. The Monitor page in your Grepr UI renders this URL pre-filled for your environment.
+
+1. Reload your Prometheus configuration to apply the change.
+
+<Callout type="warning">
+  Set the scrape interval to 1 minute. The Grepr endpoint returns one data point per minute representing the previous complete minute. A longer interval drops minutes of data between scrapes. An interval shorter than 1 minute results in multiple requests returning the same cached value.
+</Callout>
+
+## Output formats [#output-formats]
+
+The endpoint returns metrics in one of two formats, selected from the `Accept` header on the scrape request:
+
+- `application/openmetrics-text; version=1.0.0` returns the OpenMetrics text format.
+- `text/plain; version=0.0.4`, the default, returns the Prometheus text exposition format.
+
+Most monitoring tools set the `Accept` header automatically based on the format they prefer, so you typically don't need to configure this.
+
+## Exposed metrics [#exposed-metrics]
+
+The scrape endpoint exposes the following metrics. Each metric is a _gauge_, which is a metric type that represents a value at a single point in time that can go up or down between scrapes.
+
+| Metric | Description | Labels |
+|--------|-------------|--------|
+| `grepr_pipeline_events_in_per_minute` | Events entering the pipeline in the last complete minute. An event is a single log line, span, or metric data point, depending on the pipeline. | `job_id` |
+| `grepr_pipeline_events_out_per_minute` | Events leaving the pipeline in the last complete minute. | `job_id` |
+| `grepr_pipeline_bytes_in_per_minute` | Bytes entering the pipeline in the last complete minute. | `job_id` |
+| `grepr_pipeline_bytes_out_per_minute` | Bytes leaving the pipeline in the last complete minute. | `job_id` |
+| `grepr_pipeline_lag_seconds_p50` | Median input-output lag observed over the last minute, in seconds. | `job_id` |
+| `grepr_pipeline_lag_seconds_p95` | 95th-percentile input-output lag observed over the last minute, in seconds. | `job_id` |
+| `grepr_pipeline_lag_seconds_p99` | 99th-percentile input-output lag observed over the last minute, in seconds. | `job_id` |
+| `grepr_pipeline_cpu_cores` | CPU cores allocated to the pipeline taskmanager pods. Reflects allocation, not usage. | `job_id` |
+
+The four `_per_minute` metrics are gauges that already encode a per-minute rate. Plot them directly. Do not apply `rate()` or `increase()` on top of them, since that produces meaningless values.
+
+The three `_lag_seconds_p*` metrics together describe the distribution of input-output lag for each pipeline over the last minute. Plot them on the same chart to see the spread between typical and tail latency.
+
+## Limitations
+
+The endpoint returns data only for pipelines that have been active in the last complete minute. Inactive pipelines do not appear in the response.
+
+<HiddenFAQ faqs={[
+  {
+    q: "Can I monitor Grepr with my own monitoring tool?",
+    a: "Yes. You can monitor Grepr metrics with any monitoring tool that supports the OpenMetrics or Prometheus text exposition format. Point the tool's scrape configuration at the Grepr metrics scrape endpoint."
+  },
+  {
+    q: "What authentication does the Grepr scrape endpoint use?",
+    a: "The endpoint uses OAuth2 client credentials. You create a service account in the Grepr UI to obtain a client ID and secret, then configure your monitoring tool to exchange the credentials for an access token. The tool refreshes the token automatically."
+  },
+  {
+    q: "Why must the scrape interval be exactly 1 minute?",
+    a: "The Grepr endpoint reports one data point per metric per minute, representing the previous complete minute. A longer interval drops the minutes between scrapes. A shorter interval hits a per-minute cache and returns the same value multiple times."
+  },
+  {
+    q: "Why are events_in and bytes_in suffixed with _per_minute?",
+    a: "These metrics are gauges that already encode a per-minute rate. The suffix tells dashboard authors not to apply rate() or increase() on top, which would produce meaningless values."
+  }
+]} />

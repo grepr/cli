@@ -1,0 +1,80 @@
+---
+description: Learn how Grepr uses Apache Iceberg and Apache Parquet with cloud storage to deploy data lakes optimized for log storage and querying.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# The Grepr data lake
+
+Grepr pipelines use a data lake deployed on Amazon S3 to store data, including raw logs and metadata, across different processing stages. The metadata stored in the data lake can include patterns identified during log message processing or message identifiers. You can also choose to save the processed output events from your pipelines in the data lake.
+
+The data lake uses [Apache Iceberg](https://iceberg.apache.org/) and [Apache Parquet](https://parquet.apache.org/) to create a storage layer optimized for storing and querying large datasets. Both Iceberg and Parquet are open-source projects that are widely used to support data engineering workloads.
+
+Iceberg is a table format designed to store and query large datasets efficiently. Parquet is a column-oriented storage format designed for efficient data storage and retrieval. The Grepr data lake stores data in Parquet files, and Iceberg manages them as tables. The combination of Iceberg and Parquet provides efficient data storage and support for database-like functionality, including queries, transactions, and schema evolution.
+
+Although you configure each of your pipelines with a single data lake, an S3 bucket can host multiple data lakes. In the data lake, Grepr stores data in _datasets_. A Grepr dataset defines a namespace in the data lake that identifies where specific data is stored and isolates that data from other datasets.
+
+An example of a dataset is the one you add to a pipeline to capture the pipeline's output. However, a dataset is not restricted to a single pipeline: You can create a dedicated dataset for a single pipeline or configure multiple pipelines to use a shared dataset.
+
+## How does Grepr use the data lake?
+
+Grepr uses the data stored in the data lake for tasks such as querying raw data or performing backfills. To limit the amount of data required for scans and the associated costs, you should be as precise as possible when you run queries against this data. For example, limit the amount of data scanned by using tags and limited time ranges.
+
+<Callout type="info">
+  By default, Grepr sets the following limits for queries against data lake tables:
+
+  - 100 GB for the amount of data that can be scanned in a single query.
+  - A timeout of 10 minutes. The Grepr platform terminates queries that exceed this time limit.
+
+  Although these limits are sufficient for most queries, if your workloads require raising these limits, contact [support@grepr.ai](mailto:support@grepr.ai).
+</Callout>
+
+## How is a Grepr data lake deployed?
+
+Because the Grepr platform manages the deployment of the data lake infrastructure, including creation of the required tables and other structures, you don't need to take additional steps to install or configure Iceberg or Parquet. When you add a data lake in the pipelines UI, you only need to configure a storage integration with S3, either using a Grepr-hosted S3 bucket or a self-hosted S3 bucket. To learn how to create and configure an S3 bucket and Grepr storage integration, see [Host a Grepr data lake with the Amazon S3 integration](/integrations/aws-s3).
+
+When you use the API to configure a pipeline, the Grepr platform also manages the deployment of the tables and other structures required by the data lake. However, your pipeline configuration must include specific values related to Iceberg sources and sinks. To learn more, see [Create and manage jobs with the Grepr REST API](/apis/job-creation-guide).
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is the Grepr data lake?",
+    a: "The Grepr data lake is a cloud-based storage layer built on Amazon S3 that stores raw log data and metadata. It uses Apache Iceberg for table management and Apache Parquet for columnar storage, providing efficient querying and cost-effective long-term retention."
+  },
+  {
+    q: "Why does Grepr use Apache Iceberg and Parquet?",
+    a: "Iceberg provides a table format designed for efficient storage and querying of large datasets with full transaction support and schema evolution. Parquet offers column-oriented storage optimized for analytical queries, enabling fast retrieval and compression of log data."
+  },
+  {
+    q: "What is a Grepr dataset?",
+    a: "A Grepr dataset is a namespace within the data lake that identifies where specific data is stored and isolates it from other datasets. You can configure pipelines to use dedicated datasets or share datasets across multiple pipelines."
+  },
+  {
+    q: "What can I use the data lake for?",
+    a: "You can use the data lake for querying raw historical logs, performing backfills during incidents, analyzing patterns, running batch analytics, and maintaining a complete audit trail of all ingested data."
+  },
+  {
+    q: "Can multiple S3 buckets host Grepr data lakes?",
+    a: "Yes, a single S3 bucket can host multiple independent data lakes, each with their own isolated datasets. This allows flexible organization of data while sharing infrastructure."
+  },
+  {
+    q: "What are the query limits for the data lake?",
+    a: "By default, Grepr limits data lake queries to 100 GB of scanned data per query and enforces a 10-minute timeout. These limits can be increased for specific workloads by contacting support."
+  },
+  {
+    q: "How do I set up a data lake?",
+    a: "Create a storage integration with Amazon S3 (either Grepr-hosted or self-hosted). Grepr automatically manages table creation and Iceberg/Parquet configuration. No manual setup of Iceberg or Parquet is required."
+  },
+  {
+    q: "Can I store pipeline outputs in the data lake?",
+    a: "Yes, you can configure pipelines to save processed output events to the data lake. This allows you to retain transformed data alongside raw logs for comprehensive analysis."
+  },
+  {
+    q: "How does the data lake support backfills?",
+    a: "During incidents, Grepr automatically backtransfers relevant raw logs from the data lake to your observability platform. This is enabled by the efficient querying capabilities of Iceberg and Parquet storage."
+  },
+  {
+    q: "Is my data in the data lake secure?",
+    a: "Yes, data in the data lake is encrypted at rest using strong encryption standards and protected by AWS security features. Data is stored in your S3 bucket under your control with strict access limitations."
+  }
+]} />

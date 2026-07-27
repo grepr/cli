@@ -1,0 +1,389 @@
+---
+description: The Grok parser in the Grepr platform supports a comprehensive set of matchers. This page provides a reference to the supported Datadog-compatible matchers.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# The Grepr Grok parser: Datadog-compatible matchers
+
+This page provides a reference to the Datadog-compatible matchers supported by the Grok parser in the Grepr Platform, including descriptions and examples for each matcher.
+
+The Grepr Grok parser also supports all matchers from the Logstash Grok filter plugin. See [The Grepr Grok parser: Logstash matchers](/transforms/grok/logstash-matchers).
+
+## `boolean` [#boolean-matcher]
+
+Matches and parses boolean values.
+
+**Syntax:** `boolean(["truePattern", "falsePattern"])`
+
+**Parameters:**
+- `truePattern`: Pattern to match for true values (default: `true`, case-insensitive)
+- `falsePattern`: Pattern to match for false values (default: `false`, case-insensitive)
+
+**Examples:**
+
+```bash
+# Default true/false matching
+%{boolean:is_enabled}
+# Input:  true
+# Output: {"is_enabled": true}
+
+# Custom patterns
+%{boolean("yes", "no"):is_active}
+# Input:  yes
+# Output: {"is_active": true}
+
+# Custom patterns with numbers
+%{boolean("1", "0"):flag}
+# Input:  1
+# Output: {"flag": true}
+```
+
+## `date` [#date-matcher]
+
+Matches dates using a format pattern and converts them to a Unix timestamp.
+
+**Syntax:** `date("format"[, "timezone"])`
+
+**Parameters:**
+- `format`: Date format pattern using Java date format symbols (for example, `yyyy-MM-dd HH:mm:ss`)
+- `timezone`: Timezone offset (optional, for example, `+05:30`, `-0800`, `UTC`)
+
+**Format symbols:**
+- `y`: Year (for example, `yyyy` for 2024)
+- `M`: Month (for example, `MM` for 01-12, `MMM` for Jan-Dec)
+- `d`: Day of month (for example, `dd` for 01-31)
+- `H`: Hour in 24-hour format (for example, `HH` for 00-23)
+- `h`: Hour in 12-hour format (for example, `hh` for 01-12)
+- `m`: Minute (for example, `mm` for 00-59)
+- `s`: Second (for example, `ss` for 00-59)
+- `S`: Millisecond (for example, `SSS` for 000-999)
+- `a`: AM/PM marker
+- `X` or `Z`: Timezone offset (for example, `+0530` or `+05:30`)
+- `z`: Timezone abbreviation (for example, `PST`)
+
+**Examples:**
+
+```bash
+# Basic date format
+%{date("MM/dd/yyyy"):date}
+# Input:  11/08/2017
+# Output: {"date": 1510099200000}
+
+# Date with time
+%{date("yyyy-MM-dd HH:mm:ss"):eventTS}
+# Input:  2024-03-15 14:30:45
+# Output: {"eventTS": 1710513045000}
+
+# Date with timezone in format
+%{date("yyyy-MM-dd'T'HH:mm:ssX"):timestamp}
+# Input:  `2024-03-15T14:30:45+0530`
+# Output: {"timestamp": 1710532845000}
+
+# Date with separate timezone parameter
+%{date("yyyy-MM-dd HH:mm:ss", "+05:30"):timestamp}
+# Input:  2024-03-15 14:30:45
+# Output: {"timestamp": 1710532845000}
+
+# 12-hour format with AM/PM
+%{date("MM/dd/yyyy hh:mm:ss a"):timestamp}
+# Input:  03/15/2024 02:30:45 PM
+# Output: {"timestamp": 1710513045000}
+
+# Month abbreviation
+%{date("dd-MMM-yyyy"):date}
+# Input:  15-Mar-2024
+# Output: {"date": 1710460800000}
+```
+
+## Text pattern matchers [#text-matchers]
+
+These matchers extract different types of text patterns:
+
+### `notSpace`
+
+Matches any string until the next space character.
+
+```bash
+%{notSpace:first_field} %{notSpace:second_field}
+# Input:  abc-123-def next_field
+# Output: {first_field":"abc-123-def "second_field":"next_field"}
+```
+
+### `word`
+
+Matches alphanumeric characters (a-z, A-Z, 0-9) and underscores.
+
+```bash
+%{word:username}
+# Input:  john_doe123
+# Output: {"username": "john_doe123"}
+```
+
+### `data`
+
+Matches any string, including spaces and newlines. Equivalent to `.*` in regex. Grepr recommends using the `data` matcher only when you can't use one of the other matchers.
+
+```bash
+%{data:error_message}
+# Input:  Connection failed: timeout exceeded
+# Output: {"error_message": "Connection failed: timeout exceeded"}
+```
+
+### `regex("pattern")`
+
+Matches a custom regular expression pattern.
+
+```bash
+%{regex("[A-Z]{3}-\d{4}"):ticket_id}
+# Input:  ABC-1234
+# Output: {"ticket_id": "ABC-1234"}
+```
+
+## String pattern matchers [#string-matchers]
+
+These matchers extract quoted strings:
+
+### `doubleQuotedString`
+
+Matches text enclosed in double quotes.
+
+```bash
+%{doubleQuotedString:message}
+# Input:  "Hello World"
+# Output: {"message": ""Hello World""}
+```
+
+### `singleQuotedString`
+
+Matches text enclosed in single quotes.
+
+```bash
+%{singleQuotedString:message}
+# Input:  'Hello World'
+# Output: {"message": "'Hello World'"}
+```
+
+### `quotedString`
+
+Matches text enclosed in either double or single quotes.
+
+```bash
+%{quotedString:message}
+# Input:  "Hello World"
+# Output: {"message": ""Hello World""}
+# Input:  'Hello World'
+# Output: {"message": "'Hello World'"}
+```
+
+## Number pattern matchers [#number-matchers]
+
+These matchers extract numeric values with different parsing behaviors:
+
+### `number`
+
+Matches a decimal floating point number and parses it as a double-precision number.
+
+```bash
+%{number:response_time}
+# Input:  123.45
+# Output: {"response_time": 123.45}
+```
+
+### `numberStr`
+
+Matches a decimal floating point number and parses it as a string.
+
+```bash
+%{numberStr:price}
+# Input:  99.99
+# Output: {"price": "99.99"}
+```
+
+### `numberExt`
+
+Matches a floating-point number and parses it as a double-precision number. Values expressed using scientific notation are supported.
+
+```bash
+%{numberExt:value}
+# Input:  1.23e5
+# Output: {"value": 123000}
+```
+
+{/* Uncomment when ENGT-3459 is resolved:
+### `numberExtStr`
+
+Matches a floating-point number and parses it as a string. Values expressed using scientific notation are supported.
+
+```bash
+%{numberExtStr:scientific}
+# Input:  1.23e5
+# Output: {"scientific": "1.23e5"}
+```
+*/}
+
+### `integer`
+
+Matches an integer number and parses it as an integer.
+
+```bash
+%{integer:status_code}
+# Input:  200
+# Output: {"status_code": 200}
+```
+
+### `integerStr`
+
+Matches an integer number and parses it as a string.
+
+```bash
+%{integerStr:id}
+# Input:  12345
+# Output: {"id": "12345"}
+```
+
+### `integerExt`
+
+Matches an integer number and parses it as an integer. Values expressed using scientific notation are supported.
+
+```bash
+%{integerExt:count}
+# Input:  1e3
+# Output: {"count": 1000}
+```
+
+### `integerExtStr`
+
+Matches an integer number and parses it as a string. Values expressed using scientific notation are supported.
+
+```bash
+%{integerExtStr:scientific_int}
+# Input:  1e3
+# Output: {"scientific_int": "1000"}
+```
+
+## Network pattern matchers [#network-matchers]
+
+These matchers extract network-related identifiers:
+
+### `ipv4`
+
+Matches an IPv4 address.
+
+```bash
+%{ipv4:client_ip}
+# Input:  192.168.1.1
+# Output: {"client_ip": "192.168.1.1"}
+```
+
+### `ipv6`
+
+Matches an IPv6 address.
+
+```bash
+%{ipv6:client_ip}
+# Input:  2001:0db8:85a3:0000:0000:8a2e:0370:7334
+# Output: {"client_ip": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"}
+```
+
+### `ip`
+
+Matches either an IPv4 or IPv6 address.
+
+```bash
+%{ip:client_ip}
+# Input:  192.168.1.1
+# Output: {"client_ip": "192.168.1.1"}
+# Input:  2001:0db8:85a3::8a2e:0370:7334
+# Output: {"client_ip": "2001:0db8:85a3::8a2e:0370:7334"}
+```
+
+### `hostname`
+
+Matches a hostname.
+
+```bash
+%{hostname:server}
+# Input:  api.example.com
+# Output: {"server": "api.example.com"}
+```
+
+### `ipOrHost`
+
+Matches either an IP address or a hostname.
+
+```bash
+%{ipOrHost:destination}
+# Input:  api.example.com
+# Output: {"destination": "api.example.com"}
+# Input:  192.168.1.1
+# Output: {"destination": "192.168.1.1"}
+```
+
+### `mac`
+
+Matches a MAC address.
+
+```bash
+%{mac:device_mac}
+# Input:  00:1B:44:11:3A:B7
+# Output: {"device_mac": "00:1B:44:11:3A:B7"}
+```
+
+## Identifier pattern matchers [#identifier-matchers]
+
+### `uuid`
+
+Matches a UUID (Universally Unique Identifier).
+
+```bash
+%{uuid:request_id}
+# Input:  550e8400-e29b-41d4-a716-446655440000
+# Output: {"request_id": "550e8400-e29b-41d4-a716-446655440000"}
+```
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What are Datadog-compatible matchers in the Grok parser?",
+      a: "Datadog-compatible matchers are pattern matching rules that extract specific types of data from log messages. They include matchers for dates, text patterns, numbers, network identifiers, and UUIDs. These matchers are designed to be compatible with Datadog's Grok implementation."
+    },
+    {
+      q: "When should I use the boolean matcher?",
+      a: "Use the boolean matcher when you need to extract and convert boolean values from log messages. It can handle default true/false matching or custom patterns like yes/no, 1/0, or any other boolean representation. The matcher automatically converts matched text to true or false values."
+    },
+    {
+      q: "How do I use the date matcher for timestamp parsing?",
+      a: "The date matcher converts dates to Unix timestamps using Java date format patterns. Specify the format pattern (like yyyy-MM-dd HH:mm:ss) and optionally a timezone. The matcher supports format symbols for year, month, day, hour, minute, second, and timezone. It outputs the timestamp in milliseconds since epoch."
+    },
+    {
+      q: "What is the difference between text matchers like notSpace, word, and data?",
+      a: "notSpace matches text until the next space character, word matches alphanumeric characters and underscores, and data matches any string including spaces and newlines (equivalent to .* in regex). Use notSpace for space-delimited values, word for identifiers, and data only when other matchers won't work."
+    },
+    {
+      q: "When should I use the regex matcher?",
+      a: "Use the regex matcher when you need to match a custom regular expression pattern that doesn't fit standard matchers. Provide the regex pattern as a parameter, like regex('[A-Z]{3}-\\d{4}') for ticket IDs. This gives you full regex flexibility for complex patterns."
+    },
+    {
+      q: "What string matchers are available for quoted text?",
+      a: "Available string matchers are: doubleQuotedString for double-quoted text, singleQuotedString for single-quoted text, and quotedString for either type of quotes. These matchers extract the quoted content including the quote characters."
+    },
+    {
+      q: "How do number matchers differ from each other?",
+      a: "number and numberExt parse as double-precision floats, numberStr and numberExtStr parse as strings, integer and integerExt parse as integers, and integerExtStr parses as a string. The Ext variants support scientific notation. Choose based on whether you need numeric calculations or string preservation."
+    },
+    {
+      q: "What network matchers are available?",
+      a: "Network matchers include: ipv4 for IPv4 addresses, ipv6 for IPv6 addresses, ip for either IPv4 or IPv6, hostname for domain names, ipOrHost for either IP or hostname, and mac for MAC addresses. These are useful for extracting network identifiers from logs."
+    },
+    {
+      q: "When would I use the uuid matcher?",
+      a: "Use the uuid matcher to extract Universally Unique Identifiers from logs. UUIDs are commonly used for request IDs, trace IDs, correlation IDs, and other unique identifiers. The matcher validates the standard UUID format (8-4-4-4-12 hex digits)."
+    },
+    {
+      q: "How do I combine multiple matchers in a Grok pattern?",
+      a: "Combine matchers by listing them sequentially in your Grok pattern. For example, %{ipv4:client_ip} %{WORD:method} %{data:message} extracts an IP address, a word, and remaining text. Matchers match left-to-right, so order matters and should match the log line structure."
+    }
+  ]}
+/>
+

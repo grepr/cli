@@ -1,0 +1,49 @@
+---
+description: Learn how to use Grepr service accounts for programmatic access to the Grepr API.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Manage Grepr service accounts
+
+A _service account_ is an identity used to authenticate to resources in the Grepr platform without relying on user credentials. You can use a service account to authenticate to the Grepr REST API, the Terraform provider, CI/CD pipelines, scripts, or any other automated workflow. Each service account has a _client ID_ and _client secret_ that you use to obtain an OAuth2 access token.
+
+To create or manage service accounts, you can use the Grepr UI or REST API.
+
+The following sections describe how to create and manage service accounts in the Grepr UI. To create and manage service accounts with the Grepr API, see the [Service Accounts specification](/apis/api-spec#tag/Service-Accounts).
+
+To learn how to use a service account to authenticate API requests, see [Authenticate to Grepr REST APIs](/apis/authentication). To learn how to use a service account with the Terraform provider, see [Manage Grepr pipelines with Terraform](/admin/terraform-provider).
+
+<Callout>
+  You must be an Admin or assigned a role with the required permissions to view and manage service accounts.
+</Callout>
+
+## Create and manage service accounts in the Grepr UI
+
+To manage service accounts in the UI:
+
+1. Sign in to the Grepr UI and click your profile icon in the top bar.
+1. In the menu, select **Developer**.
+1. In the left-hand navigation menu, select **Service Accounts**.
+
+![The list of existing service accounts.](/images/admin/service-accounts/service-account-list.png)
+
+### Create a service account [#create-service-account]
+
+1. On the **Service Accounts** pane, click **Create**.
+1. In the **Service Account Name** field, enter a descriptive name for the service account. For example, `terraform-ci` or `pipeline-automation`.
+
+   ![The create a service account dialog.](/images/admin/service-accounts/service-account-create.png)
+
+1. In the **Roles** menu, assign one or more roles to control what the service account can access.
+1. Click **Create**.
+1. Copy the **Client ID** and **Client Secret** that are displayed.
+
+   ![The service account created modal displaying credentials.](/images/admin/service-accounts/service-account-credentials.png)
+
+### Manage service accounts
+
+To manage a service account, click the three-dot menu in the **Actions** column for the service account to manage, and select **Edit**, **View Secret**, **Regenerate Secret**, or **Delete** from the menu.
+
+Deleting a service account immediately revokes all access, and any systems or clients using the account's credentials will stop working.

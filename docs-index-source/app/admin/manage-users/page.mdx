@@ -1,0 +1,153 @@
+---
+description: Learn how to manage your Grepr users with the user management UI.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Manage users in the Grepr platform
+
+The administrative features in the Grepr platform support managing users in your organization, including viewing users, editing users' and roles' permissions, and removing users. This page describes the user management features available in the Grepr UI, including how to access those features and perform common user management tasks.
+
+You also have full control of users' access to Grepr features by assigning users to roles. You can use built-in organization-level roles, such as Admin, Member, and Reader, or create custom roles with specific permissions.
+
+You can organize users into teams that you create in the user management UI. To learn more about the team features and how to manage teams, see [Manage teams in the Grepr platform](/admin/manage-teams).
+
+You can manage users and roles in the Grepr UI or the REST API. This page describes how to manage users in the UI. To use the API, see the [Users specification](/apis/api-spec#tag/Users) and the [Roles specification](/apis/api-spec#tag/Roles).
+
+<Callout>
+  You must have the `view:users` permission to access the user management UI. This permission is granted to organization Admins and team Leaders.
+</Callout>
+
+## User roles in the Grepr platform
+
+The Grepr platform includes three built-in organization-level roles:
+
+- Admin: Admins have full access to all organization resources and settings, including user management features.
+- Member: Members have access to view resources, users, and teams, run backfill jobs, and query logs. Members cannot manage users, organization settings, or resources such as integrations or jobs.
+- Reader: Readers have view-only access to all resources and can query logs, but cannot create or edit any resources and cannot run backfill jobs that send data to a vendor integration.
+
+For details on the permissions for these roles, see [Permissions in the Grepr platform](/grepr-platform/permissions).
+
+To learn how to create custom roles with specific permissions, see [Custom roles](#create-custom-roles).
+
+## Access user management features in the UI
+
+To manage users in the Grepr UI:
+
+1. Sign in to the Grepr UI and click your profile icon in the top bar.
+1. In the menu, select **User Management**.
+1. On the **User Management** page, click **Users** in the left pane to display the **Users** pane with a list of all users and information about each user, such as the user's name, email address, role, and teams.
+
+The following sections describe how to perform user management tasks in the UI.
+
+## Add users by invitation
+
+Users are added to your organization when they respond to an emailed _invitation_. To invite a new user:
+
+1. In the **Users** pane, click **Invite new users**.
+1. In the **Invite users** dialog:
+   - In the **Invite Emails** field, enter one or more email addresses for the users to invite.
+   - (Optional) In the **Roles (Optional)** field, select the roles to assign to the invited users.
+   - (Optional) To assign a user to one or more teams, click **Add Team Assignment**.
+     - In the **Teams** menu, select the team to assign.
+     - In the **Role** menu, select the team role to assign.
+     - To add multiple teams, click **Add Team Assignment** again.
+1. Click **Send**.
+
+The **Invitations** table shows information for all pending invitations. From the table, you can delete pending invitations if they're no longer needed. Invitations automatically expire after a set period.
+
+## Edit users
+
+To edit a user's name, email, or roles:
+
+1. In the **Users** pane, find the user you want to edit in the **Users** table.
+1. Click the three-dot menu in the **Actions** column for that user.
+1. Select **Edit**.
+1. In the **Edit User** dialog, update the user's information and click **Save**.
+
+## Remove users
+
+To remove a user:
+
+1. In the **Users** pane, find the user you want to remove in the Users table.
+1. Click the three-dot menu in the **Actions** column for that user.
+1. Select **Delete**.
+1. In the **Confirm Delete** dialog, click **Delete**.
+
+The user is removed from your organization, and their access is revoked.
+
+## Custom roles [#create-custom-roles]
+
+If you need more control over access than the Admin, Member, and Reader roles provide, you can create custom roles. Custom roles let you define specific permissions for different resources. You can select specific resources for access control, such as jobs, users, teams, integrations, templates, or datasets, and assign only required permissions, such as view, edit, write, create, delete, or all, on those resources.
+
+### Create custom roles
+
+To create a custom role in the UI:
+
+1. On the **User Management** page, click **Roles** in the left pane to display the **Roles** pane.
+1. Click **+ Create**.
+1. In the **Create Custom Role** dialog:
+   - Enter a **Role Name**.
+   - (Optional) Enter a **Description** for the role.
+   - In the **Permissions** section, select the required permissions for each resource.
+1. Click **Create Role**.
+
+## User and role management best practices
+
+### Role management
+
+- Use custom roles only if the existing Admin, Member, and Reader roles don't meet your access requirements.
+- Document custom roles by including a role description that clearly explains the permissions it grants.
+- Follow the principle of least privilege and grant users only the access they need.
+- Use clear and descriptive names when you create custom roles.
+
+### Invitations
+
+- To streamline onboarding, when you create an invitation, include team assignments in the invitation.
+- Regularly review and delete old, unaccepted invitations.
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What are the built-in roles in Grepr and what can each role do?",
+      a: "Grepr has three built-in organization-level roles: Admin (full access to all resources and settings including user management), Member (can view resources, users, teams, run backfill jobs, and query logs but cannot manage users or create/edit resources), and Reader (view-only access and log queries; cannot create or edit resources, and cannot run backfill jobs to vendor integrations). These can be supplemented with custom roles for fine-grained access control."
+    },
+    {
+      q: "How do I invite multiple users at once?",
+      a: "In the Invite users dialog, enter multiple email addresses in the Invite Emails field separated by line breaks. You can also optionally assign roles and team memberships to all invited users before sending the invitations."
+    },
+    {
+      q: "Can I assign users to teams during the invitation process?",
+      a: "Yes, when creating an invitation, you can click 'Add Team Assignment' to assign invited users to specific teams with their desired team role (Leader or Member) before they even accept the invitation."
+    },
+    {
+      q: "How long are user invitations valid?",
+      a: "Invitations automatically expire after a set period. You should regularly review the Invitations table and delete old, unaccepted invitations to keep your organization clean."
+    },
+    {
+      q: "What information can I edit about a user?",
+      a: "You can edit a user's name, email address, and roles. You can also modify their organization-level roles and team assignments through the Edit User dialog."
+    },
+    {
+      q: "How do I create a custom role with specific permissions?",
+      a: "Click on the Roles tab in the User Management page, then click '+ Create'. In the Create Custom Role dialog, enter a role name and description, then select the specific permissions needed for each resource type (jobs, users, integrations, etc.)."
+    },
+    {
+      q: "Can I edit a custom role after creating it?",
+      a: "Yes, you can edit custom roles to change the permissions they grant. Any changes to a custom role automatically apply to all users assigned to that role."
+    },
+    {
+      q: "What happens when I remove a user from the organization?",
+      a: "Removing a user revokes all their access to the organization. They lose access to all organization-level resources and all team-scoped resources immediately."
+    },
+    {
+      q: "Should I use custom roles or the built-in Admin, Member, and Reader roles?",
+      a: "Use the built-in Admin, Member, and Reader roles when they meet your access requirements. Only create custom roles when you need access control that the built-in roles don't provide, such as read-only access to a specific subset of resources."
+    },
+    {
+      q: "How do I manage user access at scale?",
+      a: "For large organizations, combine organization-level roles with team-based access control. Use teams to scope access to resources, custom roles for fine-grained permissions, and follow the principle of least privilege when assigning access."
+    }
+  ]}
+/>

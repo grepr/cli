@@ -1,0 +1,76 @@
+---
+description: This page provides a comprehensive overview of the Grepr-supported integrations with observability platforms and cloud storage, and the features supported by those integrations.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Grepr supported vendor and storage integrations
+
+This page provides an overview of the observability platform and cloud storage integrations supported by the Grepr platform. This page also specifies the features supported by each integration, including whether it can be used as a source or a sink.
+
+<Callout type="info">
+  If you require an integration that Grepr does not support, contact [support@grepr.ai](mailto:support@grepr.ai).
+</Callout>
+
+## Supported integrations: cloud storage
+
+Grepr supports Amazon S3 for storing, querying, and backfilling raw data. See [Host a Grepr data lake with the Amazon S3 integration](/integrations/aws-s3).
+
+## Supported integrations: observability platforms [#supported-observability-integrations]
+
+A Grepr integration provides the configuration details needed to connect to an external system, such as an observability platform. Integrations support moving data into Grepr and between Grepr and external systems by enabling the creation of sources and sinks in your Grepr pipelines.
+
+Some integrations support the automatic creation of exceptions based on information returned by vendor tools. These exceptions ensure that Grepr passes through important messages without aggregation. For some integrations, this feature is available when the integration is enabled as a _cloud source_, which allows Grepr to read and process data from the external service. To learn more, see [Identify log events that should bypass aggregation](/integrations#passthrough-estimation)
+
+The following are the observability platform and tool integrations supported by Grepr as data sources and sinks:
+
+| Integration              | As source  | As sink         | Exception parsing                                                                                    |
+|:-------------------------|:-----------|:----------------|:-----------------------------------------------------------------------------------------------------|
+| Datadog                  | Yes        | Yes             | Yes. See [Enable Datadog selective reduction](/integrations/datadog#enable-selective-reduction).     |
+| New Relic                | Yes        | Yes             | Yes. See [Enable New Relic selective reduction](/integrations/new-relic#enable-selective-reduction). |
+| Splunk                   | HEC, HTTP  | HEC only        | No                                                                                                   |
+| Google Cloud Platform    | Yes        | No [^gcpsink]   | Not applicable [^gcpep]                                                                              |
+| Grafana Cloud            | Yes        | Yes             | No                                                                                                   |
+| OpenTelemetry            | Yes        | Yes             | Not applicable                                                                                       |
+| Sumo Logic               | Yes        | Yes             | No                                                                                                   |
+| Amazon S3 [^awsstorage]  | Yes        | No              | Not applicable                                                                                       |
+
+[^gcpsink]: Although Grepr supports streaming data from GCP, you cannot use GCP as a sink. Instead, you configure a supported sink for the output from your Grepr pipeline. To learn more, see [Google Cloud Platform observability with Grepr](/integrations/gcp).
+[^gcpep]: Because the exception parsing feature is configured as a separate step in your pipeline, support for this feature is based on the sink configured on the pipeline.
+[^awsstorage]: The support mentioned in this table is for reading from arbitrary files in Amazon S3 and writing to files in arbitrary formats, such as JSON or plain text. To learn about using S3 as data lake storage, see [Host a Grepr data lake with the Amazon S3 integration](/integrations/aws-s3).
+
+<HiddenFAQ faqs={[
+  {
+    q: "Which observability platforms can I use as sources in Grepr?",
+    a: "Grepr supports the following platforms as sources: Datadog, Splunk (HEC and HTTP), Google Cloud Platform, Grafana Cloud, New Relic, OpenTelemetry, Sumo Logic, and Amazon S3. Each platform provides different capabilities for ingesting data into Grepr pipelines."
+  },
+  {
+    q: "Which observability platforms can I use as sinks in Grepr?",
+    a: "Grepr supports the following platforms as sinks: Datadog, Splunk (HEC only, not HTTP), Grafana Cloud, New Relic, and OpenTelemetry. Note that GCP and Amazon S3 have specific limitations: GCP cannot be used as a sink, and S3 supports arbitrary format writing but not Iceberg data lake functionality."
+  },
+  {
+    q: "What is exception parsing in Grepr integrations?",
+    a: "Exception parsing is a feature that automatically creates exceptions from information returned by vendor tools, ensuring that important messages pass through without aggregation. This feature is supported by Datadog and Splunk integrations, and is available when the integration is enabled as a cloud source."
+  },
+  {
+    q: "Does Grepr support OpenTelemetry?",
+    a: "Yes, Grepr supports OpenTelemetry as both a source and a sink. You can use the OpenTelemetry Protocol (OTLP) to ingest data from compatible collectors or output processed logs to platforms like Grafana Cloud that accept OTLP data."
+  },
+  {
+    q: "What is the difference between Splunk HEC and HTTP support?",
+    a: "Splunk HEC (HTTP Event Collector) is supported for both source (reading) and sink (writing) operations. Splunk HTTP support is available as a source only. When configuring a Splunk sink, use the HEC integration for data output."
+  },
+  {
+    q: "Can I use Google Cloud Platform (GCP) as a data sink?",
+    a: "No, GCP cannot be used as a sink in Grepr pipelines. While Grepr supports streaming logs from GCP sources, for data output you must configure a different supported sink such as Datadog, Splunk, New Relic, Grafana Cloud, or OpenTelemetry."
+  },
+  {
+    q: "How does exception parsing work with GCP integrations?",
+    a: "Exception parsing for GCP is not applicable as a direct feature. Instead, the exception parsing feature is configured as a separate step in your pipeline, and support is based on the sink you configure for your pipeline output."
+  },
+  {
+    q: "What cloud storage options does Grepr support?",
+    a: "Grepr supports Amazon S3 for storing and querying raw data in the Grepr data lake. You can use either a Grepr-hosted S3 integration or configure your own S3 bucket in your AWS account. S3 can also be used as a source for reading arbitrary files in any format."
+  }
+]} />

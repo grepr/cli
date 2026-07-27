@@ -1,0 +1,365 @@
+---
+description: Learn about the custom data types used by the Grepr SQL transform to process logs, variants, spans, and metrics in a Grepr pipeline.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+#  SQL transform supported data types
+
+This page provides details on the four data types supported as input to and output from a SQL transform: `LOG_EVENT`, `VARIANT`, `COMPLETE_SPAN`, and `METRIC_DATA`. These are not scalar data types. Instead, they are structured or semi-structured data formats.
+
+## The `LOG_EVENT` data type
+
+The `LOG_EVENT` type is a structured format representing a log event, and has the following schema:
+
+```
+ROW<
+  id                STRING,
+  eventtimestamp    TIMESTAMP_LTZ(3),
+  receivedtimestamp TIMESTAMP_LTZ(3),
+  message           STRING,
+  severity          INT,
+  tags              MAP<STRING, ARRAY<STRING>>,
+  attributes        VARIANT
+>
+```
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | STRING | Globally unique identifier for the log event. |
+| `eventtimestamp` | `TIMESTAMP_LTZ(3)` | When the event occurred, formatted as `TIMESTAMP(3) WITH LOCAL TIME ZONE`. This field is parsed from the input log event. |
+| `receivedtimestamp` | `TIMESTAMP_LTZ(3)` | When Grepr received the event, formatted as `TIMESTAMP(3) WITH LOCAL TIME ZONE`. |
+| `message` | `STRING` | The log message content. |
+| `severity` | `INT` | The severity level of the event. This is a value between 1 and 24, following the OpenTelemetry convention. |
+| `tags` | `MAP<STRING, ARRAY<STRING>>` | Key-value pairs for filtering and routing. |
+| `attributes` | `VARIANT` | A `VARIANT` data type containing structured data associated with the event. |
+
+<Callout type="warning">
+  If you're transforming a field like `message` or `severity`, the transformed field must appear before the `*` wildcard in your `SELECT` clause.
+</Callout>
+
+### Add tags to a `LOG_EVENT` using a special column syntax [#tags-column-syntax]
+
+The SQL transform provides a special column-naming syntax to add tags to output log events. When you define a column name that starts with the `tags.` prefix, such as `tags.service` or `tags.environment`, the SQL transform automatically adds that tag to the output log event's tags field.
+
+The SQL statement in the following example uses the column-naming syntax to add these tags to the output log event:
+
+- A tag named `environment` with the value `production`.
+- A `service` tag set to the first value from the input log event `service` tag.
+- A `priority` tag based on the severity level of the input event.
+
+```sql
+SELECT *,
+  'production' as `tags.environment`,
+  tags['service'][1] as `tags.service`,
+  CASE WHEN severity >= 17 THEN 'high' ELSE 'normal' END as `tags.priority`
+FROM logs
+```
+
+The following can be used to add tags with the column-naming syntax:
+
+- String values can be assigned directly. For example, `` 'production' as `tags.environment` ``.
+- Any SQL expression that returns a string or array.
+- To add multiple tag values, you can use a SQL array. For example, `` ARRAY['web', 'api'] as `tags.service` ``. The values in the SQL array are converted to multiple tag values.
+- To add values to an existing tag, use `ARRAY_APPEND`. For example, ``ARRAY_APPEND(tags['service'], 'billing') as `tags.service` ``.
+
+<Callout>
+  - Column names must be enclosed in backticks when using the dot notation. For example, `` `tags.service` ``.
+  - Re-using a tag name will overwrite the tag's existing values. To add additional values to an existing tag, you must use the `ARRAY_APPEND()` function. The arguments to `ARRAY_APPEND()` must include the existing array values and the new values.
+  - Values that are `NULL` or empty strings are automatically filtered out and not added as tags.
+</Callout>
+
+For more examples of using the tags column syntax, see [Add tags to a log event](/transforms/sql-transform/sql-transform-examples#add-tags-to-log-event).
+
+### Create custom log events
+
+You can use a transformation to construct new `LOG_EVENT` records with specific fields. For example:
+
+```sql
+-- Explicitly construct a new LogEvent with specific fields.
+SELECT
+  UPPER(message) as message,
+  CASE WHEN severity > 16 THEN 21 ELSE severity END as severity,
+  MAP['transformed', ARRAY['true']] as tags,
+  PARSE_JSON(JSON_OBJECT('original_message' VALUE message)) as attributes
+FROM logs
+```
+
+Grepr automatically adds default values for fields that are not specified:
+
+- `id`: When not specified or `NULL`, defaults to a new random UUID.
+- `eventtimestamp`: When not specified or `NULL`, it defaults to the current timestamp in milliseconds.
+- `receivedtimestamp`: When not specified or `NULL`, defaults to the current timestamp in milliseconds.
+- `severity`: When not specified or `NULL`, defaults to 9 (INFO level).
+- `message`: When not specified or `NULL`, it defaults to an empty string.
+- `tags`: When not specified or `NULL`, defaults to an empty map.
+- `attributes`: When not specified or `NULL`, defaults to an empty VARIANT.
+
+The following shows an example input event to the above transformation and the resulting output event:
+
+**Input:**
+```json
+{
+  "id": "evt1",
+  "eventtimestamp": 1724214074062,
+  "receivedtimestamp": 1724214074188,
+  "severity": 17,
+  "message": "user login successful",
+  "tags": {"service": ["auth"]},
+  "attributes": {}
+}
+```
+
+**Output:**
+```json
+{
+  "id": "12345678-1234-5678-1234-567812345678", // A new generated UUID
+  "eventtimestamp": 174000000000,               // Current timestamp in milliseconds
+  "receivedtimestamp": 174000000002,            // Current timestamp in milliseconds
+  "severity": 21,                               // Transformed severity
+  "message": "USER LOGIN SUCCESSFUL",           // Transformed message
+  "tags": {"transformed": ["true"]},            // New tags
+  "attributes": {                               // New attributes
+    "original_message": "user login successful"
+  }
+}
+```
+
+## The `VARIANT` data type
+
+A `VARIANT` data type contains timestamped, semi-structured data with flexible JSON content:
+
+```
+ROW<
+  receivedtimestamp TIMESTAMP_LTZ(3),
+  eventtimestamp TIMESTAMP_LTZ(3),
+  data VARIANT
+>
+```
+
+## The `COMPLETE_SPAN` data type [#complete-span]
+
+The `COMPLETE_SPAN` data type represents an OpenTelemetry span with complete resource and instrumentation scope context. See [Spans](https://opentelemetry.io/docs/concepts/signals/traces/#spans) in the OpenTelemetry documentation.
+
+```sql
+ROW<
+  receivedtimestamp TIMESTAMP_LTZ(3),
+  eventtimestamp TIMESTAMP_LTZ(3),
+  servicename STRING,
+  resource ROW<
+    attributes VARIANT,
+    dropped_attributes_count INT,
+    entity_refs ARRAY<ROW<
+      schema_url STRING,
+      type STRING,
+      id_keys ARRAY<STRING>,
+      description_keys ARRAY<STRING>
+    >>
+  >,
+  instrumentationscope ROW<
+    name STRING,
+    version STRING,
+    attributes VARIANT,
+    dropped_attributes_count INT
+  >,
+  span ROW<
+    traceIdHigh BIGINT NOT NULL,
+    traceIdLow BIGINT NOT NULL,
+    spanId BIGINT NOT NULL,
+    traceState STRING,
+    parentSpanId BIGINT,
+    operationName STRING,
+    spanKind STRING,
+    startTimeNanos BIGINT NOT NULL,
+    endTimeNanos BIGINT NOT NULL,
+    attributes VARIANT,
+    droppedAttributesCount INT NOT NULL,
+    events ARRAY<ROW<
+      timeNanos BIGINT,
+      name STRING,
+      attributes VARIANT,
+      droppedAttributesCount INT
+    >>,
+    droppedEventsCount INT NOT NULL,
+    links ARRAY<ROW<
+      traceIdHigh BIGINT,
+      traceIdLow BIGINT,
+      spanId BIGINT,
+      traceState STRING,
+      attributes VARIANT,
+      droppedAttributesCount INT,
+      flags INT
+    >>,
+    droppedLinksCount INT NOT NULL,
+    status ROW<
+      message STRING,
+      code STRING
+    >,
+    flags INT NOT NULL,
+    spanKindByte TINYINT NOT NULL
+  >,
+  tracesignature STRING,
+  duration BIGINT,
+  haserror BOOLEAN,
+  percentilebucket STRING,
+  samplingtype INT,
+  crit_path_ns BIGINT,
+  crit_path_pct DOUBLE
+>
+```
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `receivedtimestamp` | `TIMESTAMP_LTZ(3)` | When Grepr received the span. |
+| `eventtimestamp` | `TIMESTAMP_LTZ(3)` | The span event timestamp used for SQL event-time processing. |
+| `servicename` | `STRING` | The service name associated with the span. |
+| `resource` | `ROW` | Attributes and entity references for the telemetry producer. For example, for a process that produced the telemetry data, this might include the process name, the hostname and environment where the process runs, and its version. |
+| `instrumentationscope` | `ROW` | Metadata, including the name and version, for the library or framework that produced the span. |
+| `span` | `ROW` | The OpenTelemetry span payload, including trace identifiers, timing, attributes, events, links, status, and flags. |
+| `tracesignature` | `STRING` | A distinct, deterministic pattern derived from the trace's execution path, used for sorting and grouping traces before sampling. |
+| `duration` | `BIGINT` | Span duration in nanoseconds. |
+| `haserror` | `BOOLEAN` | Whether the span is marked as an error. |
+| `percentilebucket` | `STRING` | The performance-based tier assigned to the span. |
+| `samplingtype` | `INT` | Whether head or tail-based sampling was used. |
+| `crit_path_ns` | `BIGINT` | Critical path duration in nanoseconds, when available. |
+| `crit_path_pct` | `DOUBLE` | The critical path duration as a percentage of the trace's total duration, when available. |
+
+When a SQL output has `outputType` set to `COMPLETE_SPAN`, Grepr maps result columns by these SQL field names. Nullable top-level metadata columns that are omitted from the query result, such as `tracesignature`, `duration`, `haserror`, `percentilebucket`, `samplingtype`, `crit_path_ns`, and `crit_path_pct`, are set to `NULL`. This ensures older SQL transforms continue to work when new nullable top-level span metadata fields are added.
+
+Extra columns are rejected, except for `VARIANT` columns named `resource.attributes`, `instrumentationscope.attributes`, or `span.attributes`; those columns are merged into the corresponding nested attributes field. If you rebuild a nested `resource`, `instrumentationscope`, or `span` row, include all nested fields in their current order. Grepr validates nested row shape before the pipeline starts, so an outdated nested row fails during pipeline validation rather than after events begin flowing.
+
+## The `METRIC_DATA` data type [#metric-data]
+
+The `METRIC_DATA` data type represents metric data in a Grepr pipeline, using a nested structure aligned with the OpenTelemetry metrics data model. A `METRIC_DATA` record groups metrics by the resource and instrumentation scope that produced them, and each metric contains one or more data series of timestamped datapoints. To learn more about the OpenTelemetry metrics data model, see [Metrics](https://opentelemetry.io/docs/concepts/signals/metrics/) in the OpenTelemetry documentation.
+
+The `METRIC_DATA` type has the following schema:
+
+```sql
+ROW<
+  receivedtimestamp TIMESTAMP_LTZ(3) NOT NULL,
+  eventtimestamp TIMESTAMP_LTZ(3) NOT NULL,
+  resource_metrics ARRAY<ROW<
+    resource_attributes MAP<STRING, STRING>,
+    scope_name STRING,
+    scope_version STRING,
+    scope_attributes MAP<STRING, STRING>,
+    metrics ARRAY<ROW<
+      name STRING NOT NULL,
+      description STRING,
+      unit STRING,
+      metric_type TINYINT NOT NULL,
+      metadata MAP<STRING, STRING>,
+      data ARRAY<ROW<
+        attributes MAP<STRING, STRING>,
+        start_time_unix_nano BIGINT,
+        datapoints ARRAY<ROW<
+          time_unix_nano BIGINT NOT NULL,
+          as_double DOUBLE NOT NULL
+        >>
+      >>
+    >>
+  >> NOT NULL
+>
+```
+
+The top-level record has the following columns:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `receivedtimestamp` | `TIMESTAMP_LTZ(3)` | When Grepr received the metric data. |
+| `eventtimestamp` | `TIMESTAMP_LTZ(3)` | The event timestamp used for SQL event-time processing, which is the latest datapoint timestamp in the record. |
+| `resource_metrics` | `ARRAY<ROW>` | The resource-scoped metric groups, where each group contains the metrics produced by one resource and instrumentation scope. |
+
+Each row in the `resource_metrics` array has the following fields:
+
+| Field | Type | Description |
+|--------|------|-------------|
+| `resource_attributes` | `MAP<STRING, STRING>` | The resource attributes that identify the entity that emitted the metrics. |
+| `scope_name` | `STRING` | The name of the instrumentation scope that produced the metrics. |
+| `scope_version` | `STRING` | The version of the instrumentation scope. |
+| `scope_attributes` | `MAP<STRING, STRING>` | The attributes of the instrumentation scope. |
+| `metrics` | `ARRAY<ROW>` | The metrics produced within this resource and scope. |
+
+Each row in the `metrics` array describes a single metric:
+
+| Field | Type | Description |
+|--------|------|-------------|
+| `name` | `STRING` | The metric name, such as `system.cpu.utilization`. |
+| `description` | `STRING` | A human-readable description of the metric. |
+| `unit` | `STRING` | The unit of measurement, such as `ms`, `By`, or `1`. |
+| `metric_type` | `TINYINT` | The metric type, encoded as an integer: `1` for gauge, `2` for delta counter, `3` for delta up-down counter, `4` for cumulative counter, `5` for cumulative up-down counter, and `6` for rate. |
+| `metadata` | `MAP<STRING, STRING>` | Additional metric-level metadata. |
+| `data` | `ARRAY<ROW>` | The data series that belong to the metric. |
+
+Each row in the `data` array is a data series:
+
+| Field | Type | Description |
+|--------|------|-------------|
+| `attributes` | `MAP<STRING, STRING>` | The attributes that distinguish this series from other series of the same metric. |
+| `start_time_unix_nano` | `BIGINT` | The start time of the series, in nanoseconds. Grepr populates this field only for cumulative metrics. |
+| `datapoints` | `ARRAY<ROW>` | The timestamped datapoints in the series. |
+
+Each row in the `datapoints` array is a single measurement:
+
+| Field | Type | Description |
+|--------|------|-------------|
+| `time_unix_nano` | `BIGINT` | The timestamp of the datapoint, in nanoseconds. |
+| `as_double` | `DOUBLE` | The numeric value of the datapoint. |
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What are the main data types used in SQL transforms?",
+      a: "SQL transforms support four data types: LOG_EVENT (structured log event format with id, timestamp, message, severity, tags, and attributes), VARIANT (semi-structured data with timestamps and flexible JSON content), COMPLETE_SPAN (OpenTelemetry span data with resource and scope context), and METRIC_DATA (OpenTelemetry-aligned metric data with a nested resource, scope, metric, and datapoint hierarchy)."
+    },
+    {
+      q: "What is the LOG_EVENT data type structure?",
+      a: "LOG_EVENT is a structured ROW type with these fields: id (STRING), eventtimestamp (TIMESTAMP_LTZ), receivedtimestamp (TIMESTAMP_LTZ), message (STRING), severity (INT 1-24), tags (MAP<STRING, ARRAY<STRING>>), and attributes (STRING containing JSON). These fields represent the complete structure of a log event in Grepr."
+    },
+    {
+      q: "How do I add tags to a LOG_EVENT using SQL?",
+      a: "Use the special column-naming syntax with backticks: SELECT *, 'production' as `tags.environment` FROM logs. This automatically adds the tag to the output event's tags field. You can also use arrays: ARRAY['web', 'api'] as `tags.components`, or extend existing tags: ARRAY_APPEND(tags['service'], 'new_value') as `tags.service`."
+    },
+    {
+      q: "What default values are used when LOG_EVENT fields are omitted?",
+      a: "When fields are not specified in a SQL transform: id defaults to a new random UUID, eventtimestamp and receivedtimestamp default to current timestamp, message defaults to empty string, severity defaults to 9 (INFO level), tags defaults to empty map, and attributes defaults to empty JSON object."
+    },
+    {
+      q: "How do I create custom LOG_EVENT records in SQL?",
+      a: "Use explicit field selection in your SELECT clause. For example: SELECT id, eventtimestamp, message, severity, MAP['service', ARRAY['api']] as tags, JSON_OBJECT('key' VALUE 'value') as attributes FROM logs. Grepr will automatically fill in any omitted fields with default values."
+    },
+    {
+      q: "What is the VARIANT data type used for?",
+      a: "VARIANT represents timestamped, semi-structured data with flexible JSON content. It has receivedtimestamp, eventtimestamp, and a data field containing JSON. Use VARIANT when you're working with semi-structured data that doesn't fit the LOG_EVENT schema, such as metrics or custom event formats."
+    },
+    {
+      q: "How do I work with the attributes field if it's a JSON string?",
+      a: "Use JSON functions like JSON_VALUE, JSON_QUERY, and JSON_EXISTS to extract and work with data from the attributes field. For example: JSON_VALUE(attributes, '$.userId') extracts a specific value, or JSON_EXISTS(attributes, '$.process') checks if a path exists. Remember attributes is stored as a JSON string, not a JSON object."
+    },
+    {
+      q: "How does severity mapping work in LOG_EVENT?",
+      a: "Severity in LOG_EVENT is an INT value between 1 and 24, following the OpenTelemetry convention. Common mappings are: 1-4 = TRACE, 5-8 = DEBUG, 9-12 = INFO, 13-16 = WARN, 17-20 = ERROR, 21-24 = FATAL. Use CASE expressions to convert severity to names or filter by level."
+    },
+    {
+      q: "What is the tags field structure in LOG_EVENT?",
+      a: "Tags are stored as MAP<STRING, ARRAY<STRING>>, meaning each tag key maps to an array of string values. For example: {'service': ['api', 'web'], 'environment': ['production']}. This structure allows multiple values per tag, which is useful for categorization and filtering."
+    },
+    {
+      q: "How do I handle nested JSON in the attributes field?",
+      a: "Use JSON functions with path notation to access nested data. For example, JSON_VALUE(attributes, '$.process.thread.name') extracts a deeply nested value. Use JSON_QUERY() for extracting JSON objects/arrays instead of scalar values. The path notation uses dot notation for objects and array indices for arrays."
+    },
+    {
+      q: "What is the METRIC_DATA data type?",
+      a: "METRIC_DATA is a Grepr SQL transform data type that represents metric data using a nested structure aligned with the OpenTelemetry metrics data model. A METRIC_DATA record groups metrics by the resource and instrumentation scope that produced them, and each metric contains one or more data series of timestamped datapoints."
+    },
+    {
+      q: "What is the structure of the METRIC_DATA data type?",
+      a: "METRIC_DATA is a ROW with receivedtimestamp, eventtimestamp, and a resource_metrics array. Each resource_metrics element has resource_attributes, scope_name, scope_version, scope_attributes, and a metrics array. Each metric has a name, description, unit, metric_type, metadata, and a data array of series. Each series has attributes, start_time_unix_nano, and a datapoints array, where each datapoint has time_unix_nano and as_double."
+    },
+    {
+      q: "What do the metric_type values mean in METRIC_DATA?",
+      a: "The metric_type field is an integer that identifies the metric type: 1 for gauge, 2 for delta counter, 3 for delta up-down counter, 4 for cumulative counter, 5 for cumulative up-down counter, and 6 for rate."
+    }
+  ]}
+/>

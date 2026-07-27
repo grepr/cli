@@ -1,0 +1,80 @@
+---
+description: Automate Grepr data processing with REST APIs for job management, authentication, rule engine control, and job lifecycle tracking.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Automate Grepr processing with the Grepr REST APIs
+
+The Grepr REST APIs provide programmatic access to create and manage data processing jobs, configure authentication, control rule engines, and monitor job lifecycles. These APIs enable you to automate observability pipelines, integrate Grepr into existing workflows, and build custom applications that process log data at scale. All APIs follow REST conventions, return JSON responses, and require HTTPS authentication.
+
+For documentation of the endpoints in the Grepr REST API, see the [OpenAPI 3.0 specification](/apis/api-spec).
+
+## Authenticate to Grepr REST APIs
+
+Learn how to obtain and use access tokens for Grepr API authentication. This page covers the OAuth 2.0 client credentials flow using Auth0, including how to request credentials from Grepr support, obtain access tokens, and include Bearer tokens in API requests. The authentication system uses organization-specific client IDs and secrets to generate time-limited access tokens that provide access to all Grepr APIs.
+
+See [Authenticate to Grepr REST APIs](/apis/authentication).
+
+## Create and manage Grepr jobs
+
+Comprehensive guide for creating and managing Grepr processing jobs through the REST API. This page covers both synchronous and asynchronous job execution modes, batch and streaming processing types, and how to construct job graphs with vertices and edges. Learn how to submit jobs, poll for status updates, handle job versioning, and implement best practices for production deployments.
+
+See [Create and manage jobs with the Grepr REST API](/apis/job-creation-guide).
+
+## Track the lifecycle of Grepr jobs
+
+Detailed documentation of job lifecycle management and state transitions for Grepr processing jobs. This page explains the different states that jobs can enter during creation, updates, and deletion, including pending, running, stopped, and failed states. Learn how to monitor job health, understand state diagrams for different job types, and handle job rollbacks and version management.
+
+See [Track the lifecycle of jobs with the Grepr REST API](/apis/job-states).
+
+## Use conditions and triggers to control log processing
+
+API documentation for configuring and managing Grepr's rule engine to dynamically control log processing based on defined conditions and triggers. This page covers how to create event-based triggers, configure conditional actions, and implement automated responses to log events. Use the rule engine to implement incident response workflows, dynamic log filtering, and context-aware processing rules.
+
+See [Control log processing with the rule engine REST API](/apis/rule-engine).
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "How do I authenticate to Grepr REST APIs?",
+      a: "Grepr uses OAuth 2.0 client credentials flow with Auth0. You need to request API credentials from Grepr support, then use those credentials to obtain access tokens. Include the Bearer token in the Authorization header of API requests."
+    },
+    {
+      q: "What types of jobs can I create with the Grepr API?",
+      a: "The Grepr API supports creating ASYNCHRONOUS STREAMING jobs (long-running pipelines), ASYNCHRONOUS BATCH jobs (short-lived queries on scoped data), and SYNCHRONOUS BATCH jobs (real-time queries that stream results back to the client)."
+    },
+    {
+      q: "How do I monitor the status of a job I submitted via API?",
+      a: "Use the GET /jobs endpoint to retrieve job details including the state field, which indicates the current lifecycle state of the job (PENDING, RUNNING, STOPPED, FAILED, FINISHED, etc.). Poll this endpoint to track state transitions."
+    },
+    {
+      q: "Can I update a job after it's running?",
+      a: "Yes, you can submit job updates via API. Updates are versioned, so Grepr maintains the old version while deploying the new version. You can also specify rollbackEnabled to automatically rollback to the previous version if the update fails."
+    },
+    {
+      q: "What are the benefits of using asynchronous job execution?",
+      a: "Asynchronous jobs return a 202 Accepted response immediately and allow you to poll for status updates. This is ideal for long-running processes and allows your application to remain responsive while the job executes in the background."
+    },
+    {
+      q: "How do I delete a job via API?",
+      a: "Submit a DELETE request to the jobs endpoint with the job ID. The job will transition through a deletion lifecycle with states like PENDING_DELETE and FINISHED to ensure a clean shutdown."
+    },
+    {
+      q: "What is a job graph and how do I construct one?",
+      a: "A job graph is a JSON structure that defines the data processing pipeline with vertices (operations like source, sink, grok parsing) and edges (connections between operations). Each vertex has a name, type, and configuration specific to that operation type."
+    },
+    {
+      q: "Can I use the rule engine to trigger automated actions?",
+      a: "Yes, the rule engine supports event-based triggers, conditions, and actions. You can configure the engine to automatically execute backfill jobs, modify log tags, or take other actions when specified conditions are met."
+    },
+    {
+      q: "How do I handle job failures detected via API?",
+      a: "Monitor the job state field in API responses. If a job enters the FAILED state, check the job details for error information. You can then resubmit the job with corrected configuration or use the rollback feature if an update caused the failure."
+    },
+    {
+      q: "What API rate limits should I be aware of?",
+      a: "Consult the OpenAPI 3.0 specification at /apis/api-spec for detailed information about rate limits, required headers, and API behavior. Each endpoint has specific constraints documented in the specification."
+    }
+  ]}
+/>

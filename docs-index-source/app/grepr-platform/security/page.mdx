@@ -1,0 +1,142 @@
+---
+description: "Grepr's SOC 2 Type II certified security program includes enterprise infrastructure, compliance, and data protection for secure observability."
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Security in the Grepr platform
+
+At Grepr, security is foundational to everything Grepr builds. The robust security program ensures your data remains protected, meeting stringent compliance requirements while enabling your business to operate with confidence.
+
+## Trust and compliance
+
+### SOC 2 Type II certification
+
+Grepr has successfully completed a SOC 2 Type II audit by an independent third-party auditor, verifying that security controls are not only well-designed but operating effectively over time. This rigorous assessment validates commitment to:
+
+- **Security**: Protecting customer data and systems from unauthorized access.
+- **Availability**: Ensuring systems are available as committed.
+- **Processing integrity**: Processing data completely, accurately, and in a timely manner.
+- **Confidentiality**: Protecting information designated as confidential.
+- **Privacy**: Handling personal information in accordance with privacy commitments.
+
+To request the complete SOC 2 Type II report, please contact the [security team](mailto:security@grepr.io).
+
+For the most information on subprocessors and compliance certifications, visit the [Trust Center](https://trust.grepr.ai/).
+
+## Security architecture
+
+### Authenticate to the Grepr platform
+
+- **Secure identity management**: Authentication to the Grepr UI uses OAuth 2.0 with [Auth0](https://auth0.com/). Grepr supports SAML as well as OpenID Connect (OIDC) to ease and secure identity management for customers.
+- **API security**: All Grepr APIs implement OAuth 2.0 for robust authentication and authorization.
+- **Zero credential storage**: Grepr does not store your passwords or credentials in data stores. Grepr partners with [Auth0](https://auth0.com/) for secure identity and access management.
+- **Role-based access controls**: Granular permissions ensure you can only access the resources you need.
+
+### Infrastructure security
+
+- **Amazon Web Services (AWS) enterprise infrastructure**: The production environment runs on AWS, utilizing industry-leading security features and best practices.
+- **Network isolation**: All server infrastructure resides within dedicated AWS Virtual Private Clouds (VPCs) with no direct internet accessibility.
+- **Data encryption**: Data is encrypted both in transit (Transport Layer Security (TLS) 1.2+) and at rest using strong encryption standards.
+- **Secure data architecture**: Grepr implements efficient data storage using Apache Parquet and Apache Iceberg table formats, with raw data secured in Amazon S3.
+- **API key security**: API keys are securely stored in AWS Secrets Manager with strict access controls.
+
+### Vulnerability management and remediation
+
+- **Continuous vulnerability scanning**: Infrastructure and applications undergo regular automated and manual security scans to identify potential vulnerabilities.
+- **Software composition analysis**: Grepr continuously monitors software dependencies and libraries for known vulnerabilities through automated tools integrated into the CI/CD pipeline.
+- **Rapid remediation**: Critical vulnerabilities are addressed within 24 hours, with clear Service Level Agreements (SLAs) for all severity levels.
+- **Patch management**: Grepr maintains a structured process for timely application of security patches across infrastructure and application stack.
+- **Third-party security assessments**: Regular independent security assessments complement the internal vulnerability management program.
+
+### Proactive security operations
+
+- **Continuous monitoring**: Advanced monitoring, alerting, and intrusion detection systems provide real-time visibility into security posture.
+- **Threat intelligence**: Grepr leverages industry threat intelligence to stay ahead of emerging security threats.
+- **Penetration testing**: Independent third-party security firms conduct regular penetration tests of infrastructure and applications. Reports are available upon request.
+
+## Enterprise security program
+
+### Governance and risk management
+
+- **Security policies**: Grepr maintains formal, regularly-reviewed policies covering information security, risk management, and operational security.
+- **Risk assessment**: Systematic evaluation processes identify, assess, and mitigate security risks.
+- **Vendor security assessment**: Grepr rigorously evaluates third-party vendors to ensure they meet security standards.
+
+### Employee security
+
+- **Security training**: All employees complete mandatory security awareness training upon joining and regularly thereafter.
+- **Secure development**: Engineers follow secure coding practices, with security reviews integrated throughout the development lifecycle.
+- **Access controls**: Grepr enforces least-privilege access controls and multi-factor authentication for all staff.
+
+### Business continuity
+
+- **Disaster recovery**: Disaster recovery plans ensure business continuity in adverse situations.
+- **Data backups**: Regular data backups with verified recovery procedures protect your information.
+- **High availability design**: The architecture minimizes single points of failure for critical systems.
+
+### Incident response
+
+- **Incident management framework**: A formal incident response plan guides handling of security events.
+- **Response team**: The dedicated security team is prepared to respond rapidly to security incidents.
+- **Breach notification**: Clear procedures ensure timely and appropriate communications in the event of a security incident.
+
+## Deployment options
+
+- **Software as a Service (SaaS) deployment**: The standard cloud offering provides enterprise security with minimal overhead.
+- **Private cloud**: For organizations with strict compliance requirements, Grepr offers private cloud deployment options.
+
+## Security assurance
+
+Grepr understands that enterprise buyers require ongoing assurance of security practices:
+
+- **Regular attestations**: The SOC 2 Type II certification is renewed annually.
+- **Transparency**: Grepr is committed to clear communication about security practices.
+- **Continuous improvement**: The security program evolves with emerging threats and best practices.
+
+## Contact the security team
+
+For detailed security information, compliance documentation, or to report security concerns, please contact the security team at [security@grepr.io](mailto:security@grepr.io).
+
+<HiddenFAQ faqs={[
+  {
+    q: "Is Grepr SOC 2 certified?",
+    a: "Yes, Grepr has completed a SOC 2 Type II audit verifying that security controls are well-designed and operating effectively. The certification covers security, availability, processing integrity, confidentiality, and privacy."
+  },
+  {
+    q: "How does Grepr authenticate users?",
+    a: "Grepr uses OAuth 2.0 with Auth0 for UI authentication and supports SAML and OpenID Connect (OIDC) for enterprise identity management. Grepr does not store passwords or credentials directly."
+  },
+  {
+    q: "How are Grepr APIs secured?",
+    a: "All Grepr APIs implement OAuth 2.0 for robust authentication and authorization. Access tokens are obtained from Auth0 and must be included as Bearer tokens in API requests."
+  },
+  {
+    q: "How is data encrypted in Grepr?",
+    a: "Data is encrypted in transit using TLS 1.2 or higher and at rest using strong encryption standards. API keys are securely stored in AWS Secrets Manager with strict access controls."
+  },
+  {
+    q: "What infrastructure does Grepr use?",
+    a: "Grepr runs on Amazon Web Services (AWS) enterprise infrastructure with dedicated Virtual Private Clouds (VPCs). The infrastructure includes network isolation, advanced monitoring, and automated security scanning."
+  },
+  {
+    q: "How does Grepr manage vulnerabilities?",
+    a: "Grepr conducts continuous automated and manual security scans, monitors software dependencies for known vulnerabilities, and maintains strict SLAs for remediation (24 hours for critical vulnerabilities)."
+  },
+  {
+    q: "Does Grepr perform penetration testing?",
+    a: "Yes, independent third-party security firms conduct regular penetration tests of Grepr infrastructure and applications. Penetration testing reports are available upon request."
+  },
+  {
+    q: "What are Grepr's access control practices?",
+    a: "Grepr enforces least-privilege access controls for all staff, requires multi-factor authentication, and implements role-based access controls (RBAC) for granular permissions."
+  },
+  {
+    q: "How does Grepr handle security incidents?",
+    a: "Grepr maintains a formal incident response plan with a dedicated security team prepared to respond rapidly. Clear procedures ensure timely notification in the event of a security incident."
+  },
+  {
+    q: "Can I get the complete Grepr security documentation?",
+    a: "Yes, contact the security team at security@grepr.io to request the complete SOC 2 Type II report, subprocessor information, compliance certifications, and other security documentation."
+  }
+]} />

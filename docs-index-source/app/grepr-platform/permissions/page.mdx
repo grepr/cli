@@ -1,0 +1,149 @@
+---
+description: A reference for the permission types in the Grepr platform, and which permissions are assigned to different roles.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Permissions in the Grepr platform
+
+This page is a reference to the permissions available in the Grepr platform. These permissions are assigned to users based on the user's role:
+
+- Organization-level roles: Admin, Member, and Reader
+- Team-level roles: Leader and Member
+
+A user can be assigned both an organization-level role and a team-level role. For example, an organization Member can also be a team Leader, giving them view access organization-wide and edit access to their team's resources.
+
+ You can also create custom roles with a specific subset of Grepr platform permissions. To learn more about roles, including custom roles, see [Manage users in the Grepr platform](/admin/manage-users).
+
+At both the organization and team levels, there are three types of permissions:
+
+- View: Grants read-only access to specified resources.
+- Edit: Grants edit permissions over specified resources, including creating, editing, and deleting those resources.
+- Write: Grants permission to send data through an integration when the integration is used as a sink in a job, such as a backfill job that writes data to a vendor integration. Edit permission on an integration controls the integration's configuration. Write permission on an integration controls whether you can send data through it.
+
+Resources in the Grepr platform include your organization, vendor, and storage integrations, datasets, templates, users, teams, and jobs.
+
+The following sections provide more details on permissions in the Grepr platform and the permissions for each role type.
+
+## Available permissions in the Grepr platform
+
+This table lists all available permissions for organization and team-level roles:
+
+| Permission | Resource              | Scope                |
+| :--------- | :-------------------- | :------------------- |
+| Edit       | Organization settings | Organization         |
+| View       | Organization settings | Organization or Team |
+| Edit       | Integrations          | Organization or Team |
+| View       | Integrations          | Organization or Team |
+| Write      | Integrations          | Organization or Team |
+| Edit       | Jobs                  | Organization or Team |
+| View       | Jobs                  | Organization or Team |
+| Edit       | Users                 | Organization         |
+| View       | Users                 | Organization or Team |
+| Edit       | Teams                 | Organization or Team |
+| View       | Teams                 | Organization or Team |
+| Edit       | Templates             | Organization or Team |
+| View       | Templates             | Organization or Team |
+| Edit       | Datasets              | Organization or Team |
+| View       | Datasets              | Organization or Team |
+
+## Permissions by role
+
+The following are the permissions granted to each role type in the Grepr platform:
+
+- Organization Admins have full control over all resources in the organization, including all team-scoped resources, and can write to any vendor integration.
+- Organization Members have view-only permissions to all resources in the organization, and have write permission on all vendor integrations so they can run backfill jobs.
+- Organization Readers have view-only permissions to all resources in the organization. Readers can query logs, but cannot create or edit any resources and cannot run backfill jobs that send data to a vendor integration.
+- Team Leaders have edit permissions for all resources scoped to their specific team or teams. This includes permissions to create and edit jobs, integrations, templates, and datasets assigned to the team, and to write to integrations assigned to the team. Team Leaders can also view all organization resources but only edit resources scoped to their team or teams.
+- Team Members have view-only permissions to resources scoped to their specific team or teams, plus write permission on integrations assigned to the team so they can run backfill jobs. A team Member can view resources assigned to the team and query logs, but does not have permission to create or edit resources, such as jobs, integrations, templates, or datasets, assigned to the team.
+- Teams can be granted access to resources, such as integrations, datasets, or templates, scoped at the organization level. When a team is granted access to a resource, team Leaders have edit permissions on the resource, and team Members have view-only permissions. However, to create or edit a job, such as a pipeline, a team Leader must have view permissions on all the integrations and datasets used by the job, and write permission on every vendor integration the job uses as a sink. For example, if a job is assigned to the `DevOps` team, but the team hasn't been granted access to an integration used in the job, a `DevOps` team Leader cannot edit or run the job.
+- To create a dataset, you must have edit permission on the integration the dataset belongs to.
+
+For each resource in the Grepr platform, this table shows the specific permissions granted to each role type at both the organization and team levels:
+
+ | Permission | Resource              | Access Scope  | Organization Admin | Organization Member | Organization Reader | Team Leader | Team Member |
+ | :--------- | :-------------------- | :------------ | :----------------- | :------------------ | :------------------ | :---------- | :---------- |
+ | View       | Organization Settings | Organization  | ✅                 | ✅                 | ✅                  | ✅          | ✅          |
+ | Edit       | Organization Settings | Organization  | ✅                 | ❌                 | ❌                  | ❌          | ❌          |
+ | View       | Users                 | Organization  | ✅                 | ✅                 | ✅                  | ✅          | ❌          |
+ | Edit       | Users                 | Organization  | ✅                 | ❌                 | ❌                  | ❌          | ❌          |
+ | View       | Teams                 | Organization  | ✅                 | ✅                 | ✅                  | ✅          | ❌          |
+ | Edit       | Teams                 | Organization  | ✅                 | ❌                 | ❌                  | ❌          | ❌          |
+ | View       | Integrations          | Organization  | ✅                 | ✅                 | ✅                  | ❌          | ❌          |
+ | Edit       | Integrations          | Organization  | ✅                 | ❌                 | ❌                  | ❌          | ❌          |
+ | Write      | Integrations          | Organization  | ✅                 | ✅                 | ❌                  | ❌          | ❌          |
+ | View       | Datasets              | Organization  | ✅                 | ✅                 | ✅                  | ❌          | ❌          |
+ | Edit       | Datasets              | Organization  | ✅                 | ❌                 | ❌                  | ❌          | ❌          |
+ | View       | Jobs                  | Organization  | ✅                 | ✅                 | ✅                  | ❌          | ❌          |
+ | Edit       | Jobs                  | Organization  | ✅                 | ❌                 | ❌                  | ❌          | ❌          |
+ | View       | Templates             | Organization  | ✅                 | ✅                 | ✅                  | ✅          | ❌          |
+ | Edit       | Templates             | Organization  | ✅                 | ❌                 | ❌                  | ❌          | ❌          |
+ | View       | Teams                 | Team          | ✅                 | ✅                 | ✅                  | ✅          | ✅          |
+ | Edit       | Teams                 | Team          | ✅                 | ❌                 | ❌                  | ✅          | ❌          |
+ | View       | Integrations          | Team          | ✅                 | ✅                 | ✅                  | ✅          | ✅          |
+ | Edit       | Integrations          | Team          | ✅                 | ❌                 | ❌                  | ✅          | ❌          |
+ | Write      | Integrations          | Team          | ✅                 | ✅                 | ❌                  | ✅          | ✅          |
+ | View       | Datasets              | Team          | ✅                 | ✅                 | ✅                  | ✅          | ✅          |
+ | Edit       | Datasets              | Team          | ✅                 | ❌                 | ❌                  | ✅          | ❌          |
+ | View       | Jobs                  | Team          | ✅                 | ✅                 | ✅                  | ✅          | ✅          |
+ | Edit       | Jobs                  | Team          | ✅                 | ❌                 | ❌                  | ✅          | ❌          |
+ | View       | Templates             | Team          | ✅                 | ✅                 | ✅                  | ✅          | ✅          |
+ | Edit       | Templates             | Team          | ✅                 | ❌                 | ❌                  | ✅          | ❌          |
+
+## Organization roles vs. team roles
+
+This table describes the difference between organization-level and team-level roles. Users can have both types of roles:
+
+|           | Organization roles                                     | Team roles                                  |
+| :-------- | :----------------------------------------------------- | :------------------------------------------ |
+| Scope     | Entire organization                                    | A specific team                             |
+| Types     | Admin, Member, Reader, or Custom Roles                 | Leader or Member                            |
+| Examples  | - Admin: Full access to all resources and settings.<br/>- Member: View organization resources and run backfill jobs.<br/>- Reader: View organization resources and query logs only; no backfills to vendor integrations.<br/>- Custom role, such as "Developer": Specific permissions like "view all jobs, edit templates". | - Leader: Manage team members, create team-scoped integrations.<br/>- Member: View team resources and run backfill jobs to team integrations. |
+
+<HiddenFAQ faqs={[
+  {
+    q: "What are the main permission types in Grepr?",
+    a: "The main permission types are View (grants read-only access to specified resources), Edit (grants permissions to create, edit, and delete specified resources), and Write (grants permission to send data through an integration when the integration is used as a sink in a job, such as a backfill). These permissions are assigned based on user roles at both organization and team levels."
+  },
+  {
+    q: "What are organization-level roles?",
+    a: "Organization-level roles control access across the entire organization. The standard roles are Admin (full control over all resources), Member (view access plus permission to run backfill jobs), and Reader (view-only access; no backfills to vendor integrations). You can also create custom roles with specific subsets of permissions tailored to your organization's needs."
+  },
+  {
+    q: "What are team-level roles?",
+    a: "Team-level roles control access to resources within a specific team. There are two team roles: Leader (edit permissions for team-scoped resources and view permissions for organization resources) and Member (view-only permissions for team resources). A user can be assigned to multiple teams with different roles."
+  },
+  {
+    q: "Can a user have both organization and team roles?",
+    a: "Yes, users can have both organization-level and team-level roles simultaneously. For example, a user can be an organization Member for organization-wide access while also being a Team Leader for a specific team, granting them edit access to that team's resources."
+  },
+  {
+    q: "What resources can be controlled with Grepr permissions?",
+    a: "Grepr permissions can control access to: organization settings, integrations (observability and storage), jobs, users, teams, templates, and datasets. Each resource can have view or edit permissions assigned at organization or team scope."
+  },
+  {
+    q: "What permissions does an Organization Admin have?",
+    a: "Organization Admins have full control over all resources in the organization, including all team-scoped resources. They can create, edit, and delete any resource, manage users, configure organization settings, and manage all integrations and datasets."
+  },
+  {
+    q: "What permissions does an Organization Member have?",
+    a: "Organization Members have view permissions to all resources in the organization, plus write permission on integrations so they can run backfill jobs. They can view integrations, datasets, jobs, users, and teams and write data through any vendor integration, but cannot create, edit, or delete any resources at the organization level."
+  },
+  {
+    q: "What permissions does an Organization Reader have?",
+    a: "Organization Readers have view-only permissions to all resources in the organization and can query logs. Readers cannot create, edit, or delete any resources, and cannot run backfill jobs that send data to a vendor integration. Use the Reader role for users who need to investigate data without incurring vendor write costs."
+  },
+  {
+    q: "What permissions does a Team Leader have?",
+    a: "Team Leaders have edit permissions for all resources scoped to their specific team(s), including creating and editing jobs, integrations, templates, and datasets. They can also view all organization resources but can only edit resources scoped to their team. Team Leaders can also manage team members."
+  },
+  {
+    q: "What permissions does a Team Member have?",
+    a: "Team Members have view permissions to resources scoped to their team, plus write permission on integrations assigned to the team so they can run backfill jobs. They can view jobs, integrations, templates, and datasets assigned to the team, query logs, and run backfills to team integrations, but cannot create or edit any resources."
+  },
+  {
+    q: "What is a custom role in Grepr?",
+    a: "Custom roles allow you to create roles with a specific subset of Grepr platform permissions tailored to your organization's needs. Instead of using standard roles, you can create custom roles like 'Developer' with permissions such as 'view all jobs' and 'edit templates' to match your team's responsibilities and access requirements."
+  }
+]} />

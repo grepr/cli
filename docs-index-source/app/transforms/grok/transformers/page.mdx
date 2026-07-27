@@ -1,0 +1,254 @@
+---
+description: This page provides a reference to the comprehensive set of transformers supported by the Grok parser in the Grepr platform.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# The Grepr Grok parser: Supported transformers
+
+Transformers are included in a Grok rule to convert matched values before adding them to output log events. This page provides a reference for the comprehensive set of transformers supported by the Grok parser in the Grepr platform.
+
+## Type conversion transformers [#type-conversion-transformers]
+
+**`number`**: Parses the matched value as a double-precision floating point number.
+
+```bash
+%{data:value:number}
+# Input:  "123.45"
+# Output: {"value": 123.45}
+```
+
+**`integer`**: Parses the matched value as an integer number.
+
+```bash
+%{data:count:integer}
+# Input:  "42"
+# Output: {"count": 42}
+```
+
+**`boolean`**: Parses `true` and `false` strings as booleans, ignoring case.
+
+```bash
+%{data:is_active:boolean}
+# Input:  "True"
+# Output: {"is_active": true}
+```
+
+## String transformers [#grok-string-transformers]
+
+**`lowercase`**: Converts the matched value to lowercase.
+
+```bash
+%{word:username:lowercase}
+# Input:  JohnDoe
+# Output: {"username": "johndoe"}
+```
+
+**`uppercase`**: Converts the matched value to uppercase.
+
+```bash
+%{word:status:uppercase}
+# Input:  active
+# Output: {"status": "ACTIVE"}
+```
+
+## Data parsing transformers [#grok-data-parsing-transformers]
+
+**`json`**: Parses a properly formatted JSON string into a JSON object.
+
+```bash
+%{data:metadata:json}
+# Input:  {"key": "value", "count": 42}
+# Output: {"metadata": {"key": "value", "count": 42}}
+```
+
+**`keyvalue([separatorStr[, characterAllowList[, quotingStr[, delimiter]]]])`**: Parses key-value pairs from strings into structured attributes.
+
+See [The key-value transformer](#grok-key-value-transformer).
+
+**`useragent([decodeuricomponent:true/false])`**: Parses a user-agent string and returns a JSON object containing device, operating system, and browser information.
+
+**Parameters:**
+- `decodeuricomponent`: If set to `true`, URL-decodes the user-agent string before parsing (default: `false`)
+
+**Output structure:**
+```json
+{
+  "userAgent": {
+    "family": "Chrome",
+    "major": "120",
+    "minor": "0",
+    "patch": "0"
+  },
+  "os": {
+    "family": "Mac OS X",
+    "major": "10",
+    "minor": "15",
+    "patch": "7"
+  },
+  "device": {
+    "family": "Mac"
+  }
+}
+```
+
+**Example:**
+
+```bash
+%{data:user_agent_info:useragent}
+# Input:  Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+# Output: {"user_agent_info": {"userAgent": {"family": "Chrome", "major": "120", ...}, "os": {...}, "device": {...}}}
+```
+
+## Value transformers [#grok-value-transformers]
+
+{/* Uncomment when ENGT-3480 is resolved:
+**`nullIf("value")`**: Returns `null` if the matched value equals the specified value, otherwise returns the matched value unchanged.
+
+**Parameters:**
+- `value`: The value to compare against
+
+**Example:**
+
+```bash
+%{word:status:nullIf("none")}
+# Input:  none
+# Output: {"status": null}
+# Input:  active
+# Output: {"status": "active"}
+```
+*/}
+
+**`scale(factor)`**: Multiplies the matched numeric value by the specified factor.
+
+**Parameters:**
+- `factor`: The multiplication factor
+
+**Examples:**
+
+```bash
+# Convert bytes to kilobytes
+%{number:size_kb:scale(0.001)}
+# Input:  1024
+# Output: {"size_kb": 1.024}
+
+# Convert milliseconds to seconds
+%{number:duration_seconds:scale(0.001)}
+# Input:  5000
+# Output: {"duration_seconds": 5}
+
+# Convert percentage to decimal
+%{number:ratio:scale(0.01)}
+# Input:  75
+# Output: {"ratio": 0.75}
+```
+
+**`isoDateTimeToMillis`**: Converts an ISO 8601 formatted date-time string to milliseconds since epoch.
+
+**Example:**
+
+```bash
+%{data:timestamp:isoDateTimeToMillis}
+# Input:  2024-03-15T14:30:45Z
+# Output: {"timestamp": 1710512445000}
+# Input:  2024-03-15T14:30:45.123Z
+# Output: {"timestamp": 1710512445123}
+```
+
+## The key-value transformer [#grok-key-value-transformer]
+
+The `keyvalue` transformer parses key-value pairs from strings into structured attributes. For example, `user=john email=john@example.com` becomes `{"user": "john", "email": "john@example.com"}`.
+
+**Syntax:** `keyvalue([separatorStr[, characterAllowList[, quotingStr[, delimiter]]]])`
+
+**Parameters:**
+- `separatorStr`: Character between key and value (default: `=`).
+- `characterAllowList`: Additional characters allowed in unquoted values beyond `\w.-_@`.
+- `quotingStr`: Custom quote pairs as opening and closing character pairs (default: `<>`, `""`, `''`).
+- `delimiter`: Separator between key-value pairs (default: ` `, `,`, `;`).
+
+When you use the `keyvalue` transformer:
+
+- Empty values (`key=`) and null values (`key=null`) are skipped.
+- If there's a duplicate key in the input to the `keyvalue` transformer, the value that's added to the output attributes is from the last occurrence of the key.
+- Whitespace around separators is ignored.
+- To include special characters like `/` or `:` in values, add them to `characterAllowList`.
+
+**Examples:**
+
+```bash
+# Basic usage with default separator
+%{data::keyvalue}
+# Input:  user=john email=john@example.com
+# Output: {"user": "john", "email": "john@example.com"}
+
+# Custom separator
+%{data::keyvalue(":")}
+# Input:  user:john email:john@example.com
+# Output: {"user": "john", "email": "john@example.com"}
+
+# Character allowlist for special characters
+%{data::keyvalue("=", "/:@")}
+# Input:  path=/home/user email=test@example.com
+# Output: {"path": "/home/user", "email": "test@example.com"}
+
+# Custom delimiter
+%{data::keyvalue("=", "", "", "|")}
+# Input:  key1=value1|key2=value2
+# Output: {"key1": "value1", "key2": "value2"}
+
+# Custom quote pairs
+%{data::keyvalue(":=", "", "{}")}
+# Input:  key:={value with spaces}
+# Output: {"key": "value with spaces"}
+
+# Multiple delimiters
+%{data::keyvalue}
+# Input:  user=john, email=john@example.com; role=admin
+# Output: {"user": "john", "email": "john@example.com", "role": "admin"}
+```
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What are Grok transformers and how do they work?",
+      a: "Grok transformers are applied after a matcher extracts a value. They convert or process the matched value before adding it to the output. For example, the number transformer converts a matched string to a double, and the lowercase transformer converts text to lowercase. Transformers use the syntax %{matcher:field:transformer}."
+    },
+    {
+      q: "What type conversion transformers are available?",
+      a: "Available type conversion transformers are: number (converts to double-precision float), integer (converts to integer), and boolean (converts true/false strings to booleans, case-insensitive). These allow you to change the data type of matched values."
+    },
+    {
+      q: "When should I use lowercase vs uppercase transformers?",
+      a: "Use lowercase to convert text to all lowercase characters, useful for normalizing usernames or other case-insensitive data. Use uppercase to convert text to all uppercase characters. This is often used for standardizing data before filtering or matching."
+    },
+    {
+      q: "How does the json transformer work?",
+      a: "The json transformer parses a properly formatted JSON string into a structured JSON object. Use this when a matched value contains JSON data. For example, %{data:metadata:json} would parse a JSON string and output the parsed object structure."
+    },
+    {
+      q: "What is the keyvalue transformer and when is it used?",
+      a: "The keyvalue transformer parses key-value pairs from strings into structured attributes. For example, user=john email=john@example.com becomes {user: john, email: john@example.com}. It supports custom separators, character allowlists, quote pairs, and delimiters. Use it when data contains key=value formatted content."
+    },
+    {
+      q: "How do I use the keyvalue transformer with custom separators?",
+      a: "Specify the separator as the first parameter: keyvalue(':') uses colons instead of equals signs. You can also add a character allowlist as the second parameter: keyvalue('=', '/:@') allows slashes, colons, and at-signs in values. Optional parameters let you customize quote pairs and delimiters between pairs."
+    },
+    {
+      q: "What does the useragent transformer extract?",
+      a: "The useragent transformer parses user-agent strings and returns structured data with userAgent (family, major, minor, patch), os (family, major, minor, patch), and device (family) information. It's useful for parsing browser and OS information from log data. It supports optional URL-decoding with the decodeuricomponent parameter."
+    },
+    {
+      q: "How does the scale transformer work?",
+      a: "The scale transformer multiplies a numeric value by a specified factor. For example, scale(0.001) converts 1024 bytes to 1.024 kilobytes. Use this for unit conversion, percentage calculations, or other scaling operations on numeric fields."
+    },
+    {
+      q: "What is the isoDateTimeToMillis transformer?",
+      a: "The isoDateTimeToMillis transformer converts ISO 8601 formatted date-time strings to milliseconds since epoch. For example, 2024-03-15T14:30:45Z becomes 1710512445000. Use this to normalize timestamp formats from ISO 8601 to millisecond epoch timestamps."
+    },
+    {
+      q: "Can I combine multiple transformers on a single matcher?",
+      a: "Yes, you can chain transformers together. For example, %{data:value:lowercase:json} would first convert text to lowercase, then parse it as JSON. However, practical chaining is limited - most transformers expect specific input types. Check documentation to ensure transformers are compatible in sequence."
+    }
+  ]}
+/>

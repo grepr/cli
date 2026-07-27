@@ -1,0 +1,125 @@
+---
+description: Learn how to use SSO claim mappings to automatically assign roles and teams in the Grepr platform when users sign in.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Manage SSO claim mappings in the Grepr platform
+
+SSO claims mapping lets you automatically assign organization roles and team memberships to users when they sign in through your identity provider (IdP). Using claims mapping, you can reduce the need to manually manage access, and ensure that Grepr access is aligned with your IdP.
+
+You manage SSO claim mappings in the Grepr UI. This page explains how claim mappings work, how to create them, and how they affect user access.
+
+<Callout>
+  You must have access to the **User management** page to view SSO claim mappings. To create, edit, or delete mappings, you must have permission to edit organization settings.
+</Callout>
+
+## How SSO claim mappings work
+
+When a user signs into Grepr through SSO, Grepr reads the claims passed from the IdP and evaluates them against the claim mappings configured for your organization. When the user first signs in through SSO and after the claims mapping evaluation runs, the IdP becomes the source of truth for that user's organization role and team membership assignments. on subsequent sign-ins through SSO, Grepr makes any necessary updates to ensure that the user's organization role and team membership assignments match the result of claim mapping evaluation based on the current mappings and claims at sign-in time.
+
+If a mapping matches, Grepr assigns the roles and team memberships configured in that mapping.
+
+If multiple mappings match, Grepr combines all assigned organization roles and team memberships from the matched mappings.
+
+Roles and team memberships are not assigned by Grepr if no claims are found in the token sent by the IdP or if your organization does not have any SSO claim mappings configured.
+
+## Access the SSO mappings page
+
+To open the SSO mappings page in the Grepr UI:
+
+1. Sign in to the Grepr UI and click your profile icon in the top bar.
+1. In the menu, select **User management**.
+1. On the **User management** page, click **SSO Mappings** in the left pane to display the **SSO Claim Mappings** page.
+The **SSO Claim Mappings** page displays the configured claim mappings for your organization, including the claim key, claim value, assigned roles, and assigned team memberships.
+
+## Create an SSO claim mapping
+
+To create an SSO claim mapping:
+
+1. Go to the **SSO Claim Mappings** page.
+1. Click **Create Mapping**.
+1. In the **Create Claim Mapping** dialog, enter a **Claim Key**.
+1. Enter the **Claim Value** to match.
+1. In **Role Assignment**, select one or more organization roles to assign when the claim matches.
+1. In **Team Assignments**, click **Add Team** to assign one or more teams and team roles.
+1. Click **Create Mapping**.
+
+You must assign at least one organization role or one team assignment in each mapping.
+
+## Edit an SSO claim mapping
+
+To edit an existing SSO claim mapping:
+
+1. Go to the **SSO Claim Mappings** page.
+1. Find the mapping you want to update.
+1. Click **Edit**.
+1. Update the claim key, claim value, roles, or team assignments.
+1. Click **Save Changes**.
+
+The updated mapping is used the next time a user signs in through SSO.
+
+## Delete an SSO claim mapping
+
+To delete an SSO claim mapping:
+
+1. Go to the **SSO Claim Mappings** page.
+1. Find the mapping you want to remove.
+1. Click **Delete**.
+1. In the confirmation dialog, click **Delete**.
+
+After you delete a mapping, Grepr no longer uses it during sign-in.
+
+## Understand claim matching behavior
+
+Grepr supports the following claim matching behavior:
+
+- String claims are matched by exact value.
+- List claims are matched when the configured claim value appears in the list.
+- Map claims are matched by comparing the full map value as a JSON string.
+
+For the most predictable results, use simple custom claims with string or list values when possible.
+
+Grepr does not allow mappings for reserved Java Web Token claim keys such as `iss`, `sub`, `aud`, `exp`, `nbf`, `iat`, and `jti`.
+
+## Examples
+
+| Claim key | Claim value | Result |
+| :-------- | :---------- | :----- |
+| `department` | `engineering` | Assign the configured roles and teams to users whose `department` claim is `engineering`. |
+| `groups` | `platform-admins` | Assign the configured roles and teams to users whose `groups` claim includes `platform-admins`. |
+| `realm_access` | `{"roles":["admin","developer"]}` | Assign the configured roles and teams only when the full map value matches this JSON structure. |
+
+## Best practices
+
+- Start with a small set of pilot users before applying mappings broadly.
+- Use claims that you define and manage in your identity provider instead of provider-defined claims that might vary by platform.
+- Use string or list-valued claims when possible, because they are easier to configure and review.
+- Review claim mappings whenever you change role names, team structure, or identity provider claim configuration.
+- Document which identity provider groups or attributes are expected to map to Grepr access.
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What happens if multiple SSO claim mappings match the same user?",
+      a: "Grepr combines the organization roles and team assignments from all matched mappings."
+    },
+    {
+      q: "What happens if no mappings match a user?",
+      a: "If claim mapping evaluation runs and no mappings match, Grepr updates the user's assignments to match the empty result. If no token claims are available or no mappings are configured, Grepr preserves the user's current assignments."
+    },
+    {
+      q: "Can I use array-based claims such as groups?",
+      a: "Yes. If the claim value is a list, Grepr matches when the configured claim value appears in that list."
+    },
+    {
+      q: "Can I match part of a nested JSON claim?",
+      a: "Not directly. For map-valued claims, Grepr matches the full object as a JSON string."
+    },
+    {
+      q: "Can I use standard JWT claims such as sub or aud?",
+      a: "No. Reserved JWT claims cannot be used for SSO claim mappings."
+    }
+  ]}
+/>

@@ -62,7 +62,7 @@ export class DocsGetCommand implements ICommand {
    * Executes the document retrieval command.
    *
    * This method:
-   * 1. Initializes the DocsSearch engine (loads embedding model and opens index)
+   * 1. Opens the bundled documentation index without loading the embedding model
    * 2. Retrieves the full document content by URI
    * 3. Outputs raw markdown to stdout (no formatting, perfect for piping)
    *
@@ -73,8 +73,6 @@ export class DocsGetCommand implements ICommand {
    */
   private async execute(uri: string): Promise<void> {
     const search = new DocsSearch();
-    await search.initialize();
-
     const content = await search.getDocument(uri);
     console.log(content);
   }

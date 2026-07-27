@@ -1,0 +1,591 @@
+---
+description: Learn about and see examples for the attribute merge strategies supported by the Grepr log reducer, including the exact match, sample, preserve all, sum, min, max, and average strategies.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Merge strategy examples
+
+The log reducer uses merge strategies to combine attribute values across the messages it aggregates into a summary. This page provides examples and additional details for each merge strategy. To learn how to configure these strategies for a reducer, see [Configure how attributes are merged](/transforms/reducer/configuration#attribute-configuration).
+
+## The exact match strategy
+
+The exact match strategy retains the value of a given attribute key only if that value is identical across all aggregated log events. If the values for the same key differ between events, the reducer replaces the value with a wildcard string, `*`. This strategy is ideal when you require strict equality for an attribute's value within an aggregated pattern.
+
+When applied to a map-valued attribute containing key-value pairs, the exact match strategy performs a deep equality check on the entire map object. If the equality check fails, the reducer replaces the entire map with a wildcard string, `*`.
+
+### Example: Exact match strategy with scalar values
+
+```json copy
+// Event 1 Attributes
+{
+  "request_id": "abc-123",
+  "status": "success",
+  "user": "alice"
+}
+
+// Event 2 Attributes
+{
+  "request_id": "abc-123",
+  "status": "error",
+  "user": "alice"
+}
+```
+
+Applying the exact match strategy:
+
+```json copy
+// Aggregated Attributes
+{
+  "request_id": "abc-123",
+  "status": "*",
+  "user": "alice"
+}
+```
+
+### Example: Exact match strategy with map-valued attributes containing nested values
+
+```json copy
+// Event 1 Attributes
+{
+  "event_type": "login",
+  "details": {
+    "ip": "192.168.1.1",
+    "country": "USA"
+  }
+}
+
+// Event 2 Attributes
+{
+  "event_type": "login",
+  "details": {
+    "ip": "192.168.1.2",
+    "country": "USA"
+  }
+}
+```
+
+Applying the exact match strategy for the `event_type` and `details` paths:
+
+```json copy
+// Aggregated Attributes
+{
+  "event_type": "login",
+  "details": "*" // The maps for 'details' are not deeply equal
+}
+```
+
+## The preserve all strategy
+
+The preserve all strategy retains all values for a given attribute key up to a configured `limit`. You can also specify whether the collected values are unique. When the `unique` flag is set to true, the reducer stores the values as a set-like collection. When the `unique` flag is set to false, the reducer preserves all instances as a list-like collection. This strategy is useful when you need to see the full spectrum of values for an attribute within an aggregated pattern, without truncation.
+
+When applied to a map-valued attribute, the reducer treats the entire map object as a single scalar value for the purpose of the `limit`. When the `unique` flag is set to true, the reducer compares maps deeply for uniqueness.
+
+<Callout type="warning">
+The `limit` also defines an upper bound on the maximum number of events that the reducer can cluster together for a given pattern during a time window. When the limit is reached, the reducer emits the current cluster as a summary message and begins a new cluster for that pattern. This ensures that attribute collections don't grow unbounded while still preserving important data.
+</Callout>
+
+### Example: The preserve all strategy with scalar values
+
+```json copy
+// Event 1 Attributes
+{
+  "service_tag": "web-01",
+  "response_time_ms": 100
+}
+
+// Event 2 Attributes
+{
+  "service_tag": "web-02",
+  "response_time_ms": 120
+}
+
+// Event 3 Attributes
+{
+  "service_tag": "web-01",
+  "response_time_ms": 90
+}
+```
+
+Applying the preserve all strategy with `limit=3` and `unique=true` for `service_tag` and `response_time_ms`:
+
+```json copy
+// Aggregated Attributes
+{
+  "service_tag": ["web-01", "web-02"],
+  "response_time_ms": [100, 120, 90]
+}
+```
+
+### Example: The preserve all strategy with map-valued attributes containing nested values
+
+```json copy
+// Event 1 Attributes
+{
+  "action": "view",
+  "metadata": {
+    "page": "/home",
+    "user_type": "guest"
+  }
+}
+
+// Event 2 Attributes
+{
+  "action": "view",
+  "metadata": {
+    "page": "/products",
+    "user_type": "guest"
+  }
+}
+
+// Event 3 Attributes
+{
+  "action": "view",
+  "metadata": {
+    "page": "/home",
+    "user_type": "guest"
+  }
+}
+```
+
+Applying the preserve all strategy for the `action` and `metadata` paths with `limit=2` and `unique=true`:
+
+```json copy
+// Aggregated Attributes
+{
+  "action": "view",
+  "metadata": [
+    {
+      "page": "/home",
+      "user_type": "guest"
+    },
+    {
+      "page": "/products",
+      "user_type": "guest"
+    }
+  ]
+}
+```
+
+## The sample strategy
+
+The sample strategy collects a sample of attribute values up to a specified `limit`. As with the preserve all strategy, you can control whether the collected samples are unique. When the `unique` flag is set to true, the reducer discards duplicates. When the `unique` flag is set to false, the reducer allows duplicates. After the `limit` is reached, the reducer truncates any additional values for that attribute key. This strategy is beneficial for high-volume attributes where a representative sample of values is sufficient for understanding, without storing all unique values.
+
+When applied to a map-valued attribute, the reducer treats the entire map object as a single scalar value for the `limit` and `unique` considerations, similar to the preserve all strategy but with sampling logic applied.
+
+### Example: The sample strategy with scalar values
+
+```json copy
+// Event 1 Attributes
+{
+  "user_agent": "Chrome",
+  "session_id": "s1"
+}
+
+// Event 2 Attributes
+{
+  "user_agent": "Firefox",
+  "session_id": "s2"
+}
+
+// Event 3 Attributes
+{
+  "user_agent": "Chrome",
+  "session_id": "s3"
+}
+
+// Event 4 Attributes
+{
+  "user_agent": "Safari",
+  "session_id": "s4"
+}
+```
+
+Applying the sample strategy with `limit=2` and `unique=false` for the `user_agent` and `session_id` paths:
+
+```json copy
+// Aggregated Attributes (user_agent will contain a sample of up to 2 values)
+{
+  "user_agent": ["Chrome", "Firefox"],
+  "session_id": ["s1", "s2"]
+}
+```
+
+### Example: The sample strategy with map-valued attributes containing nested values
+
+```json copy
+// Event 1 Attributes
+{
+  "endpoint": "/api/users",
+  "request_details": {
+    "method": "GET",
+    "params": {}
+  }
+}
+
+// Event 2 Attributes
+{
+  "endpoint": "/api/users",
+  "request_details": {
+    "method": "POST",
+    "params": {"id": 123}
+  }
+}
+
+// Event 3 Attributes
+{
+  "endpoint": "/api/users",
+  "request_details": {
+    "method": "GET",
+    "params": {"id": 1}
+  }
+}
+```
+
+Applying the sample strategy for the `endpoint` and `request_details` paths with `limit=1` and `unique=true`:
+
+```json copy
+// Aggregated Attributes
+{
+  "endpoint": "/api/users",
+  "request_details": [
+    {
+      "method": "GET",
+      "params": {}
+    }
+  ]
+}
+```
+
+## The sum strategy
+
+The sum strategy computes the sum of numeric attribute values across all aggregated log events. The reducer ignores non-numeric values and stores the result as a scalar double value. This strategy is ideal for calculating totals such as bytes transferred, request counts, or accumulated durations.
+
+This strategy supports both scalar and collection inputs. The reducer sums scalar numbers directly, and scans collections for all numeric values and sums them together before adding them to the scalar total.
+
+### Example: The sum strategy with scalar values
+
+```json copy
+// Event 1 Attributes
+{
+  "bytes_sent": 1024
+}
+
+// Event 2 Attributes
+{
+  "bytes_sent": 2048
+}
+
+// Event 3 Attributes
+{
+  "bytes_sent": 512
+}
+```
+
+Applying the sum strategy to `bytes_sent`:
+
+```json copy
+// Aggregated Attributes
+{
+  "bytes_sent": 3584.0
+}
+```
+
+### Example: The sum strategy with mixed scalar values and collections
+
+```json copy
+// Event 1 Attributes
+{
+  "request_counts": [100, 50]
+}
+
+// Event 2 Attributes
+{
+  "request_counts": 75
+}
+
+// Event 3 Attributes
+{
+  "request_counts": [25, 30]
+}
+```
+
+Applying the sum strategy to `request_counts`:
+
+```json copy
+// Aggregated Attributes
+{
+  "request_counts": 280.0
+}
+```
+
+## The min strategy
+
+The min strategy keeps the minimum numeric attribute value across all aggregated log events. The reducer ignores non-numeric values and stores the result as a scalar double value. This strategy is useful for tracking metrics such as minimum response times, smallest payload sizes, or lowest error rates.
+
+This strategy supports both scalar and collection inputs. The reducer compares scalar numbers directly. For collections, the reducer scans all numeric values to find the minimum value and then compares it to the existing minimum.
+
+### Example: The min strategy with scalar values
+
+```json copy
+// Event 1 Attributes
+{
+  "response_time_ms": 150.5
+}
+
+// Event 2 Attributes
+{
+  "response_time_ms": 75.2
+}
+
+// Event 3 Attributes
+{
+  "response_time_ms": 200.0
+}
+```
+
+Applying the min strategy to `response_time_ms`:
+
+```json copy
+// Aggregated Attributes
+{
+  "response_time_ms": 75.2
+}
+```
+
+### Example: The min strategy with mixed scalar values and collections
+
+```json copy
+// Event 1 Attributes
+{
+  "latencies": [100.5, 200.0]
+}
+
+// Event 2 Attributes
+{
+  "latencies": 50.2
+}
+
+// Event 3 Attributes
+{
+  "latencies": [75.0, 25.0]
+}
+```
+
+Applying the min strategy to `latencies`:
+
+```json copy
+// Aggregated Attributes
+{
+  "latencies": 25.0
+}
+```
+
+## The max strategy
+
+The max strategy keeps the maximum numeric attribute value across all aggregated log events. The reducer ignores non-numeric values and stores the result as a scalar double value. This strategy is useful for tracking maximum response times, largest payload sizes, or peak error rates.
+
+This strategy supports both scalar and collection inputs. For collections, the reducer scans all numeric values to find the maximum value.
+
+### Example: The max strategy with scalar values
+
+```json copy
+// Event 1 Attributes
+{
+  "response_time_ms": 150.5
+}
+
+// Event 2 Attributes
+{
+  "response_time_ms": 275.8
+}
+
+// Event 3 Attributes
+{
+  "response_time_ms": 200.0
+}
+```
+
+Applying the max strategy to `response_time_ms`:
+
+```json copy
+// Aggregated Attributes
+{
+  "response_time_ms": 275.8
+}
+```
+
+### Example: THe max strategy with mixed scalar values and collections
+
+```json copy
+// Event 1 Attributes
+{
+  "latencies": [100.5, 200.0]
+}
+
+// Event 2 Attributes
+{
+  "latencies": 250.8
+}
+
+// Event 3 Attributes
+{
+  "latencies": [75.0, 300.0]
+}
+```
+
+Applying the max strategy to `latencies`:
+
+```json copy
+// Aggregated Attributes
+{
+  "latencies": 300.0
+}
+```
+
+## The average strategy
+
+The average strategy computes the average, or mean, of numeric attribute values across all aggregated log events. The reducer ignores non-numeric values and stores the result as a scalar double value.
+
+This strategy supports both scalar and collection inputs. The reducer treats each scalar number as a single observation, and scans collections for all numeric values, treating each as a separate observation.
+
+### Example: The average strategy with scalar values
+
+```json copy
+// Event 1 Attributes
+{
+  "response_time_ms": 100.0
+}
+
+// Event 2 Attributes
+{
+  "response_time_ms": 200.0
+}
+
+// Event 3 Attributes
+{
+  "response_time_ms": 150.0
+}
+```
+
+Applying the average strategy to `response_time_ms`:
+
+```json copy
+// Aggregated Attributes
+{
+  "response_time_ms": 150.0
+}
+```
+
+### Example: The average strategy with mixed scalar values and collections
+
+```json copy
+// Event 1 Attributes
+{
+  "response_times": [100.0, 200.0]
+}
+
+// Event 2 Attributes
+{
+  "response_times": 50.0
+}
+
+// Event 3 Attributes
+{
+  "response_times": [150.0, 250.0]
+}
+```
+
+Applying the average strategy to `response_times`:
+
+```json copy
+// Aggregated Attributes
+{
+  "response_times": 150.0
+}
+```
+
+The reducer calculates the average as the sum of all observed values divided by the number of observations: (100.0 + 200.0 + 50.0 + 150.0 + 250.0) / 5 = 150.0.
+
+## Apply multiple strategies to a single attribute
+
+You can apply multiple aggregation strategies to a single attribute path, creating multiple output attributes with different perspectives on the same data. This is useful when you want to track multiple statistics for numeric attributes, such as computing both the sum and the average of response times, or preserving individual values while also calculating their maximum.
+
+When you configure multiple strategies for an attribute path:
+
+- The first strategy writes to both the original attribute name and a suffixed version, such as `bytes_sent` and `bytes_sent_sum`.
+- Additional strategies write only to suffixed versions, such as `bytes_sent_avg` and `bytes_sent_max`.
+
+This design retains the original attribute name while providing additional aggregated perspectives.
+
+As an example, for the attribute path `bytes_sent`, you configure three strategies in this order:
+
+1. `Sum`
+1. `Average`
+1. `Max`
+
+The reducer aggregates the following input events:
+
+```json copy
+// Event 1 Attributes
+{
+  "bytes_sent": 1024
+}
+
+// Event 2 Attributes
+{
+  "bytes_sent": 2048
+}
+
+// Event 3 Attributes
+{
+  "bytes_sent": 512
+}
+```
+
+The reducer produces the following aggregated output:
+
+```json copy
+// Aggregated Attributes
+{
+  "bytes_sent": 3584.0,          // `Sum` (first strategy, uses original name)
+  "bytes_sent_sum": 3584.0,      // `Sum` (first strategy, also uses suffixed name)
+  "bytes_sent_avg": 1194.67,     // `Average` (second strategy)
+  "bytes_sent_max": 2048.0       // `Max` (third strategy)
+}
+```
+
+This approach is powerful for numeric attributes where you want comprehensive statistics, or when you need to preserve individual values while also computing aggregations. Common use cases for applying multiple strategies include:
+
+- For HTTP metrics, apply `Sum`, `Average`, `Min`, and `Max` to `response_time_ms` to get complete latency statistics.
+- For data transfer, use `Sum` for total bytes and `Preserve All` with a limit to see individual transfer sizes.
+- For error rates, combine `Sum` for the total error count with `Preserve All` to see which specific error codes occurred.
+- For performance monitoring, track the `Average` response time while preserving outlier values using `Preserve All` with a unique limit.
+
+<HiddenFAQ faqs={[
+    {
+        q: "When should I use the exact match strategy?",
+        a: "Use the exact match strategy when you require strict equality for an attribute's value within an aggregated pattern. The reducer keeps the value only if it is identical across all aggregated events, and replaces it with a wildcard string, *, if the values differ. For a map-valued attribute, the reducer performs a deep equality check on the entire map and replaces the whole map with * if the maps are not identical."
+    },
+    {
+        q: "What is the difference between the sample and preserve all strategies?",
+        a: "Both strategies collect attribute values up to a configured limit and let you choose whether the collected values are unique. The sample strategy truncates any additional values after the limit is reached. The preserve all strategy instead emits the current summary and starts a new cluster when the limit would be exceeded, so no values are dropped."
+    },
+    {
+        q: "What does the unique flag control?",
+        a: "The unique flag controls how the reducer stores collected values for the sample and preserve all strategies. When the unique flag is set to true, the reducer stores values as a set-like collection and discards duplicates. When it is set to false, the reducer stores values as a list-like collection and preserves duplicates."
+    },
+    {
+        q: "How do the sum, min, max, and average strategies handle non-numeric values?",
+        a: "The sum, min, max, and average strategies ignore non-numeric values and store the result as a scalar double value. Each strategy supports both scalar and collection inputs, scanning collections for all numeric values before computing the result."
+    },
+    {
+        q: "How is a map-valued attribute handled by a merge strategy?",
+        a: "The reducer treats an entire map-valued attribute as a single scalar value when applying a strategy. The exact match strategy compares maps using a deep equality check, and the sample and preserve all strategies compare maps deeply when the unique flag is set to true."
+    },
+    {
+        q: "Can I apply more than one merge strategy to the same attribute?",
+        a: "Yes. When you configure multiple strategies for an attribute path, the first strategy writes to both the original attribute name and a suffixed version, such as bytes_sent and bytes_sent_sum. Additional strategies write only to suffixed versions, such as bytes_sent_avg and bytes_sent_max."
+    }
+]} />

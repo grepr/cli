@@ -1,0 +1,157 @@
+---
+description: Learn how to create a Sumo Logic integration and use it to add sources that ingest logs to a Grepr pipeline for processing and sinks that send the processed logs to Sumo Logic.
+vendor: Sumo Logic
+collectorName: Sumo Logic OTel Collector
+---
+
+import { Callout } from 'nextra/components'
+import AddTeamAccess from '@/app/shared/add-team-access-to-integration.mdx'
+import IngestUrlConfig from '@/app/shared/configure-ingest-url.mdx'
+import IntegrationsInterchangeability from '@/app/shared/integrations-interchangeability.mdx'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Configure Sumo Logic connections with a Grepr integration
+
+The Grepr platform includes two integrations for connecting to Sumo Logic. This page documents the Sumo Logic integration, but the integration to use depends on the source type that you are sending logs to:
+
+- If you use the OTLP/HTTP source in Sumo Logic, you must use the [Grepr OpenTelemetry integration](/integrations/open-telemetry) to connect Grepr and Sumo Logic.
+- If you use the HTTP source, you must use the Sumo Logic integration.
+
+To send logs to a Grepr pipeline before forwarding them to Sumo Logic, update your collector configuration to send the logs to a Grepr endpoint URL instead of the endpoint for a Sumo Logic source. To learn how to create a Sumo Logic integration in the Grepr UI and configure collectors to send logs to Grepr, see [Use a Sumo Logic integration in a Grepr pipeline](#use-sumo-logic-integration).
+
+You can also use the Grepr REST API to create and use a Sumo Logic integration. See the [Sumo Logic Integration specification](/apis/api-spec#tag/Sumo-Logic-Integration).
+
+<Callout>
+  <IntegrationsInterchangeability />
+</Callout>
+
+## Requirements
+
+- To create a Sumo Logic integration, you must have the endpoint URL from a configured `HTTP Logs and Metrics Source`. See [Configure an HTTP Logs and Metrics Source](https://www.sumologic.com/help/docs/send-data/hosted-collectors/http-source/logs-metrics/#configure-an-httplogs-and-metrics-source).
+- The only log format supported by the Sumo Logic integration is JSON. To send logs to a Grepr source, you must set `log_format:json` in your collector configuration.
+
+## Use a Sumo Logic integration in a Grepr pipeline [#use-sumo-logic-integration]
+
+Use the following steps to create a Sumo Logic integration in the Grepr UI and use it in a pipeline to source and sink logs.
+
+### Step 1: Create a Sumo Logic integration
+
+To create a Sumo Logic integration in the Grepr UI:
+
+1. Go to the **Integrations** page in the Grepr UI and click **Add new** next to **Observability Vendors**.
+1. In the **Add Observability Vendor** dialog:
+   - In the **Type** menu, select **Sumo Logic**.
+   - In the **Name** field, enter a name for the integration. To facilitate working with logs in Sumo Logic, Grepr recommends naming the integration based on the collector that will send logs to Grepr.
+   - In the **HTTP collector URL** field, enter the endpoint URL from your Sumo Logic `HTTP Logs and Metrics Source`.
+1. Click **Create**.
+
+   #### Optional: Grant team access to the integration
+
+   <AddTeamAccess />
+
+### Step 2: Add a source to your pipeline
+
+To add a source to your pipeline that uses the Sumo Logic integration:
+
+1. In the Grepr UI, go to the details page for an existing pipeline or create a new pipeline from the homepage.
+1. In the left-hand navigation menu on the pipeline details page, click **Sources**.
+1. In the **Add source** dialog, select the Sumo Logic integration in the **Source** menu.
+1. Optional: In the **Name** field, to override the Grepr-generated name, enter a new name for the source.
+1. Click **Submit**.
+
+### Step 3: Configure log forwarding to Grepr
+
+<IngestUrlConfig image_url='/images/integrations/ingestion-url-sumo.png' url='https://<integration-id>-<org-id>.ingest.grepr.ai/receiver/v1/http/<unique-http-collector>' />
+
+Also replace `{$UNIQUE_HTTP_COLLECTOR}` with the unique identifier for your Sumo Logic `HTTP Logs and Metrics Source`.
+
+The `Sumo Logic Distribution for OpenTelemetry Collector` is supported for sending logs to Grepr. To configure the OpenTelemetry collector to send logs to Grepr, set the `endpoint` value in the `exporters.sumologic` section to the ingestion URL from your Grepr source:
+
+```yaml copy filename="config.yaml"
+exporters:
+  sumologic/grepr:
+    endpoint: <ingestion-url>
+    log_format: json
+
+service:
+  pipelines:
+    logs:
+      exporters: [sumologic/grepr]
+```
+
+Replace:
+- `<ingestion-url>` with the ingestion URL from your Grepr Sumo Logic source.
+
+Your workflow might require sending unprocessed logs directly to Sumo Logic in addition to sending the logs to Grepr. To configure dual-shipping of logs, include an exporter configuration for both Grepr and Sumo Logic in your OpenTelemetry collector configuration:
+
+```yaml copy filename="config.yaml"
+exporters:
+  sumologic/grepr:
+    endpoint: <ingestion-url>
+    log_format: json
+
+  # Your existing Sumo Logic exporter
+  sumologic:
+    endpoint: <sumo-http-source-url>
+    log_format: json
+
+service:
+  pipelines:
+    logs:
+      exporters: [sumologic/grepr, sumologic]
+```
+
+Replace:
+- `<ingestion-url>` with the ingestion URL from your Grepr Sumo Logic source.
+- `<sumo-http-source-url>` with the endpoint URL from your Sumo Logic HTTP source.
+
+To learn more about configuration settings for the Sumo Logic OpenTelemetry Collector, see the [Sumo Logic Distribution for OpenTelemetry Collector documentation](https://github.com/SumoLogic/sumologic-otel-collector#readme).
+
+## Limitations
+
+The integration doesn't support Sumo Logic [Extended HTTP Metadata Collection](https://www.sumologic.com/help/docs/manage/fields/#extended-http-metadata-collection). Grepr drops any custom headers forwarded by collectors before processing the messages included in the payload.
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "How do I send logs from Sumo Logic to Grepr?",
+      a: "To send logs from Sumo Logic to Grepr, configure your collector to send logs to the Grepr ingestion URL instead of your Sumo Logic HTTP Logs and Metrics Source. The ingestion URL format is https://<integration-id>-<org-id>.ingest.grepr.ai/receiver/v1/http/<unique-http-collector>. Replace the unique-http-collector with the identifier from your Sumo Logic HTTP source."
+    },
+    {
+      q: "What is required to create a Sumo Logic integration with Grepr?",
+      a: "You need the endpoint URL from a configured HTTP Logs and Metrics Source in Sumo Logic. You must also ensure your logs are in JSON format, as the Sumo Logic integration only supports JSON log format. Set log_format:json in your collector configuration."
+    },
+    {
+      q: "How do I configure the Sumo Logic OpenTelemetry Collector to send logs to Grepr?",
+      a: "In your Sumo Logic Distribution for OpenTelemetry Collector configuration, set the endpoint value in the exporters.sumologic section to your Grepr ingestion URL. Set log_format to 'json'. You can also configure dual-shipping by including both Grepr and Sumo Logic exporters in your pipeline."
+    },
+    {
+      q: "Why must logs be in JSON format for the Sumo Logic integration?",
+      a: "The Grepr Sumo Logic integration is designed to work with JSON-formatted logs to ensure proper parsing and processing. If your logs are not in JSON format, you need to configure your collectors to convert them to JSON before sending to Grepr."
+    },
+    {
+      q: "Can I dual-ship logs to both Grepr and Sumo Logic?",
+      a: "Yes, you can configure your OpenTelemetry collector to send logs to both Grepr and Sumo Logic. In your collector configuration, add two exporters: one pointing to your Grepr ingestion URL and another pointing to your Sumo Logic endpoint. Both can be included in your logs pipeline."
+    },
+    {
+      q: "What is the difference between Sumo Logic HTTP source and OTLP/HTTP source?",
+      a: "Sumo Logic offers two types of sources: HTTP Logs and Metrics Source for traditional HTTP-based log collection, and OTLP/HTTP source for OpenTelemetry protocol data. If you use OTLP/HTTP, you must use the Grepr OpenTelemetry integration instead of the Sumo Logic integration."
+    },
+    {
+      q: "How do I find the unique HTTP collector identifier for my Sumo Logic source?",
+      a: "When you create an HTTP Logs and Metrics Source in Sumo Logic, the endpoint URL contains the unique collector identifier. It appears at the end of the URL path. You'll need this identifier to construct the complete Grepr ingestion URL."
+    },
+    {
+      q: "Does Grepr support Sumo Logic Extended HTTP Metadata Collection?",
+      a: "No, Grepr does not support Sumo Logic Extended HTTP Metadata Collection. Grepr drops any custom headers forwarded by collectors before processing the log messages in the payload."
+    },
+    {
+      q: "How can I reduce storage costs with the Sumo Logic integration?",
+      a: "After ingesting logs into Grepr through the Sumo Logic integration, you can use Grepr's log reducer and transformation features to reduce log volume before sending processed logs back to Sumo Logic. This helps optimize storage costs in Sumo Logic."
+    },
+    {
+      q: "What if my logs are not in JSON format when using Sumo Logic integration?",
+      a: "The Sumo Logic integration only supports JSON format. If your logs are in a different format, you need to configure your collector to parse and convert them to JSON before sending to Grepr. Most collectors like Fluentd and OpenTelemetry Collector support log parsing and transformation."
+    }
+  ]}
+/>

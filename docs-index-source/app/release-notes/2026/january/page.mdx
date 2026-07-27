@@ -1,0 +1,142 @@
+---
+description: Release notes for new features, improvements, and bug fixes to the Grepr platform released in January 2026.
+---
+
+# Release notes for January 2026
+
+Grepr released these feature updates, improvements, and bug fixes in January 2026.
+
+## January 29, 2026
+
+{/* ENGT-3455 */}
+### New feature: Test Grok rules with the Grepr CLI before adding them to your pipelines
+
+The Grepr command-line interface (CLI) now includes a new `grok:parse` command that lets you test Grok rules against log messages before deploying them in production pipelines. This command provides a powerful way to validate and iterate on your Grok rules with real or sample log data before adding them to your log processing pipelines. See [Test Grok patterns against sample log events](/cli#grok-command-examples).
+
+{/* ENGT-3416 */}
+### Bug fix: Errors during pipeline deployment caused by job version mismatches
+
+An issue causing job version mismatches during pipeline deployment has been fixed. This change improves the reliability of pipeline deployments.
+
+## January 27, 2026
+
+{/* ENGT-3447 */}
+### New feature: Set a threshold for adding auto-sync exceptions
+
+When the **Auto-sync exceptions** option is enabled for integration exceptions, you can now prevent auto-sync from activating when the estimated percentage of log events that would be excluded from reduction and passed through to your pipeline sinks exceeds a configured threshold. This setting allows you to prevent sending large volumes of logs to your observability vendor when a change, for example, new alerts or dashboards, causes an unexpectedly large increase in the log events that bypass reduction. You can set the threshold in the integration exception dialog in the pipelines UI or the Grepr REST API. To set the threshold in the UI, see [Prevent aggregation of messages used in your observability platform](/transforms/reducer/exceptions#vendor-exceptions). To set the threshold with the API, see the [LogReducer schema](/apis/api-spec#schema/LogReducer).
+
+## January 25, 2026
+
+{/* ENGT-3448 */}
+### Bug fix: Some integration alerts did not display in the UI
+
+An issue that prevented some integration alerts from displaying in the UI has been fixed.
+
+{/* ENGT-3429 */}
+### Bug fix: Errors returned for queries with equal start and end times
+
+Queries against the Grepr data lake can now use equal start and end times. This fixes an error that was returned for valid queries.
+
+{/* ENGT-3366 */}
+### Bug fix: Trace pipelines crashed when processing events with payloads over size limits
+
+A fix has been implemented to prevent crashes when processing trace events with payloads that exceed the size limit in a pipeline that uses a Datadog sink. The pipeline now handles large payloads gracefully, ensuring stable, reliable trace processing.
+
+## January 20, 2026
+
+{/* ENGT-3282 */}
+### Behavioral change: The `attributes` field in log events now uses the `VARIANT` data type
+
+To improve query and memory performance, the `attributes` field in the `LOG_EVENT` data type now uses the Apache Flink `VARIANT` type instead of JSON strings. To access values in the `attributes` field, you can use the `VARIANT` functions. See [VARIANT functions: query, extract, and transform values](/transforms/sql-transform/sql-functions#variant-query-extract-fns).
+
+{/* ENGT-3349 */}
+### Behavioral change: **Additional Tags** are now **Additional Attributes** in Datadog trace sinks
+
+When configuring a Datadog sink in a trace pipeline, the **Additional Tags** setting is renamed to **Additional Attributes**. This change ensures that configured values are correctly handled. You can also view the attributes when viewing the sink in the pipeline UI.
+
+### New feature: Performance improvements when writing to data lake tables
+
+Improved partitioning and shard sizing improve write performance and query efficiency for data lake tables by automatically organizing data into appropriate partitions without manual configuration, while changes to shard sizing ensure better distribution for lower-volume data streams.
+
+{/* ENGT-3368 */}
+### New feature: View and search activity, integration, and audit logs with the Grepr REST API
+
+You can now use the Grepr REST API to view and search system logs containing information on server activity, integration events, and audit records. See the [Activity Logs specification](/apis/api-spec#tag/Activity-Logs).
+
+{/* ENGT-3033, ENGT-3088 */}
+### New feature: Test and update SQL transformations with live data in the pipelines UI
+
+You can now see the results of SQL transform processing in a pipeline's **Pipeline Log Viewer** pane. This allows you to test, modify, and add SQL transformations while using live data in the Grepr live edit feature. To learn more about live edit and the log viewer, see [View pipeline data flows and test changes with live edit](/tutorials/live-edit). To learn more about the SQL transform, see [Transform events with SQL](/transforms/sql-transform).
+
+## January 9, 2026
+
+{/* ENGT-3311 */}
+### New feature: Parse key-value pairs in Grok patterns with configurable separators
+
+The Grok parser now supports extracting key-value pairs from log messages and converting them into structured attributes. You can configure separators between keys and values, delimiter characters between pairs, quote characters, and allowlists for special characters in values. This feature also handles edge cases like empty values, duplicate keys, and nested quotes.
+
+See [The Grok key-value transformer](/transforms/grok/transformers#grok-key-value-transformer).
+
+{/* ENGT-3178 */}
+### New feature: Reduce data scan sizes by directly querying raw logs
+
+Log searches now support querying raw log tables directly from the data lake without joining with the pattern lookup table. This new query mode provides faster query execution when pattern information is not needed. You can use this option in Log Explorer or the Grepr REST API.
+
+{/* ENGT-3113 */}
+### New feature: Go directly to specific resources with deep links
+
+This release adds link sharing, previously supported only by Log Explorer, to more of the Grepr UI. You can share direct links to pipelines, templates, datasets, integrations, and teams, making it easier to collaborate and reference specific configurations or results.
+
+{/* ENGT-3130 */}
+### New feature: Add tags to log events by defining column names in SQL statements
+
+The SQL transform now provides a special column-naming syntax to add tags to output log events directly from your SQL queries. By defining columns with the `tags.` prefix, such as `tags.service` or `tags.environment`, the SQL transform automatically adds the column name as a tag along with the assigned values. You can assign scalar values, use SQL expressions, or add multiple tag values using SQL arrays.
+
+See [Add tags to a LOG_EVENT using a special column syntax](/transforms/sql-transform/data-types#tags-column-syntax).
+
+{/* ENGT-3316 */}
+### New feature: Collect values into an array using a specified sort order in SQL statements
+
+The SQL transform now supports the `ORDERED_ARRAY_AGG()` function, which allows you to collect values into an array sorted by one or more specified keys. This function is useful for tasks that require reconstructing a sequence of events, such as log messages ordered by time.
+
+See the `ORDERED_ARRAY_AGG` function in [Collection functions](/transforms/sql-transform/sql-functions#collection-fns).
+
+{/* ENGT-3304 */}
+### New feature: Additional severity level aliases for improved log parsing
+
+This release includes more labels when parsing severity levels from log events. INFO now includes `success` and `pending`, and ERROR includes `failure`, `failed`, and `failing`. This improves severity classification for logs from different systems.
+
+{/* ENGT-3305 */}
+### Bug fix: HEC events were dropped during forwarding to Splunk
+
+This release fixes an issue that caused events to be dropped from Splunk logs when forwarded with HEC.
+
+{/* ENGT-3303 */}
+### Bug fix: Datadog `host`, `source`, and `service` tags were overridden during log ingestion
+
+This release fixes an issue where the `host`, `source`, and `service` tags extracted from a Datadog log event were overridden by `host`,  `source`, and `service` values added as `ddtags`. This update merges and retains all values associated with these tags, ensuring that all data is captured and available for forwarding to destination systems.
+
+{/* ENGT-3338 */}
+### Bug fix: Empty tags in Datadog log ingestion caused parsing errors
+
+This release fixes an issue where consecutive commas or blank segments in Datadog tag strings caused parsing errors during log ingestion. The Datadog integration now skips empty tag entries, ensuring logs with malformed tag formatting are processed reliably.
+
+{/* ENGT-3272 */}
+### Bug fix: Some exceptions imported from Datadog dashboards were dropped
+
+This release fixes an issue that caused some exceptions imported from Datadog dashboards to be dropped.
+
+{/* ENGT-3333 */}
+### Bug fix: Log Explorer usability issues when records had empty identifier columns
+
+This release fixes an issue that made Log Explorer unusable when records have empty identifier columns.
+
+{/* ENGT-3214 */}
+### Bug fix: Pattern ID filtering not working correctly in Log Explorer
+
+This release fixes an issue where filtering logs by pattern ID was not working correctly in Log Explorer. Pattern ID filters from URL parameters are now correctly applied to search results, and the pattern ID column appears automatically when filtering by pattern ID.
+
+{/* ENGT-3247 */}
+### Bug fix: Log Explorer table headers overlapped with table content when scrolling
+
+This release fixes an issue in Log Explorer that caused table headers to overlap with table content when scrolling.

@@ -41,12 +41,13 @@
 
 import { LocalDocumentIndex } from 'vectra';
 import { glob } from 'glob';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, rmSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import { TransformersEmbeddings } from '../src/main/typescript/lib/transformers-embeddings.js';
 import { mdxToMarkdown } from './mdx-to-markdown.js';
+import { resolveDocsDir } from './docs-source.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,11 +61,18 @@ async function buildDocsIndex(): Promise<void> {
 
   console.log('Building documentation search index...\n');
 
-  const embeddings = new TransformersEmbeddings('Xenova/all-MiniLM-L6-v2', 512);
-  await embeddings.initialize();
+  const docsDir = resolveDocsDir();
+  const docsPath = path.join(docsDir, 'app');
 
   const indexPath = path.resolve(__dirname, '../build/dist/docs-index');
   console.log(`Index path: ${indexPath}\n`);
+
+  const embeddings = new TransformersEmbeddings('Xenova/all-MiniLM-L6-v2', 512);
+  await embeddings.initialize();
+
+  // The index is generated output. Recreate it so local builds cannot reuse a
+  // stale or previously empty catalog and accidentally publish it.
+  rmSync(indexPath, { recursive: true, force: true });
 
   const docs = new LocalDocumentIndex({
     folderPath: indexPath,
@@ -76,21 +84,8 @@ async function buildDocsIndex(): Promise<void> {
     }
   });
 
-  if (await docs.isIndexCreated()) {
-    console.log('Documentation index already exists. Skipping build.');
-    return;
-  }
-
   console.log('Creating new index...');
   await docs.createIndex({ version: 1 });
-
-  const docsDir = path.resolve(__dirname, '../../../docs');
-  const docsPath = path.join(docsDir, 'app');
-  if (!existsSync(docsPath)) {
-    console.warn(`⚠ Documentation directory not found: ${docsPath}`);
-    console.warn('  Skipping documentation indexing.\n');
-    return;
-  }
 
   const mdxFiles = glob.sync('**/*.mdx', {
     cwd: docsPath,
@@ -195,6 +190,11 @@ async function buildDocsIndex(): Promise<void> {
   console.log(`  Schemas: ${schemaFiles.length}`);
   console.log(`  Total documents: ${(indexed - skipped) + visibleApiFiles.length + schemaFiles.length}`);
   console.log(`  Index location: ${indexPath}`);
+
+  const documentCount = (await docs.listDocuments()).length;
+  if (documentCount === 0) {
+    throw new Error('Documentation index is empty; refusing to complete the CLI build');
+  }
 }
 
 buildDocsIndex().catch((error) => {

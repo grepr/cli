@@ -1,0 +1,1166 @@
+---
+description: Automate Grepr data processing with the command-line interface. Execute queries, manage configurations, and stream results with OAuth authentication and real-time job monitoring.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# The Grepr CLI
+
+This page includes instructions and examples for installing, configuring, authenticating, and running commands with the Grepr command-line interface (CLI). Using the CLI, you can manage and interact with resources on the Grepr platform from your terminal or automate tasks by calling it from your scripts or clients. With the CLI, you can:
+
+- Create, update, and delete Grepr jobs such as pipelines, as well as list your jobs and retrieve job details and status.
+- Run queries against your data in the Grepr data lake.
+- Backfill logs from the Grepr data lake to your observability vendors.
+- Manage resources such as integrations and datasets.
+
+Features of the Grepr CLI include:
+
+- Secure authentication with OAuth 2.0, including the automatic refresh and storage of tokens.
+- Management of multiple named configuration profiles, such as different profiles for development, staging, and production environments.
+- Real-time streaming of job results in a standard, structured format.
+- A choice of output format for results, including enhanced tables, CSV, pretty-printed JSON, raw, and, when you need to save space, a compact single-line JSON without indentation format.
+- Save results directly to files with the `--output` option.
+- Plugins for agentic coding assistants, including Anthropic's Claude Code and OpenAI's Codex, that let you use natural language to run CLI commands. See [Run CLI commands with AI coding assistants](#agent-plugins).
+
+The Grepr CLI uses the Grepr REST APIs to provide a convenient command-line interface for common operations. For more advanced programmatic access, you can use the APIs directly. See [Automate Grepr processing with the Grepr REST APIs](/apis).
+
+## Requirements
+
+Installing the Grepr CLI requires [Node.js](https://nodejs.org/) version 20 or later.
+
+## Install the Grepr CLI [#install]
+
+To install the CLI, Grepr recommends installing the CLI globally from the npm registry. A global install lets you run the CLI from any terminal you open.
+
+To install the CLI from the npm registry, you can use npm, yarn, or pnpm:
+
+```console copy
+# Install globally with npm
+npm install -g @grepr/cli
+```
+
+```console copy
+# Install globally with yarn
+yarn global add @grepr/cli
+```
+
+```console copy
+# Install globally with pnpm
+pnpm add -g @grepr/cli
+```
+
+After installing, you can run the CLI from any terminal prompt:
+
+```console copy
+grepr --help
+```
+
+You can also run the CLI without installing by using `npx`:
+
+```console copy
+# Run directly from npm registry
+npx @grepr/cli --help
+```
+
+## Configure the Grepr CLI [#cli-configuration]
+
+The CLI stores configurations in the `~/.grepr/cli-config.json` file. In the configuration file, you can define multiple named CLI configurations, allowing you to easily switch between Grepr environments such as development, staging, or production. Each configuration includes settings such as your organization name, API base URL, and values required for authentication. To use a named configuration, you specify the configuration name with the `--conf` option when running CLI commands. You can also set a default configuration to use when no `--conf` option is provided.
+
+You can also use environment variables to pass configuration settings to the CLI. See [Use environment variables to configure the CLI](#environment-variables).
+
+The following examples show how to create a configuration named `dev` and a configuration named `prod`, setting `prod` as the default configuration:
+
+```console copy
+grepr --org-name myorgdev config:save dev
+grepr --org-name myorgprod config:save prod --default
+```
+
+The CLI configurations you create are stored in the `~/.grepr/cli-config.json` file with the following structure:
+
+```json
+{
+  "dev": {
+    "orgName": "myorgdev",
+    "authBaseUrl": "https://auth.grepr.ai",
+    "authMethod": "oauth",
+    "clientId": "E4zbTBJrwaAKS1Gz1j1Ur53CJunZPlYv",
+    "authCache": true,
+    "browser": true,
+    "apiBaseUrl": "https://myorgdev.app.grepr.ai/api"
+  },
+  "prod": {
+    "orgName": "myorgprod",
+    "authBaseUrl": "https://auth.grepr.ai",
+    "authMethod": "oauth",
+    "clientId": "E4zbTBJrwaAKS1Gz1j1Ur53CJunZPlYv",
+    "authCache": true,
+    "browser": true,
+    "apiBaseUrl": "https://myorgprod.app.grepr.ai/api"
+  },
+  "_default": "prod"
+}
+```
+
+To use a specific configuration, include the `--conf` option with the configuration name in your CLI commands:
+
+```console copy
+grepr --conf dev job:create templates/default-job.json
+```
+
+To use a default configuration, omit the `--conf` option when you run CLI commands:
+
+```console copy
+grepr job:create templates/default-job.json
+```
+
+### Use environment variables to configure the CLI [#environment-variables]
+
+Instead of using a file, you can pass configuration values to the CLI using environment variables. This is useful for non-interactive tasks, such as deployment workflows, scripts, and coding assistant sessions, or when you want configuration settings to be read from the calling environment.
+
+The following environment variables configure authentication and connection settings:
+
+| Environment variable | Description |
+| :------------------- | :---------- |
+| `GREPR_ORG_NAME` | Your Grepr organization name. |
+| `GREPR_API_BASE_URL` | The Grepr API base URL. If this value is not set, the CLI uses `https://<orgName>.app.grepr.ai/api`. |
+| `GREPR_AUTH_BASE_URL` | The authentication base URL. If this value is not set, the CLI uses `https://auth.grepr.ai`. |
+| `GREPR_AUTH_METHOD` | The authentication method. Supported values are `oauth` and `client-credentials`. |
+| `GREPR_CLIENT_ID` | The OAuth 2.0 client ID. |
+| `GREPR_CLIENT_SECRET` | The client secret for client credentials authentication. |
+
+To run a non-interactive CLI command with client credentials authentication, set these environment variables before you run the command:
+
+```console copy
+export GREPR_ORG_NAME=<your-org-name>
+export GREPR_AUTH_METHOD=client-credentials
+export GREPR_AUTH_BASE_URL=https://auth.grepr.ai
+export GREPR_CLIENT_ID=<your-client-id>
+export GREPR_CLIENT_SECRET=<your-client-secret>
+
+grepr job:list
+```
+
+The CLI resolves each configuration value in the following order:
+
+1. Explicit command-line options, such as `--org-name` or `--client-id`.
+1. Environment variables.
+1. A saved configuration provided with `--conf`, or the default saved configuration.
+1. Built-in defaults.
+
+If you set `GREPR_CLIENT_SECRET` but don't set `GREPR_AUTH_METHOD` or `--auth-method`, the CLI uses the `GREPR_CLIENT_SECRET` value to authenticate using an OAuth client credentials flow. If you do not provide a client secret or authentication method, the CLI uses browser-based OAuth authentication.
+
+## Authenticate to the Grepr CLI
+
+You authenticate to the CLI using the login credentials for your Grepr organization. When you run your first CLI command or if your authentication token has expired, you're redirected to a login form to sign in. After signing in with your Grepr credentials, you can return to the command line and wait for your command to complete.
+
+To authenticate from non-interactive sessions, see [Use environment variables to configure the CLI](#environment-variables).
+
+## Grepr jobs, pipelines, and queries
+
+All processing in Grepr is done by Grepr _jobs_. The Grepr platform supports different job types, including Grepr pipelines, queries, and batch jobs. Pipelines are used for continuous data processing, such as processing logs before forwarding them to your observability vendor. Queries are used for ad-hoc retrieval of data from the Grepr data lake. While a pipeline is a streaming job that continuously processes data arriving from sources, a batch job receives a bounded set of data, processes that data, and then completes. The Grepr CLI includes the following commands to access jobs:
+
+- The `job` command to create and manage Grepr jobs, including pipelines.
+- The `query` command to run ad-hoc queries against the Grepr data lake.
+- The `backfill` command to create a batch job that forwards raw logs from the Grepr data lake to your observability vendors. See [Backfill logs from the data lake to your vendors](#backfill).
+
+Examples of these commands are included below.
+
+To learn more about Grepr jobs, see [The Grepr processing and data models](/grepr-platform/grepr-model).
+
+## Choose how to run CLI commands
+
+To run CLI commands, you can:
+
+- Run the commands directly, passing in the required and optional arguments. See the [CLI command reference](#command-reference).
+- Run the commands by providing natural language descriptions of your tasks to the Claude Code or Codex coding assistants. See [Run CLI commands with AI coding assistants](#agent-plugins).
+
+## Run CLI commands with AI coding assistants [#agent-plugins]
+
+<Callout>
+  This is a publicly available early release of the coding assistant plugins, and is provided for testing and feedback. Features might be modified based on further testing, and additional features might be added. Grepr recommends carefully reviewing the results generated by the plugin skills before applying any changes to your production jobs. To report an issue or request a feature, see [github.com/grepr/cli/issues](https://github.com/grepr/cli/issues).
+</Callout>
+
+The Grepr plugins for agentic coding assistants let you describe your tasks in natural language and have an agent run CLI commands to complete them. These plugins enable you to run CLI commands to manage your Grepr pipelines, datasets, integrations, and queries without needing to remember command syntax or consult the help output or documentation. Grepr provides agent plugins for Anthropic's [Claude Code](https://claude.com/claude-code) and OpenAI's [Codex](https://openai.com/codex/).
+
+Each plugin installs a set of _skills_. A skill packages the knowledge an agent needs to complete a specific Grepr task, such as building a Grok parser, querying log data, or debugging log reduction. When you make a request, the agent selects the appropriate skill, runs the corresponding CLI commands, and explains the results.
+
+### Requirements for the coding assistant plugins [#agent-requirements]
+
+To install the plugins, you must have a subscription and access to the CLI, IDE, or desktop app for Claude Code or Codex.
+
+### Install the Claude Code plugin [#install-claude-code]
+
+To install the Claude Code plugin, run the following commands in Claude Code:
+
+```console copy
+/plugin marketplace add grepr/cli
+/plugin install grepr@grepr-cli
+```
+
+### Install the Codex plugin [#install-codex]
+
+To install the Codex plugin, run the following commands:
+
+```console copy
+codex plugin marketplace add grepr/cli --ref main
+codex plugin add grepr@grepr-cli
+```
+
+### Skills included with the coding assistant plugins [#agent-skills]
+
+The plugins install skills that support three types of functionality: running CLI commands to manage resources and retrieve data, guiding multi-step pipeline workflows, and referencing required information about Grepr so an agent can perform a task.
+
+The following skills run CLI commands to manage resources and retrieve data:
+
+- `cli`: Dispatches your request to the appropriate skill based on your intent.
+- `job-commands`: Lists, views, creates, updates, and deletes jobs and pipelines.
+- `dataset-commands`: Manages data lake datasets.
+- `integration-commands`: Views vendor and storage integrations.
+- `docs-commands`: Searches the Grepr documentation.
+- `query-logs`: Queries data from datasets with filters and time ranges.
+- `backfill-logs`: Creates a manual backfill job that forwards raw logs from the Grepr data lake to your observability vendors. See [Backfill logs from the data lake to your vendors](#backfill).
+
+The following skills guide multi-step pipeline workflows. Before changing a pipeline, these skills validate the change with a plan, a readable diff, and a draft run against your data, and apply the change only after you approve it:
+
+- `build-pipeline`: Builds a pipeline end-to-end, from requirements to production.
+- `describe-pipeline`: Summarizes the structure of a pipeline, including its sources, transforms, sinks, filters, Grok parsers, and reducer settings.
+- `debug-pipeline`: Troubleshoots pipelines that aren't producing the expected output.
+- `build-grok`: Authors and tests Grok patterns iteratively.
+- `build-sql-transform`: Authors a SQL transform that reshapes, enriches, masks, or aggregates the logs flowing through a pipeline.
+- `change-source`: Adds, removes, or replaces a pipeline input source.
+- `change-sink`: Adds, removes, or replaces a pipeline destination, or changes the dataset where a pipeline stores raw logs.
+- `change-filtering`: Sets, modifies, or clears the filters that drop unwanted logs from a pipeline.
+- `change-exceptions`: Adds or narrows the reducer exceptions that keep important logs, such as errors, out of aggregation.
+- `tune-grok`: Diagnoses and fixes Grok parsing when log messages aren't parsed into structured attributes.
+- `tune-reduction`: Diagnoses and fixes poor log reduction when too many logs reach your sinks.
+- `test-pipeline-change`: Validates a proposed pipeline change before it's applied. The pipeline editing skills use this skill automatically, so you don't typically invoke it directly.
+
+The following reference skills provide the agent with knowledge about Grepr. The agent consults them as needed, so you don't typically invoke them directly:
+
+- `grepr-model`: Provides core Grepr concepts, such as events, jobs, and job graphs, without a documentation lookup.
+- `job-graph-patterns`: Provides common job graph patterns with examples.
+- `operations-reference`: Provides a reference for the available Grepr sources, transforms, and sinks.
+
+### Use the skills [#use-skills]
+
+After you install a plugin, you can start a Claude Code or Codex session, and then use natural language to ask the agent to perform Grepr tasks. The agent selects the appropriate skill, runs the CLI commands, and explains the results. For example:
+
+- List my running Grepr pipelines.
+- Build a Grok rule that parses NGINX access logs from my `web-api` service.
+- Debug why my `web-api` pipeline isn't producing output.
+- Query the last hour of error logs from the `production-logs` dataset.
+- Backfill yesterday's `payments` service logs from the data lake to Datadog.
+- Drop the health check logs from my `web-api` pipeline.
+- Find out why reduction on my `checkout` pipeline is so low and fix it.
+
+For a simple request, the agent runs a single CLI command and summarizes the output. The following example shows a Claude Code session where the agent selects the `job-commands` skill, runs the `job:list` command, and summarizes the results:
+
+```text
+> List my running Grepr pipelines
+
+● I'll list your running pipelines.
+
+● grepr job:list --state RUNNING
+
+  +------------+-------------------+----------+---------+
+  | id         | name              | type     | state   |
+  +------------+-------------------+----------+---------+
+  | <job-id>   | web-api-pipeline  | PIPELINE | RUNNING |
+  | <job-id>   | checkout-pipeline | PIPELINE | RUNNING |
+  +------------+-------------------+----------+---------+
+
+● You have two running pipelines: web-api-pipeline and checkout-pipeline.
+```
+
+For a request that requires more steps, the agent runs a command for each step and might ask you follow-up questions. In the following session, the agent looks up the dataset ID, builds the query command with the correct time range and filter, and interprets the results:
+
+```text
+> Query the last hour of error logs from the production-logs dataset
+
+● I'll look up the dataset and query the last hour of error logs.
+
+● grepr dataset:list
+
+● grepr query --dataset-id <dataset-id> --query "level:ERROR" \
+    --start 2026-07-10T14:00:00Z --end 2026-07-10T15:00:00Z --limit 100
+
+● I found 42 error logs in the last hour. Most are connection timeouts
+  from the checkout service. Do you want me to group the errors by
+  service?
+```
+
+### Invoke a skill by name [#invoke-skills]
+
+Instead of describing your task and letting the agent choose a skill, you can invoke a skill by name to start its workflow directly. The prefix you use depends on your agent:
+
+- In a Claude Code session, use a forward slash with the plugin name. For example, `/grepr:build-grok`.
+- In a Codex session, use a dollar sign with the plugin name. For example, `$grepr:build-grok`.
+
+You can invoke a skill by name on its own or follow the skill name with a description of your task:
+
+- When you invoke a skill on its own, such as `/grepr:build-grok`, the agent starts the skill's workflow and asks you for the information the skill needs, such as the pipeline to work on or the log messages to parse.
+- When you follow the skill name with a task description, such as `/grepr:build-grok Parse the NGINX access logs from my web-api service`, the agent starts the skill's workflow using your description and asks you only for missing information.
+
+In both cases, you're starting an interactive session with the agent. The agent asks follow-up questions when it needs input from you, shows you its results, and asks for your approval before applying any changes to your pipelines.
+
+### Update an agent plugin [#update-plugins]
+
+To update the Claude Code plugin, run the following commands in a Claude Code session:
+
+```console copy
+/plugin marketplace update grepr-cli
+/plugin install grepr@grepr-cli
+```
+
+To update the Codex plugin, run the following commands in a Codex session:
+
+```console copy
+codex plugin marketplace upgrade grepr-cli
+codex plugin add grepr@grepr-cli
+```
+
+## CLI command reference [#command-reference]
+
+### CLI global options
+
+The following options are available when you run any CLI command:
+
+```console
+--conf <name>            Specify a saved configuration to use for this command.
+--org-name <name>        Your organization name. This argument is required if you are not using a saved configuration.
+--api-base-url <url>     API server base URL. The default is https://<orgName>.app.grepr.ai/api.
+--auth-base-url <url>    Identity provider base URL. The default is https://auth.grepr.ai.
+--client-id <id>         OAuth 2.0 Client ID. The default is the web client ID.
+--timezone <tz>          Timezone for timestamp formatting. The default is the system timezone.
+-o, --output <file>      Output results to a file instead of stdout.
+-d, --debug              Enable debug output.
+-q, --quiet              Suppress non-essential output.
+```
+
+### CLI command help
+
+To display the help for a specific command, use the `--help` option with the command:
+
+```console copy
+grepr <command> --help
+```
+
+For example:
+```console copy
+grepr job:create --help
+
+Usage: grepr job:create [options] <job-file>
+
+Create a new job from file
+
+Options:
+  -f, --format <format>      Output format (table, csv, pretty, raw, compact) (default: "table")
+  -s, --sort <column:order>  Sort table by column (e.g., "eventTimestamp:asc") (default: "eventTimestamp:asc")
+  --max-depth <number>       Maximum object nesting depth for table columns (default: 1)
+  --max-lines <number>       Maximum lines per table cell (default: 4)
+  --no-color                 Disable colored output
+  --no-timestamps            Hide timestamps
+  --no-job-state             Hide job state messages
+  -h, --help                 display help for command
+```
+
+## Output formats
+
+By default, the Grepr CLI outputs results in a formatted table, but you can choose other output formats with the `--format` option. The following output formats are supported:
+
+### Table format (default)
+
+Displays results in a formatted table with:
+- Column wrapping (80 characters max).
+- Pretty-printed JSON in cells.
+- Configurable sorting.
+- Proper alignment.
+
+```console
++----------+------------------------+------------------+
+| id       | eventTimestamp         | message          |
++----------+------------------------+------------------+
+| abc123   | 10/19/2025, 6:00:00 PM | Error occurred   |
+| def456   | 10/19/2025, 6:01:00 PM | Request          |
+|          |                        | completed        |
++----------+------------------------+------------------+
+```
+
+### Pretty format
+
+Syntax-highlighted and correctly indented JSON:
+
+```json
+{
+  "id": "abc123",
+  "eventTimestamp": "2025-10-19T18:00:00Z",
+  "tags": {
+    "service": "web-api",
+    "environment": "prod"
+  }
+}
+```
+
+### Raw format
+
+Single line JSON, no syntax highlighting:
+
+```json
+{"id":"abc123","eventTimestamp":"2025-10-19T18:00:00Z"}
+{"id":"def456","eventTimestamp":"2025-10-19T18:01:00Z"}
+```
+
+### CSV format
+
+Comma-separated values with proper escaping:
+
+```csv
+id,eventTimestamp,message,tags
+abc123,"10/19/2025, 6:00:00 PM","Error occurred","{""service"":[""web-api""]}"
+def456,"10/19/2025, 6:01:00 PM","Request completed","{""service"":[""web-api""]}"
+```
+
+The CSV format is useful for data analysis tasks, importing events into spreadsheets, and data pipelines. Complex JSON data is transformed by properly escaping nested objects and arrays.
+
+### Compact format
+
+Single-line JSON without indentation:
+
+```json
+{"id":"abc123","eventTimestamp":"2025-10-19T18:00:00Z","message":"Error"}
+```
+
+### Supported commands
+
+The Grepr CLI includes commands to:
+
+- Configure CLI settings and preferences: `config:save`, `config:delete`, `config:list`, `config:show`, `config:default`.
+- Create and manage Grepr jobs: `job:create`, `job:list`, `job:get`, `job:update`, `job:delete`.
+- Plan, validate, and apply changes to an existing pipeline: `job:plan`, `job:draft`, `job:apply`.
+- Apply transformations to a job configuration to create a new configuration for testing: `job:to-test`.
+- Run queries against data in the Grepr data lake: `query`.
+- Forward raw logs from the Grepr data lake to your observability vendors: `backfill`.
+- Manage vendor and storage integrations: `integration:list`, `integration:get`.
+- Manage datasets for log storage and querying: `dataset:create`, `dataset:list`, `dataset:get`, `dataset:update`, `dataset:delete`.
+- Search and retrieve Grepr documentation: `docs:search`, `docs:get`.
+- Test Grok rules: `grok:parse`.
+
+The following sections contain examples demonstrating how to use these commands. Most of these examples assume you have already saved a default configuration. If you haven't saved a default configuration, include the `--conf` option to specify a saved configuration when you run CLI commands. To learn how to create a default configuration, see [Configure the Grepr CLI](#cli-configuration).
+
+## Examples: Configure the CLI
+
+```console copy
+# Save a configuration named "dev" and set it as the default
+grepr config:save dev --org-name myorgdev --default
+```
+
+```console copy
+# List saved configurations
+grepr config:list
+```
+
+```console copy
+# Show the settings for the saved "dev" configuration
+grepr config:show dev
+```
+
+```console copy
+# Delete the saved "dev" configuration
+grepr config:delete dev
+```
+
+```console copy
+# Set "prod" as the default configuration
+grepr config:default prod
+```
+
+## Examples: Integration commands
+
+### List integrations
+
+```console copy
+# List information for all integrations, including names, identifiers, type, and any jobs using the integration
+grepr integration:list
+```
+
+```console copy
+# List information for all integrations and output the results as CSV records
+grepr integration:list --format csv
+```
+
+```console copy
+# List information for all integrations and output the results as JSON
+grepr integration:list --format pretty
+```
+
+### Get an integration
+
+```console copy
+# Get an integration by ID
+grepr integration:get <integration-id>
+```
+
+```console copy
+# Get an integration and save it to a file
+grepr integration:get <integration-id> -o datadog-integration.json
+```
+
+Replace `<integration-id>` with the unique identifier for the integration to retrieve. You can find the integration ID in the output of the `integration:list` command.
+
+## Examples: Dataset commands
+
+### List datasets
+
+<Callout>
+  You can use the `datasets` alias instead of `dataset:list` with the dataset commands. For example, `grepr datasets` instead of `grepr dataset:list`.
+</Callout>
+
+```console copy
+# List all datasets
+grepr dataset:list
+```
+
+```console copy
+# List all datasets and output the results in a table
+grepr dataset:list --format table --sort "name:asc"
+```
+
+```console copy
+# List the results as raw JSON
+grepr dataset:list --format raw
+```
+
+### Get a dataset
+
+```console copy
+# Get a dataset by ID
+grepr dataset:get <dataset-id>
+```
+
+```console copy
+# Get a dataset and save it to a file
+grepr dataset:get <dataset-id> -o app-logs-dataset.json
+```
+
+Replace `<dataset-id>` with the unique identifier for the dataset to retrieve. You can find the dataset ID in the output of the `dataset:list` command.
+
+### Create a dataset
+
+To create a dataset, pass a file containing the dataset definition to the `dataset:create` command. Dataset definitions are JSON files that specify the required and optional fields for creating a new Grepr dataset. See the **Payload** example in the [Create a new dataset API specification](/apis/api-spec#tag/Datasets/operation/createDataset).
+
+```console copy
+# Create a dataset from a file
+grepr dataset:create /path/to/dataset-definition.json
+```
+
+### Update a dataset
+
+```console copy
+# Update a dataset using a dataset definition stored in a file
+grepr dataset:update <dataset-id> /path/to/updated-dataset.json
+```
+
+Replace `<dataset-id>` with the unique identifier for the dataset to retrieve. You can find the dataset ID in the output of the `dataset:list` command.
+
+### Delete a dataset
+
+```console copy
+# The delete dataset command deletes only the metadata associated with the dataset, leaving the data files in place.
+grepr dataset:delete <dataset-id>
+```
+
+## Examples: Run queries
+
+```console copy
+# Run a query over a time range against a dataset specified by its identifier
+grepr query \
+  --dataset-id <dataset-id> \
+  --start 2026-02-26T00:00:00Z \
+  --end 2026-02-26T23:59:00Z \
+  --query "service:web-api AND level:ERROR" \
+  --limit 100
+```
+
+```console copy
+# Run a query over a time range against a dataset specified by its name and output the results as CSV records to a file
+grepr query \
+  --dataset-name "<dataset-name>" \
+  --start 2026-02-26T00:00:00Z \
+  --end 2026-02-26T23:59:00Z \
+  --format csv \
+  --output errors.csv \
+  --query "level:ERROR" \
+  --limit 100
+```
+
+```console copy
+# Run a query using a Datadog-like query syntax sorted in descending order, format results as CSV
+grepr query \
+  --dataset-id <dataset-id> \
+  --query-type datadog-query \
+  --query "host:web-server-01 AND level:ERROR" \
+  --start 2026-02-16T00:00:00Z \
+  --end 2026-02-17T00:00:00Z \
+  --sort-order DESCENDING \
+  --limit 1000 \
+  --format csv \
+  -o query-results.csv
+```
+
+In these examples, replace:
+- `<dataset-id>` with the unique identifier for the dataset to retrieve. You can find the dataset ID in the output of the `dataset:list` command.
+- `<dataset-name>` with the name of the dataset to query. You can find the dataset name in the output of the `dataset:list` command or in Log Explorer.
+
+To learn more about supported query syntaxes, see [Query log data in the Grepr data lake](/queries).
+
+## Examples: Job commands
+
+### List jobs
+
+<Callout>
+  You can use the `jobs` alias instead of `job:list` with the dataset commands. For example, `grepr jobs` instead of `grepr job:list`.
+</Callout>
+
+```console copy
+# List all jobs
+grepr job:list
+```
+
+```console copy
+# List all running jobs
+grepr job:list --state RUNNING
+```
+
+```console copy
+# List jobs from the last 24 hours
+grepr job:list --since PT24H
+```
+
+```console copy
+# List a specific job by name
+grepr job:list --name "error-detection-pipeline"
+```
+
+```console copy
+# List jobs and output as CSV
+grepr job:list --format csv --sort "name:asc"
+```
+
+```console copy
+# List all versions of jobs
+grepr job:list --all-versions
+```
+
+```console copy
+# List batch jobs only
+grepr job:list --processing BATCH
+```
+
+```console copy
+# List jobs with resolved definitions
+grepr job:list --resolved
+```
+
+### Get a job
+
+```console copy
+# Get a job by ID
+grepr job:get <job-id>
+```
+
+```console copy
+# Get a job definition and save it to a file
+grepr job:get <job-id> -o my-job.json
+```
+
+### Create a job
+
+To create a job with the Grepr CLI, you pass a file containing the job definition to the `job:create` command. Job definitions are JSON files that specify all job configuration values, including dependencies, required to create a new Grepr job.
+
+To learn more about job definitions, including examples, see [Create and manage jobs with the Grepr REST API](/apis/job-creation-guide).
+
+The following fields are required when you create a job definition:
+
+- `name`: A name identifying the job.
+- `execution`:
+  - `SYNCHRONOUS` for a job that streams results in real-time to the CLI. The output format is set with the `--format` option.
+  - `ASYNCHRONOUS` for a job that runs in the background. You can monitor these jobs with the `job:list` and `job:get` commands.
+- `processing`: `BATCH` or `STREAMING`.
+- `jobGraph`: the data processing pipeline definition.
+
+The CLI automatically manages the creation of either synchronous or asynchronous jobs based on the `execution` field.
+
+When you run a `query` command or a `job:create` command, the CLI displays the status of the job in real-time. The following table describes the possible job status values:
+
+| Status | Description |
+|----------------|---------------------------------------|
+| `[CONNECTING]` | Establishing connection.              |
+| `[CONNECTED]`  | Connection established.               |
+| `[RUNNING]`    | The job is processing data.           |
+| `[FINISHED]`   | The job completed successfully.       |
+| `[FAILED]`     | The job failed.                       |
+| `[CANCELLED]`  | The job was cancelled.                |
+| `[TIMED_OUT]`  | The job exceeded the time limit.      |
+| `[SCANNED_MAX]`| The job exceeded the data scan limit. |
+
+```console copy
+# Create a job from a definition contained in the input file
+grepr job:create /path/to/job-definition.json
+```
+
+```console copy
+# Create a job and stream the output in table format
+grepr job:create /path/to/sync-job.json --format table
+```
+
+```console copy
+# Create a job and format the output as syntax-highlighted and indented JSON.
+grepr job:create /path/to/job-definition.json --format pretty
+```
+
+### Update a job
+
+```console copy
+# Update a job definition from the definition contained in the input file
+grepr job:update <job-id> /path/to/updated-job.json
+```
+
+```console copy
+# Update a job definition with rollback enabled
+grepr job:update <job-id> /path/to/updated-job.json --rollback-enabled
+```
+
+### Delete a job
+
+```console copy
+grepr job:delete <job-id>
+```
+
+## Preview and validate pipeline changes before applying them to production [#job-edit-workflow]
+
+You can use CLI commands to edit an existing pipeline with a workflow that lets you preview and validate your changes before they reach production. This workflow uses three commands:
+
+- `job:plan` builds a plan with the original pipeline and a proposed set of changes. The plan shows the current pipeline, the proposed pipeline, and a diff. It does not change the live pipeline.
+- `job:draft` runs either a plan or an existing pipeline in draft mode so you can validate your changes against your data before you apply them. When you run an existing pipeline in draft mode, the pipeline runs with its existing job definition and no changes applied. A draft run does not update the live pipeline.
+- `job:apply` deploys the plan to the live pipeline. Before deploying, it checks that the pipeline hasn't changed since the plan was created.
+
+The Grepr agent plugins use these commands to edit pipelines on your behalf. To learn more about the agent plugins, see [Run CLI commands with AI coding assistants](#agent-plugins).
+
+To run the commands directly, see the following sections.
+
+### Describe your changes in a patch file [#job-patch-file]
+
+The changes you want to make to a pipeline are defined in a JSON document stored in a patch file. The JSON in the patch file contains an `operations` array, where each array entry has an `op` field that identifies the change, along with the fields that change requires. The operations are applied in the order they're listed.
+
+For example, the following patch file adds `service` as a group-by attribute to the pipeline's reducer:
+
+```json
+{
+  "operations": [
+    { "op": "add-group-by", "attributePath": "service" }
+  ]
+}
+```
+
+The available operations support adding, removing, and updating pipeline elements such as parsers, Grok rules, reducer group-by attributes, aggregation strategies, reducer exceptions, message attributes, filters, sources, and sinks.
+
+### Build a plan [#job-plan]
+
+To build a plan, pass the ID of the pipeline to edit and a patch file to the `job:plan` command. By default, the command prints the plan as JSON. Use the `--output` option to write the plan to a file that you can pass to `job:draft` and `job:apply`:
+
+```console copy
+# Build a plan from changes in a patch file and write the plan to a new file
+grepr job:plan --job-id <job-id> --patch changes.json -o plan.json
+```
+
+To preview your changes as a readable diff without writing a plan, use the `--dry-run` option:
+
+```console copy
+# Preview the changes as a diff without writing a plan
+grepr job:plan --job-id <job-id> --patch changes.json --dry-run
+```
+
+Replace `<job-id>` with the unique identifier of the pipeline to edit. You can find the job ID in the output of the `job:list` command.
+
+### Validate a plan with a draft run [#job-draft]
+
+To validate a plan before you apply it, pass the plan file to the `job:draft` command. A draft run processes your data through the proposed pipeline and streams the results as newline-delimited JSON, without updating the live pipeline. Use the `--output` option to write the streamed results to a file:
+
+```console copy
+# Do a draft run of the proposed changes and write the output to a file
+grepr job:draft plan.json -o draft-output.json
+```
+
+To run a draft of a live pipeline without any changes, pass the `--job-id` option instead of a plan file:
+
+```console copy
+# Do a draft run of the live pipeline without any changes
+grepr job:draft --job-id <job-id>
+```
+
+The `job:draft` command supports additional options for tuning a draft run, such as limiting how long the run continues. To see the available options, run `grepr job:draft --help`.
+
+### Apply a plan [#job-apply]
+
+To apply a plan to the live pipeline, pass the plan file to the `job:apply` command:
+
+```console copy
+# Apply a plan to the live pipeline
+grepr job:apply plan.json
+```
+
+Before applying your changes, `job:apply` checks whether the pipeline changed since you created the plan. If the pipeline changed, the command stops without applying so that you don't unintentionally overwrite changes. Re-run `job:plan` to create a new plan, or pass the `--force` option to ignore the changes and apply the plan:
+
+```console copy
+# Apply a plan even if the pipeline changed since the plan was created
+grepr job:apply plan.json --force
+```
+
+## Backfill logs from the data lake to your vendors [#backfill]
+
+You can use the `backfill` command to forward raw logs stored in the Grepr data lake to one or more of your observability vendors. Backfilling is useful when logs are missing from a vendor, such as after a sink outage, or when you want to send the full-fidelity logs for an incident time window to a vendor for investigation.
+
+The `backfill` command creates an asynchronous batch job that reads raw logs from a data lake dataset, filters the logs to the time range and query you specify, and sends the matching logs to each destination. The command supports Datadog, Splunk, New Relic, Sumo Logic, and OpenTelemetry log destinations.
+
+To prevent duplicate logs in your observability platform, Grepr tracks which logs have already been delivered and skips sending them again. This lets you safely run a backfill for the same time range as a previous backfill without duplicating data.
+
+### Vendor ingestion time limits [#backfill-time-limits]
+
+Some vendors don't accept logs with timestamps older than a fixed ingestion window:
+
+| Vendor | Ingestion window |
+| :----- | :--------------- |
+| Datadog | 18 hours |
+| New Relic | 48 hours |
+
+If your backfill time range starts earlier than a destination vendor's ingestion window, the command skips that destination and prints a warning. If every destination is skipped, the command stops without creating a job.
+
+### Choose the logs to backfill [#backfill-inputs]
+
+You can specify the dataset containing the raw logs for backfilling in two ways:
+
+- From a pipeline, with the `--job-id` option. The command reads the pipeline definition to find the dataset where the pipeline stores its raw logs and the vendor destinations the pipeline sends logs to.
+- From a dataset, with the `--dataset-id` or `--dataset-name` option. Because a dataset doesn't identify any vendor destinations, you must also provide one or more destination integration IDs with the `--sink-id` option.
+
+Every backfill requires a time range, provided with the `--start` and `--end` options. Timestamps must use the ISO 8601 format and include an explicit timezone, such as `2026-07-09T00:00:00Z`.
+
+### Backfill command options [#backfill-options]
+
+| Option | Description |
+| :----- | :---------- |
+| `--job-id <id>` | The ID of the pipeline to derive the backfill from. You can't combine this option with `--dataset-id`, `--dataset-name`, or `--sink-id`. |
+| `--dataset-id <id>` | The ID of the dataset containing the logs to backfill. You can't combine this option with `--dataset-name`. |
+| `--dataset-name <name>` | The name of the dataset containing the logs to backfill. |
+| `--sink-id <ids...>` | One or more destination integration IDs, separated by spaces. Required when you specify a dataset. You can find integration IDs in the output of the `integration:list` command. |
+| `--start <timestamp>` | The start of the backfill time range, in ISO 8601 format with an explicit timezone. Required. |
+| `--end <timestamp>` | The end of the backfill time range, in ISO 8601 format with an explicit timezone. Required. |
+| `--query <query>` | A query that selects the logs to backfill. By default, the command backfills all logs in the time range. |
+| `--query-type <type>` | The query syntax for the `--query` value. Supported values are `datadog-query` for the Datadog-like syntax and `newrelic-query` for the New Relic log query-like syntax. The default is `datadog-query`. |
+| `--limit <number>` | The maximum number of logs to backfill. The default is `10000`. Set this option to `-1` to backfill all matching logs. |
+| `--tag <key:value...>` | One or more tags to add to every backfilled log, separated by spaces. The tags are visible at the destination vendor. |
+| `--dry-run` | Print the generated job definition without creating the job. |
+
+### Preview a backfill with a dry run [#backfill-dry-run]
+
+To preview the job that a backfill creates without submitting it, use the `--dry-run` option. The command prints the generated job definition, including the resolved dataset and destinations, so you can confirm the backfill reads from and writes to the resources you expect:
+
+```console copy
+# Preview the backfill job without creating it
+grepr backfill \
+  --job-id <job-id> \
+  --start 2026-07-09T20:00:00Z \
+  --end 2026-07-10T08:00:00Z \
+  --dry-run
+```
+
+To write the generated job definition to a file, add the `--output` option.
+
+### Examples: Backfill logs [#backfill-examples]
+
+To backfill a pipeline's raw logs to the pipeline's vendor destinations, pass the pipeline ID and a time range:
+
+```console copy
+# Backfill 12 hours of a pipeline's raw logs to the pipeline's vendor destinations
+grepr backfill \
+  --job-id <job-id> \
+  --start 2026-07-09T20:00:00Z \
+  --end 2026-07-10T08:00:00Z
+```
+
+To backfill logs from a dataset, pass the dataset name and one or more destination integration IDs. The following example backfills only the error logs from one service, adds an incident tag to each backfilled log, and removes the record limit:
+
+```console copy
+# Backfill error logs from a dataset to a vendor destination
+grepr backfill \
+  --dataset-name "<dataset-name>" \
+  --sink-id <integration-id> \
+  --start 2026-07-10T00:00:00Z \
+  --end 2026-07-10T06:00:00Z \
+  --query "service:web-api AND level:ERROR" \
+  --tag incident:<incident-id> \
+  --limit -1
+```
+
+In these examples, replace:
+- `<job-id>` with the unique identifier of the pipeline to backfill from. You can find the job ID in the output of the `job:list` command.
+- `<dataset-name>` with the name of the dataset containing the logs to backfill. You can find the dataset name in the output of the `dataset:list` command.
+- `<integration-id>` with the unique identifier of the destination integration. You can find the integration ID in the output of the `integration:list` command.
+- `<incident-id>` with the value to use for the tag added to each backfilled log.
+
+### Monitor a backfill job and view the results [#backfill-monitor]
+
+When the backfill job is created, the command output includes the job details and two sets of links:
+
+- `greprUrl`: A link to the **Jobs** page in the Grepr UI, filtered to the backfill job. Backfill job names start with `backfill-`.
+- `vendorLinks`: For each destination, a link that opens the vendor's log explorer filtered to the backfilled logs and time range.
+
+To monitor the job from the CLI, pass the job ID from the output to the `job:get` command and check the job state. The job state is `FINISHED` when the backfill completes.
+
+Every backfilled log includes the following values, which you can use to find the logs at the vendor:
+
+- `grepr.backfilled:true`
+- `grepr.backfilled.timestamp:<timestamp>`, where `<timestamp>` is the time the backfill job was created.
+- `processor:grepr`
+- Any tags you added with the `--tag` option.
+
+For Datadog and Splunk destinations, these values are added to each log as tags. For New Relic, Sumo Logic, and OpenTelemetry destinations, they're added as attributes.
+
+## Examples: Test Grok patterns against sample log events [#grok-command-examples]
+
+```console copy
+# Test a simple Grok parsing rule
+grepr grok:parse \
+  --pattern "ParsingRule %{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} %{GREEDYDATA:message}" \
+  --sample "2026-02-17T10:15:30.123Z ERROR Failed to connect to database"
+```
+
+```console copy
+# Test a Grok parsing rule that reads sample access log events, like the following sample, from a file:
+# 172.16.45.123 - - [15/Jan/2025:14:32:15 +0000] "POST /api/v2/logs HTTP/1.1" 202 2
+grepr grok:parse \
+  --pattern "ParsingRule %{IP:client_ip} - - \\[%{HTTPDATE:timestamp}\\] \"%{WORD:method} %{URIPATHPARAM:request} HTTP/%{NUMBER:http_version}\" %{NUMBER:status_code} %{NUMBER:bytes}" \
+  --samples-file access.log
+```
+
+```console copy
+# Test a Grok parsing rule that extracts the value of the `service` attribute from a sample log event
+grepr grok:parse \
+  --pattern "ParsingRule %{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} %{DATA:service} %{GREEDYDATA:message}" \
+  --sample "2026-02-17T10:15:30.123Z WARN auth-service Rate limit exceeded for user" \
+  --extract-attribute service
+```
+
+```console copy
+# Parse with helper rules
+grepr grok:parse \
+  --pattern "ParsingRule %{CUSTOM_TIMESTAMP:timestamp} %{SEVERITY:level} %{GREEDYDATA:message}" \
+  --sample "17-Feb-2026 10:15:30 CRITICAL System overload detected" \
+  --helper-rules "CUSTOM_TIMESTAMP %{MONTHDAY}-%{MONTH}-%{YEAR} %{TIME}" "SEVERITY (CRITICAL|ERROR|WARN|INFO|DEBUG)"
+```
+
+## Examples: Documentation commands
+
+Use the CLI documentation commands to perform semantic searches of the Grepr documentation and retrieve documentation content. The CLI commands allow you to find and read relevant information without leaving the terminal, and can be particularly useful for tasks like working with AI assistants or scripting workflows.
+
+The results returned by a documentation search can include three types of content:
+- **User documentation** (`doc://`): Tutorials, guides, and integration instructions.
+- **API operations** (`api://`): REST endpoint documentation with parameters, request/response schemas, and examples.
+- **Data schemas** (`schema://`): Complete schema definitions for job configurations and API payloads.
+
+For example, searching for "create grok parser" will return both the GrokParser schema definition and the API endpoint for validating Grok rules. This makes it easy to find the exact structure needed for job configurations or API requests.
+
+The typical workflow combines both commands:
+
+1. **Search** to find relevant documentation: `grepr docs:search "topic" -f compact`
+2. **Get** the full content using the URI from results: `grepr docs:get "doc://path/to/file.mdx"`
+
+### Search Documentation
+
+```console copy
+# Basic search
+grepr docs:search "how to create a pipeline"
+grepr docs:search "datadog integration"
+```
+
+```console copy
+# Search with limit
+grepr docs:search "grok patterns" --limit 10
+```
+
+```console copy
+# Restrict search to the REST API
+grepr docs:search "create job" --type api
+```
+
+```console copy
+# Restrict search to the user documentation
+grepr docs:search "log reduction" --type doc
+```
+
+```console copy
+# Restrict search to data schemas
+grepr docs:search "grok parser" --type schema
+```
+
+```console copy
+# Search and output as JSON for scripting
+grepr docs:search "log reduction" -f json
+```
+
+```console copy
+# Output text without color highlighting
+grepr docs:search "grok patterns" --no-color
+```
+
+```console copy
+# Change the number of context tokens per section from the default of 300
+grepr docs:search "flink configuration" -c 200
+```
+
+### Get full documentation
+
+After you find a relevant document with `docs:search`, you can retrieve the full content of the document with the `docs:get` command using the document URI from the search results. The document URI is a unique identifier for each document in the Grepr documentation.
+
+```console copy
+# Get a full document using the URI returned by search
+grepr docs:get "doc://tutorials/first-pipeline/page.mdx"
+```
+
+```console copy
+# Get a full document and pipe it to an AI assistant or other tools
+grepr docs:get "doc://tutorials/first-pipeline/page.mdx" | claude
+```
+
+```console copy
+# Get documentation for an API request
+grepr docs:get "api://api/Jobs/submitSyncJob"
+```
+
+```console copy
+# Get a schema definition
+grepr docs:get "schema://GrokParser"
+```
+
+To save the retrieved documentation to a file, use a shell redirect operator (`>`). The `--output` option is not supported for the `docs:get` command.
+
+```console copy
+# Save documentation locally
+grepr docs:get "doc://integrations/datadog/page.mdx" > datadog-docs.md
+```
+
+## Troubleshooting
+
+### Capture full logs with the `debug` option
+
+If you experience issues when running CLI commands, such as network issues, you can use the `--debug` option to capture the full logging output:
+
+```console copy
+# Enable debug mode for detailed logging
+grepr --conf dev --debug job:create job.json
+```
+
+### Authentication failures
+
+If you experience an authentication issue, you can often resolve it by re-authenticating. To re-authenticate, remove any currently cached tokens so that the next command you run requires authentication:
+
+```console copy
+# Clear cached tokens and re-authenticate
+rm -rf ~/.grepr/auth/
+grepr --conf dev integration:list
+```
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is the Grepr CLI?",
+    a: "The Grepr CLI is a command-line interface that allows you to manage jobs, run queries, and automate Grepr tasks. It supports OAuth 2.0 authentication, multiple configuration profiles, and various output formats."
+  },
+  {
+    q: "How do I install the Grepr CLI?",
+    a: "Install globally from npm with: npm install -g @grepr/cli or yarn global add @grepr/cli. You can also run it directly with: npx @grepr/cli --help"
+  },
+  {
+    q: "What are the CLI requirements?",
+    a: "The Grepr CLI requires Node.js version 20 or later."
+  },
+  {
+    q: "How do I authenticate with the CLI?",
+    a: "The CLI uses OAuth 2.0 and automatically redirects you to a login form on your first command. After you sign in with your Grepr credentials, tokens are cached locally and refreshed automatically."
+  },
+  {
+    q: "How do I clear cached authentication tokens?",
+    a: "Run: rm -rf ~/.grepr/auth/ to remove cached tokens. The next CLI command will require you to re-authenticate."
+  },
+  {
+    q: "What output formats does the CLI support?",
+    a: "The CLI supports table (default), pretty (JSON with colors), raw (newline-delimited JSON), CSV, and compact (single-line JSON) output formats."
+  },
+  {
+    q: "How do I save a CLI configuration?",
+    a: "Use: grepr --org-name myorg config:save myconfig. Optionally add --default to set it as the default configuration for future commands."
+  },
+  {
+    q: "Can I search Grepr documentation from the CLI?",
+    a: "Yes, use grepr docs:search \"topic\" to search Grepr documentation. Results include user docs, API operations, and data schemas. Retrieve full content with grepr docs:get \"uri\"."
+  },
+  {
+    q: "How do I run a query with the CLI?",
+    a: "Use: grepr query --dataset-name \"dataset\" --query \"level:ERROR\" --start \"2024-01-01T00:00:00Z\" --end \"2024-01-02T00:00:00Z\""
+  },
+  {
+    q: "What CLI commands are available?",
+    a: "The CLI supports job management (job:create, job:list, job:get, job:update, job:delete), pipeline editing (job:plan, job:draft, job:apply), queries, logs backfill (backfill), integration management, dataset management, configuration commands, and documentation search/retrieval."
+  },
+  {
+    q: "How do I backfill logs to my observability vendor?",
+    a: "Use the grepr backfill command with a time range. Pass --job-id to backfill a pipeline's raw logs to the pipeline's vendor destinations, or pass --dataset-id or --dataset-name plus one or more --sink-id values to backfill from a dataset to specific destinations."
+  },
+  {
+    q: "Will backfilling logs create duplicates at my vendor?",
+    a: "No. Grepr tracks which logs have already been delivered to each vendor, and a backfill job automatically skips logs that a destination already received. You can safely re-run a backfill for the same time range."
+  },
+  {
+    q: "Which vendors does the backfill command support?",
+    a: "The backfill command supports Datadog, Splunk, New Relic, Sumo Logic, and OpenTelemetry log destinations. Datadog accepts logs up to 18 hours old and New Relic up to 48 hours old; destinations outside their ingestion window are skipped with a warning."
+  },
+  {
+    q: "How do I find backfilled logs at my vendor?",
+    a: "Every backfilled log includes grepr.backfilled:true, grepr.backfilled.timestamp, and processor:grepr, plus any tags you added with --tag. The backfill command output also includes vendorLinks that open each vendor's log explorer filtered to the backfilled logs."
+  },
+  {
+    q: "How do I invoke a Grepr agent skill directly?",
+    a: "In Claude Code, type a forward slash with the plugin name, such as /grepr:build-grok. In Codex, use a dollar sign, such as $grepr:build-grok. You can invoke the skill on its own and answer the agent's questions, or follow the skill name with a description of your task."
+  },
+  {
+    q: "How do I edit an existing pipeline from the CLI?",
+    a: "Use the plan, draft, and apply workflow. Run job:plan with the job ID and a patch file to build a plan of your changes, run job:draft to validate the plan against your data without affecting the live pipeline, and run job:apply to apply the plan to the live pipeline."
+  },
+  {
+    q: "What is a patch file in the Grepr CLI?",
+    a: "A patch file is a JSON file you pass to job:plan that describes the changes to make to a pipeline. It contains an operations array where each entry has an op field that identifies the change along with the fields that change requires. Operations are applied in the order they are listed."
+  },
+  {
+    q: "How do I preview pipeline changes before applying them?",
+    a: "Run job:plan with the --dry-run option to see a readable diff of your changes without writing a plan, or run job:draft on a plan to process your data through the proposed pipeline and stream the results without updating the live pipeline."
+  },
+  {
+    q: "What happens if a pipeline changes after I create a plan?",
+    a: "Before applying a plan, job:apply checks whether the pipeline changed since you created the plan. If it changed, the command stops without applying so you do not unintentionally overwrite changes. Re-run job:plan to create a new plan, or pass --force to apply the plan anyway."
+  },
+  {
+    q: "What are the Grepr agent plugins?",
+    a: "The Grepr agent plugins let AI coding agents such as Claude Code and Codex drive the Grepr CLI for you. You describe a task in natural language, and the agent selects the right skill, runs the CLI commands, and walks you through the results. The plugins are packaged with the Grepr CLI."
+  },
+  {
+    q: "Which AI coding agents does Grepr support?",
+    a: "Grepr provides agent plugins for Claude Code and Codex. You can use the plugins with each agent's CLI, IDE extension, or app."
+  },
+  {
+    q: "How do I install the Grepr Claude Code plugin?",
+    a: "In Claude Code, run /plugin marketplace add grepr/cli and then /plugin install grepr@grepr-cli. You must have the Grepr CLI installed and configured first."
+  },
+  {
+    q: "How do I install the Grepr Codex plugin?",
+    a: "Run codex plugin marketplace add grepr/cli --ref main and then codex plugin add grepr@grepr-cli. You must have the Grepr CLI installed and configured first."
+  }
+]} />

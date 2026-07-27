@@ -1,0 +1,111 @@
+---
+description: Learn about administrative functions in the Grepr platform, including user interfaces providing full management of users, teams, and roles.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Grepr administration
+
+The Grepr platform includes administrative functions to:
+
+- Manage users, teams, and roles. You can add users, organize users into teams, assign roles, and control access to resources across the organization. These functions are accessible through the user-friendly Grepr UI and the REST API.
+- Create and manage service accounts for programmatic access to the Grepr API. Service accounts are identities that can be used to authenticate to Grepr resources without relying on user credentials.
+- Monitor, audit, and troubleshoot your Grepr environment with system logs. You can use system logs to track user activity, resource usage, and system performance.
+
+The platform also supports infrastructure as code (IaC) workflows for pipeline deployment and management using Terraform, and securely forwarding observability data to Grepr over private AWS networking with AWS PrivateLink.
+
+## Manage users
+
+You can use the **Users** pane in the Grepr user management UI to manage users in your organization. You can view users, view and edit their roles, remove users, and invite new users.
+
+In the **Users** pane, you can also manage the roles assigned to each user.
+
+See [Manage users in the Grepr platform](/admin/manage-users).
+
+## Manage teams
+
+The **Teams** pane in the Grepr user management UI lets you create and manage teams in your organization and assign users as team members or team leaders. You can also use teams to manage access to jobs, integrations, templates, and datasets.
+
+See [Manage teams in the Grepr platform](/admin/manage-teams).
+
+## Manage SSO claim mappings
+
+The **SSO Claim Mappings** pane in the Grepr user management UI lets you create and manage SSO claim mappings for your organization. With SSO claim mappings, you can automatically assign organization roles and team memberships to users when they sign in through your identity provider (IdP).
+
+See [Manage SSO claim mappings in the Grepr platform](/admin/manage-claim-mappings).
+
+## Manage service accounts
+
+The **Service Accounts** pane in the Grepr developer settings UI lets you create service accounts for programmatic access to the Grepr API, assign roles to them, and manage their credentials.
+
+See [Manage Grepr service accounts](/admin/service-accounts).
+
+## Manage Grepr pipelines with Terraform
+
+The Grepr Terraform provider enables infrastructure as code management of Grepr pipelines. With the Terraform provider, you can:
+
+- Define pipelines as code in your version control system.
+- Automate pipeline deployment as part of your CI/CD workflows.
+- Manage multiple environments, such as development, staging, and production, with consistent configurations.
+- Track changes to pipeline configurations over time.
+
+See [Manage Grepr pipelines with Terraform](/admin/terraform-provider).
+
+## Monitor system activity in your Grepr environment
+
+The **System Logs** page in the Grepr UI lets you monitor and audit activity in your Grepr environment. You can view the activity information captured for Grepr resources, including jobs, integrations, datasets, and your organization. You can also audit user activity in your Grepr environment.
+
+See [View and search system activity in Grepr](/admin/activity-logs).
+
+## Connect to Grepr with AWS PrivateLink
+
+You can use Grepr's AWS PrivateLink endpoint service to send observability data to Grepr over private AWS networking instead of the public internet. With the PrivateLink endpoint service, your data stays on the AWS private network and never traverses the public internet, reduces the networking resources required to send data to Grepr from your AWS environment, and can reduce data transfer costs compared to routing ingest traffic over the public internet. See [Securely forward observability data to Grepr with AWS PrivateLink](/admin/private-link).
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What is the difference between organization-level roles and team roles in Grepr?",
+      a: "Organization-level roles like Admin, Member, and Reader control global access to Grepr features. Team roles (Leader/Member) are scoped to specific teams and allow for more granular access control. A user can be a team Leader without being an organization-level Admin."
+    },
+    {
+      q: "How do I invite users to my Grepr organization?",
+      a: "In the Users pane of the user management UI, click 'Invite new users' and enter email addresses. You can optionally assign roles and team assignments to invited users before sending the invitation. Users receive an email invitation they must respond to join the organization."
+    },
+    {
+      q: "Can I manage users and teams through the REST API?",
+      a: "Yes, Grepr provides REST APIs for complete user and team management. You can use the Users API and Roles API endpoints documented in the OpenAPI specification to programmatically manage users, roles, and team memberships."
+    },
+    {
+      q: "What permissions do I need to access the user management UI?",
+      a: "You must have the view:users permission to access the user management UI. This permission is automatically granted to organization Admins and team Leaders."
+    },
+    {
+      q: "How do custom roles work in Grepr?",
+      a: "Custom roles allow you to define specific permissions for different resources (jobs, integrations, datasets, etc.). You can select which resources a custom role has access to and what permissions it grants (view, edit, create, delete, or all)."
+    },
+    {
+      q: "Can a user be assigned to multiple teams?",
+      a: "Yes, a user can be assigned to multiple teams with different roles in each team. For example, a user can be a Leader in one team and a Member in another team simultaneously."
+    },
+    {
+      q: "What happens when I remove a user from my organization?",
+      a: "When you remove a user, they are deleted from your organization and all their access is revoked immediately. They lose access to all organization-level resources and all team-scoped resources."
+    },
+    {
+      q: "How do I ensure proper access control when assigning users to teams?",
+      a: "Follow the principle of least privilege by granting users only the access they need. Use team membership to scope access to specific resources, and use custom roles for fine-grained permission control when the built-in Admin, Member, and Reader roles don't meet your requirements."
+    },
+    {
+      q: "What is the difference between editing a user and editing a custom role?",
+      a: "Editing a user allows you to update their name, email, and assign or change their organization-level roles and team memberships. Editing a custom role changes the permissions it grants, which affects all users assigned to that role."
+    },
+    {
+      q: "Can team Leaders manage team membership without being organization Admins?",
+      a: "Yes, team Leaders have the ability to manage team membership, including adding and removing members, without needing organization-level Admin privileges. This allows for delegation of team management responsibilities."
+    },
+    {
+      q: "How do I manage Grepr deployments and pipelines using IaS or Infrastructure as Code?",
+      a: "Grepr has an open-source Terraform provider that you can use to manage pipelines via git workflows and using infrastructure-as-code."
+    }
+  ]}
+/>

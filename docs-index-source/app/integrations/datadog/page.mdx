@@ -1,0 +1,380 @@
+---
+description: Learn how to use a Datadog integration to ingest logs and traces into a Grepr pipeline for processing before forwarding to Datadog.
+vendor: Datadog
+---
+
+import { Callout } from 'nextra/components'
+import AddTeamAccess from '@/app/shared/add-team-access-to-integration.mdx'
+import IngestUrlConfig from '@/app/shared/configure-ingest-url.mdx'
+import IntegrationsInterchangeability from '@/app/shared/integrations-interchangeability.mdx'
+import { Tabs } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Configure Datadog connections with a Grepr integration
+
+The Grepr Datadog integration enables you to ingest telemetry data into Grepr using a Grepr source, process the data with a Grepr pipeline, and then send the processed data to Datadog using a Grepr sink. The Datadog integration supports logs and Application Performance Monitoring (APM) data, including traces and metrics.
+
+You can use the Grepr UI or REST API to create and manage Datadog integrations. This page describes using the UI. To use the REST API, see the [Datadog Integration specification](/apis/api-spec#tag/Datadog-Integration).
+
+To send logs or APM data to a Grepr pipeline for processing, change your collector configuration to send them to a Grepr endpoint URL instead of a Datadog endpoint. The collectors supported by the Datadog integration depend on the type of data:
+
+- Log ingestion is supported from Datadog-compatible collectors, including the Datadog Agent, Fluent Bit, and Fluentd.
+- APM data ingestion is supported from the Datadog Agent with the Datadog Trace Agent enabled. When forwarding processed data to Datadog, the integration supports sending traces or metrics. You can also optionally enable sending APM stats to Datadog. See [_](/pipelines/trace-pipelines#datadog-metrics-stats).
+
+This page includes example configurations for the supported collectors.
+
+You can also send logs or traces from the OpenTelemetry Collector to an OpenTelemetry integration that forwards them to a Datadog OTLP endpoint. See [_](/integrations/open-telemetry).
+
+<Callout>
+  - Although the Grepr Datadog integration supports all Datadog sites, when you use the Datadog `US1` site in the `us-east-1` region, the Grepr SaaS offering uses an AWS PrivateLink connection to Datadog.
+  - <IntegrationsInterchangeability />
+</Callout>
+
+## Requirements [#datadog-requirements]
+
+Creating and configuring a Datadog integration requires the following:
+
+- A Datadog API key for your account. You must use the same API key in both your Grepr integration and collector configuration.
+- (Optional) A Datadog application key for your account. The required authorization scopes depend on which features you want to use:
+
+  | Feature | Required scopes |
+  |---|---|
+  | Selective reduction with automatic exception parsing | `monitors_read`, `dashboards_read`, `logs_read_config` |
+  | Datadog as a [cloud source](/integrations/support-matrix/#supported-observability-integrations) | `logs_read_data` |
+
+  To learn more about exception parsing, see [_](#enable-selective-reduction). To learn more about Datadog keys and scopes, see [API and Application Keys](https://docs.datadoghq.com/account_management/api-app-keys/) and [Authorization Scopes](https://docs.datadoghq.com/api/latest/scopes/).
+
+## Enable selective reduction with a Datadog integration [#enable-selective-reduction]
+
+When you include a Datadog application key in your integration configuration, Grepr automatically tracks all log monitors configured in your Datadog account. By parsing queries used in these monitors and making them available as exceptions to Grepr's log reducer, Grepr can determine which messages should not be processed by the reducer.
+
+The application key must have the required authorization scopes. See [_](#datadog-requirements).
+
+To learn more about viewing parsed queries and determining which should be used as exceptions, see [_](/integrations#passthrough-estimation). To learn more about Grepr log reduction, see [_](/transforms/reducer).
+
+## Use a Datadog integration in a Grepr pipeline [#use-datadog-integration]
+
+Use the following steps to create a Datadog integration in the Grepr UI and use it in a pipeline to source and sink data.
+
+### Step 1: Create a Datadog integration
+
+To create a Datadog integration in the Grepr UI:
+
+1. Go to the **Integrations** page in the Grepr UI and click **Add new** next to **Observability Vendors**.
+
+   ![The Integrations page in the Grepr UI.](/images/tutorials/first-pipeline/integrations-page.png)
+
+1. In the **Add Observability Vendor** dialog:
+   - In the **Type** menu, select **Datadog**.
+   - In the **Name** field, enter a name for the integration.
+   - In the **Site** menu, select the parameter matching your Datadog site.
+   - In the **API Key** field, enter your Datadog API key.
+   - Optional: In the **Application Key** field, enter your Datadog Application key. The application key is required only to import exceptions from Datadog or to use the integration as a cloud source.
+1. Click **Create**.
+
+   ![Add a Datadog integration in the Grepr UI.](/images/integrations/add-datadog-integration-modal.png)
+
+   #### Optional: Grant team access to the integration
+
+   <AddTeamAccess />
+
+### Step 2: Add a source to your pipeline
+
+To add a source to your pipeline that uses the Datadog integration, select the integration when creating the pipeline. For an existing pipeline, go to the pipeline details page, click **Sources** in the left-hand navigation menu, and select the integration.
+
+### Step 3: Configure forwarding to Grepr [#configure-forwarding-to-grepr]
+
+<IngestUrlConfig image_url='/images/integrations/ingestion-url-datadog.png' url='https://<integration-id>-<org-id>.ingest.grepr.ai' />
+
+To see more information and configuration examples, select the tab for your preferred collector:
+
+<Tabs items={['Datadog Agent (logs)', 'Datadog Agent (traces)', 'Datadog Agent (Docker)', 'Fluent Bit', 'Fluentd', 'OpenTelemetry Collector', 'Datadog Forwarder']}>
+  <Tabs.Tab>
+
+    Forwarding logs to Grepr from Datadog agents requires adding or updating settings in the agent configuration. Update the `datadog.yaml` file with the following settings:
+
+    - Set `api_key` to your Datadog API key.
+    - Set `logs_enabled` to `true`.
+    - Set `logs_config.logs_dd_url` to the ingestion URL.
+    - Set `logs_config.force_use_http` to `true`.
+
+    The following example is a snippet from the `datadog.yaml` configuration file for a standalone agent:
+
+    ```yaml copy filename="datadog.yaml"
+    ## @param api_key - string - required
+    api_key: <dd-api-key>
+
+    ## @param logs_enabled - boolean - optional - default: false
+    logs_enabled: true
+
+    ## @param logs_config - custom object - optional
+    logs_config:
+        ## @param logs_dd_url - string - optional
+        logs_dd_url: <ingestion-url>
+
+        ## @param force_use_http - boolean - optional - default: false
+        force_use_http: true
+    ```
+
+    <Callout>
+      The Grepr platform supports only HTTP and HTTPS. TCP is not supported. Setting the `logs_config.force_use_http` and `DD_LOGS_CONFIG_USE_HTTP` settings to `true` enforces HTTP/HTTPS transport for Datadog agents.
+    </Callout>
+
+    To learn more about standalone agent configuration, see [Host Agent Log collection](https://docs.datadoghq.com/agent/logs/).
+
+    To learn more about Datadog support and configuration for agent transport, see [Agent Transport for Logs](https://docs.datadoghq.com/agent/logs/log_transport/?tab=https).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    Forwarding APM data to Grepr requires enabling the Datadog Trace Agent by adding or updating the `apm_config` section in the `datadog.yaml` file:
+
+    - Set `api_key` to your Datadog API key.
+    - Set `apm_config.enabled` to `true`.
+    - Set `apm_config.apm_dd_url` to the ingestion URL.
+
+    ```yaml copy filename="datadog.yaml"
+    ## @param api_key - string - required
+    api_key: <dd-api-key>
+
+    ## @param apm_config - custom object - optional
+    apm_config:
+        ## @param enabled - boolean - optional - default: true
+        enabled: true
+
+        ## @param apm_dd_url - string - optional
+        apm_dd_url: <ingestion-url>
+    ```
+
+    The agent appends the path `/api/v0.2/traces` to the ingestion URL to send trace data, and the path `/api/v0.2/stats` to send APM stats.
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    For Docker deployments, set or pass the following environment variables:
+
+    - Set `DD_LOGS_CONFIG_LOGS_DD_URL` to the ingestion URL.
+    - Set `DD_LOGS_CONFIG_USE_HTTP` to `true`.
+    - Set `DD_LOGS_ENABLED` to `true`.
+    - Set `DD_API_KEY` to your Datadog API key.
+    - Optional: Set `DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL` to `true` to collect logs from all containers.
+    - Optional: To forward trace data to Grepr, set `DD_APM_ENABLED` to `true` and `DD_APM_DD_URL` to the ingestion URL.
+    - Optional: Change the `DD_SITE` argument to match your Datadog site if you're not using `datadoghq.com`.
+    - Optional: To assign a custom name to the agent container, set the name using the `--name` argument.
+
+    The following is an example command line to run a Datadog Docker agent configured to send logs and trace data to Grepr:
+
+    ```bash copy filename="docker run"
+    docker run -d --rm --name <datadog-agent-name> \
+      -e DD_API_KEY=<dd-api-key> \
+      -e DD_SITE="datadoghq.com" \
+      -e DD_LOGS_ENABLED=true \
+      -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
+      -v /var/run/docker.sock:/var/run/docker.sock:ro \
+      -v /proc/:/host/proc/:ro \
+      -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+      -e DD_LOGS_CONFIG_LOGS_DD_URL=<ingestion-url> \
+      -e DD_LOGS_CONFIG_USE_HTTP="true" \
+      -e DD_APM_ENABLED="true" \
+      -e DD_APM_DD_URL=<ingestion-url> \
+      gcr.io/datadoghq/agent:latest
+    ```
+
+    To learn more about configuring Docker and other container agents, see [Container Monitoring](https://docs.datadoghq.com/containers/).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    Fluent Bit can forward logs using the Datadog output plugin. To configure the plugin, set the `Host` value using the ingestion URL from the integration and set the `apikey` value to your Datadog API key. The following is an example `OUTPUT` section from a Fluent Bit configuration file (`fluent-bit.conf`):
+
+    ```fluent copy filename="fluent-bit.conf"
+    [OUTPUT]
+      Name        datadog
+      Match       *
+      Host        <ingestion-url>
+      TLS         On
+      apikey      <dd-api-key>
+      # Optional: Specify service, source, tags, host
+      # dd_service
+      # dd_source
+      # dd_tags
+      # dd_hostname
+    ```
+
+    To learn more about configuration settings for Fluent Bit, see the documentation for the [Fluent Bit Datadog output plugin](https://docs.fluentbit.io/manual/pipeline/outputs/datadog).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    FluentD can forward logs to Grepr using the `fluent-plugin-datadog` output plugin. To configure the plugin, add a `match` directive to the FluentD configuration. The following is an example `match` directive from a Fluentd configuration file (`fluentd.conf`):
+
+    ```fluent copy filename="fluentd.conf"
+    <match your_tag.**> # Adjust your match pattern as needed
+      @type datadog
+      api_key <dd-api-key>
+      host    <ingestion-url>
+
+      # Optional: Specify service, source, or tags
+      # service
+      # source
+      # tags
+
+      # Buffer configuration is recommended for production
+      <buffer>
+        @type memory # Or file for persistence
+        flush_interval # Adjust as needed
+        chunk_limit_size # Adjust as needed
+        # Add other buffer parameters as needed
+      </buffer>
+    </match>
+    ```
+
+    Replace:
+    - `your_tag.**` with the tag of the logs you want to forward to Grepr or use `**` to match all tags.
+    - `<dd-api-key>` with your Datadog API key.
+    - `<ingestion-url>` with the ingestion URL from your Datadog integration.
+
+    To learn more about configuration settings for Fluentd, see the documentation for the [Fluentd Datadog output plugin](https://docs.datadoghq.com/integrations/fluentd/?tab=host).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    The OpenTelemetry Collector can forward logs to Grepr using the Datadog exporter. In the OpenTelemetry collector configuration (`collector.yaml`), set `<ingestion-url>` to the ingestion URL from your Datadog integration and `<dd-api-key>` to your Datadog API key:
+
+    ```yaml copy filename="config.yaml"
+    exporters:
+      datadog/exporter:
+        api:
+          key: <dd-api-key>
+          fail_on_invalid_key: false
+        logs:
+          endpoint: <ingestion-url>
+
+    service:
+      pipelines:
+        logs:
+          receivers: [otlp] # Replace with your actual receiver(s)
+          processors: [batch] # Replace/add your actual processor(s)
+          exporters: [datadog/exporter]
+    ```
+
+    See [Install and Configure the OpenTelemetry Collector](https://docs.datadoghq.com/opentelemetry/setup/collector_exporter/).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    The Datadog Forwarder is an AWS Lambda function that forwards logs from AWS services to Datadog. You can instead forward logs to Grepr for processing by modifying the Lambda Forwarder's configuration. These instructions detail how to use AWS CloudFormation, recommended by Datadog, to configure and deploy the forwarder. See [Datadog Forwarder](https://docs.datadoghq.com/logs/guide/forwarder).
+
+    <Callout type="warning">
+      Grepr requires the Datadog Forwarder version 5.0.0 or later.
+    </Callout>
+
+    To deploy the Datadog Forwarder using CloudFormation, follow the [Datadog Forwarder installation instructions](https://docs.datadoghq.com/logs/guide/forwarder/?tab=cloudformation#installation). Before creating the CloudFormation stack, configure the following parameters to send logs to Grepr:
+
+    | CloudFormation Parameter  | Lambda Environment Variable  | Value               | Description                                                   |
+    |---------------------------|------------------------------|---------------------|---------------------------------------------------------------|
+    | `ddUrl`                   | `DD_URL`                     | `<ingestion-url>`   | The Grepr ingestion URL without the `https://` prefix.        |
+    | `ddPort`                  | `DD_PORT`                    | `443`               | Port for HTTPS connections to Grepr. Set this value to `443`. |
+    | `ddApiKey`                | `DD_API_KEY`                 | `<dd-api-key>`      | Your Datadog API key.                                         |
+    | `ddLogLevel`              | `DD_LOG_LEVEL`               | `DEBUG` (optional)  | Set to `DEBUG` to enable detailed logging.                    |
+
+    <Callout type="warning">
+      - The `ddUrl` parameter must not include the `https://` prefix. Use only the hostname portion of your ingestion URL.
+      - The `<dd-api-key>` value must be the same Datadog API key you configured in your Grepr Datadog integration. Alternatively, configure `DdApiKeySecretArn` if the key is stored in AWS Secrets Manager or `DdApiKeySsmParameterName` if the key is in AWS Systems Manager Parameter Store.
+      - Parameter names use camelCase when configuring the CloudFormation stack and UPPERCASE_UNDERSCORE when viewing or editing the Lambda function's environment variables in the AWS Console.
+    </Callout>
+
+    To send logs through the Datadog Forwarder after deployment, you set up triggers on your AWS services to run the forwarder whenever a new batch of log events is available. See [Send AWS Services Logs With The Datadog Lambda Function](https://docs.datadoghq.com/logs/guide/send-aws-services-logs-with-the-datadog-lambda-function/?tab=awsconsole).
+
+    If you already have a Datadog Forwarder sending logs to Datadog and want to also send logs to Grepr without modifying your existing configuration, you can enable dual-shipping of logs by deploying a second Grepr-configured forwarder. You then use the `DD_ADDITIONAL_TARGET_LAMBDAS` environment variable on the existing forwarder to invoke the Grepr forwarder. This approach allows you to:
+
+    - Keep your existing Datadog forwarder configuration unchanged.
+    - Send logs to both Datadog and Grepr simultaneously.
+    - Avoid reconfiguring triggers on your existing forwarder.
+
+    To configure dual-shipping with the Datadog Forwarder:
+
+    1. Deploy a new Lambda Forwarder following the steps above, configured to send logs to Grepr (with `ddUrl`, `ddPort`, and `ddApiKey` set for Grepr).
+    1. On your existing forwarder that sends logs to Datadog, add the `DD_ADDITIONAL_TARGET_LAMBDAS` environment variable set to the ARN of your new Grepr-configured forwarder.
+    1. Your existing forwarder will now invoke the new Grepr forwarder for each log batch, effectively dual-shipping logs to both Datadog and Grepr.
+
+    Example:
+    ```
+    DD_ADDITIONAL_TARGET_LAMBDAS=arn:aws:lambda:us-east-1:123456789012:function:datadog-forwarder-grepr
+    ```
+
+    <Callout type="info">
+      To specify multiple additional forwarders, separate ARNs with commas.
+    </Callout>
+
+    <Callout type="info">
+      If logs are not appearing in Grepr, the following are suggested troubleshooting steps:
+
+      - Check the Lambda function's CloudWatch Logs for errors.
+      - Set `ddLogLevel`/`DD_LOG_LEVEL` to `DEBUG` for more detailed logging.
+      - Verify the ingestion URL does not include the `https://` prefix.
+      - Confirm the API key matches the one in your Grepr Datadog integration.
+      - Ensure you are using Datadog Forwarder version 5.0.0 or later.
+    </Callout>
+
+  </Tabs.Tab>
+</Tabs>
+
+## Forward events from an Azure event hub to Grepr
+
+If you have an existing integration that sends events from an Azure event hub to Datadog, you can modify it to forward events to Grepr for processing before sending them to Datadog. An example use of this event hub-to-Datadog integration is when the event hub is used to queue log events from other Azure services. These log events are then forwarded to a Datadog endpoint for processing.
+
+You can include Grepr in this integration by changing the destination URL from the Datadog endpoint to a Grepr ingestion URL, allowing you to use Grepr's log processing features, such as log reduction, parsing, and enrichment on the events before they reach Datadog.
+
+Adding Grepr to an event hub-to-Datadog integration requires:
+
+- An existing Azure Event Hubs-to-Datadog integration. The integration must be implemented to send events to a Datadog HTTP endpoint. Grepr does not support TCP.
+- A Datadog API key for your account. When sending events to Grepr, you must use the same API key that's used for the direct Datadog integration.
+
+### Configure event forwarding to Grepr
+
+To integrate Grepr into your Event Hubs-to-Datadog integration:
+
+1. Create a Grepr Datadog integration, add the integration to a Grepr pipeline, and create a source. For step-by-step instructions, see [_](#use-datadog-integration).
+1. Get the ingestion URL for the Grepr integration by following the instructions in [_](#configure-forwarding-to-grepr), then skip the instructions for configuring collectors.
+1. In the Azure component that forwards events to Datadog, such as an Azure Function, replace the Datadog endpoint URL with the Grepr ingestion URL and include the path from the Datadog URL. For example, replace:
+
+   ```cs
+   var eventsEndpoint = "https://http-intake.logs.datadoghq.com/api/v2/logs";
+   ```
+
+    with:
+
+    ```cs
+    var eventsEndpoint = "https://1234567890123-yourorg.ingest.grepr.ai/api/v2/logs";
+    ```
+
+1. Ensure the existing Datadog API key is also included in the request sent to Grepr.
+
+After you make this configuration change, you can use your existing Grepr pipelines or create new pipelines to process the events before they are forwarded to Datadog.
+
+## Limitations
+
+- The Datadog integration supports only HTTP/HTTPS connections. TCP connections are not supported.
+- The Datadog integration does not support the use of [Datadog log pipelines](https://docs.datadoghq.com/logs/processing/pipelines/). Grepr processes and routes all logs before sending them to Datadog.
+
+<HiddenFAQ faqs={[
+  { q: "How do I send Datadog logs to Grepr?", a: "Configure your log collector (Datadog Agent, Fluent Bit, Fluentd, or OpenTelemetry Collector) to forward logs to your Grepr ingest endpoint URL." },
+  { q: "What is the Grepr Datadog ingestion endpoint format?", a: "The endpoint format is https://<integration-id>-<org-id>.ingest.grepr.ai" },
+  { q: "How do I reduce Datadog logging costs with Grepr?", a: "Use Grepr's log reduction and filtering to lower log volume before sending to Datadog." },
+  { q: "Can I use Grepr with the Datadog Agent?", a: "Yes, configure logs_config.logs_dd_url to your Grepr endpoint and set force_use_http to true." },
+  { q: "How do I configure Fluent Bit to send logs to Grepr instead of Datadog?", a: "In the Fluent Bit OUTPUT section, set the Host to your Grepr ingestion URL and include your Datadog API key." },
+  { q: "Does Grepr support the OpenTelemetry Collector with Datadog?", a: "Yes, configure the Datadog exporter with your Grepr endpoint in the logs.endpoint setting." },
+  { q: "What is selective reduction with Datadog?", a: "When you provide a Datadog application key, Grepr automatically tracks your Datadog log monitors and excludes matching logs from reduction." },
+  { q: "Can I forward Azure Event Hub logs through Grepr to Datadog?", a: "Yes, replace the Datadog endpoint URL in your Azure function with your Grepr ingestion URL." },
+  { q: "Does Grepr support the Datadog Forwarder Lambda?", a: "Yes, Grepr supports Datadog Forwarder version 5.0.0 or later. Set DD_URL to your Grepr ingestion hostname." },
+  { q: "What protocols does the Grepr Datadog integration support?", a: "Only HTTP and HTTPS. TCP connections are not supported." },
+  { q: "Does the Grepr Datadog integration support traces and APM data?", a: "Yes. The integration ingests APM data, including traces and metrics, from the Datadog Agent with the Datadog Trace Agent enabled, and can forward processed traces or metrics to Datadog." },
+  { q: "How do I send Datadog traces to Grepr?", a: "Enable the Datadog Trace Agent and set apm_config.apm_dd_url, or the DD_APM_DD_URL environment variable, to your Grepr ingestion URL. The agent then sends trace data to Grepr at the /api/v0.2/traces path." },
+  { q: "Can Grepr forward Datadog APM stats?", a: "Yes. When you use a Datadog source, you can choose whether Grepr forwards Datadog APM stats, the Rate, Errors, and Duration (RED) metrics that the Datadog Agent computes before sampling, to Datadog unmodified so that your APM views stay accurate even when traces are sampled." }
+]} />

@@ -1,0 +1,114 @@
+---
+description: Learn how Grepr integrates with Datadog, Splunk, New Relic, and other platforms to reduce observability costs and provide real-time log processing and analysis.
+---
+
+import { Cards } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# What is Grepr?
+
+Grepr is an enterprise-grade data storage, processing, and analytics platform for your observability data. Grepr collects, transforms, and analyzes your log data and then sends the processed logs to your observability platform.
+
+Before sending log data to the destination platform, Grepr uses machine learning to analyze and intelligently aggregate the data. During normal operations, Grepr reduces your observability costs by reducing the volume of data sent to your observability tools, while retaining all of your raw data in low-cost cloud storage. If an incident or anomaly occurs, Grepr increases the granularity of the forwarded data to ensure that sufficient data is available for troubleshooting. Grepr also uses the raw data to backfill any historical data relevant to the incident.
+
+ Grepr supports popular observability platforms, including Datadog, Splunk, New Relic, Sumo Logic, Grafana Cloud, and OpenTelemetry-compatible platforms.
+
+If you're just getting started with Grepr, follow the **Get started** guides below. If you're already using Grepr and need information on creating pipelines to process logs or to query raw logs stored in Grepr, see the guides under **Process and explore your logs**. If you need to automate your Grepr tasks or implement clients that use Grepr features, or use JavaScript to code reusable components for your pipelines, see the **Developers** documentation.
+
+<div style={{
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr 1fr',
+  gap: '2rem',
+  marginTop: '2rem'
+}}>
+  <div>
+    <h2 style={{ textAlign: 'center', fontWeight: 'bold' }}>Get started</h2>
+    <Cards>
+      <Cards.Card
+        title="Create your first pipeline"
+        href="/tutorials/first-pipeline"
+      />
+      <Cards.Card
+        title="Learn about the platform"
+        href="/grepr-platform"
+      />
+    </Cards>
+  </div>
+  <div>
+    <h2 style={{ textAlign: 'center', fontWeight: 'bold' }}>Process and explore your logs</h2>
+    <Cards>
+      <Cards.Card
+        title="Connect to external tools"
+        href="/integrations"
+      />
+      <Cards.Card
+        title="Process and transform data"
+        href="/transforms"
+      />
+      <Cards.Card
+        title="Query logs in the data lake"
+        href="/queries"
+      />
+    </Cards>
+  </div>
+  <div>
+    <h2 style={{ textAlign: 'center', fontWeight: 'bold' }}>Developers</h2>
+    <Cards>
+      <Cards.Card
+        title="Use the Grepr Rest API"
+        href="/apis"
+      />
+      <Cards.Card
+        title="Use the Grepr CLI"
+        href="/cli"
+      />
+      <Cards.Card
+        title="Custom pipeline components"
+        href="/templates"
+      />
+    </Cards>
+  </div>
+</div>
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is Grepr?",
+    a: "Grepr is an enterprise-grade data storage, processing, and analytics platform for observability data. It collects, transforms, and analyzes log data, then sends processed logs to your observability platform while retaining raw data in low-cost cloud storage."
+  },
+  {
+    q: "How does Grepr reduce observability costs?",
+    a: "Grepr uses machine learning to intelligently aggregate and reduce the volume of log data sent to your observability tools during normal operations, while automatically increasing data granularity during incidents. This significantly reduces costs while maintaining full raw data access."
+  },
+  {
+    q: "What observability platforms does Grepr integrate with?",
+    a: "Grepr supports popular platforms including Datadog, Splunk, New Relic, Sumo Logic, Grafana Cloud, and OpenTelemetry-compatible platforms."
+  },
+  {
+    q: "What is the Grepr data lake?",
+    a: "The Grepr data lake is a secure cloud storage layer built on Apache Iceberg and S3 that stores your raw log data. It provides efficient querying capabilities and serves as the foundation for historical analysis and incident backfills."
+  },
+  {
+    q: "Can I query raw logs in Grepr?",
+    a: "Yes, you can query raw logs stored in the Grepr data lake using the query interface or REST API. The data lake supports powerful queries with tags, time ranges, and custom filters to analyze historical log data."
+  },
+  {
+    q: "How do I create a Grepr pipeline?",
+    a: "You can create pipelines using the Grepr UI, REST API, or CLI. Pipelines consist of data sources, transformations (like log reduction and parsing), and destinations. Follow the 'Create your first pipeline' guide to get started."
+  },
+  {
+    q: "What happens to my data during an incident?",
+    a: "During incidents or anomalies, Grepr automatically increases the granularity of forwarded data to ensure sufficient detail for troubleshooting. It also backtransfers historical raw logs relevant to the incident from the data lake."
+  },
+  {
+    q: "Is my data secure in Grepr?",
+    a: "Yes, Grepr maintains SOC 2 Type II certification and implements enterprise security controls including encryption in transit (TLS 1.2+) and at rest, role-based access controls, and secure identity management with Auth0."
+  },
+  {
+    q: "Can I use Grepr with my existing observability tools?",
+    a: "Yes, Grepr is designed to integrate seamlessly with existing observability platforms. You continue using your current tools while Grepr handles data reduction and optimization in the background."
+  },
+  {
+    q: "How can I automate Grepr tasks?",
+    a: "You can automate tasks using the Grepr REST APIs, CLI, or custom JavaScript components in pipelines. The CLI supports job creation, queries, integration management, and dataset operations."
+  }
+]} />

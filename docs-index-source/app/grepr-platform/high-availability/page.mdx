@@ -1,0 +1,80 @@
+---
+description: Learn how the Grepr SaaS offering provides high availability to ensure no or minimal downtime for your Grepr pipelines.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# How does Grepr ensure high availability?
+
+This page describes how high availability (HA) is managed for the Grepr software as a service (SaaS) offering. This HA support ensures no or minimal downtime for your Grepr pipelines. This page describes the primary services in the Grepr architecture, how they are configured to support HA, and how the system responds to service failure scenarios.
+
+## The Grepr architecture
+
+The Grepr SaaS offering runs on the AWS public cloud. In each [supported AWS region](/grepr-platform#grepr-supported-regions), Grepr runs compute nodes deployed across three availability zones. These compute nodes run services that implement Grepr functionality.
+
+The main services in this architecture are:
+
+- **Stateless services**: These services serve the Grepr REST APIs, and run on multiple compute nodes across three availability zones. The number of replicas of each service is determined by an autoscaler that scales based on load. Initially, each availability zone runs a single replica, ensuring a minimum of three replicas. As load increases, the autoscaler can add capacity by adding replicas in any availability zone with available compute node capacity.
+- **Data pipelines**: Data pipelines are stateful services that run Apache Flink jobs to process data. Data pipelines run on multiple compute nodes across three availability zones. To optimize network latency and data transfer, Grepr ensures that the compute nodes hosting a pipeline are co-located by allocating the pipeline's services in a single availability zone. The number of replicas for services running a particular data pipeline is determined by an autoscaler that scales based on load.
+
+## Failure Scenarios
+
+The following describes how the Grepr system responds to various failure scenarios.
+
+### Compute node failures
+
+- **Stateless services**: When a compute node running a stateless service fails, in-flight requests running on that compute node fail. Subsequent requests are routed to services running on healthy compute nodes. If compute node capacity is available, the autoscaler provisions compute capacity to replace the lost capacity.
+- **Data pipelines**: When a compute node running a data pipeline fails, the data pipeline automatically stops its associated job, provisions compute capacity to replace the capacity lost because of the failure, then restarts the pipeline from the last checkpoint. You might experience a brief, seconds-long period of downtime while the new resources are provisioned. You might also see duplicate data sent through the pipeline sink from the time the last checkpoint ran to the time the compute node failed.
+
+### Availability zone failures
+
+**Stateless Services**: When an availability zone fails, in-flight requests running on compute nodes in that availability zone fail. Subsequent requests are routed to healthy services running on compute nodes in healthy availability zones. If compute node capacity is available, the autoscaler provisions compute capacity in the healthy availability zone.
+
+- **Data Pipelines**: When an availability zone fails, data pipeline services are restarted on compute nodes in healthy availability zones. If this occurs, there is a brief, seconds-long downtime while new resources are provisioned. You might also see duplicate data sent through the pipeline sink from the time the last checkpoint ran to the time the compute node failed.
+
+### AWS region failure
+
+In the unlikely event of an AWS region failure, the Grepr team will manually provision resources in a different AWS region and migrate services to that new region. This process is expected to take approximately one hour.
+
+<HiddenFAQ faqs={[
+  {
+    q: "Where does Grepr run?",
+    a: "Grepr SaaS runs on the AWS public cloud in supported regions. In these regions, Grepr deploys compute nodes across three availability zones to provide redundancy and high availability. The multi-zone architecture ensures that failures in one zone don't impact overall service availability."
+  },
+  {
+    q: "What are stateless services in the Grepr architecture?",
+    a: "Stateless services in Grepr serve REST APIs and run on multiple compute nodes across three availability zones. The number of replicas is determined by an autoscaler that scales based on load. Initially, each availability zone runs at least one replica, ensuring a minimum of three replicas total."
+  },
+  {
+    q: "What are data pipelines in the Grepr architecture?",
+    a: "Data pipelines are stateful services that run Apache Flink jobs to process data. They run on multiple compute nodes across three availability zones. To optimize network latency and data transfer, Grepr co-locates a pipeline's services in a single availability zone while scaling based on processing load."
+  },
+  {
+    q: "What happens when a compute node running a stateless service fails?",
+    a: "When a compute node with a stateless service fails, in-flight requests on that node fail, but subsequent requests are routed to other healthy compute nodes. If additional compute capacity is available, the autoscaler provisions replacement capacity to restore the original scale."
+  },
+  {
+    q: "What happens when a compute node running a data pipeline fails?",
+    a: "When a compute node with a data pipeline fails, the pipeline automatically stops its job, provisions replacement compute capacity, then restarts from the last checkpoint. You may experience brief seconds-long downtime during resource provisioning and may see duplicate data for the period between the last checkpoint and the failure."
+  },
+  {
+    q: "What happens during an availability zone failure?",
+    a: "When an availability zone fails, stateless services fail over to healthy zones automatically. Data pipelines are restarted on compute nodes in healthy availability zones, causing brief seconds-long downtime while resources are provisioned. You may see duplicate data for the period between the last checkpoint and the failure."
+  },
+  {
+    q: "What is the expected recovery time for an entire AWS region failure?",
+    a: "In the unlikely event of a complete region failure, the Grepr team manually provisions resources in a different AWS region and migrates services. This process is expected to take approximately one hour, during which Grepr services will be unavailable."
+  },
+  {
+    q: "How do pipelines maintain data consistency after failures?",
+    a: "Grepr data pipelines use checkpoints to maintain consistency. When a pipeline restarts after a failure, it resumes processing from the last checkpoint. While this ensures data integrity, you may see duplicate data sent through the pipeline sink for the period between the last checkpoint and the failure."
+  },
+  {
+    q: "How does Grepr ensure minimal downtime for pipelines?",
+    a: "Grepr ensures high availability through multi-zone deployment across three availability zones, automatic replication and failover of stateless services, checkpoint-based recovery for data pipelines, and automated autoscaling to recover failed services. These mechanisms work together to provide minimal downtime for your pipelines."
+  },
+  {
+    q: "Can I configure high availability settings myself?",
+    a: "High availability is built into the Grepr SaaS offering and is automatically managed by the platform. The multi-zone architecture, replication, autoscaling, and failover mechanisms are configured by Grepr for all deployments. For larger deployments or specific requirements, Grepr offers a private cloud deployment model."
+  }
+]} />

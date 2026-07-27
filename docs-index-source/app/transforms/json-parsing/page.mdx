@@ -1,0 +1,79 @@
+---
+description: Automatically detect and parse JSON log messages into structured objects with fields added to log event attributes.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Transform JSON strings into JSON objects
+
+Grepr can automatically detect and parse JSON log messages into structured objects. All fields in the JSON object are parsed and added into the attributes of the log event. Using this along with the remapper transform allows you to enrich your logs. See [Remap JSON attribute fields to top-level log event fields](/transforms/remapper).
+
+This operation is automatically performed when creating a pipeline through the Grepr UI. However, it must be manually added in the Grepr job graph when creating a pipeline through the API.
+
+## Usage example
+
+Incoming log event:
+
+```json
+{
+  "message": "{\"msg\": \"Example log message\", \"@timestamp\": \"2007-12-03T10:15:30.00Z\", \"log\": {\"level\": \"INFO\"}}"
+}
+```
+
+Parsed log message:
+
+```json
+{
+  "message": "",
+  "attributes": {
+    "@timestamp": "2007-12-03T10:15:30.00Z",
+    "msg": "Example log message",
+    "log": {
+      "level": "INFO"
+    }
+  }
+}
+```
+
+<HiddenFAQ faqs={[
+  {
+    q: "What does the JSON parsing transform do?",
+    a: "The JSON parsing transform automatically detects and parses JSON log messages into structured objects. All fields in the JSON object are parsed and added as attributes in the log event, converting unstructured JSON strings into queryable structured data."
+  },
+  {
+    q: "When should I use JSON parsing?",
+    a: "Use JSON parsing when your logs contain JSON-formatted messages or attributes that need to be converted to structured fields. This is useful for application logs that output JSON, cloud service logs, and any logs where you need to query nested JSON data."
+  },
+  {
+    q: "Is JSON parsing applied automatically in Grepr pipelines?",
+    a: "When creating a pipeline through the Grepr UI, JSON parsing is applied automatically. However, if you create a pipeline through the REST API, you must manually add JSON parsing as a vertex in the job graph."
+  },
+  {
+    q: "How are nested JSON fields handled?",
+    a: "Nested JSON fields are preserved as nested objects in the attributes. For example, a JSON field like 'log: { level: INFO }' becomes an attributes object with the same structure, allowing you to query nested data."
+  },
+  {
+    q: "Can I combine JSON parsing with the Grok parser?",
+    a: "Yes. You can use JSON parsing first to convert JSON strings to objects, then use the Grok parser to extract specific fields from parsed attributes, or use other transforms to further enrich or manipulate the data."
+  },
+  {
+    q: "What happens to the original message field after JSON parsing?",
+    a: "The original message field is cleared after JSON parsing because the JSON content has been parsed into attributes. If you need to retain the original message, use the remapper transform or include a copy of the message in your JSON payload."
+  },
+  {
+    q: "How does JSON parsing handle malformed JSON?",
+    a: "If a log message contains malformed JSON, it is passed through without parsing. The original message remains unchanged and is processed by subsequent transforms. This allows pipelines to handle mixed log formats gracefully."
+  },
+  {
+    q: "Can I use JSON parsing with the remapper transform?",
+    a: "Yes. You can use JSON parsing to parse JSON messages into attributes, then use the remapper transform to move or rename specific JSON fields to top-level log event fields for better querying and filtering."
+  },
+  {
+    q: "What is the performance impact of JSON parsing?",
+    a: "JSON parsing has minimal performance impact as it leverages efficient JSON libraries. Performance depends on the size and complexity of JSON objects. For high-volume, small JSON payloads, the impact is negligible."
+  },
+  {
+    q: "How do I troubleshoot JSON parsing issues?",
+    a: "Use live edit to test JSON parsing with sample logs. The Pipeline Log Viewer will show you the parsed attributes and help you verify that JSON is being parsed correctly. Check the transformation output to ensure nested structures are preserved as expected."
+  }
+]} />

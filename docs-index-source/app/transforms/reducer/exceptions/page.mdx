@@ -1,0 +1,157 @@
+---
+description: Learn how to ensure specific messages are forwarded unchanged to observability platforms by configuring them as exceptions to the reducer step.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Bypass aggregation of important messages with exceptions
+
+This page describes how to use _exceptions_ to specify messages that should bypass the reducer and get forwarded directly to your observability platform without summarization. Examples of why you might want to forward raw, unsummarized messages include:
+
+- You need to track activity across messages, requiring samples of all messages associated with specific identifiers.
+- You want to provide unsummarized messages for a period before and after an anomalous event occurs or in response to an external event.
+- Dashboards, alerts, or monitors in your observability platform depend on receiving full, unsummarized messages to function correctly.
+
+This page explains how to configure the different exception types in the Grepr UI. You can also use the REST API to configure exceptions. With the API, you configure exceptions as part of the [LogReducer transform](/apis/api-spec#schema/LogReducer), and then include them as vertices in the job graph defining a log pipeline.
+
+## Configure exceptions in the Grepr UI
+
+You configure exceptions on the overview page when you create or edit a pipeline. To add an exception, in the left-hand navigation menu, click **Exceptions** to open the exceptions list, click **Add**, and then select the exception type to configure. The following sections describe the different exception types and their configuration options.
+
+To write queries for exception configurations, you use the same syntaxes you use for queries in the filtering or transformation steps of your pipeline. To learn more about supported query syntaxes, see [Query log data in the Grepr data lake](/queries).
+
+To edit an existing exception, click the exception's row in the list to open the **Edit Exception** dialog. To remove an exception, click the delete icon in the exception row.
+
+## Prevent aggregation of messages used in your observability platform [#vendor-exceptions]
+
+Some Grepr integrations, such as Datadog and New Relic, support parsing queries used by monitors, dashboards, or alerts in your observability platform. To ensure the correct functioning of your observability platform assets, Grepr can use the parsing results to configure queries that should automatically bypass reduction. You can choose to apply exceptions for any or all of the parsed queries. To configure parsed queries to use as exceptions, select **Do not aggregate logs used in existing observability alerts** to display the **Imported Queries** table. Use the links in the **Name** column to go to the alert's source in your observability vendor's UI.
+
+![The vendor exceptions configuration showing imported queries from an observability platform.](/images/pipelines/vendor-exceptions.png)
+
+The **Imported Queries** table also includes the **Passthrough %** column, which is an estimate of the percentage of events over a configurable time window that would bypass aggregation. You configure passthrough estimation as part of the integration configuration. See [Identify log events that should bypass aggregation](/integrations#passthrough-estimation).
+
+You can also enable **Auto-sync exceptions** to automatically add and remove exceptions as you add and remove alerts or dashboards in your observability vendor. When you enable auto-sync and no queries are selected in the **Imported Queries** table, all queries are selected automatically as exceptions. If at least one query is already selected, that selection is retained, and you must manually select any other queries to include. In both cases, Grepr automatically adds exceptions for any new queries parsed after enabling auto-sync.
+
+When you enable auto-sync, changes such as new alerts or dashboards in your observability platform might cause an unexpectedly large increase in the log events that bypass reduction. To mitigate this risk, you can set a threshold for auto-sync exceptions. The threshold setting prevents auto-sync from adding a new exception when the estimated percentage of log events excluded from reduction for that exception exceeds the threshold. To set this threshold, enter the value in the **Max %** text box.
+
+<Callout>
+  If you rewrite alert or dashboard queries to use summarized messages, add `processor:grepr` to the new queries so that they do not match logs that did not go through Grepr. This tag is automatically added to all log messages that Grepr sends to external vendors and never matches any raw messages. It tells Grepr that a query for an alert or dashboard has already been rewritten.
+</Callout>
+
+## Always forward messages matching a query [#pattern-exceptions]
+
+To ensure that certain messages always bypass the reducer and are forwarded without aggregation, for example, when processing in your observability platform has a dependency on those messages, you can define a query to identify those messages. The reducer evaluates every incoming log message and forwards every matching message unmodified. This exception type doesn't trigger a backfill or affect the aggregation of other messages.
+
+## Forward samples of full logs based on trace identifiers [#trace-sampler-exceptions]
+
+You can ensure you have samples of full logs for events that share a trace identifier. For this exception type, a trace refers to one or more values used to group related events, and not specifically an application performance monitoring trace. For example, a trace ID could be a request ID, a user ID, or a session ID.
+
+Based on the configured trace ID for each log message, Grepr samples a configurable percentage of trace IDs and forwards every log message that belongs to a sampled trace unmodified. Use this exception type to keep a representative sample of complete, end-to-end traces in your observability backend.
+
+Grepr uses the trace samplers in the order they are specified. After a message matches for trace sampling, it is not evaluated against any remaining trace samplers.
+
+Configure the following settings:
+
+- An optional query that scopes the sampling to messages that match the query. Only messages that match the query participate in trace sampling. Leave the query empty to apply sampling to all messages that pass through the reducer.
+- Attribute paths or tag keys to use as trace identifiers. To add the paths or keys, click the plus (+) icons. To enter attribute paths, use dot notation, such as `trace.id`, or a JSON array, such as `["trace", "id"]`. Use a JSON array if any segment of the path contains a literal dot. To remove a path or key, click the delete icon next to the entry.
+- A sample percentage of distinct trace IDs to sample, from 0 to 100. You can specify up to two decimal places, such as `1.50`. Grepr forwards every log message whose trace ID falls within the sampled percentage. The default is `1.00`.
+
+<Callout>
+  You must specify at least one **Trace ID Attribute Path** or **Trace ID Tag Key**. The form does not allow you to save the exception when both lists are empty.
+</Callout>
+
+## Pause aggregation and backfill logs for events matching a query [#dynamic-exceptions]
+
+You can create an exception that automatically pauses aggregation of specific messages and optionally forwards full messages for a configured period when incoming events match a query. Use this exception type to forward full logs when specific events occur, such as production incidents or other anomalous events. For example, you can configure the query `status:error` to ensure you have full logs if an event arrives from a host with an error status.
+
+In addition to the query that triggers this exception, you also configure:
+
+- An optional list of attribute paths or tag keys that scope the backfill and the paused aggregation to the values found in the triggering message. For example, if you add `service`, only messages with the same `service` value as the triggering message are backfilled and excluded from aggregation.
+- The duration of historical data to backfill from the data lake when the exception is triggered. You can also choose to skip the backfill step and only pause aggregation.
+- The duration to pause aggregation of matching messages after the exception is triggered. You can also choose to continue aggregating matching messages and only run the backfill.
+
+## Pause aggregation and backfill logs in response to an external event [#callback-exceptions]
+
+In addition to triggering exceptions based on incoming log messages, you can configure exceptions to be triggered by external events. This exception type is activated when an external system, such as an observability monitor or alert, calls the [External Triggers endpoint](/apis/api-spec#tag/External-Triggers).
+
+Configure the following settings:
+
+- An optional list of attribute paths or tag keys that scope the backfill and the paused aggregation to the values passed in the call to the external triggers endpoint. To add an attribute, type `@` and then select from the suggested values.
+- The duration of historical data to backfill from the data lake when the exception is triggered. You can also choose to skip the backfill step and only pause aggregation.
+- The duration to pause aggregation of matching messages after the exception is triggered. You can also choose to continue aggregating matching messages and only run the backfill.
+
+The attributes and keys you define are included as key-value pairs in the `variables` object in the body of the request to the external triggers endpoint. After you save the exception, click the terminal icon in the exception's **Actions** column to display a sample `curl` command to call the external triggers endpoint for that exception. After updating the placeholders for values in the `variables` object, you can use this command for testing and as a reference when configuring calls to the trigger from an external system.
+
+## Rewrite queries [#rewrite-queries]
+
+When you first deploy Grepr's log reduction, you typically add exceptions for all existing alerts and dashboards to minimize disruptions to existing workflows. However, over time, you might find that some of these alerts and dashboards use queries that count the occurrence of a pattern that appears with high frequency. For example, you might have a dashboard that uses a count of HTTP requests with the status code 200. Because 200 is the standard success status code, most HTTP log messages include it. Adding an exception for this dashboard results in forwarding a large number of events that would normally be aggregated.
+
+To address this, you can rewrite the query to use the [grepr.repeatCount](/transforms/reducer#summary-metadata) attribute. This attribute appears in both summary and sample messages, enabling the derivation of metrics. See your vendor's documentation for specifics on creating a metric from a log attribute.
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is an exception in a Grepr pipeline?",
+    a: "An exception is a rule that you configure on a pipeline to identify log messages that should bypass aggregation by the reducer. Messages that match an exception are forwarded to your sinks unmodified. Some exception types also trigger a backfill from the data lake and temporarily pause aggregation for related messages."
+  },
+  {
+    q: "What types of exceptions can I configure?",
+    a: "You can configure five types of exceptions: a pattern exception that always forwards messages matching a query, a query trigger exception that backfills and pauses aggregation when a query matches, an integration exception that excludes queries used by alerts in your observability tool, a trace sampler exception that forwards a representative sample of full traces, and an external trigger exception that backfills and pauses aggregation in response to a call to the Grepr External Triggers API."
+  },
+  {
+    q: "How do I add an exception to a pipeline?",
+    a: "Open the pipeline in the Grepr UI, click Exceptions in the left-hand navigation menu, and click the add button. In the Add Exception dialog, select the type of exception, complete the configuration fields, and click Add."
+  },
+  {
+    q: "What query languages can I use in an exception?",
+    a: "You write exception queries using the same query syntaxes available for the filtering and transformation steps in your pipeline. Queries are used on pattern exceptions, query trigger exceptions, and as the optional scoping query on trace sampler exceptions."
+  },
+  {
+    q: "What are scoping keys on an exception?",
+    a: "Scoping keys are the attribute paths and tag keys you configure on a query trigger exception or external trigger exception. They limit the backfill and the paused aggregation to messages whose values for those keys match the values from the triggering event."
+  },
+  {
+    q: "What does Auto-sync exceptions do on an integration exception?",
+    a: "When Auto-sync exceptions is enabled, Grepr automatically adds new queries discovered in the integration as exceptions, instead of using only the queries you initially selected. You can clear specific queries to exclude them from auto-sync, and you can use the Max % field to prevent any single exception from excluding more than a specified percentage of incoming logs."
+  },
+  {
+    q: "How do I prevent an auto-synced exception from forwarding too many logs?",
+    a: "On an integration exception with Auto-sync exceptions enabled, set the Max % field to the maximum percentage of incoming logs that any single exception is allowed to exclude from reduction. If the estimated percentage of logs excluded by an auto-synced exception exceeds this threshold, Grepr does not activate the exception."
+  },
+  {
+    q: "How does trace sampling work in Grepr?",
+    a: "Based on the configured trace ID for each log message, Grepr samples a configurable percentage of trace IDs and forwards every log message that belongs to a sampled trace unmodified. The trace ID does not have to be an APM trace; anything that groups logs together, such as a request ID, user ID, or session ID, can be used."
+  },
+  {
+    q: "What's the difference between Trace ID Attribute Paths and Trace ID Tag Keys on a trace sampler exception?",
+    a: "Trace ID Attribute Paths are paths inside the structured attributes of a log message that contain the trace ID, expressed in dot notation or as a JSON array. Trace ID Tag Keys are top-level tag keys that contain the trace ID. You must specify at least one path or one tag key."
+  },
+  {
+    q: "How does the Sample Percentage on a trace sampler exception work?",
+    a: "The Sample Percentage is the percentage of distinct trace IDs that Grepr samples. Grepr forwards every log message that belongs to a sampled trace, so a sample percentage of 1% forwards complete logs for approximately 1% of the traces seen by the reducer."
+  },
+  {
+    q: "In what order does Grepr apply trace samplers?",
+    a: "Grepr applies trace samplers in the order they are listed. After a message matches a trace sampler, Grepr does not evaluate it against any of the remaining trace samplers."
+  },
+  {
+    q: "Can Grepr import exceptions from my observability platform's monitors and dashboards?",
+    a: "Yes. Some Grepr integrations, such as the Datadog and New Relic integrations, parse the queries used by your monitors, dashboards, and alerts and suggest them as exceptions you can apply. Each suggested exception includes a link back to the source of the alert in your observability vendor's UI."
+  },
+  {
+    q: "How does an external trigger exception get activated?",
+    a: "An external trigger exception is activated by a call to the Grepr External Triggers API. After you save the exception, the row for the exception in the Exceptions list provides a sample curl command that you can use to call the API. Scoping keys configured on the exception take their values from the API call."
+  },
+  {
+    q: "How does the query trigger exception work?",
+    a: "A query trigger exception activates when an incoming log message matches the configured query. When it activates, Grepr backfills matching messages from the data lake for a configured duration and pauses aggregation of matching messages for a configured duration. You can also choose to skip the backfill and only pause aggregation, or to keep aggregating and only run the backfill. You can use scoping keys to limit the backfill and paused aggregation to messages that share the triggering message's values."
+  },
+  {
+    q: "Why might I need to rewrite alert or dashboard queries after adding exceptions?",
+    a: "When you first deploy log reduction, you typically add exceptions for existing alerts and dashboards to minimize disruption. Some of those alerts and dashboards are powered by counts of high-volume events, such as HTTP requests with status 200, which limits how much volume the reducer can reduce. Rewriting those queries lets the reducer aggregate the underlying messages while keeping the dashboards accurate."
+  },
+  {
+    q: "Can I rewrite my dashboards to use reduced logs?",
+    a: "Yes, you can rewrite dashboard and alert queries to use grepr.repeatCount for accurate metrics on aggregated data. Add the processor:grepr tag to queries to ensure they only match processed logs, enabling cost-effective metrics on sampled data."
+  }
+]} />

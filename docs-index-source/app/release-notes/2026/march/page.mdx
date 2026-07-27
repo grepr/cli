@@ -1,0 +1,116 @@
+---
+description: Release notes for new features, improvements, and bug fixes to the Grepr platform released in March 2026.
+---
+
+# Release notes for March 2026
+
+Grepr released these feature updates, improvements, and bug fixes in March 2026.
+
+## March 31, 2026
+
+{/* ENGT-3946 */}
+### Bug fix: Broken dataset links in storage integration cards
+
+An issue that caused invalid dataset links in integration cards included on the Grepr UI integrations page has been fixed.
+
+## March 23, 2026
+
+{/* ENGT-3904 */}
+### Bug fix: Invalid value conversions between OpenTelemetry sources and Splunk sinks
+
+An issue that caused invalid conversions for some values when forwarding events from an OpenTelemetry Collector to Splunk has been fixed. This change ensures that your pipelines that use OpenTelemetry sources and Splunk sinks correctly process and forward log events.
+
+{/* ENGT-3887 */}
+### Bug fix: Log Explorer queries on boolean attribute values returned incorrect results
+
+An issue where Log Explorer queries that filter on boolean attribute values returned incorrect results has been fixed. Queries that match on boolean values such as `@attr:true` and `@attr:false` now correctly match boolean values stored in JSON attributes.
+
+{/* ENGT-3809 */}
+### Bug fix: Incorrect placement of tags sent to New Relic sinks
+
+An issue in which tags sent to New Relic sinks were merged at the top level instead of nested under a `tags` key has been fixed. Tags are now nested correctly, aligning with New Relic's expected format for tag attributes.
+
+## March 18, 2026
+
+{/* ENGT-3375 */}
+### New feature: Authenticate to Grepr resources programmatically with service accounts
+
+You can now create service accounts to authenticate to Grepr resources without relying on user credentials. Service accounts are identities with a client ID and client secret that you can use to obtain an OAuth2 access token for the Grepr REST API, the Terraform provider, CI/CD pipelines, scripts, and other automated workflows. See [Manage Grepr service accounts](/admin/service-accounts).
+
+## March 14, 2026
+
+{/* ENGT-3223 */}
+### New feature: Audit logging for REST API operations
+
+REST API operations on Grepr resources now produce audit log entries. Each entry captures the HTTP method, path, response status, duration, and relevant parameters. To ensure the security of your data, fields containing sensitive data are automatically redacted from audit logs.
+
+{/* ENGT-3722 */}
+### New feature: Enhancements to dark mode in the UI
+
+Support for dark mode in the Grepr UI has been improved with updated theme colors, component styles, and visual elements for a consistent dark mode experience.
+
+{/* ENGT-3843 */}
+### Bug fix: Log Explorer failed to issue queries under certain conditions
+
+An issue that prevented Log Explorer from issuing a query under certain conditions has been fixed.
+
+{/* ENGT-3810 */}
+### Bug fix: Log reducer template did not parse filter vertex names correctly
+
+An issue where the log reducer template did not correctly parse filter vertex names has been fixed, ensuring that pipeline filters work as expected.
+
+## March 10, 2026
+
+{/* ENGT-3758 */}
+### New feature: View the editor of each job version with the `editedBy` field
+
+When you view job definitions, for example, viewing job history in the UI or retrieving a job through the REST API, you'll now see who edited each job version with the `editedBy` field.
+
+{/* ENGT-3766 */}
+### New feature: Default tags and attributes for pipeline sinks
+
+Pipeline sink configurations now support default tags and attributes for New Relic, OTLP, Splunk, and Sumo Logic sinks, providing additional context for downstream systems.
+
+{/* ENGT-3802 */}
+### Bug fix: Incorrect records-out metric values displayed for log reducer pipelines
+
+An issue where the records-out metric displayed incorrect values for log reducer pipelines in the pipeline UI has been fixed.
+
+{/* ENGT-3724 */}
+### Bug fix: Pipeline validation constraints not enforced during job building
+
+An issue where pipeline configuration validation constraints were not enforced during job building has been fixed. Invalid pipeline configurations are now correctly rejected with validation error messages.
+
+{/* ENGT-3761 */}
+### Bug fix: Redirect to wrong page after logging out
+
+An issue where logging out redirected to the pipelines page instead of the originally requested URL has been fixed. You are now redirected to the correct page after logging back in.
+
+## March 5, 2026
+
+{/* ENGT-3699 */}
+### New feature: Disk-based token caching for the CLI and Terraform provider
+
+Authentication tokens for the Grepr CLI and Terraform provider are now cached on disk, reducing the number of token requests to the identity provider. Token caching improves performance in CI/CD environments and prevents rate-limit issues when running multiple processes in parallel.
+
+{/* ENGT-3712 */}
+### Bug fix: CLI `list` commands failed when using the `-o` output option
+
+An issue where CLI `list` commands failed with an error when using the `-o` output option has been fixed.
+
+{/* ENGT-3667 */}
+### Bug fix: Reserved attribute order lost after saving in the attribute remapper
+
+An issue where the order of reserved attributes in the attribute remapper was lost after saving and reloading pipeline configurations has been fixed. Attribute ordering is now preserved.
+
+{/* ENGT-3751 */}
+### Bug fix: Incorrect automatic quoting of SQL expressions in the SQL editor
+
+An issue in the SQL editor that caused incorrect automatic quoting of SQL expressions has been fixed.
+
+## March 2, 2026
+
+{/* ENGT-3739 */}
+### Bug fix: Pipelines incorrectly marked as `FAILED` during autoscaling events
+
+An issue where pipelines were incorrectly marked as `FAILED` during autoscaler scaling events and subsequently terminated has been fixed. Pipelines that are scaling now continue running without interruption.

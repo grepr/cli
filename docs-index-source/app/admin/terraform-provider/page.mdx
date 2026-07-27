@@ -1,0 +1,193 @@
+---
+description: Learn how to use infrastructure as code (IaC) to manage your Grepr pipelines with the Grepr Terraform provider.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Manage Grepr pipelines with Terraform
+
+You can use the Grepr Terraform provider to manage Grepr pipelines using infrastructure as code (IaC) principles. With the Grepr Terraform provider, you can define, deploy, and manage your pipelines in a consistent and repeatable manner.
+
+## Requirements [#tf-provider-reqs]
+
+To use the Grepr Terraform provider, you must have:
+
+- Terraform or OpenTofu CLI version 1.0 or later.
+- OAuth2 client credentials for authentication. To obtain the required credentials, create a service account in the Grepr UI. See [Manage Grepr service accounts](/admin/service-accounts).
+
+## Install the Grepr provider
+
+The Grepr provider is published to the [OpenTofu registry](https://search.opentofu.org/provider/grepr/grepr/). To install it, declare it in the `required_providers` block of your configuration. To use the OpenTofu CLI, use the following configuration:
+
+```hcl copy
+terraform {
+  required_providers {
+    grepr = {
+      source  = "grepr/grepr"
+      version = "~> 1.0"
+    }
+  }
+}
+```
+
+To use the Terraform CLI, you must use the fully qualified source address `registry.opentofu.org/grepr/grepr`:
+
+```hcl copy
+terraform {
+  required_providers {
+    grepr = {
+      source  = "registry.opentofu.org/grepr/grepr"
+      version = "~> 1.0"
+    }
+  }
+}
+```
+
+Then initialize your working directory to download the provider:
+
+```bash copy
+terraform init # Or tofu init
+```
+
+## Configure authentication for the Grepr Terraform provider
+
+To configure the required OAuth2 credentials for authentication, add a provider block to your Terraform configuration with the `host`, `client_id`, and `client_secret` fields:
+
+```hcl copy
+provider "grepr" {
+  host          = "https://<your-org>.app.grepr.ai"
+  client_id     = var.<grepr-client-id>
+  client_secret = var.<grepr-client-secret>
+}
+```
+
+Replace:
+- `<your-org>` with your organization name.
+- `<grepr-client-id>` with your service account client ID.
+- `<grepr-client-secret>` with your service account client secret.
+
+Alternatively, you can use environment variables to set the required credentials. The provider automatically reads these environment variables if you set them:
+
+```bash copy
+export GREPR_HOST=https://<your-org>.app.grepr.ai
+export GREPR_CLIENT_ID=<your-client-id>
+export GREPR_CLIENT_SECRET=<your-client-secret>
+```
+
+## Import an existing pipeline
+
+To bring an existing pipeline under Terraform management, use the `terraform import` command with the pipeline's ID or name:
+
+```bash copy
+terraform import grepr_pipeline.example <pipeline-id-or-name>
+```
+
+To automatically import an existing pipeline without using the `import` command, create a `grepr_pipeline` resource with the same name as the existing pipeline. The provider will detect and import the existing pipeline.
+
+## Example: create a pipeline
+
+The following example shows a simple pipeline that uses a Datadog log agent source, a Grok parser, and an Iceberg table sink. To improve maintainability and avoid conflicts with Terraform reserved symbols or keywords, Grepr recommends defining your pipeline's job graph in a separate JSON file. You then reference this JSON file in your Terraform configuration. This example demonstrates how to define a pipeline job graph in a JSON file and reference the file in the Terraform configuration.
+
+A common development workflow is to create a pipeline in the Grepr UI or API, test it and make changes until it meets your requirements, then copy the generated JSON to a file for use with your Terraform configuration. If you choose to create pipelines through the API, see [Create and manage jobs with the Grepr REST APIs](/apis/job-creation-guide).
+
+After you've completed development of your pipeline, to find its JSON definition in the UI, click **Jobs** in the menu bar, click the three-dot menu in the **Actions** column for your pipeline, and click **Edit JSON** to view and copy the JSON. Save the copied  JSON to a file in your Terraform project, for example, `pipeline.json`:
+
+```json copy
+{
+  "vertices": [
+    {
+      "type": "datadog-log-agent-source",
+      "name": "source",
+      "integrationId": "<your-integration-id>"
+    },
+    {
+      "type": "grok-parser",
+      "name": "parser",
+      "grokParsingRules": [
+        "%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} %{GREEDYDATA:message}"
+      ]
+    },
+    {
+      "type": "logs-iceberg-table-sink",
+      "name": "sink",
+      "datasetId": "<your-dataset-id>"
+    }
+  ],
+  "edges": ["source -> parser", "parser -> sink"]
+}
+```
+
+`<your-integration-id>` and `<your-dataset-id>` are the identifiers of the Datadog integration and dataset used by this pipeline. If you copied the JSON from an existing pipeline, these fields are already set to the correct value.
+
+Then reference the JSON file in your Terraform configuration:
+
+```hcl copy
+resource "grepr_pipeline" "example" {
+  name           = "my_pipeline"
+  job_graph_json = file("${path.module}/pipeline.json")
+  desired_state  = "RUNNING"
+}
+```
+
+Use `terraform init` to download the provider, `terraform plan` to preview your changes, and `terraform apply` to apply the configuration and create the pipeline. With the OpenTofu CLI, use the equivalent `tofu` commands:
+
+```bash copy
+terraform init
+terraform plan
+terraform apply
+```
+
+You can also define the job graph directly in the Terraform configuration using `jsonencode`:
+
+```hcl copy
+resource "grepr_pipeline" "example" {
+  name = "my_pipeline"
+
+  job_graph_json = jsonencode({
+    vertices = [
+      {
+        type          = "datadog-log-agent-source"
+        name          = "source"
+        integrationId = var.datadog_integration_id
+      },
+      {
+        type = "grok-parser"
+        name = "parser"
+        grokParsingRules = ["%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} %{GREEDYDATA:message}"]
+      },
+      {
+        type      = "logs-iceberg-table-sink"
+        name      = "sink"
+        datasetId = var.dataset_id
+      }
+    ]
+    edges = ["source -> parser", "parser -> sink"]
+  })
+}
+```
+
+## Resource attributes
+
+The `grepr_pipeline` resource supports these attributes:
+
+| Attribute          | Type           | Required | Description                                                                                                  |
+| ------------------ | -------------- | -------- | ------------------------------------------------------------------------------------------------------------ |
+| `name`             | String         | Yes      | The pipeline name. Must be lowercase alphanumeric with underscores, 1-128 characters.                        |
+| `job_graph_json`   | String         | Yes      | The job graph as a JSON string. Use `file()` to load from a JSON file or `jsonencode` to define inline.      |
+| `desired_state`    | String         | No       | The desired state: `RUNNING` or `STOPPED`. Defaults to `RUNNING`.                                            |
+| `team_ids`         | Set of Strings | No       | Team IDs to associate with this pipeline.                                                                    |
+| `tags`             | Map of Strings | No       | Custom tags for the pipeline.                                                                                |
+| `wait_for_state`   | Boolean        | No       | Wait for the pipeline to reach the desired state. Defaults to `true`.                                        |
+| `state_timeout`    | Number         | No       | Timeout in seconds for state transitions. Defaults to `600`.                                                 |
+| `rollback_enabled` | Boolean        | No       | Enable automatic rollback on update failures. Defaults to `false`.                                           |
+
+### Read-only attributes
+
+| Attribute          | Type   | Description                                                                             |
+| ------------------ | ------ | --------------------------------------------------------------------------------------- |
+| `id`               | String | The unique identifier of the pipeline.                                                  |
+| `version`          | Number | The current version of the pipeline. Increments on updates.                             |
+| `state`            | String | The actual current state of the pipeline.                                               |
+| `organization_id`  | String | The organization ID that owns this pipeline.                                            |
+| `created_at`       | String | The timestamp when the pipeline was created.                                            |
+| `updated_at`       | String | The timestamp when the pipeline was last updated.                                       |
