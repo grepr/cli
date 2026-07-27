@@ -2125,6 +2125,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/jobs/backfills": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a logs backfill job
+     * @description Creates a logs backfill batch job from backfill parameters (time window, query, vendor sinks, and optional limit, variables, and tags). This is an asynchronous batch job: the response returns an identifier (field: `id`) that can be used to query the status of the job using the `GET` jobs endpoint. The server builds the backfill job graph from the parameters, so callers do not assemble it themselves.
+     */
+    post: operations["submitBackfillJob"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/jobs/query": {
     parameters: {
       query?: never;
@@ -4027,6 +4047,60 @@ export interface components {
        * @description Inclusive contract start date.
        */
       startDate: string;
+    };
+    /** @description Parameters for creating a logs backfill batch job. */
+    CreateBackfillJob: {
+      /** @description The dataset the backfill reads from and the dedup sinks track delivery in. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of the time interval to backfill.
+       * @example 2023-01-01T01:00:00Z
+       */
+      end: string;
+      /**
+       * Format: int32
+       * @description Maximum number of rows to backfill. Default and max is 500,000. A negative value means no limit.
+       * @default 500000
+       * @example 100000
+       */
+      limit?: number;
+      /**
+       * @description Name of the backfill job. Must match the job name pattern [a-z0-9_]{1,128}.
+       * @example manual_backfill_1
+       */
+      name: string;
+      query: components["schemas"]["EventPredicate"];
+      /** @description The vendor sink operations that deliver the backfilled events. Passed through verbatim, matching the sinks a rule action would carry. */
+      sinks: components["schemas"]["Operation"][];
+      /**
+       * Format: date-time
+       * @description Start of the time interval to backfill, inclusive.
+       * @example 2023-01-01T00:00:00Z
+       */
+      start: string;
+      /**
+       * @description Custom tags added to the backfill job for ease of search.
+       * @default {}
+       * @example {
+       *       "source": "manual"
+       *     }
+       */
+      tags?: {
+        [key: string]: string;
+      };
+      /**
+       * @description Variables used to modify the query while it is parsed.
+       * @default {}
+       */
+      variables?: {
+        [key: string]: components["schemas"]["Any"];
+      };
+      /**
+       * @description Vendor integration IDs, if any, whose prior delivery the backfill skips. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.
+       * @default []
+       */
+      vendorSinkIntegrationIds?: string[];
     };
     /** @description Attributes of the Grepr Job to create */
     CreateJob: {
@@ -6548,6 +6622,45 @@ export interface components {
         [key: string]: components["schemas"]["Any"];
       };
       /** @default [] */
+      vendorSinkIntegrationIds?: string[];
+    };
+    /**
+     * Inputs Schema
+     * @description Schema for the logs backfill job graph.
+     */
+    LogsBackfillTemplateInput: {
+      /**
+       * @description ISO-8601 value stamped onto backfilled events as the grepr.backfilled.timestamp tag. Computed by the builder so the template stays free of time logic.
+       * @example 2023-01-01t01:00:00z
+       */
+      backfillTimestampTag: string;
+      /** @description The dataset the backfill reads from and the dedup sinks track delivery in. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of the time interval to backfill.
+       * @example 2023-01-01T01:00:00Z
+       */
+      end: string;
+      /**
+       * Format: int32
+       * @description The maximum number of rows to backfill. A negative value means no limit.
+       */
+      limit: number;
+      query: components["schemas"]["EventPredicate"];
+      /** @description The vendor sink operations to deliver the backfilled events to. */
+      sinks: components["schemas"]["Operation"][];
+      /**
+       * Format: date-time
+       * @description Start of the time interval to backfill.
+       * @example 2023-01-01T00:00:00Z
+       */
+      start: string;
+      /** @description Variables used to modify the query while it is parsed. */
+      variables?: {
+        [key: string]: components["schemas"]["Any"];
+      };
+      /** @description Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join (e.g. trace backfills). */
       vendorSinkIntegrationIds?: string[];
     };
     LogsBranch: {
@@ -12037,6 +12150,8 @@ export type SchemaConditionalDataLakeConfig =
 export type SchemaConsoleSetupInfo = components["schemas"]["ConsoleSetupInfo"];
 export type SchemaConstantSampling = components["schemas"]["ConstantSampling"];
 export type SchemaContract = components["schemas"]["Contract"];
+export type SchemaCreateBackfillJob =
+  components["schemas"]["CreateBackfillJob"];
 export type SchemaCreateJob = components["schemas"]["CreateJob"];
 export type SchemaCreateRole = components["schemas"]["CreateRole"];
 export type SchemaCreateServiceAccount =
@@ -12243,6 +12358,8 @@ export type SchemaLogTransformAction =
   components["schemas"]["LogTransformAction"];
 export type SchemaLogsBackfillFlinkSource =
   components["schemas"]["LogsBackfillFlinkSource"];
+export type SchemaLogsBackfillTemplateInput =
+  components["schemas"]["LogsBackfillTemplateInput"];
 export type SchemaLogsBranch = components["schemas"]["LogsBranch"];
 export type SchemaLogsEventSampler = components["schemas"]["LogsEventSampler"];
 export type SchemaLogsFilter = components["schemas"]["LogsFilter"];
@@ -18358,6 +18475,44 @@ export interface operations {
     };
     responses: {
       /** @description Async job submitted successfully */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadJob"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  submitBackfillJob: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["CreateBackfillJob"];
+      };
+    };
+    responses: {
+      /** @description Backfill job submitted successfully */
       201: {
         headers: {
           [name: string]: unknown;
