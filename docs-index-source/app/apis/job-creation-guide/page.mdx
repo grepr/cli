@@ -6,13 +6,15 @@ import { HiddenFAQ } from '@/components/HiddenFAQ'
 
 # Create and manage jobs with the Grepr REST API
 
-This guide helps developers build programs that create and manage Grepr jobs using our REST APIs. You can run a Grepr job synchronously or asynchronously, and as a batch or streaming operation.
+This page provides guidance on using the Grepr REST API in your scripts and clients to create and manage Grepr jobs.
 
 Grepr jobs are composed of a directed graph of operations that process log data. Each job has:
 
 - **Execution Mode**: `SYNCHRONOUS` or `ASYNCHRONOUS`.
 - **Processing Type**: `BATCH` or `STREAMING`.
 - **Job Graph**: A collection of vertices (operations) and edges (data flow connections).
+
+To learn more about the Grepr processing model and jobs, see [_](/grepr-platform/grepr-model).
 
 ## Authentication
 
@@ -197,7 +199,7 @@ Process live data with rate limiting for testing:
 
 ### Production pipeline (asynchronous streaming)
 
-Complex production pipeline based on our reference implementation:
+A complex production pipeline based on the Grepr reference implementation:
 
 ```json
 {

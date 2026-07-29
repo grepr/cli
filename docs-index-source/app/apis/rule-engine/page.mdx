@@ -112,9 +112,9 @@ As an example, the UI sets up the rule engine to kick off a backfill job when a 
 
 A trigger kicks off a one or more conditions. Triggers may continue to fire, and that would extend the activation time of the associated conditions. Each trigger has a unique identifier and is one of these types:
 
-- `Event Trigger`: This trigger is activated by a matching predicate on an event. The predicate is provided by the user as part of the rule engine configuration.
-- `External Trigger`: This trigger is activated by an external source, for example, an alert from an observability tool. These will allow users to feed external stimuli into the rule engine to take appropriate actions.
-- `Trace Sampling Trigger`: This trigger allows users to make sure that complete sets of log messages would be available in the observability tool for a sample set of traces. A trace can be a user ID, a request ID, an actual trace ID, or anything that the user wants to consider an "execution identifier". This trace ID can be an attribute or a tag.
+- `Event Trigger`: This trigger is activated by a matching predicate on an event. You provide the predicate as part of the rule engine configuration.
+- `External Trigger`: This trigger is activated by an external source, for example, an alert from an observability tool. External triggers let you invoke rules from external systems, such as an observability monitor or alert.
+- `Trace Sampling Trigger`: This trigger lets you ensure that complete sets of log messages are available in the observability tool for a sample set of traces. A trace can be a user ID, a request ID, an actual trace ID, or anything that you want to consider an "execution identifier". This trace ID can be an attribute or a tag.
 
 You can find the object model specification for the various trigger types in the [API specification](/apis/api-spec#tag/Triggers).
 
