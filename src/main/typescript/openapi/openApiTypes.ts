@@ -3168,6 +3168,7 @@ export interface components {
       maxTurns?: number;
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       name: string;
+      serviceAccountId: string;
       systemPrompt: string;
     };
     AgentConfigPayload: {
@@ -3179,6 +3180,7 @@ export interface components {
       /** Format: int32 */
       maxTurns?: number;
       modelConfiguration: components["schemas"]["ModelConfiguration"];
+      serviceAccountId: string;
       systemPrompt: string;
     };
     AgentConfigUpdate: {
@@ -3191,6 +3193,7 @@ export interface components {
       maxTurns?: number;
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       name: string;
+      serviceAccountId: string;
       systemPrompt: string;
       /** Format: int32 */
       version?: number;
