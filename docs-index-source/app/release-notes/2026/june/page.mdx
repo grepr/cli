@@ -6,6 +6,77 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in June 2026.
 
+## June 30, 2026
+
+{/* ENGT-4947 */}
+### New feature: Uniform trace head sampling and standalone span head sampling
+
+You can now set a single trace head sampling rate that retains whole traces together, and span head sampling now works even when tail sampling is not configured. Your existing trace pipeline configurations continue to load unchanged. See [_](/pipelines/trace-pipelines#head-sampling).
+
+{/* ENGT-4848 */}
+### Bug fix: The attribute remapper showed incorrect defaults for JSON parsing
+
+When configuring the remapper in the pipeline UI, the option to preserve the original JSON message field defaulted to off even though the processing engine kept it on, and the list of reserved service attributes was incomplete. The remapper form now shows the correct defaults, so your saved configuration matches what actually runs. See [_](/transforms/remapper).
+
+## June 29, 2026
+
+{/* ENGT-4716, ENGT-4854, ENGT-4856 */}
+### New feature: Expanded query language support in Log Explorer
+
+Log Explorer now translates your searches through an upgraded query engine that provides more consistent and complete support for query syntaxes, including Datadog-like syntax and New Relic log query-like syntax. This engine adds support for numeric tag comparisons, such as `port:>8000`, and lexicographic string tag comparisons, such as `service:>cloud`, where values are compared alphabetically.
+
+{/* ENGT-4755 */}
+### New feature: Pipeline sources redesigned as cards with a guided agent setup
+
+Pipeline sources now appear as integration-style cards instead of a table, and a new **Agent Setup Guide** walks you through connecting agents using a public or private ingest endpoint, including inline AWS PrivateLink setup. You can copy ingest URLs directly from the source and integration cards, with OTLP tokens handled securely so they never appear on screen.
+
+{/* ENGT-4877 */}
+### New feature: Critical path analysis for traces
+
+You can now enable critical path analysis on a trace reducer to see how much each span contributes to a trace's end-to-end latency. The results appear as new span fields that you can query in the data lake, pass through to downstream vendors as span attributes, and see highlighted in the Trace Explorer waterfall view. Critical path analysis is opt-in per pipeline and supports sampling and a maximum span count to help you control cost. See [_](/pipelines/trace-pipelines#critical-path).
+
+{/* ENGT-4921 */}
+### New feature: Trace Explorer critical path and trace view improvements
+
+Trace Explorer now has a dedicated **Traces** tab alongside **Signatures** and builds trace and signature aggregates incrementally as spans load, so the view stays usable while data streams in. Traces whose loaded spans are missing the root span are now flagged instead of borrowing metadata from a child span, and the detail panes, waterfall, flamegraph, and critical path displays are easier to read.
+
+{/* ENGT-4849 */}
+### New feature: Convert spans and logs to Datadog custom metrics with SQL
+
+You can now define a SQL operation that turns spans or logs into custom metrics and sends them to Datadog. Each numeric column your query produces becomes a metric, tagged with the dimensions you select, so that you can build per-service or per-operation gauges directly in your trace pipeline. See [_](/pipelines/trace-pipelines#apm-sql-transforms).
+
+{/* ENGT-4622 */}
+### New feature: Remove keys from maps and variants in SQL transforms
+
+The new SQL functions `MAP_REMOVE_KEYS` and `VARIANT_REMOVE_KEYS` let you drop specific keys from a log event's tags map and remove properties from VARIANT attributes on logs and spans. Use them to strip unwanted or sensitive attributes before your data is sent downstream. See [_](/transforms/sql-transform/sql-functions#variant-query-extract-fns) and [_](/transforms/sql-transform/sql-functions#collection-fns).
+
+{/* ENGT-4343 */}
+### New feature: Original metric series preserved for anomalous objects
+
+When an object triggers a metric anomaly rule, Grepr now re-emits its original raw series alongside the aggregated cohort output, so you keep full-resolution data for the objects that matter. You can configure the metric name suffix used for the passthrough series.
+
+{/* ENGT-4571 */}
+### New feature: Improved time range picker for pipeline metrics and Log Explorer
+
+A single, more capable time range picker now powers both pipeline metrics and Log Explorer. You can type relative ranges such as `4h` or `45m`, enter absolute windows, and adjust individual date parts with the arrow keys. Your selected range is preserved as you move between the pipelines list and the pipeline detail pages.
+
+{/* ENGT-4697 */}
+### New feature: Updates to charts and pipeline metric cards improve usability
+
+Charts across the app now share a unified look, and pipeline metric cards have more consistent titles, spacing, and typography, making them easier to read at a glance.
+
+## June 22, 2026
+
+{/* ENGT-4732 */}
+### New feature: Copy resource IDs across the app
+
+You can now copy the IDs for your user account, pipelines, and integrations directly from the UI with a copy button, and administrators get a new **User ID** column in user management. This makes it easier to get the identifiers you need for API calls and support requests.
+
+{/* ENGT-4860 */}
+### New feature: Backfill logs to OpenTelemetry destinations
+
+You can now select an OpenTelemetry integration as the destination for a logs backfill job. Previously, backfill jobs were not supported with an OpenTelemetry integration and would return an error message.
+
 ## June 17, 2026
 
 {/* ENGT-3424 */}
@@ -23,7 +94,7 @@ When you edit or create a pipeline, you can now review a diff of the exact job g
 {/* ENGT-1901 */}
 ### New feature: Copy a ready-to-use OTLP ingest URL with your token
 
-You can now copy a complete OTLP ingest URL with your integration token already filled in, from both the pipeline source view and the integration card menu. The token is fetched on demand when you copy, so you can paste the URL directly into an OpenTelemetry agent configuration. Retrieving the token in clear text requires the **Edit integration** permission and is recorded in the audit log as a security event.
+You can now copy a complete OTLP ingest URL with your integration token already filled in, from both the pipeline source view and the integration card menu. The token is fetched on demand when you copy so that you can paste the URL directly into an OpenTelemetry agent configuration. Retrieving the token in clear text requires the **Edit integration** permission and is recorded in the audit log as a security event.
 
 {/* ENGT-4698 */}
 ### New feature: Time range picker on the integrations page

@@ -6,6 +6,13 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in July 2026.
 
+## July 21, 2026
+
+{/* ENGT-4866 */}
+### New feature: Trace pipelines are now available to all organizations
+
+Trace collection, processing, and exploration are now available to every organization. You can select **Trace Pipeline** in the create-pipeline type selector, open Trace Explorer from the navigation menu, and explore trace datasets from the data warehouse, without needing the feature enabled for your organization. See [_](/pipelines/trace-pipelines).
+
 ## July 22, 2026
 
 {/* ENGT-4917 */}
@@ -32,6 +39,9 @@ On the pipeline details page, a pipeline with many sources could make the page w
 
 You can now replay raw logs from the Grepr data lake to your observability vendor from the command line using the Grepr CLI and the CLI `backfill` command or the `backfill-logs` skill. The `backfill` command is a scriptable equivalent of the backfill flow in Log Explorer, and the `backfill-logs` skill lets you use an AI coding assistant, such as Claude Code or Codex, to create a backfill job using natural language. See [_](/cli#backfill) and [_](/cli#agent-plugins).
 
+{/* ENGT-4866 */}
+### New feature: Trace pipelines are now available to all organizations
+
 {/* ENGT-5089 */}
 ### Bug fix: Some imported queries were rejected by the query parser
 
@@ -56,3 +66,5 @@ Trace pipelines now display the same source and destination cards as log pipelin
 ### Bug fix: A newly created integration key could appear empty right after saving
 
 An API key or application key could appear empty for a short time immediately after you created an integration, such as Datadog, in the interface. Keys now appear correctly as soon as the integration is created, instead of after an internal cache expires.
+
+Trace collection, processing, and exploration are now available to every organization. You can select **Trace Pipeline** in the create-pipeline type selector, open Trace Explorer from the navigation menu, and explore trace datasets from the data warehouse, without needing the feature enabled for your organization. See [_](/pipelines/trace-pipelines).

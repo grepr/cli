@@ -303,78 +303,78 @@ For a complete list of available functions, see [System (Built-in) Functions](ht
 
 - **`VARIANT_REMOVE_KEYS(variant, path1, path2, ...)`**: Removes one or more values from a `VARIANT` data type and returns the modified `VARIANT`. The values to remove are specified by strings containing JSON paths.
 
-    Use this function to remove fields from log event attributes, span resource attributes, span attributes, or any other `VARIANT` value. For example, stripping high-cardinality, frequently changing, or sensitive values such as personally identifiable information from the `attributes` field of log events.
+  Use this function to remove fields from log event attributes, span resource attributes, span attributes, or any other `VARIANT` value. For example, stripping high-cardinality, frequently changing, or sensitive values such as personally identifiable information from the `attributes` field of log events.
 
-    - In addition to the `VARIANT` input, this function requires at least one path argument.
-    - Each path must be a literal string constant in JSON path syntax. Each path must start with a property, such as `$.foo`, and cannot be the root path `$` alone.
-    - To specify nested fields for removal, such as `$.kubernetes.pod_uid`, use dot notation.
-    - To specify a key containing dots (`.`) or other special characters, use bracket notation, such as `$["datadog.trace_payload.hostname"]`.
-    - Dot notation and bracket notation can be combined in one path: each dot segment navigates one level of object nesting, and each bracketed segment matches a single literal key at its position in the path. For example, the path `$.k8s.pod_uid` matches a `pod_uid` key inside a nested `k8s` object, but does not match a top-level key literally named `k8s.pod_uid`. To match a literal `k8s.pod_uid` key nested inside a `wrap` object, use `$.wrap["k8s.pod_uid"]`.
-    - Paths are case-sensitive.
-    - Wildcards, recursive descent, and array index steps, such as `$.items[0]`, are not supported. Arrays are opaque, so you can remove an array property, such as `$.items`, but you cannot remove a field from every object inside an array.
-    - If the input `variant` is `null`, if the input has no object at the specified path, or if a path doesn't match a key, the input value is returned unchanged.
-    - When you alias the return value from the function to a `LOG_EVENT` field, such as `attributes`, and also select `*`, you must place the function and column alias before the `*` wildcard character. If you place them after, the original column from `*` takes precedence and the removal has no effect.
-    - Object nesting depth is limited to 256 levels. Subtrees deeper than that limit are left unchanged.
+  - In addition to the `VARIANT` input, this function requires at least one path argument.
+  - Each path must be a literal string constant in JSON path syntax. Each path must start with a property, such as `$.foo`, and cannot be the root path `$` alone.
+  - To specify nested fields for removal, such as `$.kubernetes.pod_uid`, use dot notation.
+  - To specify a key containing dots (`.`) or other special characters, use bracket notation, such as `$["datadog.trace_payload.hostname"]`.
+  - Dot notation and bracket notation can be combined in one path: each dot segment navigates one level of object nesting, and each bracketed segment matches a single literal key at its position in the path. For example, the path `$.k8s.pod_uid` matches a `pod_uid` key inside a nested `k8s` object, but does not match a top-level key literally named `k8s.pod_uid`. To match a literal `k8s.pod_uid` key nested inside a `wrap` object, use `$.wrap["k8s.pod_uid"]`.
+  - Paths are case-sensitive.
+  - Wildcards, recursive descent, and array index steps, such as `$.items[0]`, are not supported. Arrays are opaque, so you can remove an array property, such as `$.items`, but you cannot remove a field from every object inside an array.
+  - If the input `variant` is `null`, if the input has no object at the specified path, or if a path doesn't match a key, the input value is returned unchanged.
+  - When you alias the return value from the function to a `LOG_EVENT` field, such as `attributes`, and also select `*`, you must place the function and column alias before the `*` wildcard character. If you place them after, the original column from `*` takes precedence and the removal has no effect.
+  - Object nesting depth is limited to 256 levels. Subtrees deeper than that limit are left unchanged.
 
-    ```sql
-    -- Remove nested and flat keys from log attributes
-    SELECT
-      VARIANT_REMOVE_KEYS(
-        attributes,
-        '$.kubernetes.pod.uid',
-        '$["datadog.trace_payload.hostname"]'
-      ) AS attributes,
-      *
-    FROM logs;
+  ```sql
+  -- Remove nested and flat keys from log attributes
+  SELECT
+    VARIANT_REMOVE_KEYS(
+      attributes,
+      '$.kubernetes.pod.uid',
+      '$["datadog.trace_payload.hostname"]'
+    ) AS attributes,
+    *
+  FROM logs;
 
-    -- Remove a sensitive flat attribute from span attributes
-    SELECT VARIANT_REMOVE_KEYS(
-      span.attributes,
-      '$["http.request.header.authorization"]'
-    ) AS cleaned_span_attributes
-    FROM spans;
-    ```
+  -- Remove a sensitive flat attribute from span attributes
+  SELECT VARIANT_REMOVE_KEYS(
+    span.attributes,
+    '$["http.request.header.authorization"]'
+  ) AS cleaned_span_attributes
+  FROM spans;
+  ```
 
 - **`VARIANT_BUILD(path1, value1, path2, value2, ...)`**: Constructs a nested `VARIANT` value from one or more JSON path and value pairs.
 
-You can use this function to add or update attributes on a log event. When the resulting `VARIANT` is selected as a column in your `SELECT` clause that isn't one of the standard LogEvent fields, its nested structure is automatically merged into the output event's `attributes` field. Values passed to `VARIANT_BUILD` are merged into any existing attributes at the same paths. To learn more about how nonstandard computed columns are automatically added to the event's `attributes` map, see [LogEvent fields](#fields).
+  You can use this function to add or update attributes on a log event. When the resulting `VARIANT` is selected as a column in your `SELECT` clause that isn't one of the standard LogEvent fields, its nested structure is automatically merged into the output event's `attributes` field. Values passed to `VARIANT_BUILD` are merged into any existing attributes at the same paths. To learn more about how nonstandard computed columns are automatically added to the event's `attributes` map, see [LogEvent fields](#fields).
 
-- The function requires an even number of arguments greater than or equal to 2, where each pair consists of a path followed by a value.
-- Each path must be a literal string constant in JSON path syntax. The path must start with a property, for example, $.body` and not just `$`., or start with an array index, such as `$[0]`.
-- Values can be dynamic expressions, such as column references or function results.
-- To specify nested fields, use dot notation, such as `$.body.message`, or bracket notation, such as `$["body"]["message"]`.
-- To target array elements, include array index steps in the path, such as `$.items[0]`. Sparse indices, such as `$.items[0]` and `$.items[2]`, produce arrays with `null` values in any unfilled positions.
-- When multiple pairs share an intermediate path, they're combined into a single nested structure. If two pairs specify the same terminal path, the last value provided is used.
-- A `null` value produces an explicit `null` at the corresponding path.
+  - The function requires an even number of arguments greater than or equal to 2, where each pair consists of a path followed by a value.
+  - Each path must be a literal string constant in JSON path syntax. The path must start with a property, for example, $.body` and not just `$`., or start with an array index, such as `$[0]`.
+  - Values can be dynamic expressions, such as column references or function results.
+  - To specify nested fields, use dot notation, such as `$.body.message`, or bracket notation, such as `$["body"]["message"]`.
+  - To target array elements, include array index steps in the path, such as `$.items[0]`. Sparse indices, such as `$.items[0]` and `$.items[2]`, produce arrays with `null` values in any unfilled positions.
+  - When multiple pairs share an intermediate path, they're combined into a single nested structure. If two pairs specify the same terminal path, the last value provided is used.
+  - A `null` value produces an explicit `null` at the corresponding path.
 
-```sql
--- Add a single nested attribute by injecting the message column at $.body.message
-SELECT *, VARIANT_BUILD('$.body.message', message) AS merged_attrs FROM logs;
+  ```sql
+  -- Add a single nested attribute by injecting the message column at $.body.message
+  SELECT *, VARIANT_BUILD('$.body.message', message) AS merged_attrs FROM logs;
 
--- Build a nested object with multiple properties under a shared path
-SELECT *, VARIANT_BUILD('$.status.code', 200, '$.status.message', 'OK') AS merged_attrs
-FROM logs;
+  -- Build a nested object with multiple properties under a shared path
+  SELECT *, VARIANT_BUILD('$.status.code', 200, '$.status.message', 'OK') AS merged_attrs
+  FROM logs;
 
--- Build an array using indexed paths
-SELECT *, VARIANT_BUILD('$.items[0]', 'first', '$.items[1]', 'second') AS merged_attrs
-FROM logs;
+  -- Build an array using indexed paths
+  SELECT *, VARIANT_BUILD('$.items[0]', 'first', '$.items[1]', 'second') AS merged_attrs
+  FROM logs;
 
--- Build an array of objects by combining indexed paths and nested properties
-SELECT *, VARIANT_BUILD(
-  '$.entries[0].key', 'a',
-  '$.entries[0].val', 1,
-  '$.entries[1].key', 'b'
-) AS merged_attrs FROM logs;
+  -- Build an array of objects by combining indexed paths and nested properties
+  SELECT *, VARIANT_BUILD(
+    '$.entries[0].key', 'a',
+    '$.entries[0].val', 1,
+    '$.entries[1].key', 'b'
+  ) AS merged_attrs FROM logs;
 
--- Use a path with special characters by using bracket notation
-SELECT *, VARIANT_BUILD('$["app.kubernetes.io/name"]', 'my-app') AS merged_attrs FROM logs;
+  -- Use a path with special characters by using bracket notation
+  SELECT *, VARIANT_BUILD('$["app.kubernetes.io/name"]', 'my-app') AS merged_attrs FROM logs;
 
--- Inject a value extracted from another VARIANT into a new path
-SELECT *, VARIANT_BUILD(
-  '$.grepr.host',
-  VARIANT_VALUE(attributes, '$["datadog.trace_payload.hostname"]', 'STRING')
-) AS merged_attrs FROM logs;
-```
+  -- Inject a value extracted from another VARIANT into a new path
+  SELECT *, VARIANT_BUILD(
+    '$.grepr.host',
+    VARIANT_VALUE(attributes, '$["datadog.trace_payload.hostname"]', 'STRING')
+  ) AS merged_attrs FROM logs;
+  ```
 
 ### Numeric functions
 
