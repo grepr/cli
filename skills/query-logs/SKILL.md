@@ -1,10 +1,10 @@
 ---
 description: Query logs from Grepr datasets using filters and time ranges.
-allowed-tools: Bash(grepr query), Bash(grepr --conf * query), Bash(jq), grepr:describe-datasets
+allowed-tools: Bash(grepr query), Bash(grepr --conf * query), Bash(jq), grepr:dataset-commands
 ---
 
 # Prerequisites
-You may need the `grepr:describe-datasets` skill to list and find datasets.
+You may need the `grepr:dataset-commands` skill to list and find datasets.
 
 You can use the `grepr query` command to query logs from Grepr datasets.
 
