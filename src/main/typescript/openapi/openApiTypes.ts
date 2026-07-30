@@ -727,6 +727,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/datadog/{id}/api-keys": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Set a Datadog integration's API keys
+     * @description Replaces the integration's entire set of API keys in one atomic write. Existing keys are referenced by id (kept or rotated), new keys carry only a value, and omitted keys are removed; one key is marked as the send key used to write data back to Datadog. If any key is rejected the existing set is left unchanged. All keys are accepted for inbound telemetry. Requires the organization to have multiple Datadog API keys enabled. Adding, removing, relabeling, or rotating a key other than the send key is allowed while the integration's pipeline is running; a change that affects the send key (which key it is, or its value) requires the pipeline to be stopped, since that key is baked into the running Flink job.
+     */
+    put: operations["setApiKeys"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/integrations/datadog/{id}/app-key": {
     parameters: {
       query?: never;
@@ -3425,6 +3445,20 @@ export interface components {
      *     ]
      */
     Any: unknown;
+    /** @description One key in the desired set */
+    ApiKey: {
+      /**
+       * @description Id of an existing key to keep or rotate
+       * @example k_7f3a
+       */
+      keyId?: string;
+      /** @description User-supplied display name for the key, purely informational. Omitting it clears any existing label. */
+      label?: string;
+      /** @description Whether this key is used to send data back to Datadog */
+      sendKey?: boolean;
+      /** @description The cleartext key value (for an added or rotated key) */
+      value?: string;
+    };
     ArrayData: Record<string, never>;
     /**
      * @description Maps a log event attribute path to an HTTP header name
@@ -4260,6 +4294,8 @@ export interface components {
        * @example **************ey
        */
       readonly apiKey?: string;
+      /** @description The API keys configured for this integration (masked). */
+      readonly apiKeys?: components["schemas"]["IngestKeyView"][];
       /**
        * @description Masked App key for Datadog
        * @example **************ey
@@ -4280,6 +4316,11 @@ export interface components {
        * @example service:my-service
        */
       filterQuery: string;
+      /**
+       * @description Identifier of the API key used to send data back to Datadog. Defaults to the only key when unset.
+       * @example k_7f3a
+       */
+      sendKeyId?: string;
       /**
        * @description Datadog site URL
        * @example datadoghq.com
@@ -5503,6 +5544,23 @@ export interface components {
        * @example 2023-01-01T00:00:00Z
        */
       start: string;
+    };
+    /** @description The API keys configured for this integration (masked). */
+    IngestKeyView: {
+      /**
+       * @description Opaque identifier of the API key
+       * @example k_7f3a
+       */
+      keyId?: string;
+      /** @description User-supplied display name for the key, purely informational */
+      label?: string;
+      /**
+       * @description Masked value of the API key
+       * @example **************a1
+       */
+      maskedValue?: string;
+      /** @description Whether this key is used to send data back to the vendor */
+      sendKey?: boolean;
     };
     /** @description Instrumentation scope information describing the library/framework that produced the telemetry. */
     InstrumentationScope: {
@@ -8768,6 +8826,8 @@ export interface components {
       /** Format: int32 */
       maxDataWarehouseIntegrations?: number;
       /** Format: int32 */
+      maxDatadogApiKeysPerIntegration?: number;
+      /** Format: int32 */
       maxDatadogIntegrations?: number;
       /** Format: int32 */
       maxGeminiIntegrations?: number;
@@ -9467,6 +9527,11 @@ export interface components {
       serviceAccounts?: components["schemas"]["ItemsCollectionServiceAccountRead"];
       /** Format: int32 */
       start?: number;
+    };
+    /** @description Replaces the full set of API keys for a Datadog integration in one atomic write */
+    SetApiKeysRequest: {
+      /** @description The complete desired set of API keys */
+      keys: components["schemas"]["ApiKey"][];
     };
     SeverityNode: {
       /**
@@ -12097,6 +12162,7 @@ export type SchemaAnomalyActions = components["schemas"]["AnomalyActions"];
 export type SchemaAnomalyConfig = components["schemas"]["AnomalyConfig"];
 export type SchemaAnthropic = components["schemas"]["Anthropic"];
 export type SchemaAny = components["schemas"]["Any"];
+export type SchemaApiKey = components["schemas"]["ApiKey"];
 export type SchemaArrayData = components["schemas"]["ArrayData"];
 export type SchemaAttributeHeaderMapping =
   components["schemas"]["AttributeHeaderMapping"];
@@ -12260,6 +12326,7 @@ export type SchemaIgnoreAttributesMergeStrategy =
   components["schemas"]["IgnoreAttributesMergeStrategy"];
 export type SchemaImpactEstimationTemplateInput =
   components["schemas"]["ImpactEstimationTemplateInput"];
+export type SchemaIngestKeyView = components["schemas"]["IngestKeyView"];
 export type SchemaInstrumentationScope =
   components["schemas"]["InstrumentationScope"];
 export type SchemaIntegrationExceptionConfig =
@@ -12546,6 +12613,8 @@ export type SchemaServiceAccountWithSecret =
   components["schemas"]["ServiceAccountWithSecret"];
 export type SchemaServiceAccountsList =
   components["schemas"]["ServiceAccountsList"];
+export type SchemaSetApiKeysRequest =
+  components["schemas"]["SetApiKeysRequest"];
 export type SchemaSeverityNode = components["schemas"]["SeverityNode"];
 export type SchemaShardingConfig = components["schemas"]["ShardingConfig"];
 export type SchemaSignupRequest = components["schemas"]["SignupRequest"];
@@ -14721,6 +14790,53 @@ export interface operations {
       };
       /** @description Integration not found. */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  setApiKeys: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["SetApiKeysRequest"];
+      };
+    };
+    responses: {
+      /** @description API keys updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadDatadog"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration or a referenced key not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The key count exceeds the limit, or the change affects the send key while the integration is in use by a running pipeline. */
+      409: {
         headers: {
           [name: string]: unknown;
         };
