@@ -1,0 +1,58 @@
+---
+description: Release notes for new features, improvements, and bug fixes to the Grepr platform released in July 2026.
+---
+
+# Release notes for July 2026
+
+Grepr released these feature updates, improvements, and bug fixes in July 2026.
+
+## July 22, 2026
+
+{/* ENGT-4917 */}
+### New feature: Install the Grepr Terraform provider from the OpenTofu registry
+
+The Grepr Terraform provider is now published to the OpenTofu registry, so it's now easier for you to integrate pipelines into your IaC workflows. Declare the provider in the `required_providers` block of your configuration and initialize your working directory to download it. The provider works with both the OpenTofu CLI and the Terraform CLI. To learn more about managing Grepr pipelines with the provider, see [_](/admin/terraform-provider).
+
+## July 18, 2026
+
+{/* ENGT-5118 */}
+### New feature: Clearer handling of long pipeline names
+
+The pipeline name field now caps input at 128 characters, matching the limit the backend enforces, so you get immediate feedback while typing instead of a generic error when you save a name that is too long. Long pipeline names are also truncated with a hover tooltip wherever they appear, such as on pipeline cards and in creation dialogs, so they no longer overflow the interface.
+
+{/* ENGT-5098 */}
+### Bug fix: The pipeline details page overflowed horizontally with many sources
+
+On the pipeline details page, a pipeline with many sources could make the page wider than the browser window and add a horizontal scrollbar to the entire page. The sources section now scrolls within its own area, so the page no longer overflows horizontally.
+
+## July 15, 2026
+
+{/* ENGT-5021 */}
+### New feature: Backfill logs to your vendors from the Grepr CLI
+
+You can now replay raw logs from the Grepr data lake to your observability vendor from the command line using the Grepr CLI and the CLI `backfill` command or the `backfill-logs` skill. The `backfill` command is a scriptable equivalent of the backfill flow in Log Explorer, and the `backfill-logs` skill lets you use an AI coding assistant, such as Claude Code or Codex, to create a backfill job using natural language. See [_](/cli#backfill) and [_](/cli#agent-plugins).
+
+{/* ENGT-5089 */}
+### Bug fix: Some imported queries were rejected by the query parser
+
+When you imported queries from Datadog dashboards or monitors, some valid queries were rejected by the query parser. This affected queries that contained a bare equals sign such as `code=500`, square brackets in free text such as `[Errno 24]`, and unquoted quote characters inside wildcard values. These queries now parse and run correctly.
+
+## July 11, 2026
+
+{/* ENGT-4699 */}
+### New feature: Usability enhancements to the pipeline details page
+
+The pipeline details page has a visual and usability refresh across the different pipeline types:
+- Consistent typography, rounded surfaces, clearer source and destination indicators, and per-step validation warnings improve usability.
+- Warning and status messaging is improved.
+- A log-reducer pipeline whose only output is a processed-logs destination is now accepted as a valid, non-draft configuration.
+
+{/* ENGT-4934 */}
+### New feature: Source and destination cards for trace pipelines
+
+Trace pipelines now display the same source and destination cards as log pipelines on the pipeline details page, so you can see the ingested spans on each source and the vendor responses on each destination at a glance instead of the older table view. This release also fixes log source cards that rendered empty, so the ingested message count now appears for every source. See [_](/pipelines/trace-pipelines)
+
+{/* ENGT-5079 */}
+### Bug fix: A newly created integration key could appear empty right after saving
+
+An API key or application key could appear empty for a short time immediately after you created an integration, such as Datadog, in the interface. Keys now appear correctly as soon as the integration is created, instead of after an internal cache expires.
