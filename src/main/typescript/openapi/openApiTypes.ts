@@ -9483,6 +9483,17 @@ export interface components {
     };
     /** @description Configuration for dynamic partitioning when enabled. */
     ShardingConfig: Record<string, never>;
+    /**
+     * Sibling Merge Rules
+     * @description Merges sibling spans that share an identical subtree signature and match a CompleteSpan SQL predicate. The earliest-start match is kept (with its children); the other matching same-signature siblings are removed and counted under grepr.merged_siblings.
+     */
+    SiblingMergeRule: {
+      /**
+       * @description Boolean SQL expression evaluated per span over the CompleteSpan schema. Uses the same fields and functions as head sampling predicates: top-level columns such as servicename, nested fields such as span.operationName, and VARIANT_VALUE(...) for span/resource attributes.
+       * @example span.operationName LIKE 'GET /health%' OR VARIANT_VALUE(span.attributes, '$["http.status_code"]', 'INT') = 200
+       */
+      predicate: string;
+    };
     SignupRequest: {
       orgName: string;
       reCaptchaToken: string;
@@ -9625,6 +9636,17 @@ export interface components {
        */
       type: SpanDedupIcebergTableSinkType;
       vendorSinkId: string;
+    };
+    /**
+     * Span Drop Rules
+     * @description Drops spans matching a CompleteSpan SQL predicate, along with their descendants.
+     */
+    SpanDropRule: {
+      /**
+       * @description Boolean SQL expression evaluated per span over the CompleteSpan schema. Uses the same fields and functions as head sampling predicates: top-level columns such as servicename, nested fields such as span.operationName, and VARIANT_VALUE(...) for span/resource attributes.
+       * @example span.operationName LIKE 'GET /health%' OR VARIANT_VALUE(span.attributes, '$["http.status_code"]', 'INT') = 200
+       */
+      predicate: string;
     };
     /** @description A timestamped event within a span. */
     SpanEvent: {
@@ -11035,6 +11057,18 @@ export interface components {
       datasetId?: string;
       /** @example operation_name */
       name: string;
+      /**
+       * Sibling Merge Rules
+       * @description Rules that merge same-signature sibling spans matching a predicate, after tail sampling decisions. The earliest-start match is kept with its children; the other matching same-signature siblings are removed and counted under grepr.merged_siblings. Requires tail sampling to be configured.
+       * @default []
+       */
+      siblingMergeRules?: components["schemas"]["SiblingMergeRule"][];
+      /**
+       * Span Drop Rules
+       * @description Rules that drop matching spans and their descendants after tail sampling decisions. Requires tail sampling to be configured.
+       * @default []
+       */
+      spanDropRules?: components["schemas"]["SpanDropRule"][];
       /**
        * Span Head Sampling Rules
        * @description Span head sampling rules. Matched spans are retained as SPAN_HEAD_SAMPLED. If tail sampling is configured, matched spans participate in trace assembly before output; otherwise, matched spans are emitted directly. Order is significant; first match wins for metric attribution. Trace head sampling wins when both match the same span.
@@ -12517,6 +12551,7 @@ export type SchemaSetApiKeysRequest =
   components["schemas"]["SetApiKeysRequest"];
 export type SchemaSeverityNode = components["schemas"]["SeverityNode"];
 export type SchemaShardingConfig = components["schemas"]["ShardingConfig"];
+export type SchemaSiblingMergeRule = components["schemas"]["SiblingMergeRule"];
 export type SchemaSignupRequest = components["schemas"]["SignupRequest"];
 export type SchemaSimple = components["schemas"]["Simple"];
 export type SchemaSkillDescriptor = components["schemas"]["SkillDescriptor"];
@@ -12526,6 +12561,7 @@ export type SchemaSortFieldConfig = components["schemas"]["SortFieldConfig"];
 export type SchemaSpan = components["schemas"]["Span"];
 export type SchemaSpanDedupIcebergTableSink =
   components["schemas"]["SpanDedupIcebergTableSink"];
+export type SchemaSpanDropRule = components["schemas"]["SpanDropRule"];
 export type SchemaSpanEvent = components["schemas"]["SpanEvent"];
 export type SchemaSpanHeadSamplingRule =
   components["schemas"]["SpanHeadSamplingRule"];
