@@ -108,7 +108,7 @@ export interface paths {
     post?: never;
     /**
      * Delete an agent
-     * @description Soft-deletes an agent. Returns 409 if the agent still has a signal integration; delete that first.
+     * @description Soft-deletes an agent. Returns 409 while the agent is still subscribed to any pipeline; unsubscribe it first.
      */
     delete: operations["delete"];
     options?: never;
@@ -136,6 +136,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/agents/{id}/pipelines/{jobId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Subscribe an agent to a pipeline
+     * @description Subscribes the agent to the pipeline's pattern signals. Requires the pipeline to have new-pattern signal emission enabled on its reducer or pattern matcher. The running pipeline picks up the subscriber automatically, without a restart.
+     */
+    post: operations["subscribe"];
+    /**
+     * Unsubscribe an agent from a pipeline
+     * @description Unsubscribes the agent from the pipeline's pattern signals. The running pipeline drops the subscriber automatically, without a restart.
+     */
+    delete: operations["unsubscribe"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/agents/{id}/subscriptions": {
     parameters: {
       query?: never;
@@ -145,7 +169,7 @@ export interface paths {
     };
     /**
      * List an agent's subscriptions
-     * @description Returns the pipeline ids the agent is subscribed to via its signal integration.
+     * @description Returns the pipeline ids the agent is subscribed to.
      */
     get: operations["subscriptions"];
     put?: never;
@@ -1371,50 +1395,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/integrations/pipeline-signal": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List PipelineSignal integrations
-     * @description Returns the PipelineSignal integrations for your organization.
-     */
-    get: operations["list_13"];
-    put?: never;
-    /**
-     * Create a PipelineSignal integration
-     * @description Creates the PipelineSignal integration for an agent so it can subscribe to pipelines.
-     */
-    post: operations["create_13"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/integrations/pipeline-signal/{id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /**
-     * Delete a PipelineSignal integration
-     * @description Deletes a PipelineSignal integration. Blocked while it is linked to a pipeline.
-     */
-    delete: operations["delete_13"];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/integrations/s3-data-warehouse": {
     parameters: {
       query?: never;
@@ -1535,13 +1515,13 @@ export interface paths {
      * List all S3 Vector Index integrations
      * @description Retrieves all S3 Vector Index integrations for the organization.
      */
-    get: operations["list_14"];
+    get: operations["list_13"];
     put?: never;
     /**
      * Create an S3 Vector Index integration
      * @description Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.
      */
-    post: operations["create_14"];
+    post: operations["create_13"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1570,7 +1550,7 @@ export interface paths {
      * Delete an S3 Vector Index integration
      * @description Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn't exist.
      */
-    delete: operations["delete_14"];
+    delete: operations["delete_13"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1659,13 +1639,13 @@ export interface paths {
      * List all Splunk integrations
      * @description Get all Splunk integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_15"];
+    get: operations["list_14"];
     put?: never;
     /**
      * Create a Splunk integration
      * @description Creates an integration to connect to Splunk.
      */
-    post: operations["create_15"];
+    post: operations["create_14"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1694,7 +1674,7 @@ export interface paths {
      * Delete a Splunk integration
      * @description Deletes an integration to connect to Splunk. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_15"];
+    delete: operations["delete_14"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1791,13 +1771,13 @@ export interface paths {
      * List all SumoLogic integrations
      * @description Get all SumoLogic integrations.
      */
-    get: operations["list_16"];
+    get: operations["list_15"];
     put?: never;
     /**
      * Create a SumoLogic integration
      * @description Creates an integration to connect to SumoLogic.
      */
-    post: operations["create_16"];
+    post: operations["create_15"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1826,7 +1806,7 @@ export interface paths {
      * Delete a SumoLogic integration
      * @description Deletes an integration to connect to SumoLogic. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_16"];
+    delete: operations["delete_15"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1863,13 +1843,13 @@ export interface paths {
      * List webhook integrations
      * @description Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.
      */
-    get: operations["list_17"];
+    get: operations["list_16"];
     put?: never;
     /**
      * Create a webhook integration
      * @description Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).
      */
-    post: operations["create_17"];
+    post: operations["create_16"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1898,7 +1878,7 @@ export interface paths {
      * Delete a webhook integration
      * @description Deletes a webhook integration. No-op if already deleted.
      */
-    delete: operations["delete_17"];
+    delete: operations["delete_16"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2992,7 +2972,7 @@ export interface paths {
      * List all users
      * @description Get all users in the system.
      */
-    get: operations["list_18"];
+    get: operations["list_17"];
     put?: never;
     /**
      * Create a new user
@@ -3241,9 +3221,6 @@ export interface components {
       completed?: number;
       /** Format: int32 */
       failed?: number;
-    };
-    AgentSignalSubscription: {
-      integrationId: string;
     };
     AgentSubscriptionCounts: {
       /** Format: int32 */
@@ -5731,10 +5708,6 @@ export interface components {
     ItemsCollectionReadJob: {
       items?: components["schemas"]["ReadJob"][];
     };
-    ItemsCollectionReadJobSignal: {
-      /** @default [] */
-      items?: components["schemas"]["ReadJobSignal"][];
-    };
     ItemsCollectionReadNewRelic: {
       /** @default [] */
       items?: components["schemas"]["ReadNewRelic"][];
@@ -5824,10 +5797,6 @@ export interface components {
       lowerPart?: number;
       /** Format: int64 */
       upperPart?: number;
-    };
-    /** @description The payload containing integration data. */
-    JobSignal: {
-      agentId: string;
     };
     /** @description JSON file format. */
     JsonFileFormat: {
@@ -6434,7 +6403,7 @@ export interface components {
       delimiters: string[];
       /**
        * Emit new-pattern signals
-       * @description Whether this operation emits LogPatternSignal events to the agent-service when new patterns are detected or replayed.
+       * @description Whether this operation may emit LogPatternSignal events to the agent-service when new patterns are detected or replayed. Must be enabled before an agent can subscribe to this pipeline.
        * @default false
        */
       emitNewPatternSignals?: boolean;
@@ -8026,7 +7995,7 @@ export interface components {
       delimiters: string[];
       /**
        * Emit new-pattern signals
-       * @description Whether this operation emits LogPatternSignal events to the agent-service when new patterns are detected or replayed.
+       * @description Whether this operation may emit LogPatternSignal events to the agent-service when new patterns are detected or replayed. Must be enabled before an agent can subscribe to this pipeline.
        * @default false
        */
       emitNewPatternSignals?: boolean;
@@ -8700,49 +8669,6 @@ export interface components {
       /**
        * Format: int64
        * @description Version of the job
-       * @example 0
-       */
-      version: number;
-    };
-    ReadJobSignal: {
-      /**
-       * Format: date-time
-       * @description Timestamp when the integration was created.
-       */
-      readonly createdAt: string;
-      /** @description The integration id */
-      id: string;
-      /**
-       * @description List of job IDs associated with the integration.
-       * @default []
-       */
-      jobIds: string[];
-      /**
-       * @description Name of the integration.
-       * @example my_integration
-       */
-      name: string;
-      /** @description Organization ID of the integration. */
-      organizationId: string;
-      payload: components["schemas"]["JobSignal"];
-      /**
-       * @description The team IDs that this integration is associated with.
-       * @default []
-       */
-      teamIds?: string[];
-      /**
-       * @description The type of the integration. This is used to determine the payload type.
-       * @enum {string}
-       */
-      type: ReadJobSignalType;
-      /**
-       * Format: date-time
-       * @description Timestamp when the integration was last updated.
-       */
-      readonly updatedAt: string;
-      /**
-       * Format: int32
-       * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
        * @example 0
        */
       version: number;
@@ -11627,10 +11553,13 @@ export interface components {
       type: VendorLogEventDedupIcebergTableSinkType;
       vendorSinkId: string;
     };
+    WebhookAgentSubscription: {
+      agentId: string;
+    };
     /** @description The payload containing integration data. */
     WebhookIntegration: {
       /** @default [] */
-      agentSubscriptions: components["schemas"]["AgentSignalSubscription"][];
+      agentSubscriptions: components["schemas"]["WebhookAgentSubscription"][];
       schemaDescription: string;
       systemType: string;
     };
@@ -11784,30 +11713,6 @@ export interface components {
        * @enum {string}
        */
       type: ReadGithubMcpType;
-      /**
-       * Format: int32
-       * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
-       * @example 0
-       */
-      version: number;
-    };
-    WriteJobSignal: {
-      /**
-       * @description Name of the integration.
-       * @example my_integration
-       */
-      name: string;
-      payload: components["schemas"]["JobSignal"];
-      /**
-       * @description The team IDs that this integration is associated with.
-       * @default []
-       */
-      teamIds?: string[];
-      /**
-       * @description The type of the integration. This is used to determine the payload type.
-       * @enum {string}
-       */
-      type: ReadJobSignalType;
       /**
        * Format: int32
        * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -12139,8 +12044,6 @@ export type SchemaAgentMcpIntegrations =
   components["schemas"]["AgentMcpIntegrations"];
 export type SchemaAgentRecentHealth =
   components["schemas"]["AgentRecentHealth"];
-export type SchemaAgentSignalSubscription =
-  components["schemas"]["AgentSignalSubscription"];
 export type SchemaAgentSubscriptionCounts =
   components["schemas"]["AgentSubscriptionCounts"];
 export type SchemaAgentSummary = components["schemas"]["AgentSummary"];
@@ -12364,8 +12267,6 @@ export type SchemaItemsCollectionReadInvitation =
   components["schemas"]["ItemsCollectionReadInvitation"];
 export type SchemaItemsCollectionReadJob =
   components["schemas"]["ItemsCollectionReadJob"];
-export type SchemaItemsCollectionReadJobSignal =
-  components["schemas"]["ItemsCollectionReadJobSignal"];
 export type SchemaItemsCollectionReadNewRelic =
   components["schemas"]["ItemsCollectionReadNewRelic"];
 export type SchemaItemsCollectionReadOpenAi =
@@ -12398,7 +12299,6 @@ export type SchemaJobAction = components["schemas"]["JobAction"];
 export type SchemaJobActionRule = components["schemas"]["JobActionRule"];
 export type SchemaJobAnomaly = components["schemas"]["JobAnomaly"];
 export type SchemaJobId = components["schemas"]["JobID"];
-export type SchemaJobSignal = components["schemas"]["JobSignal"];
 export type SchemaJsonFileFormat = components["schemas"]["JsonFileFormat"];
 export type SchemaJsonLogEventMapper =
   components["schemas"]["JsonLogEventMapper"];
@@ -12566,7 +12466,6 @@ export type SchemaReadGemini = components["schemas"]["ReadGemini"];
 export type SchemaReadGithubMcp = components["schemas"]["ReadGithubMcp"];
 export type SchemaReadInvitation = components["schemas"]["ReadInvitation"];
 export type SchemaReadJob = components["schemas"]["ReadJob"];
-export type SchemaReadJobSignal = components["schemas"]["ReadJobSignal"];
 export type SchemaReadNewRelic = components["schemas"]["ReadNewRelic"];
 export type SchemaReadOpenAi = components["schemas"]["ReadOpenAi"];
 export type SchemaReadOrgConstraints =
@@ -12768,6 +12667,8 @@ export type SchemaVendorImportedException =
   components["schemas"]["VendorImportedException"];
 export type SchemaVendorLogEventDedupIcebergTableSink =
   components["schemas"]["VendorLogEventDedupIcebergTableSink"];
+export type SchemaWebhookAgentSubscription =
+  components["schemas"]["WebhookAgentSubscription"];
 export type SchemaWebhookIntegration =
   components["schemas"]["WebhookIntegration"];
 export type SchemaWindowBasedLogarithmicSampling =
@@ -12779,7 +12680,6 @@ export type SchemaWriteDatadog = components["schemas"]["WriteDatadog"];
 export type SchemaWriteDatadogMcp = components["schemas"]["WriteDatadogMcp"];
 export type SchemaWriteGemini = components["schemas"]["WriteGemini"];
 export type SchemaWriteGithubMcp = components["schemas"]["WriteGithubMcp"];
-export type SchemaWriteJobSignal = components["schemas"]["WriteJobSignal"];
 export type SchemaWriteNewRelic = components["schemas"]["WriteNewRelic"];
 export type SchemaWriteOpenAi = components["schemas"]["WriteOpenAi"];
 export type SchemaWriteOtlp = components["schemas"]["WriteOtlp"];
@@ -13067,7 +12967,7 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description Agent still has a signal integration */
+      /** @description Agent is still subscribed to one or more pipelines */
       409: {
         headers: {
           [name: string]: unknown;
@@ -13101,6 +13001,90 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  subscribe: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Subscription created (or already present) */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The pipeline has no reducer or pattern matcher, so it can never emit */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent or pipeline not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The pipeline is not enabled to emit pattern signals */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  unsubscribe: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Subscription removed (or was not present) */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent not found */
+      404: {
         headers: {
           [name: string]: unknown;
         };
@@ -16607,98 +16591,6 @@ export interface operations {
       };
     };
   };
-  list_13: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Integrations retrieved successfully */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ItemsCollectionReadJobSignal"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  create_13: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["WriteJobSignal"];
-      };
-    };
-    responses: {
-      /** @description Integration created successfully */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ReadJobSignal"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An integration for this agent already exists */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  delete_13: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Integration deleted successfully */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
   list_4: {
     parameters: {
       query?: never;
@@ -16977,7 +16869,7 @@ export interface operations {
       };
     };
   };
-  list_14: {
+  list_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -17004,7 +16896,7 @@ export interface operations {
       };
     };
   };
-  create_14: {
+  create_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -17118,7 +17010,7 @@ export interface operations {
       };
     };
   };
-  delete_14: {
+  delete_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -17360,7 +17252,7 @@ export interface operations {
       };
     };
   };
-  list_15: {
+  list_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -17387,7 +17279,7 @@ export interface operations {
       };
     };
   };
-  create_15: {
+  create_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -17510,7 +17402,7 @@ export interface operations {
       };
     };
   };
-  delete_15: {
+  delete_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -17698,7 +17590,7 @@ export interface operations {
       };
     };
   };
-  list_16: {
+  list_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -17725,7 +17617,7 @@ export interface operations {
       };
     };
   };
-  create_16: {
+  create_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -17848,7 +17740,7 @@ export interface operations {
       };
     };
   };
-  delete_16: {
+  delete_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -17913,7 +17805,7 @@ export interface operations {
       };
     };
   };
-  list_17: {
+  list_16: {
     parameters: {
       query?: {
         /** @description Only return integrations targeting this agent. */
@@ -17943,7 +17835,7 @@ export interface operations {
       };
     };
   };
-  create_17: {
+  create_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -18064,7 +17956,7 @@ export interface operations {
       };
     };
   };
-  delete_17: {
+  delete_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -20803,7 +20695,7 @@ export interface operations {
       };
     };
   };
-  list_18: {
+  list_17: {
     parameters: {
       query?: {
         page?: number;
@@ -21575,9 +21467,6 @@ export enum ReadGeminiType {
 }
 export enum ReadGithubMcpType {
   github_mcp = "github-mcp",
-}
-export enum ReadJobSignalType {
-  pipeline_signal = "pipeline-signal",
 }
 export enum ReadNewRelicType {
   newrelic = "newrelic",

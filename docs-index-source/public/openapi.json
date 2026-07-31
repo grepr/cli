@@ -425,17 +425,6 @@
         },
         "type": "object"
       },
-      "AgentSignalSubscription": {
-        "properties": {
-          "integrationId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "integrationId"
-        ],
-        "type": "object"
-      },
       "AgentSubscriptionCounts": {
         "properties": {
           "pipelines": {
@@ -1988,6 +1977,92 @@
         "required": [
           "endDate",
           "startDate"
+        ],
+        "type": "object"
+      },
+      "CreateBackfillJob": {
+        "description": "Parameters for creating a logs backfill batch job.",
+        "properties": {
+          "datasetId": {
+            "description": "The dataset the backfill reads from and the dedup sinks track delivery in.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of the time interval to backfill.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "default": 500000,
+            "description": "Maximum number of rows to backfill. Default and max is 500,000. A negative value means no limit.",
+            "example": 100000,
+            "format": "int32",
+            "maximum": 500000,
+            "type": "integer"
+          },
+          "name": {
+            "description": "Name of the backfill job. Must match the job name pattern [a-z0-9_]{1,128}.",
+            "example": "manual_backfill_1",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/EventPredicate"
+          },
+          "sinks": {
+            "description": "The vendor sink operations that deliver the backfilled events. Passed through verbatim, matching the sinks a rule action would carry.",
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "type": "array"
+          },
+          "start": {
+            "description": "Start of the time interval to backfill, inclusive.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "tags": {
+            "additionalProperties": {
+              "description": "Custom tags added to the backfill job for ease of search.",
+              "example": "{\"source\":\"manual\"}",
+              "type": "string"
+            },
+            "default": {},
+            "description": "Custom tags added to the backfill job for ease of search.",
+            "example": {
+              "source": "manual"
+            },
+            "type": "object"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables used to modify the query while it is parsed.",
+            "type": "object"
+          },
+          "vendorSinkIntegrationIds": {
+            "default": [],
+            "description": "Vendor integration IDs, if any, whose prior delivery the backfill skips. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
+            "items": {
+              "description": "Vendor integration IDs, if any, whose prior delivery the backfill skips. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
+              "pattern": "[a-z0-9]{1,13}",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "sinks",
+          "start"
         ],
         "type": "object"
       },
@@ -4981,18 +5056,6 @@
         },
         "type": "object"
       },
-      "ItemsCollectionReadJobSignal": {
-        "properties": {
-          "items": {
-            "default": [],
-            "items": {
-              "$ref": "#/components/schemas/ReadJobSignal"
-            },
-            "type": "array"
-          }
-        },
-        "type": "object"
-      },
       "ItemsCollectionReadNewRelic": {
         "properties": {
           "items": {
@@ -5254,21 +5317,6 @@
           }
         },
         "type": "object"
-      },
-      "JobSignal": {
-        "description": "The payload containing integration data.",
-        "properties": {
-          "agentId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "agentId"
-        ],
-        "type": "object",
-        "x-type": {
-          "type": "pipeline-signal"
-        }
       },
       "JsonFileFormat": {
         "description": "JSON file format.",
@@ -6315,7 +6363,7 @@
           },
           "emitNewPatternSignals": {
             "default": false,
-            "description": "Whether this operation emits LogPatternSignal events to the agent-service when new patterns are detected or replayed.",
+            "description": "Whether this operation may emit LogPatternSignal events to the agent-service when new patterns are detected or replayed. Must be enabled before an agent can subscribe to this pipeline.",
             "title": "Emit new-pattern signals",
             "type": "boolean"
           },
@@ -6792,6 +6840,75 @@
         "x-tags": [
           "Sources"
         ]
+      },
+      "LogsBackfillTemplateInput": {
+        "description": "Schema for the logs backfill job graph.",
+        "properties": {
+          "backfillTimestampTag": {
+            "description": "ISO-8601 value stamped onto backfilled events as the grepr.backfilled.timestamp tag. Computed by the builder so the template stays free of time logic.",
+            "example": "2023-01-01t01:00:00z",
+            "type": "string"
+          },
+          "datasetId": {
+            "description": "The dataset the backfill reads from and the dedup sinks track delivery in.",
+            "pattern": "^[0-9a-z]{13}$",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of the time interval to backfill.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "description": "The maximum number of rows to backfill. A negative value means no limit.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "query": {
+            "$ref": "#/components/schemas/EventPredicate"
+          },
+          "sinks": {
+            "description": "The vendor sink operations to deliver the backfilled events to.",
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "type": "array"
+          },
+          "start": {
+            "description": "Start of the time interval to backfill.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "description": "Variables used to modify the query while it is parsed.",
+            "type": "object"
+          },
+          "vendorSinkIntegrationIds": {
+            "description": "Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join (e.g. trace backfills).",
+            "items": {
+              "description": "Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join (e.g. trace backfills).",
+              "pattern": "^[0-9a-z]{13}$",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "backfillTimestampTag",
+          "datasetId",
+          "end",
+          "limit",
+          "query",
+          "sinks",
+          "start"
+        ],
+        "title": "Inputs Schema",
+        "type": "object"
       },
       "LogsBranch": {
         "properties": {
@@ -9335,7 +9452,7 @@
           },
           "emitNewPatternSignals": {
             "default": false,
-            "description": "Whether this operation emits LogPatternSignal events to the agent-service when new patterns are detected or replayed.",
+            "description": "Whether this operation may emit LogPatternSignal events to the agent-service when new patterns are detected or replayed. Must be enabled before an agent can subscribe to this pipeline.",
             "title": "Emit new-pattern signals",
             "type": "boolean"
           },
@@ -10691,85 +10808,6 @@
           "processing",
           "state",
           "tags",
-          "updatedAt",
-          "version"
-        ],
-        "type": "object"
-      },
-      "ReadJobSignal": {
-        "properties": {
-          "createdAt": {
-            "description": "Timestamp when the integration was created.",
-            "format": "date-time",
-            "readOnly": true,
-            "type": "string"
-          },
-          "id": {
-            "description": "The integration id",
-            "type": "string"
-          },
-          "jobIds": {
-            "default": [],
-            "description": "List of job IDs associated with the integration.",
-            "items": {
-              "description": "List of job IDs associated with the integration.",
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "name": {
-            "description": "Name of the integration.",
-            "example": "my_integration",
-            "pattern": "[a-zA-Z0-9 _-]{1,128}",
-            "type": "string"
-          },
-          "organizationId": {
-            "description": "Organization ID of the integration.",
-            "type": "string"
-          },
-          "payload": {
-            "$ref": "#/components/schemas/JobSignal"
-          },
-          "teamIds": {
-            "default": [],
-            "description": "The team IDs that this integration is associated with.",
-            "items": {
-              "description": "The team IDs that this integration is associated with.",
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "type": {
-            "description": "The type of the integration. This is used to determine the payload type.",
-            "enum": [
-              "pipeline-signal"
-            ],
-            "type": "string"
-          },
-          "updatedAt": {
-            "description": "Timestamp when the integration was last updated.",
-            "format": "date-time",
-            "readOnly": true,
-            "type": "string"
-          },
-          "version": {
-            "description": "Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-            "example": 0,
-            "format": "int32",
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "createdAt",
-          "id",
-          "jobIds",
-          "name",
-          "organizationId",
-          "payload",
-          "type",
           "updatedAt",
           "version"
         ],
@@ -16141,13 +16179,24 @@
           "Sinks"
         ]
       },
+      "WebhookAgentSubscription": {
+        "properties": {
+          "agentId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agentId"
+        ],
+        "type": "object"
+      },
       "WebhookIntegration": {
         "description": "The payload containing integration data.",
         "properties": {
           "agentSubscriptions": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/AgentSignalSubscription"
+              "$ref": "#/components/schemas/WebhookAgentSubscription"
             },
             "type": "array"
           },
@@ -16436,50 +16485,6 @@
             "description": "The type of the integration. This is used to determine the payload type.",
             "enum": [
               "github-mcp"
-            ],
-            "type": "string"
-          },
-          "version": {
-            "description": "Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-            "example": 0,
-            "format": "int32",
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "name",
-          "payload",
-          "type",
-          "version"
-        ],
-        "type": "object"
-      },
-      "WriteJobSignal": {
-        "properties": {
-          "name": {
-            "description": "Name of the integration.",
-            "example": "my_integration",
-            "pattern": "[a-zA-Z0-9 _-]{1,128}",
-            "type": "string"
-          },
-          "payload": {
-            "$ref": "#/components/schemas/JobSignal"
-          },
-          "teamIds": {
-            "default": [],
-            "description": "The team IDs that this integration is associated with.",
-            "items": {
-              "description": "The team IDs that this integration is associated with.",
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "type": {
-            "description": "The type of the integration. This is used to determine the payload type.",
-            "enum": [
-              "pipeline-signal"
             ],
             "type": "string"
           },
@@ -17323,7 +17328,7 @@
     },
     "/v1/agents/{id}": {
       "delete": {
-        "description": "Soft-deletes an agent. Returns 409 if the agent still has a signal integration; delete that first.",
+        "description": "Soft-deletes an agent. Returns 409 while the agent is still subscribed to any pipeline; unsubscribe it first.",
         "operationId": "delete",
         "parameters": [
           {
@@ -17343,7 +17348,7 @@
             "description": "Unauthorized"
           },
           "409": {
-            "description": "Agent still has a signal integration"
+            "description": "Agent is still subscribed to one or more pipelines"
           }
         },
         "security": [
@@ -17528,9 +17533,107 @@
         ]
       }
     },
+    "/v1/agents/{id}/pipelines/{jobId}": {
+      "delete": {
+        "description": "Unsubscribes the agent from the pipeline\u0027s pattern signals. The running pipeline drops the subscriber automatically, without a restart.",
+        "operationId": "unsubscribe",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Subscription removed (or was not present)"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Agent not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Unsubscribe an agent from a pipeline",
+        "tags": [
+          "Agents"
+        ]
+      },
+      "post": {
+        "description": "Subscribes the agent to the pipeline\u0027s pattern signals. Requires the pipeline to have new-pattern signal emission enabled on its reducer or pattern matcher. The running pipeline picks up the subscriber automatically, without a restart.",
+        "operationId": "subscribe",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Subscription created (or already present)"
+          },
+          "400": {
+            "description": "The pipeline has no reducer or pattern matcher, so it can never emit"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Agent or pipeline not found"
+          },
+          "409": {
+            "description": "The pipeline is not enabled to emit pattern signals"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Subscribe an agent to a pipeline",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
     "/v1/agents/{id}/subscriptions": {
       "get": {
-        "description": "Returns the pipeline ids the agent is subscribed to via its signal integration.",
+        "description": "Returns the pipeline ids the agent is subscribed to.",
         "operationId": "subscriptions",
         "parameters": [
           {
@@ -21829,118 +21932,6 @@
         ]
       }
     },
-    "/v1/integrations/pipeline-signal": {
-      "get": {
-        "description": "Returns the PipelineSignal integrations for your organization.",
-        "operationId": "list_13",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ItemsCollectionReadJobSignal"
-                }
-              }
-            },
-            "description": "Integrations retrieved successfully"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "List PipelineSignal integrations",
-        "tags": [
-          "Pipeline Signal Integration"
-        ]
-      },
-      "post": {
-        "description": "Creates the PipelineSignal integration for an agent so it can subscribe to pipelines.",
-        "operationId": "create_13",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WriteJobSignal"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReadJobSignal"
-                }
-              }
-            },
-            "description": "Integration created successfully"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "409": {
-            "description": "An integration for this agent already exists"
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "Create a PipelineSignal integration",
-        "tags": [
-          "Pipeline Signal Integration"
-        ]
-      }
-    },
-    "/v1/integrations/pipeline-signal/{id}": {
-      "delete": {
-        "description": "Deletes a PipelineSignal integration. Blocked while it is linked to a pipeline.",
-        "operationId": "delete_13",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Integration deleted successfully"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "Delete a PipelineSignal integration",
-        "tags": [
-          "Pipeline Signal Integration"
-        ]
-      }
-    },
     "/v1/integrations/s3-data-warehouse": {
       "get": {
         "operationId": "list_4",
@@ -22291,7 +22282,7 @@
     "/v1/integrations/s3-vector-index": {
       "get": {
         "description": "Retrieves all S3 Vector Index integrations for the organization.",
-        "operationId": "list_14",
+        "operationId": "list_13",
         "responses": {
           "200": {
             "content": {
@@ -22322,7 +22313,7 @@
       },
       "post": {
         "description": "Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.",
-        "operationId": "create_14",
+        "operationId": "create_13",
         "requestBody": {
           "content": {
             "application/json": {
@@ -22367,7 +22358,7 @@
     "/v1/integrations/s3-vector-index/{id}": {
       "delete": {
         "description": "Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn\u0027t exist.",
-        "operationId": "delete_14",
+        "operationId": "delete_13",
         "parameters": [
           {
             "in": "path",
@@ -22767,7 +22758,7 @@
     "/v1/integrations/splunk": {
       "get": {
         "description": "Get all Splunk integrations for your organization. This will contain masked keys if present.",
-        "operationId": "list_15",
+        "operationId": "list_14",
         "responses": {
           "200": {
             "content": {
@@ -22795,7 +22786,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Splunk.",
-        "operationId": "create_15",
+        "operationId": "create_14",
         "requestBody": {
           "content": {
             "application/json": {
@@ -22844,7 +22835,7 @@
     "/v1/integrations/splunk/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to Splunk. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_15",
+        "operationId": "delete_14",
         "parameters": [
           {
             "in": "path",
@@ -23174,7 +23165,7 @@
     "/v1/integrations/sumo": {
       "get": {
         "description": "Get all SumoLogic integrations.",
-        "operationId": "list_16",
+        "operationId": "list_15",
         "responses": {
           "200": {
             "content": {
@@ -23205,7 +23196,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to SumoLogic.",
-        "operationId": "create_16",
+        "operationId": "create_15",
         "requestBody": {
           "content": {
             "application/json": {
@@ -23257,7 +23248,7 @@
     "/v1/integrations/sumo/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to SumoLogic. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_16",
+        "operationId": "delete_15",
         "parameters": [
           {
             "in": "path",
@@ -23441,7 +23432,7 @@
     "/v1/integrations/webhooks": {
       "get": {
         "description": "Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.",
-        "operationId": "list_17",
+        "operationId": "list_16",
         "parameters": [
           {
             "description": "Only return integrations targeting this agent.",
@@ -23482,7 +23473,7 @@
       },
       "post": {
         "description": "Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).",
-        "operationId": "create_17",
+        "operationId": "create_16",
         "requestBody": {
           "content": {
             "application/json": {
@@ -23527,7 +23518,7 @@
     "/v1/integrations/webhooks/{id}": {
       "delete": {
         "description": "Deletes a webhook integration. No-op if already deleted.",
-        "operationId": "delete_17",
+        "operationId": "delete_16",
         "parameters": [
           {
             "in": "path",
@@ -24377,6 +24368,51 @@
           }
         ],
         "summary": "Submit an Asynchronous Job",
+        "tags": [
+          "Jobs"
+        ]
+      }
+    },
+    "/v1/jobs/backfills": {
+      "post": {
+        "description": "Creates a logs backfill batch job from backfill parameters (time window, query, vendor sinks, and optional limit, variables, and tags). This is an asynchronous batch job: the response returns an identifier (field: `id`) that can be used to query the status of the job using the `GET` jobs endpoint. The server builds the backfill job graph from the parameters, so callers do not assemble it themselves.",
+        "operationId": "submitBackfillJob",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBackfillJob"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadJob"
+                }
+              }
+            },
+            "description": "Backfill job submitted successfully"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Create a logs backfill job",
         "tags": [
           "Jobs"
         ]
@@ -26927,7 +26963,7 @@
     "/v1/users": {
       "get": {
         "description": "Get all users in the system.",
-        "operationId": "list_18",
+        "operationId": "list_17",
         "parameters": [
           {
             "in": "query",
