@@ -5664,12 +5664,13 @@ export interface components {
       summary?: string;
     };
     InvestigationsList: {
-      hasMore?: boolean;
       investigations?: components["schemas"]["ItemsCollectionInvestigationSummary"];
       /** Format: int32 */
       limit?: number;
       /** Format: int32 */
       start?: number;
+      /** Format: int32 */
+      total?: number;
     };
     InvitationsList: {
       invitations?: components["schemas"]["ItemsCollectionReadInvitation"];
