@@ -3064,6 +3064,7 @@ export interface components {
       /**
        * Format: int32
        * @description Maximum number of results to return
+       * @default 100
        * @example 100
        */
       limit?: number;
@@ -15012,7 +15013,7 @@ export interface operations {
   getIntegrationExceptions: {
     parameters: {
       query?: {
-        /** @description Page size (100-2000, default: 50) */
+        /** @description Page size (100-2000, default: 100) */
         pageSize?: number;
         /** @description Page number (0-based, default: 0) */
         page?: number;
@@ -15783,7 +15784,7 @@ export interface operations {
   getIntegrationExceptions_1: {
     parameters: {
       query?: {
-        /** @description Page size (100-2000, default: 50) */
+        /** @description Page size (100-2000, default: 100) */
         pageSize?: number;
         /** @description Page number (0-based, default: 0) */
         page?: number;
@@ -17506,7 +17507,7 @@ export interface operations {
   getIntegrationExceptions_2: {
     parameters: {
       query?: {
-        /** @description Page size (100-2000, default: 50) */
+        /** @description Page size (100-2000, default: 100) */
         pageSize?: number;
         /** @description Page number (0-based, default: 0) */
         page?: number;
