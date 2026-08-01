@@ -131,13 +131,19 @@ export class ConfigManager {
    * Merge saved configuration with CLI options
    * CLI options take precedence over saved config
    */
-  static mergeConfigWithOptions(savedConfig: SavedCliConfig, cliOptions: Partial<CliOptions>): Partial<CliOptions> {
+  static mergeConfigWithOptions(
+    savedConfig: SavedCliConfig,
+    cliOptions: Partial<CliOptions>,
+    defaultedOptions: ReadonlySet<string> = new Set()
+  ): Partial<CliOptions> {
     return {
       // Saved config provides defaults
       ...savedConfig,
       // CLI options override saved config
       ...Object.fromEntries(
-        Object.entries(cliOptions).filter(([, value]) => value !== undefined)
+        Object.entries(cliOptions).filter(([key, value]) => {
+          return value !== undefined && !defaultedOptions.has(key);
+        })
       )
     };
   }

@@ -176,8 +176,10 @@ function buildSplunkUrl(
   }
   const protocol = port === '443' ? 'https' : 'http';
   const params = new URLSearchParams();
+  // Splunk time modifiers select earliest <= _time < latest, so the exclusive
+  // upper bound rounds up to keep the final fractional second in range.
   params.set('earliest', Math.floor(Date.parse(start) / 1000).toString());
-  params.set('latest', (Math.floor(Date.parse(end)) / 1000).toString());
+  params.set('latest', Math.ceil(Date.parse(end) / 1000).toString());
   params.set('q', tagsToSplunkQuery(sink.additionalTags ?? []));
   return `${protocol}://${host}:${port}/app/search/search?${params.toString()}`;
 }

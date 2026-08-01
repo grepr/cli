@@ -150,4 +150,26 @@ describe('buildBackfillVendorLinks', () => {
 
     expect(buildBackfillVendorLinks(job, [sink])).toEqual([]);
   });
+
+  it('test_buildBackfillVendorLinks_splunkTimesShouldCoverWholeWindowInEpochSeconds', () => {
+    const sink = splunk('splunk_1');
+    const job = buildBackfillJob({
+      ...baseOptions,
+      sinkIds: ['splunk_1'],
+      start: '2026-07-07T10:00:00.999Z',
+      end: '2026-07-07T11:00:00.999Z'
+    }, {
+      datasetId: 'ds_raw',
+      teamIds: [],
+      sinks: [sink]
+    }, now);
+
+    const [link] = buildBackfillVendorLinks(job, [sink]);
+    const url = new URL(link?.url ?? '');
+
+    // Splunk's latest bound is exclusive, so it rounds up past the fractional
+    // tail of the window while earliest rounds down to include the first event.
+    expect(url.searchParams.get('earliest')).toBe('1783418400');
+    expect(url.searchParams.get('latest')).toBe('1783422001');
+  });
 });

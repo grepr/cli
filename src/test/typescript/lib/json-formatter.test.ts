@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach, vi } from 'bun:test';
 import { JsonFormatter, JsonFormatterOptions } from '../../../../src/main/typescript/lib/json-formatter.js';
 import { LogEventData } from '../../../../src/main/typescript/types.js';
 
@@ -257,6 +257,97 @@ describe('JsonFormatter', () => {
       expect(result).toContain('id,name,status');
       expect(result).toContain('1,item1,active');
       expect(result).toContain('2,item2,inactive');
+    });
+
+    it('should keep streaming CSV rows aligned with the emitted header', () => {
+      const csvFormatter = new JsonFormatter({ ...defaultOptions, format: 'csv' });
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      try {
+        const first = csvFormatter.formatLogData({ id: '1', message: 'first' });
+        const second = csvFormatter.formatLogData({ id: '2', severity: 'warning', message: 'second' });
+
+        expect(`${first}\n${second}`).toBe(
+          'id,message\n' +
+          '1,first\n' +
+          '2,second'
+        );
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
+    it('should warn once and report every field streaming CSV had to drop', () => {
+      const csvFormatter = new JsonFormatter({ ...defaultOptions, format: 'csv' });
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      try {
+        csvFormatter.formatLogData({ id: '1', message: 'first' });
+        csvFormatter.formatLogData({ id: '2', severity: 'warning', message: 'second' });
+        csvFormatter.formatLogData({ id: '3', service: 'api', message: 'third' });
+
+        expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+        expect(consoleErrorSpy.mock.calls[0]?.[0]).toContain('[WARN]');
+        expect(consoleErrorSpy.mock.calls[0]?.[0]).toContain('severity');
+        expect(csvFormatter.getDroppedCsvFields()).toEqual(['severity', 'service']);
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
+    it('should list dropped CSV fields in the summary', () => {
+      const csvFormatter = new JsonFormatter({ ...defaultOptions, format: 'csv' });
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      try {
+        csvFormatter.formatLogData({ id: '1', message: 'first' });
+        csvFormatter.formatLogData({ id: '2', severity: 'warning', message: 'second' });
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+
+      const summary = csvFormatter.formatSummary({
+        recordsProcessed: 2,
+        heartbeatsSent: 0,
+        errors: 0,
+        errorMessages: [],
+        startTime: 0,
+        endTime: 1000
+      });
+
+      expect(summary).toContain('Dropped CSV fields: severity');
+    });
+
+    it('should not warn about dropped fields when batch formatting CSV', () => {
+      const csvFormatter = new JsonFormatter({ ...defaultOptions, format: 'csv' });
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      try {
+        csvFormatter.formatObjects([
+          { id: '1', message: 'first' },
+          { id: '2', severity: 'warning', message: 'second' }
+        ]);
+
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
+        expect(csvFormatter.getDroppedCsvFields()).toEqual([]);
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
+    it('should retain later columns when batch formatting CSV', () => {
+      const csvFormatter = new JsonFormatter({ ...defaultOptions, format: 'csv' });
+
+      const result = csvFormatter.formatObjects([
+        { id: '1', message: 'first' },
+        { id: '2', severity: 'warning', message: 'second' }
+      ]);
+
+      expect(result).toBe(
+        'id,severity,message\n' +
+        '1,,first\n' +
+        '2,warning,second'
+      );
     });
 
     it('should format as pretty JSON correctly', () => {

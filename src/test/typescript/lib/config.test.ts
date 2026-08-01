@@ -303,6 +303,56 @@ describe('ConfigManager', () => {
       expect(merged.debug).toBe(true);
     });
 
+    it('test_mergeConfigWithOptions_commanderDefaultsShouldNotOverrideSavedConfig', () => {
+      const savedConfig: SavedCliConfig = {
+        orgName: 'saved-org',
+        timezone: 'America/New_York',
+        authCache: false,
+        browser: false
+      };
+
+      const merged = ConfigManager.mergeConfigWithOptions(savedConfig, {
+        timezone: 'system',
+        authCache: true,
+        browser: true
+      }, new Set(['timezone', 'authCache', 'browser']));
+
+      expect(merged.timezone).toBe('America/New_York');
+      expect(merged.authCache).toBe(false);
+      expect(merged.browser).toBe(false);
+    });
+
+    it('test_mergeConfigWithOptions_explicitSystemTimezoneShouldOverrideSavedConfig', () => {
+      const savedConfig: SavedCliConfig = {
+        orgName: 'saved-org',
+        timezone: 'America/New_York',
+        authCache: true,
+        browser: true
+      };
+
+      const merged = ConfigManager.mergeConfigWithOptions(savedConfig, {
+        timezone: 'system'
+      });
+
+      expect(merged.timezone).toBe('system');
+    });
+
+    it('test_mergeConfigWithOptions_explicitNegativeFlagsShouldOverrideSavedConfig', () => {
+      const savedConfig: SavedCliConfig = {
+        orgName: 'saved-org',
+        authCache: true,
+        browser: true
+      };
+
+      const merged = ConfigManager.mergeConfigWithOptions(savedConfig, {
+        authCache: false,
+        browser: false
+      });
+
+      expect(merged.authCache).toBe(false);
+      expect(merged.browser).toBe(false);
+    });
+
     it('test_extractSaveableConfig_shouldExtractRelevantFields', () => {
       const cliOptions = {
         orgName: 'test-org',

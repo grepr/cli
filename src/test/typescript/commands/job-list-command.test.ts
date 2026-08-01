@@ -780,4 +780,3 @@ describe('JobListCommand', () => {
     });
   });
 });
-

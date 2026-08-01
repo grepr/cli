@@ -17,7 +17,6 @@ export interface JobListCommandOptions extends ListCommandOptions {
   state?: JobState[];
   name?: string[];
   id?: string[];
-  resolved?: boolean;
   all?: boolean;
 }
 
@@ -69,10 +68,6 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
       {
         flags: '--id <ids...>',
         description: 'Filter by job IDs'
-      },
-      {
-        flags: '--resolved',
-        description: 'Include resolved job definitions'
       },
       {
         flags: '--all',
@@ -380,4 +375,3 @@ function isFormattableJobCreateOptions(
     typeof options.clientId === 'string' &&
     (options.authMethod === 'oauth' || options.authMethod === 'client-credentials' || options.authMethod === 'none');
 }
-

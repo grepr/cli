@@ -31,6 +31,8 @@ export class JsonFormatter {
   private tableHeaders: string[] = [];
   private csvHeaders: string[] = [];
   private csvHeadersPrinted = false;
+  private csvDroppedFields = new Set<string>();
+  private csvDropWarned = false;
 
   constructor(options: JsonFormatterOptions) {
     this.options = options;
@@ -45,6 +47,16 @@ export class JsonFormatter {
     this.tableHeaders = [];
     this.csvHeaders = [];
     this.csvHeadersPrinted = false;
+    this.csvDroppedFields = new Set<string>();
+    this.csvDropWarned = false;
+  }
+
+  /**
+   * Fields omitted from streaming CSV output because they were absent from the
+   * header, in first-seen order
+   */
+  getDroppedCsvFields(): string[] {
+    return [...this.csvDroppedFields];
   }
 
   /**
@@ -149,13 +161,18 @@ export class JsonFormatter {
   private addToCsv(data: Record<string, unknown>): string {
     const flattenedRow = this.flattenObject(data);
 
-    // Update headers with any new keys
+    // Streaming CSV output cannot add columns after its header has been emitted.
+    // Batch formatting discovers all headers before calling this method, while
+    // streaming formatting freezes the columns from its first record and reports
+    // anything it has to leave out.
     const newKeys = Object.keys(flattenedRow);
     if (this.csvHeaders.length === 0) {
       this.csvHeaders = [...newKeys];
-    } else {
+    } else if (!this.csvHeadersPrinted) {
       const missingKeys = newKeys.filter(key => !this.csvHeaders.includes(key));
       this.csvHeaders.push(...missingKeys);
+    } else {
+      this.recordDroppedCsvFields(newKeys);
     }
 
     let output = '';
@@ -173,6 +190,28 @@ export class JsonFormatter {
     output += this.formatCsvRow(rowValues);
 
     return output;
+  }
+
+  /**
+   * Track fields a streaming CSV row cannot represent and warn on the first one
+   */
+  private recordDroppedCsvFields(rowKeys: string[]): void {
+    const droppedKeys = rowKeys.filter(key => !this.csvHeaders.includes(key));
+    if (droppedKeys.length === 0) {
+      return;
+    }
+
+    droppedKeys.forEach(key => this.csvDroppedFields.add(key));
+
+    // Warn on the first drop so the loss is visible while the stream is still
+    // running; the summary repeats the complete set once the stream ends.
+    if (!this.csvDropWarned) {
+      this.csvDropWarned = true;
+      console.error(this.formatWarning(
+        `Dropping fields absent from the CSV header: ${droppedKeys.join(', ')}.` +
+        ' Streaming CSV columns are fixed by the first record; use -f json for full fidelity.'
+      ));
+    }
   }
 
   /**
@@ -783,6 +822,19 @@ export class JsonFormatter {
   }
 
   /**
+   * Format a warning message
+   */
+  formatWarning(message: string): string {
+    const timestamp = this.options.showTimestamps ?
+      `[${new Date().toISOString()}] ` : '';
+
+    const prefix = this.options.colorize ?
+      chalk.yellow.bold('[WARN]') : '[WARN]';
+
+    return `${timestamp}${prefix} ${message}`;
+  }
+
+  /**
    * Format summary statistics
    */
   formatSummary(stats: ProcessStats): string {
@@ -798,6 +850,9 @@ export class JsonFormatter {
       if (stats.errors > 0) {
         lines.push(`${chalk.red('Errors:')} ${stats.errors}`);
       }
+      if (this.csvDroppedFields.size > 0) {
+        lines.push(`${chalk.yellow('Dropped CSV fields:')} ${this.getDroppedCsvFields().join(', ')}`);
+      }
     } else {
       lines.push('\nSummary:');
       lines.push(`Records processed: ${stats.recordsProcessed || 0}`);
@@ -807,6 +862,9 @@ export class JsonFormatter {
       }
       if (stats.errors > 0) {
         lines.push(`Errors: ${stats.errors}`);
+      }
+      if (this.csvDroppedFields.size > 0) {
+        lines.push(`Dropped CSV fields: ${this.getDroppedCsvFields().join(', ')}`);
       }
     }
 

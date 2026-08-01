@@ -91,12 +91,15 @@ export class GreprQueryCLI {
     // Snapshot CLI args before the saved-config merge so the env-var fallbacks
     // below can override saved config but still yield to explicit CLI args.
     const cliOptions = { ...options };
+    const defaultedOptions = new Set(
+      Object.keys(options).filter(optionName => this.program.getOptionValueSource(optionName) === 'default')
+    );
 
     if (options.conf) {
       try {
         const savedConfig = await configManager.getConfig(options.conf);
         if (savedConfig) {
-          options = ConfigManager.mergeConfigWithOptions(savedConfig, options);
+          options = ConfigManager.mergeConfigWithOptions(savedConfig, options, defaultedOptions);
           delete options.conf;
         }
       } catch (error) {
@@ -112,7 +115,7 @@ export class GreprQueryCLI {
           if (!options.quiet) {
             console.error(`Using default configuration: ${defaultName || 'unknown'}`);
           }
-          options = ConfigManager.mergeConfigWithOptions(defaultConfig, options);
+          options = ConfigManager.mergeConfigWithOptions(defaultConfig, options, defaultedOptions);
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
