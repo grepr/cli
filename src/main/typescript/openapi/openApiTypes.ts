@@ -24,6 +24,86 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/agent-suggestions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List agent suggestions
+     * @description Returns the organization's agent suggestions, newest first, optionally filtered by pipeline, review status, and proposing agent.
+     */
+    get: operations["list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agent-suggestions/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get an agent suggestion
+     * @description Returns one agent suggestion, including the template-inputs patch, the job version it was proposed against, and the sample events it was verified with.
+     */
+    get: operations["get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agent-suggestions/{id}/apply": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Apply a pending agent suggestion
+     * @description Re-verifies the suggestion's template-inputs patch against the pipeline's current version and applies it as a new job version, marking the suggestion APPLIED. The resolution is compare-and-set on the pending status: a reviewer who loses a race to another gets 409 rather than overwriting it. Findings mean the pipeline changed since the suggestion was recorded; nothing is applied and the suggestion stays PENDING. Applying restarts the pipeline from a savepoint.
+     */
+    post: operations["apply"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agent-suggestions/{id}/reject": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Reject a pending agent suggestion
+     * @description Marks a pending suggestion REJECTED, recording the reviewer. Returns 409 when the suggestion was already resolved by another reviewer.
+     */
+    post: operations["reject"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/agents": {
     parameters: {
       query?: never;
@@ -35,7 +115,7 @@ export interface paths {
      * List agents
      * @description Returns every agent configured for your organization, newest first.
      */
-    get: operations["list"];
+    get: operations["list_1"];
     put?: never;
     /**
      * Create an agent
@@ -99,7 +179,7 @@ export interface paths {
      * Get an agent
      * @description Returns a single agent by id.
      */
-    get: operations["get"];
+    get: operations["get_1"];
     /**
      * Update an agent
      * @description Updates an agent. The version must match the version the client most recently observed, else a 409 Conflict is returned.
@@ -454,7 +534,7 @@ export interface paths {
      * List all Anthropic integrations
      * @description Get all Anthropic integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_1"];
+    get: operations["list_2"];
     put?: never;
     /**
      * Create an Anthropic integration
@@ -478,7 +558,7 @@ export interface paths {
      * Get an Anthropic integration
      * @description Get an Anthropic integration by ID.
      */
-    get: operations["get_1"];
+    get: operations["get_2"];
     /**
      * Update an Anthropic integration.
      * @description Updates an Anthropic integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -526,7 +606,7 @@ export interface paths {
      * List all Data Warehouse integrations
      * @description Retrieves all Data Warehouse integrations for the organization.
      */
-    get: operations["list_3"];
+    get: operations["list_4"];
     put?: never;
     /**
      * Create a Data Warehouse integration
@@ -550,7 +630,7 @@ export interface paths {
      * Get a Data Warehouse integration
      * @description Retrieves a Data Warehouse integration.
      */
-    get: operations["get_3"];
+    get: operations["get_4"];
     /**
      * Update a Data Warehouse integration
      * @description Updates an existing Data Warehouse integration.
@@ -578,7 +658,7 @@ export interface paths {
      * List all Datadog integrations
      * @description Get all Datadog integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_2"];
+    get: operations["list_3"];
     put?: never;
     /**
      * Create a Datadog integration
@@ -602,7 +682,7 @@ export interface paths {
      * List all Datadog MCP integrations
      * @description Get all Datadog MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_6"];
+    get: operations["list_7"];
     put?: never;
     /**
      * Create a Datadog MCP integration
@@ -626,7 +706,7 @@ export interface paths {
      * Get a Datadog MCP integration
      * @description Get a Datadog MCP integration by ID.
      */
-    get: operations["get_6"];
+    get: operations["get_7"];
     /**
      * Update a Datadog MCP integration.
      * @description Updates a Datadog MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -714,7 +794,7 @@ export interface paths {
      * Get a Datadog integration
      * @description Get an integration to connect to Datadog.
      */
-    get: operations["get_2"];
+    get: operations["get_3"];
     /**
      * Update a Datadog integration.
      * @description Updates an integration to connect to Datadog. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -870,7 +950,7 @@ export interface paths {
      * List all Gemini integrations
      * @description Get all Google Gemini integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_5"];
+    get: operations["list_6"];
     put?: never;
     /**
      * Create a Gemini integration
@@ -894,7 +974,7 @@ export interface paths {
      * Get a Gemini integration
      * @description Get a Gemini integration by ID.
      */
-    get: operations["get_5"];
+    get: operations["get_6"];
     /**
      * Update a Gemini integration.
      * @description Updates a Gemini integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -942,7 +1022,7 @@ export interface paths {
      * List all GitHub MCP integrations
      * @description Get all GitHub MCP server integrations for your organization. This will contain masked tokens if present.
      */
-    get: operations["list_7"];
+    get: operations["list_8"];
     put?: never;
     /**
      * Create a GitHub MCP integration
@@ -966,7 +1046,7 @@ export interface paths {
      * Get a GitHub MCP integration
      * @description Get a GitHub MCP integration by ID.
      */
-    get: operations["get_7"];
+    get: operations["get_8"];
     /**
      * Update a GitHub MCP integration.
      * @description Updates a GitHub MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1014,7 +1094,7 @@ export interface paths {
      * List all NewRelic integrations
      * @description Get all NewRelic integrations.
      */
-    get: operations["list_10"];
+    get: operations["list_11"];
     put?: never;
     /**
      * Create a NewRelic integration
@@ -1058,7 +1138,7 @@ export interface paths {
      * Get a NewRelic integration
      * @description Get an integration to connect to NewRelic.
      */
-    get: operations["get_10"];
+    get: operations["get_11"];
     /**
      * Update a NewRelic integration.
      * @description Updates an integration to connect to NewRelic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1166,7 +1246,7 @@ export interface paths {
      * List all OpenAI integrations
      * @description Get all OpenAI integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_11"];
+    get: operations["list_12"];
     put?: never;
     /**
      * Create an OpenAI integration
@@ -1190,7 +1270,7 @@ export interface paths {
      * Get an OpenAI integration
      * @description Get an OpenAI integration by ID.
      */
-    get: operations["get_11"];
+    get: operations["get_12"];
     /**
      * Update an OpenAI integration.
      * @description Updates an OpenAI integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1238,7 +1318,7 @@ export interface paths {
      * List all OTLP integrations
      * @description Get all OTLP integrations.
      */
-    get: operations["list_12"];
+    get: operations["list_13"];
     put?: never;
     /**
      * Create an OTLP integration
@@ -1262,7 +1342,7 @@ export interface paths {
      * Get a OTLP integration
      * @description Get an integration to connect to OTLP.
      */
-    get: operations["get_12"];
+    get: operations["get_13"];
     /**
      * Update a OTLP integration.
      * @description Updates an integration to connect to OTLP. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1334,7 +1414,7 @@ export interface paths {
      * List all PagerDuty MCP integrations
      * @description Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_8"];
+    get: operations["list_9"];
     put?: never;
     /**
      * Create a PagerDuty MCP integration
@@ -1358,7 +1438,7 @@ export interface paths {
      * Get a PagerDuty MCP integration
      * @description Get a PagerDuty MCP integration by ID.
      */
-    get: operations["get_8"];
+    get: operations["get_9"];
     /**
      * Update a PagerDuty MCP integration.
      * @description Updates a PagerDuty MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1403,7 +1483,7 @@ export interface paths {
       cookie?: never;
     };
     /** List all S3 Data Warehouse integrations */
-    get: operations["list_4"];
+    get: operations["list_5"];
     put?: never;
     /**
      * Create a S3 Data Warehouse integration
@@ -1487,7 +1567,7 @@ export interface paths {
      * Get a S3 Data Warehouse integration
      * @description Gets an external S3 Data Warehouse integration
      */
-    get: operations["get_4"];
+    get: operations["get_5"];
     /**
      * Update a S3 Data Warehouse integration
      * @description Updates an external S3 Data Warehouse integration
@@ -1515,7 +1595,7 @@ export interface paths {
      * List all S3 Vector Index integrations
      * @description Retrieves all S3 Vector Index integrations for the organization.
      */
-    get: operations["list_13"];
+    get: operations["list_14"];
     put?: never;
     /**
      * Create an S3 Vector Index integration
@@ -1539,7 +1619,7 @@ export interface paths {
      * Get an S3 Vector Index integration
      * @description Retrieves an S3 Vector Index integration.
      */
-    get: operations["get_13"];
+    get: operations["get_14"];
     /**
      * Update an S3 Vector Index integration
      * @description Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.
@@ -1567,7 +1647,7 @@ export interface paths {
      * List all Slack MCP integrations
      * @description Get all Slack MCP server integrations for your organization. This will contain masked tokens if present.
      */
-    get: operations["list_9"];
+    get: operations["list_10"];
     put?: never;
     /**
      * Create a Slack MCP integration
@@ -1591,7 +1671,7 @@ export interface paths {
      * Get a Slack MCP integration
      * @description Get a Slack MCP integration by ID.
      */
-    get: operations["get_9"];
+    get: operations["get_10"];
     /**
      * Update a Slack MCP integration.
      * @description Updates a Slack MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1639,7 +1719,7 @@ export interface paths {
      * List all Splunk integrations
      * @description Get all Splunk integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_14"];
+    get: operations["list_15"];
     put?: never;
     /**
      * Create a Splunk integration
@@ -1663,7 +1743,7 @@ export interface paths {
      * Get a Splunk integration
      * @description Get an integration to connect to Splunk.
      */
-    get: operations["get_14"];
+    get: operations["get_15"];
     /**
      * Update a Splunk integration.
      * @description Updates an integration to connect to Splunk. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1771,7 +1851,7 @@ export interface paths {
      * List all SumoLogic integrations
      * @description Get all SumoLogic integrations.
      */
-    get: operations["list_15"];
+    get: operations["list_16"];
     put?: never;
     /**
      * Create a SumoLogic integration
@@ -1795,7 +1875,7 @@ export interface paths {
      * Get a SumoLogic integration
      * @description Get an integration to connect to SumoLogic.
      */
-    get: operations["get_15"];
+    get: operations["get_16"];
     /**
      * Update a SumoLogic integration.
      * @description Updates an integration to connect to SumoLogic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1843,7 +1923,7 @@ export interface paths {
      * List webhook integrations
      * @description Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.
      */
-    get: operations["list_16"];
+    get: operations["list_17"];
     put?: never;
     /**
      * Create a webhook integration
@@ -1867,7 +1947,7 @@ export interface paths {
      * Get a webhook integration
      * @description Get a webhook integration by ID.
      */
-    get: operations["get_16"];
+    get: operations["get_17"];
     /**
      * Update a webhook integration
      * @description Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -2468,6 +2548,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/pipelines/{jobId}/apply-change": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Verify and apply or suggest a pipeline change
+     * @description Deep-merges a partial templateInputs patch into the pipeline's current configuration and verifies the result against the supplied samples. A change that fails verification is rejected with findings and nothing is touched. A change that verifies cleanly is recorded as an agent suggestion for human review when the proposing agent requires approval, and applied as a new job version otherwise. Works only on pipelines with a single template-operation vertex.
+     */
+    post: operations["applyChange"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/pipelines/{pipelineId}/exceptions/estimation-datasets": {
     parameters: {
       query?: never;
@@ -2972,7 +3072,7 @@ export interface paths {
      * List all users
      * @description Get all users in the system.
      */
-    get: operations["list_17"];
+    get: operations["list_18"];
     put?: never;
     /**
      * Create a new user
@@ -3160,6 +3260,8 @@ export interface components {
       version?: number;
     };
     AgentConfigCreate: {
+      /** @enum {string} */
+      changeApprovalMode: AgentConfigCreateChangeApprovalMode;
       enabledMcpIntegrations: components["schemas"]["AgentMcpIntegrations"][];
       enabledSkills: string[];
       enabledTools: string[];
@@ -3173,6 +3275,8 @@ export interface components {
       systemPrompt: string;
     };
     AgentConfigPayload: {
+      /** @enum {string} */
+      changeApprovalMode: AgentConfigCreateChangeApprovalMode;
       enabledMcpIntegrations: components["schemas"]["AgentMcpIntegrations"][];
       enabledSkills: string[];
       enabledTools: string[];
@@ -3185,6 +3289,8 @@ export interface components {
       systemPrompt: string;
     };
     AgentConfigUpdate: {
+      /** @enum {string} */
+      changeApprovalMode: AgentConfigCreateChangeApprovalMode;
       enabledMcpIntegrations: components["schemas"]["AgentMcpIntegrations"][];
       enabledSkills: string[];
       enabledTools: string[];
@@ -3226,6 +3332,52 @@ export interface components {
     AgentSubscriptionCounts: {
       /** Format: int32 */
       pipelines?: number;
+    };
+    AgentSuggestion: {
+      agentId?: string;
+      /** Format: int64 */
+      appliedJobVersion?: number;
+      /** Format: int64 */
+      baseJobVersion?: number;
+      /** Format: date-time */
+      createdAt?: string;
+      description?: string;
+      id?: string;
+      investigationId?: string;
+      jobId?: string;
+      organizationId?: string;
+      /** Format: date-time */
+      reviewedAt?: string;
+      reviewedBy?: string;
+      samples?: components["schemas"]["LogEvent"][];
+      /** @enum {string} */
+      status?: PathsV1AgentSuggestionsGetParametersQueryStatus;
+      teamIds?: string[];
+      templateInputsPatch?: components["schemas"]["JsonNode"];
+      toolCallId?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+    };
+    AgentSuggestionApplyResult: {
+      /**
+       * Format: int64
+       * @description The new job version the suggestion was applied as, or absent when it was rejected by verification. Applying restarts the pipeline from a savepoint, so the new version reaches its desired state asynchronously.
+       */
+      appliedJobVersion?: number;
+      /**
+       * @description Verification findings that blocked the apply. When present the pipeline is untouched and the suggestion stays PENDING: the pipeline changed since the suggestion was recorded, so the change is no longer safe to apply as-is.
+       * @default []
+       */
+      findings?: components["schemas"]["ChangeFinding"][];
+      suggestion: components["schemas"]["AgentSuggestion"];
+    };
+    AgentSuggestionsList: {
+      hasMore?: boolean;
+      /** Format: int32 */
+      limit?: number;
+      /** Format: int32 */
+      start?: number;
+      suggestions?: components["schemas"]["ItemsCollectionAgentSuggestion"];
     };
     AgentSummary: {
       agent?: components["schemas"]["AgentConfig"];
@@ -3800,6 +3952,16 @@ export interface components {
       | components["schemas"]["SqlNode"]
       | components["schemas"]["ConditionNode"]
     );
+    /** @description Verification findings that blocked the change. When present the pipeline is untouched: fix the findings and submit again. */
+    ChangeFinding: {
+      /** @enum {string} */
+      code?: ChangeFindingCode;
+      details?: {
+        [key: string]: string;
+      };
+      message?: string;
+      sampleId?: string;
+    };
     ChunkedOutputEventRecordReadableData: {
       closed?: boolean;
       type?: {
@@ -5670,6 +5832,10 @@ export interface components {
        */
       teamAssignments?: components["schemas"]["TeamAssignment"][];
     };
+    ItemsCollectionAgentSuggestion: {
+      /** @default [] */
+      items?: components["schemas"]["AgentSuggestion"][];
+    };
     ItemsCollectionInvestigationSummary: {
       /** @default [] */
       items?: components["schemas"]["InvestigationSummary"][];
@@ -5868,6 +6034,8 @@ export interface components {
        */
       type: JsonLogProcessorType;
     };
+    /** @description A partial templateInputs object to deep-merge into the pipeline's current inputs. Objects merge recursively, and an array of named objects (like input.parsers) merges by entry name, so entries you omit are kept. Scalars and arrays of non-objects replace whole. */
+    JsonNode: Record<string, never>;
     /** @description Strategy to read files created after the current job start time */
     LatestReadingStrategy: {
       type: "LatestReadingStrategy";
@@ -8132,6 +8300,36 @@ export interface components {
        * @enum {string}
        */
       type: PhraseNodeType;
+    };
+    PipelineChangeRequest: {
+      /** @description Whether to apply the change directly (true) or record it as a suggestion for a human to review (false). This expresses intent only: the server enforces the proposing agent's approval mode, so a suggest-only agent's change is always recorded as a suggestion no matter what is passed here. */
+      autoApply?: boolean;
+      /** @description One or two sentences a human reviewer reads first: what the change does and why. Required when the change is recorded as a suggestion. */
+      changeDescription?: string;
+      /** @description A caller-chosen idempotency key for this change, unique within the investigation. Resending the same changeId records one suggestion rather than a duplicate, so a retried call is safe. Required when the change is recorded as a suggestion. */
+      changeId?: string;
+      /** @description The investigation proposing the change, identifying the agent whose approval mode governs the request. Server-supplied on the MCP transport, where an agent sandbox's provenance is bound to the connection: anything sent here is ignored and replaced. Without provenance the change is applied under the caller's own permission. */
+      investigationId?: string;
+      /**
+       * @description Sample log events the changed operations are verified against before anything is applied. Required when the change adds or edits a Grok rule, so the new rule can be run against a real log.
+       * @default []
+       */
+      samples?: components["schemas"]["LogEvent"][];
+      templateInputsPatch: components["schemas"]["JsonNode"];
+    };
+    PipelineChangeResult: {
+      /**
+       * Format: int64
+       * @description The new job version the change was applied as. Applying restarts the pipeline from a savepoint, so the new version reaches its desired state asynchronously.
+       */
+      appliedVersion?: number;
+      /**
+       * @description Verification findings that blocked the change. When present the pipeline is untouched: fix the findings and submit again.
+       * @default []
+       */
+      findings?: components["schemas"]["ChangeFinding"][];
+      /** @description The agent suggestion the change was recorded as. The pipeline is NOT updated and will not restart, so there is nothing to wait for and the change must not be resubmitted; a human reviews and applies it from the pipeline page. */
+      suggestionId?: string;
     };
     PipelineRef: {
       /**
@@ -12081,6 +12279,11 @@ export type SchemaAgentRecentHealth =
   components["schemas"]["AgentRecentHealth"];
 export type SchemaAgentSubscriptionCounts =
   components["schemas"]["AgentSubscriptionCounts"];
+export type SchemaAgentSuggestion = components["schemas"]["AgentSuggestion"];
+export type SchemaAgentSuggestionApplyResult =
+  components["schemas"]["AgentSuggestionApplyResult"];
+export type SchemaAgentSuggestionsList =
+  components["schemas"]["AgentSuggestionsList"];
 export type SchemaAgentSummary = components["schemas"]["AgentSummary"];
 export type SchemaAggregationAccumulator =
   components["schemas"]["AggregationAccumulator"];
@@ -12139,6 +12342,7 @@ export type SchemaBucketAccessResult =
 export type SchemaBucketPartitionTransform =
   components["schemas"]["BucketPartitionTransform"];
 export type SchemaChainNode = components["schemas"]["ChainNode"];
+export type SchemaChangeFinding = components["schemas"]["ChangeFinding"];
 export type SchemaChunkedOutputEventRecordReadableData =
   components["schemas"]["ChunkedOutputEventRecordReadableData"];
 export type SchemaClearSecret = components["schemas"]["ClearSecret"];
@@ -12282,6 +12486,8 @@ export type SchemaInvestigationsList =
   components["schemas"]["InvestigationsList"];
 export type SchemaInvitationsList = components["schemas"]["InvitationsList"];
 export type SchemaInvitee = components["schemas"]["Invitee"];
+export type SchemaItemsCollectionAgentSuggestion =
+  components["schemas"]["ItemsCollectionAgentSuggestion"];
 export type SchemaItemsCollectionInvestigationSummary =
   components["schemas"]["ItemsCollectionInvestigationSummary"];
 export type SchemaItemsCollectionLogEvent =
@@ -12338,6 +12544,7 @@ export type SchemaJsonFileFormat = components["schemas"]["JsonFileFormat"];
 export type SchemaJsonLogEventMapper =
   components["schemas"]["JsonLogEventMapper"];
 export type SchemaJsonLogProcessor = components["schemas"]["JsonLogProcessor"];
+export type SchemaJsonNode = components["schemas"]["JsonNode"];
 export type SchemaLatestReadingStrategy =
   components["schemas"]["LatestReadingStrategy"];
 export type SchemaLegacyDatadogMetricsSink =
@@ -12470,6 +12677,10 @@ export type SchemaPatternRuleConfig =
 export type SchemaPaygSummary = components["schemas"]["PaygSummary"];
 export type SchemaPeriodEntry = components["schemas"]["PeriodEntry"];
 export type SchemaPhraseNode = components["schemas"]["PhraseNode"];
+export type SchemaPipelineChangeRequest =
+  components["schemas"]["PipelineChangeRequest"];
+export type SchemaPipelineChangeResult =
+  components["schemas"]["PipelineChangeResult"];
 export type SchemaPipelineRef = components["schemas"]["PipelineRef"];
 export type SchemaPipelineStatus = components["schemas"]["PipelineStatus"];
 export type SchemaPlan = components["schemas"]["Plan"];
@@ -12772,6 +12983,161 @@ export interface operations {
   };
   list: {
     parameters: {
+      query?: {
+        jobId?: string;
+        status?: PathsV1AgentSuggestionsGetParametersQueryStatus;
+        agentId?: string;
+        page?: number;
+        pageSize?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Suggestions retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentSuggestionsList"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Suggestion retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentSuggestion"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Suggestion not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  apply: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Suggestion applied, or rejected by verification with findings */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentSuggestionApplyResult"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Suggestion not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Suggestion is no longer pending */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  reject: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Suggestion rejected successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentSuggestion"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Suggestion not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Suggestion is no longer pending */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  list_1: {
+    parameters: {
       query?: never;
       header?: never;
       path?: never;
@@ -12889,7 +13255,7 @@ export interface operations {
       };
     };
   };
-  get: {
+  get_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -13927,7 +14293,7 @@ export interface operations {
       };
     };
   };
-  list_1: {
+  list_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -13994,7 +14360,7 @@ export interface operations {
       };
     };
   };
-  get_1: {
+  get_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -14156,7 +14522,7 @@ export interface operations {
       };
     };
   };
-  list_3: {
+  list_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -14221,7 +14587,7 @@ export interface operations {
       };
     };
   };
-  get_3: {
+  get_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -14324,7 +14690,7 @@ export interface operations {
       };
     };
   };
-  list_2: {
+  list_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -14391,7 +14757,7 @@ export interface operations {
       };
     };
   };
-  list_6: {
+  list_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -14458,7 +14824,7 @@ export interface operations {
       };
     };
   };
-  get_6: {
+  get_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -14671,7 +15037,7 @@ export interface operations {
       };
     };
   };
-  get_2: {
+  get_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -15095,7 +15461,7 @@ export interface operations {
       };
     };
   };
-  list_5: {
+  list_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -15162,7 +15528,7 @@ export interface operations {
       };
     };
   };
-  get_5: {
+  get_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -15324,7 +15690,7 @@ export interface operations {
       };
     };
   };
-  list_7: {
+  list_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -15391,7 +15757,7 @@ export interface operations {
       };
     };
   };
-  get_7: {
+  get_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -15539,7 +15905,7 @@ export interface operations {
       };
     };
   };
-  list_10: {
+  list_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -15633,7 +15999,7 @@ export interface operations {
       };
     };
   };
-  get_10: {
+  get_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -15904,7 +16270,7 @@ export interface operations {
       };
     };
   };
-  list_11: {
+  list_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -15971,7 +16337,7 @@ export interface operations {
       };
     };
   };
-  get_11: {
+  get_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -16119,7 +16485,7 @@ export interface operations {
       };
     };
   };
-  list_12: {
+  list_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -16186,7 +16552,7 @@ export interface operations {
       };
     };
   };
-  get_12: {
+  get_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -16413,7 +16779,7 @@ export interface operations {
       };
     };
   };
-  list_8: {
+  list_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -16480,7 +16846,7 @@ export interface operations {
       };
     };
   };
-  get_8: {
+  get_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -16628,7 +16994,7 @@ export interface operations {
       };
     };
   };
-  list_4: {
+  list_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -16789,7 +17155,7 @@ export interface operations {
       };
     };
   };
-  get_4: {
+  get_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -16906,7 +17272,7 @@ export interface operations {
       };
     };
   };
-  list_13: {
+  list_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -16971,7 +17337,7 @@ export interface operations {
       };
     };
   };
-  get_13: {
+  get_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -17074,7 +17440,7 @@ export interface operations {
       };
     };
   };
-  list_9: {
+  list_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -17141,7 +17507,7 @@ export interface operations {
       };
     };
   };
-  get_9: {
+  get_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -17289,7 +17655,7 @@ export interface operations {
       };
     };
   };
-  list_14: {
+  list_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -17356,7 +17722,7 @@ export interface operations {
       };
     };
   };
-  get_14: {
+  get_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -17627,7 +17993,7 @@ export interface operations {
       };
     };
   };
-  list_15: {
+  list_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -17694,7 +18060,7 @@ export interface operations {
       };
     };
   };
-  get_15: {
+  get_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -17842,7 +18208,7 @@ export interface operations {
       };
     };
   };
-  list_16: {
+  list_17: {
     parameters: {
       query?: {
         /** @description Only return integrations targeting this agent. */
@@ -17910,7 +18276,7 @@ export interface operations {
       };
     };
   };
-  get_16: {
+  get_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -19275,6 +19641,64 @@ export interface operations {
       };
       /** @description Insufficient permissions */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  applyChange: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Id of the pipeline to change
+         * @example 0ABC12DEF4G
+         */
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["PipelineChangeRequest"];
+      };
+    };
+    responses: {
+      /** @description Change applied, recorded as a suggestion, or rejected with findings */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PipelineChangeResult"];
+        };
+      };
+      /** @description The request is malformed or the pipeline is not templated */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Pipeline not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The pipeline changed while the request was being verified */
+      409: {
         headers: {
           [name: string]: unknown;
         };
@@ -20732,7 +21156,7 @@ export interface operations {
       };
     };
   };
-  list_17: {
+  list_18: {
     parameters: {
       query?: {
         page?: number;
@@ -20978,6 +21402,11 @@ export interface operations {
     };
   };
 }
+export enum PathsV1AgentSuggestionsGetParametersQueryStatus {
+  PENDING = "PENDING",
+  APPLIED = "APPLIED",
+  REJECTED = "REJECTED",
+}
 export enum PathsV1FilesUploadPresignedUrlPostParametersQueryFormat {
   json = "json",
   plaintext = "plaintext",
@@ -21024,6 +21453,10 @@ export enum ActivityLogsSearchStatuses {
 }
 export enum AddToListAttributeActionType {
   attribute_add_action = "attribute-add-action",
+}
+export enum AgentConfigCreateChangeApprovalMode {
+  REQUIRE_APPROVAL = "REQUIRE_APPROVAL",
+  AUTO_APPLY = "AUTO_APPLY",
 }
 export enum AggType {
   LATEST = "LATEST",
@@ -21092,6 +21525,23 @@ export enum BackfillJobActionType {
 }
 export enum BucketPartitionTransformType {
   bucket = "bucket",
+}
+export enum ChangeFindingCode {
+  INVALID_GROK_RULE = "INVALID_GROK_RULE",
+  SAMPLE_PREDICATE_MISMATCH = "SAMPLE_PREDICATE_MISMATCH",
+  RULE_NOT_MATCHED = "RULE_NOT_MATCHED",
+  RULE_SHADOWED = "RULE_SHADOWED",
+  RULE_EXTRACTED_NOTHING = "RULE_EXTRACTED_NOTHING",
+  RULE_NOT_FOUND = "RULE_NOT_FOUND",
+  AMBIGUOUS_PREDICATE = "AMBIGUOUS_PREDICATE",
+  NO_SAMPLES = "NO_SAMPLES",
+  OPERATION_DELETED = "OPERATION_DELETED",
+  RULE_DELETED = "RULE_DELETED",
+  HELPER_RULE_DELETED = "HELPER_RULE_DELETED",
+  RESOLUTION_FAILED = "RESOLUTION_FAILED",
+  DISALLOWED_INPUT_CHANGE = "DISALLOWED_INPUT_CHANGE",
+  UNVERIFIABLE_CHANGE = "UNVERIFIABLE_CHANGE",
+  NO_EFFECTIVE_CHANGE = "NO_EFFECTIVE_CHANGE",
 }
 export enum CloudTrailLogsFileSourceRegions {
   US_EAST_1 = "US_EAST_1",
