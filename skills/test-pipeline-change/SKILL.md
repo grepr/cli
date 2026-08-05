@@ -65,6 +65,12 @@ graph, a proposal leaving zero sources), `job:plan` fails before writing —
 report the op-specific error verbatim to the caller and stop. See the
 troubleshooting table in reference.md for specific failure messages.
 
+A plan can also SUCCEED and change nothing: `0 change(s)` in the printed count
+means the patch was well-formed but matched nothing (an empty `operations` array,
+or ops whose target already holds the proposed value). Stop there and say so —
+drafting it re-measures the pipeline you already have, and every stage looks
+correct because nothing changed, which is indistinguishable from a verified fix.
+
 ### 2. Surface the sink/mixed limitation
 
 ```bash
