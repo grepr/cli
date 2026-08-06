@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'bun:test';
-import { buildBackfillJob } from '../../../main/typescript/lib/backfill.js';
+import { buildBackfillRequest } from '../../../main/typescript/lib/backfill.js';
 import { buildBackfillVendorLinks } from '../../../main/typescript/lib/backfill-vendor-links.js';
 import {
+  DatadogLogSinkType,
   ReadDatadogType,
   ReadNewRelicType,
   ReadOtlpType,
@@ -31,13 +32,13 @@ describe('buildBackfillVendorLinks', () => {
       name: 'Datadog Prod',
       payload: { site: 'us3.datadoghq.com' }
     });
-    const job = buildBackfillJob(baseOptions, {
+    const request = buildBackfillRequest(baseOptions, {
       datasetId: 'ds_raw',
       teamIds: [],
       sinks: [sink]
     }, now);
 
-    const links = buildBackfillVendorLinks(job, [sink]);
+    const links = buildBackfillVendorLinks(request, [sink]);
 
     expect(links).toHaveLength(1);
     expect(links[0]?.label).toBe('View in Datadog');
@@ -58,7 +59,7 @@ describe('buildBackfillVendorLinks', () => {
       sumo('sumo_1'),
       otlp('otlp_1')
     ];
-    const job = buildBackfillJob({
+    const request = buildBackfillRequest({
       ...baseOptions,
       sinkIds: sinks.map(sink => sink.id)
     }, {
@@ -67,7 +68,7 @@ describe('buildBackfillVendorLinks', () => {
       sinks
     }, now);
 
-    const links = buildBackfillVendorLinks(job, sinks);
+    const links = buildBackfillVendorLinks(request, sinks);
 
     expect(links.map(link => link.label)).toEqual([
       'View in Datadog',
@@ -97,7 +98,7 @@ describe('buildBackfillVendorLinks', () => {
 
   it('test_buildBackfillVendorLinks_matchesFrontendTagSerialization', () => {
     const sinks = [datadog('dd_1'), splunk('splunk_1')];
-    const job = buildBackfillJob({
+    const request = buildBackfillRequest({
       ...baseOptions,
       sinkIds: sinks.map(sink => sink.id),
       tags: [
@@ -113,10 +114,9 @@ describe('buildBackfillVendorLinks', () => {
       sinks
     }, now);
 
-    const links = buildBackfillVendorLinks(job, sinks);
+    const links = buildBackfillVendorLinks(request, sinks);
     const datadogUrl = new URL(links.find(link => link.vendorType === ReadDatadogType.datadog)?.url ?? '');
     expect(datadogUrl.searchParams.get('query')).toBe(
-      'grepr.backfilled.timestamp:("2026-07-07t12:00:00.000z") ' +
       'grepr.backfilled:("true") ' +
       'processor:("grepr" OR "custom") ' +
       'team:("first" OR "second") ' +
@@ -126,8 +126,7 @@ describe('buildBackfillVendorLinks', () => {
 
     const splunkUrl = new URL(links.find(link => link.vendorType === ReadSplunkType.splunk)?.url ?? '');
     expect(splunkUrl.searchParams.get('q')).toBe(
-      'search grepr.backfilled.timestamp=2026-07-07T12:00:00.000Z ' +
-      'grepr.backfilled=true ' +
+      'search grepr.backfilled=true ' +
       'processor=custom ' +
       'team=second ' +
       'expr=a=b ' +
@@ -135,11 +134,36 @@ describe('buildBackfillVendorLinks', () => {
     );
   });
 
+  it('test_buildBackfillVendorLinks_filtersOnTheTagTheTemplateStamps', () => {
+    const sink = datadog('dd_1', { payload: { site: 'datadoghq.com' } });
+    const request = buildBackfillRequest({
+      ...baseOptions,
+      tags: []
+    }, {
+      datasetId: 'ds_raw',
+      teamIds: [],
+      sinks: [sink]
+    }, now);
+
+    // The sink the server receives carries no backfilled tag; the template adds it downstream.
+    expect(request.sinks).toEqual([{
+      type: DatadogLogSinkType.datadog_log_sink,
+      name: 'sink_dd_1',
+      integrationId: 'dd_1',
+      additionalTags: ['processor:grepr']
+    }]);
+
+    const url = new URL(buildBackfillVendorLinks(request, [sink])[0]?.url ?? '');
+    expect(url.searchParams.get('query')).toBe(
+      'grepr.backfilled:("true") processor:("grepr")'
+    );
+  });
+
   it('test_buildBackfillVendorLinks_omitsLinksMissingVendorDestination', () => {
     const sink = splunk('splunk_1', {
       payload: { splunkHost: undefined, webHost: undefined }
     });
-    const job = buildBackfillJob({
+    const request = buildBackfillRequest({
       ...baseOptions,
       sinkIds: ['splunk_1']
     }, {
@@ -148,12 +172,12 @@ describe('buildBackfillVendorLinks', () => {
       sinks: [sink]
     }, now);
 
-    expect(buildBackfillVendorLinks(job, [sink])).toEqual([]);
+    expect(buildBackfillVendorLinks(request, [sink])).toEqual([]);
   });
 
   it('test_buildBackfillVendorLinks_splunkTimesShouldCoverWholeWindowInEpochSeconds', () => {
     const sink = splunk('splunk_1');
-    const job = buildBackfillJob({
+    const request = buildBackfillRequest({
       ...baseOptions,
       sinkIds: ['splunk_1'],
       start: '2026-07-07T10:00:00.999Z',
@@ -164,7 +188,7 @@ describe('buildBackfillVendorLinks', () => {
       sinks: [sink]
     }, now);
 
-    const [link] = buildBackfillVendorLinks(job, [sink]);
+    const [link] = buildBackfillVendorLinks(request, [sink]);
     const url = new URL(link?.url ?? '');
 
     // Splunk's latest bound is exclusive, so it rounds up past the fractional

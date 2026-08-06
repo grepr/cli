@@ -1,23 +1,18 @@
 import { describe, expect, it, vi } from 'bun:test';
 import {
-  buildBackfillJob,
+  buildBackfillRequest,
   resolveBackfillInputs,
   validateBackfillInputs
 } from '../../../main/typescript/lib/backfill.js';
 import {
   DatadogLogSinkType,
   DatadogQueryPredicateType,
-  LogsBackfillFlinkSourceType,
-  LogsFilterType,
   NewRelicLogSinkType,
   OtlpLogSinkType,
-  PathsV1JobsGetParametersQueryExecution,
-  PathsV1JobsGetParametersQueryProcessing,
   ReadDataWarehouseType,
   SplunkLogSinkType,
   SumoLogSinkType,
   TemplateOperationType,
-  VendorLogEventDedupIcebergTableSinkType,
   type SchemaReadDataWarehouse,
   type SchemaReadJob,
   type SchemaTemplate
@@ -63,7 +58,6 @@ function apiClient(overrides: Partial<BackfillApiClient> = {}): BackfillApiClien
     listDatasets: vi.fn(async () => []),
     getDataset: vi.fn(async id => ({ id, name: id } as never)),
     getIntegrationById: vi.fn(async id => datadog(id)),
-    createAsyncJob: vi.fn(),
     ...overrides
   };
 }
@@ -124,9 +118,9 @@ describe('backfill validation', () => {
   });
 });
 
-describe('buildBackfillJob', () => {
-  it('test_buildBackfillJob_generatesSourceAndPerSinkGraph', () => {
-    const job = buildBackfillJob({
+describe('buildBackfillRequest', () => {
+  it('test_buildBackfillRequest_sendsParametersWithoutAJobGraph', () => {
+    const request = buildBackfillRequest({
       ...baseOptions,
       sinkIds: ['dd_1', 'splunk_1'],
       query: 'status:error',
@@ -134,16 +128,8 @@ describe('buildBackfillJob', () => {
       tags: ['incident:INC-123', 'note:a:b']
     }, resolvedInputs([datadog('dd_1'), splunk('splunk_1')], ['team_alpha']), now);
 
-    expect(job.name).toBe('backfill_2026_07_07t12_00_00_000z');
-    expect(job.execution).toBe(PathsV1JobsGetParametersQueryExecution.ASYNCHRONOUS);
-    expect(job.processing).toBe(PathsV1JobsGetParametersQueryProcessing.BATCH);
-    expect(job.tags).toEqual({ type: 'backfill', backfillType: 'manual' });
-    expect(job.teamIds).toEqual(['team_alpha']);
-
-    const source = job.jobGraph.vertices[0];
-    expect(source).toEqual({
-      type: LogsBackfillFlinkSourceType.logs_backfill_iceberg_table_source,
-      name: 'source',
+    expect(request).toEqual({
+      name: 'backfill_2026_07_07t12_00_00_000z',
       datasetId: 'ds_raw',
       start: '2026-07-07T10:00:00Z',
       end: '2026-07-07T11:00:00Z',
@@ -151,88 +137,66 @@ describe('buildBackfillJob', () => {
         type: DatadogQueryPredicateType.datadog_query,
         query: 'status:error'
       },
+      limit: 500,
       vendorSinkIntegrationIds: ['dd_1', 'splunk_1'],
-      limit: 500
-    });
-
-    expect(job.jobGraph.edges).toEqual([
-      'source -> backfill_sink_dd_1_filter',
-      'backfill_sink_dd_1_filter -> sink_dd_1',
-      'sink_dd_1 -> vendorlog_event_dedup_sink_dd_1_iceberg_sink',
-      'source -> backfill_sink_splunk_1_filter',
-      'backfill_sink_splunk_1_filter -> sink_splunk_1',
-      'sink_splunk_1 -> vendorlog_event_dedup_sink_splunk_1_iceberg_sink'
-    ]);
-    expect(job.jobGraph.vertices).toContainEqual({
-      type: LogsFilterType.logs_filter,
-      name: 'backfill_sink_dd_1_filter',
-      predicate: {
-        type: DatadogQueryPredicateType.datadog_query,
-        query: '-@meta.grepr.sentVendors:dd_1'
-      }
-    });
-    expect(job.jobGraph.vertices).toContainEqual({
-      type: VendorLogEventDedupIcebergTableSinkType.vendorlog_event_dedup_iceberg_table_sink,
-      name: 'vendorlog_event_dedup_sink_dd_1_iceberg_sink',
-      datasetId: 'ds_raw',
-      vendorSinkId: 'dd_1'
-    });
-    expect(job.jobGraph.vertices).toContainEqual({
-      type: DatadogLogSinkType.datadog_log_sink,
-      name: 'sink_dd_1',
-      integrationId: 'dd_1',
-      additionalTags: [
-        'grepr.backfilled.timestamp:2026-07-07T12:00:00.000Z',
-        'grepr.backfilled:true',
-        'processor:grepr',
-        'incident:INC-123',
-        'note:a:b'
+      tags: { type: 'backfill', backfillType: 'manual' },
+      teamIds: ['team_alpha'],
+      sinks: [
+        {
+          type: DatadogLogSinkType.datadog_log_sink,
+          name: 'sink_dd_1',
+          integrationId: 'dd_1',
+          additionalTags: ['processor:grepr', 'incident:INC-123', 'note:a:b']
+        },
+        {
+          type: SplunkLogSinkType.splunk_log_sink,
+          name: 'sink_splunk_1',
+          integrationId: 'splunk_1',
+          additionalTags: ['processor:grepr', 'incident:INC-123', 'note:a:b']
+        }
       ]
     });
   });
 
-  it('test_buildBackfillJob_usesAttributesForAttributeBasedSinks', () => {
-    const job = buildBackfillJob({
+  it('test_buildBackfillRequest_usesAttributesForAttributeBasedSinks', () => {
+    const request = buildBackfillRequest({
       ...baseOptions,
       sinkIds: ['nr_1', 'sumo_1', 'otlp_1'],
       tags: ['team:platform']
     }, resolvedInputs([newRelic('nr_1'), sumo('sumo_1'), otlp('otlp_1')]), now);
 
-    expect(job.jobGraph.vertices).toContainEqual({
-      type: NewRelicLogSinkType.newrelic_log_sink,
-      name: 'sink_nr_1',
-      integrationId: 'nr_1',
-      additionalAttributes: {
-        'grepr.backfilled.timestamp': '2026-07-07T12:00:00.000Z',
-        'grepr.backfilled': 'true',
-        processor: 'grepr',
-        team: 'platform'
+    const expectedAttributes = { processor: 'grepr', team: 'platform' };
+    expect(request.sinks).toEqual([
+      {
+        type: NewRelicLogSinkType.newrelic_log_sink,
+        name: 'sink_nr_1',
+        integrationId: 'nr_1',
+        additionalAttributes: expectedAttributes
+      },
+      {
+        type: SumoLogSinkType.sumologic_log_sink,
+        name: 'sink_sumo_1',
+        integrationId: 'sumo_1',
+        additionalAttributes: expectedAttributes
+      },
+      {
+        type: OtlpLogSinkType.otlp_log_sink,
+        name: 'sink_otlp_1',
+        integrationId: 'otlp_1',
+        additionalAttributes: expectedAttributes
       }
-    });
-    expect(job.jobGraph.vertices).toContainEqual({
-      type: SumoLogSinkType.sumologic_log_sink,
-      name: 'sink_sumo_1',
-      integrationId: 'sumo_1',
-      additionalAttributes: {
-        'grepr.backfilled.timestamp': '2026-07-07T12:00:00.000Z',
-        'grepr.backfilled': 'true',
-        processor: 'grepr',
-        team: 'platform'
-      }
-    });
-    expect(job.jobGraph.vertices).toContainEqual({
-      type: OtlpLogSinkType.otlp_log_sink,
-      name: 'sink_otlp_1',
-      integrationId: 'otlp_1',
-      additionalAttributes: {
-        'grepr.backfilled.timestamp': '2026-07-07T12:00:00.000Z',
-        'grepr.backfilled': 'true',
-        processor: 'grepr',
-        team: 'platform'
-      }
-    });
+    ]);
   });
 
+  it('test_buildBackfillRequest_omitsTheBackfilledTagsTheTemplateAdds', () => {
+    const request = buildBackfillRequest({
+      ...baseOptions,
+      sinkIds: ['dd_1']
+    }, resolvedInputs([datadog('dd_1')]), now);
+
+    const [sink] = request.sinks as [{ additionalTags: string[] }];
+    expect(sink.additionalTags).toEqual(['processor:grepr']);
+  });
 });
 
 describe('resolveBackfillInputs', () => {
@@ -299,10 +263,9 @@ describe('resolveBackfillInputs', () => {
       sink: datadog('dd_1'),
       reason: 'Datadog cannot backfill logs older than 18 hours'
     }]);
-    const job = buildBackfillJob(options, resolved, now);
-    expect(job.jobGraph.vertices[0]).toMatchObject({ vendorSinkIntegrationIds: ['splunk_1'] });
-    expect(job.jobGraph.vertices.some(vertex => vertex.name === 'sink_dd_1')).toBe(false);
-    expect(job.jobGraph.vertices.some(vertex => vertex.name === 'sink_splunk_1')).toBe(true);
+    const request = buildBackfillRequest(options, resolved, now);
+    expect(request.vendorSinkIntegrationIds).toEqual(['splunk_1']);
+    expect(request.sinks.map(sink => sink.name)).toEqual(['sink_splunk_1']);
   });
 
   it('test_resolveBackfillInputs_skipsNewRelicOutsideItsAgeWindow', async () => {
@@ -475,13 +438,9 @@ describe('resolveBackfillInputs', () => {
     }, client);
     expect(resolved.sinks.map(sink => sink.id)).toEqual(['dd_1']);
 
-    const job = buildBackfillJob({ datasetId: 'ds_raw', sinkIds: ['dd_1', 'dd_1'], ...range }, resolved);
-    expect(job.jobGraph.vertices.filter(vertex => vertex.name === 'sink_dd_1')).toHaveLength(1);
-    expect(job.jobGraph.edges).toEqual([
-      'source -> backfill_sink_dd_1_filter',
-      'backfill_sink_dd_1_filter -> sink_dd_1',
-      'sink_dd_1 -> vendorlog_event_dedup_sink_dd_1_iceberg_sink'
-    ]);
+    const request = buildBackfillRequest({ datasetId: 'ds_raw', sinkIds: ['dd_1', 'dd_1'], ...range }, resolved);
+    expect(request.sinks.filter(sink => sink.name === 'sink_dd_1')).toHaveLength(1);
+    expect(request.vendorSinkIntegrationIds).toEqual(['dd_1']);
   });
 
   it('test_resolveBackfillInputs_dedupesRepeatedSinkIntegrationInPipeline', async () => {

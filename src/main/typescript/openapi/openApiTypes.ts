@@ -4267,6 +4267,11 @@ export interface components {
         [key: string]: string;
       };
       /**
+       * @description The team IDs that the backfill job is associated with.
+       * @default []
+       */
+      teamIds?: string[];
+      /**
        * @description Variables used to modify the query while it is parsed.
        * @default {}
        */

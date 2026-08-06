@@ -4,14 +4,14 @@ import { dirname } from 'path';
 import type { ICommand } from '../lib/command-registry.js';
 import { createApiClient } from '../lib/api-client-factory.js';
 import {
-  buildBackfillJob,
+  buildBackfillRequest,
   resolveBackfillInputs
 } from '../lib/backfill.js';
 import type { BackfillCommandInputs } from '../lib/backfill.js';
 import { buildBackfillGreprUrl } from '../lib/backfill-grepr-link.js';
 import { buildBackfillVendorLinks } from '../lib/backfill-vendor-links.js';
 import type { CliOptions, MergeConfiguration } from '../types.js';
-import type { SchemaCreateJob, SchemaReadJob } from '../openapi/openApiTypes.js';
+import type { SchemaCreateBackfillJob, SchemaReadJob } from '../openapi/openApiTypes.js';
 
 interface BackfillCommandOptions extends CliOptions, BackfillCommandInputs {
   dryRun?: boolean;
@@ -86,7 +86,7 @@ export class BackfillCommand implements ICommand {
   async execute(options: BackfillCommandOptions): Promise<void> {
     const apiClient = createApiClient(options);
     const resolved = await resolveBackfillInputs(options, apiClient);
-    const job = buildBackfillJob(options, resolved);
+    const request = buildBackfillRequest(options, resolved);
 
     if (!options.quiet) {
       resolved.skippedSinks.forEach(({ sink, reason }) => {
@@ -99,16 +99,16 @@ export class BackfillCommand implements ICommand {
     }
 
     if (options.dryRun) {
-      await this.outputJson(job, options);
+      await this.outputJson(request, options);
       return;
     }
 
-    const createdJob = await apiClient.createAsyncJob(job);
+    const createdJob = await apiClient.createBackfillJob(request);
     if (!createdJob) {
       throw new Error('Backfill job creation returned no job');
     }
     try {
-      const vendorLinks = buildBackfillVendorLinks(job, resolved.sinks);
+      const vendorLinks = buildBackfillVendorLinks(request, resolved.sinks);
       const greprUrl = buildBackfillGreprUrl(
         createdJob,
         options.apiBaseUrl,
@@ -133,7 +133,10 @@ export class BackfillCommand implements ICommand {
     }
   }
 
-  private async outputJson(data: SchemaCreateJob | SchemaReadJob, options: BackfillCommandOptions): Promise<void> {
+  private async outputJson(
+    data: SchemaCreateBackfillJob | SchemaReadJob,
+    options: BackfillCommandOptions
+  ): Promise<void> {
     const json = JSON.stringify(data, null, 2);
     if (options.output) {
       await mkdir(dirname(options.output), { recursive: true });

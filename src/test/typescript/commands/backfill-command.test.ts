@@ -4,10 +4,6 @@ import { mkdir, writeFile } from 'fs/promises';
 import { BackfillCommand } from '../../../../src/main/typescript/commands/backfill-command.js';
 import { createApiClient } from '../../../../src/main/typescript/lib/api-client-factory.js';
 import {
-  PathsV1JobsGetParametersQueryExecution,
-  PathsV1JobsGetParametersQueryProcessing
-} from '../../../../src/main/typescript/openapi/openApiTypes.js';
-import {
   createDatadogIntegration as datadog,
   createSplunkIntegration as splunk,
   recentBackfillRange
@@ -55,7 +51,7 @@ describe('BackfillCommand', () => {
     getJob: ReturnType<typeof vi.fn>;
     getDataset: ReturnType<typeof vi.fn>;
     getIntegrationById: ReturnType<typeof vi.fn>;
-    createAsyncJob: ReturnType<typeof vi.fn>;
+    createBackfillJob: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -65,7 +61,7 @@ describe('BackfillCommand', () => {
       getJob: vi.fn(),
       getDataset: vi.fn(async id => ({ id, name: id })),
       getIntegrationById: vi.fn(async id => datadog(id)),
-      createAsyncJob: vi.fn(async job => ({ ...job, id: 'job_backfill' }))
+      createBackfillJob: vi.fn(async request => ({ ...request, id: 'job_backfill' }))
     };
     asMock(createApiClient).mockReturnValue(mockApiClient as never);
     asMock(mkdir).mockResolvedValue(undefined);
@@ -86,31 +82,37 @@ describe('BackfillCommand', () => {
     command.addToProgram(program, vi.fn(async () => cliOptions()));
   }
 
-  it('test_execute_dryRunPrintsJobWithoutCallingCreateAsyncJob', async () => {
+  it('test_execute_dryRunPrintsBackfillParametersWithoutSubmitting', async () => {
     await command.execute(backfillOptions({
       dryRun: true
     }));
 
-    expect(mockApiClient.createAsyncJob).not.toHaveBeenCalled();
+    expect(mockApiClient.createBackfillJob).not.toHaveBeenCalled();
     const printed = JSON.parse(String(consoleLogSpy.mock.calls[0]?.[0])) as {
       greprUrl?: string;
-      jobGraph?: { vertices?: { type?: string; limit?: number }[] };
+      datasetId?: string;
+      limit?: number;
+      jobGraph?: unknown;
     };
-    expect(printed.jobGraph?.vertices?.[0]?.type).toBe('logs-backfill-iceberg-table-source');
-    expect(printed.jobGraph?.vertices?.[0]?.limit).toBe(10000);
+    // Parameters only: the server builds the graph from them.
+    expect(printed.jobGraph).toBeUndefined();
+    expect(printed.datasetId).toBe('ds_raw');
+    expect(printed.limit).toBe(10000);
     expect(printed.greprUrl).toBeUndefined();
   });
 
-  it('test_execute_submitCallsCreateAsyncJobWithAsyncBatchJob', async () => {
+  it('test_execute_submitSendsParametersToTheBackfillsEndpoint', async () => {
     await command.execute(backfillOptions({
       limit: -1
     }));
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('--limit -1'));
-    expect(mockApiClient.createAsyncJob).toHaveBeenCalledTimes(1);
-    const job = mockApiClient.createAsyncJob.mock.calls[0]?.[0];
-    expect(job.execution).toBe(PathsV1JobsGetParametersQueryExecution.ASYNCHRONOUS);
-    expect(job.processing).toBe(PathsV1JobsGetParametersQueryProcessing.BATCH);
+    expect(mockApiClient.createBackfillJob).toHaveBeenCalledTimes(1);
+    const request = mockApiClient.createBackfillJob.mock.calls[0]?.[0];
+    expect(request.jobGraph).toBeUndefined();
+    expect(request.datasetId).toBe('ds_raw');
+    expect(request.limit).toBe(-1);
+    expect(request.vendorSinkIntegrationIds).toEqual(['dd_1']);
   });
 
   it('test_execute_skipsIneligibleSinkAndWarns', async () => {
@@ -128,11 +130,11 @@ describe('BackfillCommand', () => {
       'Warning: Skipping dd_1 (dd_1): Datadog cannot backfill logs older than 18 hours.'
     );
     const printed = JSON.parse(String(consoleLogSpy.mock.calls[0]?.[0])) as {
-      jobGraph?: { vertices?: { name?: string; vendorSinkIntegrationIds?: string[] }[] };
+      vendorSinkIntegrationIds?: string[];
+      sinks?: { name?: string }[];
     };
-    expect(printed.jobGraph?.vertices?.[0]?.vendorSinkIntegrationIds).toEqual(['splunk_1']);
-    expect(printed.jobGraph?.vertices?.some(vertex => vertex.name === 'sink_dd_1')).toBe(false);
-    expect(printed.jobGraph?.vertices?.some(vertex => vertex.name === 'sink_splunk_1')).toBe(true);
+    expect(printed.vendorSinkIntegrationIds).toEqual(['splunk_1']);
+    expect(printed.sinks?.map(sink => sink.name)).toEqual(['sink_splunk_1']);
   });
 
   it('test_execute_quietSuppressesSkippedSinkWarning', async () => {
@@ -214,13 +216,14 @@ describe('BackfillCommand', () => {
     ]);
 
     const printed = JSON.parse(String(consoleLogSpy.mock.calls[0]?.[0])) as {
-      jobGraph?: { vertices?: { name?: string; vendorSinkIntegrationIds?: string[]; additionalTags?: string[] }[] };
+      vendorSinkIntegrationIds?: string[];
+      sinks?: { name?: string; additionalTags?: string[] }[];
     };
-    expect(printed.jobGraph?.vertices?.[0]?.vendorSinkIntegrationIds).toEqual(['dd_1', 'dd_2']);
-    expect(printed.jobGraph?.vertices?.find(vertex => vertex.name === 'sink_dd_1')?.additionalTags).toEqual(
+    expect(printed.vendorSinkIntegrationIds).toEqual(['dd_1', 'dd_2']);
+    expect(printed.sinks?.find(sink => sink.name === 'sink_dd_1')?.additionalTags).toEqual(
       expect.arrayContaining(['env:test', 'source:cli'])
     );
-    expect(printed.jobGraph?.vertices?.find(vertex => vertex.name === 'sink_dd_2')?.additionalTags).toEqual(
+    expect(printed.sinks?.find(sink => sink.name === 'sink_dd_2')?.additionalTags).toEqual(
       expect.arrayContaining(['env:test', 'source:cli'])
     );
   });
@@ -244,10 +247,11 @@ describe('BackfillCommand', () => {
     ]);
 
     const printed = JSON.parse(String(consoleLogSpy.mock.calls[0]?.[0])) as {
-      jobGraph?: { vertices?: { name?: string; vendorSinkIntegrationIds?: string[]; additionalTags?: string[] }[] };
+      vendorSinkIntegrationIds?: string[];
+      sinks?: { name?: string; additionalTags?: string[] }[];
     };
-    expect(printed.jobGraph?.vertices?.[0]?.vendorSinkIntegrationIds).toEqual(['dd_1', 'dd_2']);
-    expect(printed.jobGraph?.vertices?.find(vertex => vertex.name === 'sink_dd_1')?.additionalTags).toEqual(
+    expect(printed.vendorSinkIntegrationIds).toEqual(['dd_1', 'dd_2']);
+    expect(printed.sinks?.find(sink => sink.name === 'sink_dd_1')?.additionalTags).toEqual(
       expect.arrayContaining(['env:test', 'source:cli'])
     );
   });
@@ -263,7 +267,7 @@ describe('BackfillCommand', () => {
       'backfill',
       '--limit', '1.5'
     ])).rejects.toThrow('--limit must be an integer greater than or equal to -1');
-    expect(mockApiClient.createAsyncJob).not.toHaveBeenCalled();
+    expect(mockApiClient.createBackfillJob).not.toHaveBeenCalled();
   });
 
   it('test_parseThroughCommander_rejectsTrailingJunkInLimit', async () => {
@@ -277,7 +281,7 @@ describe('BackfillCommand', () => {
       'backfill',
       '--limit', '10junk'
     ])).rejects.toThrow('--limit must be an integer greater than or equal to -1');
-    expect(mockApiClient.createAsyncJob).not.toHaveBeenCalled();
+    expect(mockApiClient.createBackfillJob).not.toHaveBeenCalled();
   });
 
   it('test_execute_dryRunCreatesOutputDirectoryBeforeWriting', async () => {
@@ -289,9 +293,9 @@ describe('BackfillCommand', () => {
     expect(mkdir).toHaveBeenCalledWith('build/nested', { recursive: true });
     expect(writeFile).toHaveBeenCalledWith(
       'build/nested/backfill-output.json',
-      expect.stringContaining('"logs-backfill-iceberg-table-source"')
+      expect.stringContaining('"vendorSinkIntegrationIds"')
     );
-    expect(mockApiClient.createAsyncJob).not.toHaveBeenCalled();
+    expect(mockApiClient.createBackfillJob).not.toHaveBeenCalled();
   });
 
   it('test_execute_outputWriteFailureAfterSubmit_includesCreatedJobId', async () => {
@@ -301,6 +305,6 @@ describe('BackfillCommand', () => {
       output: 'build/backfill-output.json'
     }))).rejects.toThrow('Backfill job job_backfill was created, but writing output to build/backfill-output.json failed: disk full');
 
-    expect(mockApiClient.createAsyncJob).toHaveBeenCalledTimes(1);
+    expect(mockApiClient.createBackfillJob).toHaveBeenCalledTimes(1);
   });
 });

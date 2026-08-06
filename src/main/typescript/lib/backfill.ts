@@ -1,13 +1,8 @@
 import {
   DatadogLogSinkType,
-  DatadogQueryPredicateType,
-  LogsBackfillFlinkSourceType,
-  LogsFilterType,
   LogsIcebergTableSinkType,
   NewRelicLogSinkType,
   OtlpLogSinkType,
-  PathsV1JobsGetParametersQueryExecution,
-  PathsV1JobsGetParametersQueryProcessing,
   ReadDatadogType,
   ReadNewRelicType,
   ReadOtlpType,
@@ -16,11 +11,9 @@ import {
   SplunkLogSinkType,
   SumoLogSinkType,
   TemplateOperationType,
-  VendorLogEventDedupIcebergTableSinkType,
-  type SchemaCreateJob,
+  type SchemaCreateBackfillJob,
   type SchemaDatasetRead,
   type SchemaLogReducerTemplateInput,
-  type SchemaLogsBackfillFlinkSource,
   type SchemaOperation,
   type SchemaReadJob,
   type SchemaTemplate
@@ -40,6 +33,7 @@ const DEFAULT_LIMIT = 10000;
 const HOUR_MS = 60 * 60 * 1000;
 const RAW_DATA_LAKE_SINK_NAME_PREFIX = 'raw_data_sink';
 const LOG_REDUCER_TEMPLATE_NAME = 'log-reducer-job-graph-template';
+const PROCESSOR_TAG = 'processor:grepr';
 const BACKFILL_TAGS = {
   type: 'backfill',
   backfillType: 'manual'
@@ -64,7 +58,6 @@ export interface BackfillApiClient {
   listDatasets(): Promise<SchemaDatasetRead[] | undefined>;
   getDataset(id: string): Promise<SchemaDatasetRead | undefined>;
   getIntegrationById(id: string): Promise<IntegrationReadType | null>;
-  createAsyncJob(job: SchemaCreateJob): Promise<SchemaReadJob | undefined>;
 }
 
 interface BackfillJobInputs {
@@ -149,71 +142,34 @@ export async function resolveBackfillInputs(
 }
 
 /**
- * Builds the asynchronous batch job graph used for manual logs backfills,
- * including per-sink duplicate-delivery filters and vendor dedup sinks.
+ * Builds the parameters for a manual logs backfill.
+ *
+ * The server expands these into the backfill job graph from its built-in logs backfill template,
+ * so no graph is assembled here. It adds the grepr.backfilled tags, the per-vendor
+ * already-sent filters, and the confirmed-delivery dedup sinks itself.
  */
-export function buildBackfillJob(
+export function buildBackfillRequest(
   options: BackfillCommandInputs,
   resolved: BackfillJobInputs,
   now = new Date()
-): SchemaCreateJob {
+): SchemaCreateBackfillJob {
   validateBackfillInputs(options);
   validateResolvedSinks(resolved.sinks);
   const timeRange = requireTimestampRange(options);
 
-  const limit = options.limit ?? DEFAULT_LIMIT;
-  const vendorSinkIntegrationIds = resolved.sinks.map(sink => sink.id);
-  const source: SchemaLogsBackfillFlinkSource = {
-    type: LogsBackfillFlinkSourceType.logs_backfill_iceberg_table_source,
-    name: 'source',
+  const sinkTags = buildVendorTags(options.tags ?? []);
+
+  return {
+    name: formatBackfillJobName(now),
     datasetId: resolved.datasetId,
     start: timeRange.start,
     end: timeRange.end,
     query: buildLanguageQueryPredicate(options),
-    vendorSinkIntegrationIds,
-    limit
-  };
-
-  const vertices: SchemaOperation[] = [source];
-  const edges: string[] = [];
-  const sinkTags = buildVendorTags(options.tags ?? [], now);
-
-  resolved.sinks.forEach(sink => {
-    const filterName = `backfill_sink_${sink.id}_filter`;
-    const sinkName = `sink_${sink.id}`;
-    const dedupName = `vendorlog_event_dedup_${sinkName}_iceberg_sink`;
-
-    vertices.push({
-      type: LogsFilterType.logs_filter,
-      name: filterName,
-      predicate: {
-        type: DatadogQueryPredicateType.datadog_query,
-        query: `-@meta.grepr.sentVendors:${sink.id}`
-      }
-    });
-    vertices.push(buildVendorSink(sink, sinkName, sinkTags));
-    vertices.push({
-      type: VendorLogEventDedupIcebergTableSinkType.vendorlog_event_dedup_iceberg_table_sink,
-      name: dedupName,
-      datasetId: resolved.datasetId,
-      vendorSinkId: sink.id
-    });
-
-    edges.push(`source -> ${filterName}`);
-    edges.push(`${filterName} -> ${sinkName}`);
-    edges.push(`${sinkName} -> ${dedupName}`);
-  });
-
-  return {
-    name: formatBackfillJobName(now),
-    execution: PathsV1JobsGetParametersQueryExecution.ASYNCHRONOUS,
-    processing: PathsV1JobsGetParametersQueryProcessing.BATCH,
+    limit: options.limit ?? DEFAULT_LIMIT,
+    sinks: resolved.sinks.map(sink => buildVendorSink(sink, `sink_${sink.id}`, sinkTags)),
+    vendorSinkIntegrationIds: resolved.sinks.map(sink => sink.id),
     tags: BACKFILL_TAGS,
-    teamIds: resolved.teamIds,
-    jobGraph: {
-      vertices,
-      edges
-    }
+    teamIds: resolved.teamIds
   };
 }
 
@@ -417,13 +373,12 @@ function buildVendorSink(
   }
 }
 
-function buildVendorTags(tags: string[], now: Date): string[] {
-  return [
-    `grepr.backfilled.timestamp:${now.toISOString()}`,
-    'grepr.backfilled:true',
-    'processor:grepr',
-    ...tags
-  ];
+/**
+ * Vendor tags to stamp on the backfilled events. The template adds the grepr.backfilled tags
+ * server-side, so only the processor tag and the user's own tags ride along on the sink.
+ */
+function buildVendorTags(tags: string[]): string[] {
+  return [PROCESSOR_TAG, ...tags];
 }
 
 function formatBackfillJobName(now: Date): string {
