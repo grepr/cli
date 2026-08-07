@@ -9,7 +9,7 @@ import {
   ReadS3DataWarehouseType,
   ReadSplunkType,
   ReadSumoType,
-  SchemaCreateBackfillJob,
+  SchemaCreateLogsBackfillJob,
   SchemaCreateJob,
   SchemaDatasetCreate,
   SchemaDatasetRead,
@@ -224,7 +224,9 @@ export class GreprApiClient {
    * Submits a logs backfill from its parameters. The server builds the backfill job graph from
    * its built-in template, so no graph is sent.
    */
-  async createBackfillJob(request: SchemaCreateBackfillJob): Promise<SchemaReadJob | undefined> {
+  async createBackfillJob(
+    request: SchemaCreateLogsBackfillJob
+  ): Promise<SchemaReadJob | undefined> {
     const { data, error } = await this.client.POST('/v1/jobs/backfills', {
       body: request,
     });

@@ -1,4 +1,5 @@
 import {
+  CreateLogsBackfillJobDataType,
   DatadogLogSinkType,
   LogsIcebergTableSinkType,
   NewRelicLogSinkType,
@@ -11,7 +12,7 @@ import {
   SplunkLogSinkType,
   SumoLogSinkType,
   TemplateOperationType,
-  type SchemaCreateBackfillJob,
+  type SchemaCreateLogsBackfillJob,
   type SchemaDatasetRead,
   type SchemaLogReducerTemplateInput,
   type SchemaOperation,
@@ -152,7 +153,7 @@ export function buildBackfillRequest(
   options: BackfillCommandInputs,
   resolved: BackfillJobInputs,
   now = new Date()
-): SchemaCreateBackfillJob {
+): SchemaCreateLogsBackfillJob {
   validateBackfillInputs(options);
   validateResolvedSinks(resolved.sinks);
   const timeRange = requireTimestampRange(options);
@@ -160,6 +161,7 @@ export function buildBackfillRequest(
   const sinkTags = buildVendorTags(options.tags ?? []);
 
   return {
+    dataType: CreateLogsBackfillJobDataType.logs,
     name: formatBackfillJobName(now),
     datasetId: resolved.datasetId,
     start: timeRange.start,

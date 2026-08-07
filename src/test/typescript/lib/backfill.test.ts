@@ -129,6 +129,7 @@ describe('buildBackfillRequest', () => {
     }, resolvedInputs([datadog('dd_1'), splunk('splunk_1')], ['team_alpha']), now);
 
     expect(request).toEqual({
+      dataType: 'logs',
       name: 'backfill_2026_07_07t12_00_00_000z',
       datasetId: 'ds_raw',
       start: '2026-07-07T10:00:00Z',

@@ -2215,8 +2215,8 @@ export interface paths {
     get?: never;
     put?: never;
     /**
-     * Create a logs backfill job
-     * @description Creates a logs backfill batch job from backfill parameters (time window, query, vendor sinks, and optional limit, variables, and tags). This is an asynchronous batch job: the response returns an identifier (field: `id`) that can be used to query the status of the job using the `GET` jobs endpoint. The server builds the backfill job graph from the parameters, so callers do not assemble it themselves.
+     * Create a backfill job
+     * @description Creates a logs or spans backfill batch job from backfill parameters (time window, query, vendor sinks, and optional type-specific fields). The `dataType` selects the built-in logs or spans template. This is an asynchronous batch job: the response returns an identifier (field: `id`) that can be used to query the status of the job using the `GET` jobs endpoint. The server builds the backfill job graph from the parameters, so callers do not assemble it themselves.
      */
     post: operations["submitBackfillJob"];
     delete?: never;
@@ -4225,65 +4225,26 @@ export interface components {
        */
       startDate: string;
     };
-    /** @description Parameters for creating a logs backfill batch job. */
+    /** @description Parameters for creating a logs or spans backfill batch job. */
     CreateBackfillJob: {
-      /** @description The dataset the backfill reads from and the dedup sinks track delivery in. */
-      datasetId: string;
-      /**
-       * Format: date-time
-       * @description End of the time interval to backfill.
-       * @example 2023-01-01T01:00:00Z
-       */
-      end: string;
-      /**
-       * Format: int32
-       * @description Maximum number of rows to backfill. Default and max is 500,000. A negative value means no limit.
-       * @default 500000
-       * @example 100000
-       */
+      dataType: string;
+      datasetId?: string;
+      /** Format: date-time */
+      end?: string;
+      /** Format: int32 */
       limit?: number;
-      /**
-       * @description Name of the backfill job. Must match the job name pattern [a-z0-9_]{1,128}.
-       * @example manual_backfill_1
-       */
-      name: string;
-      query: components["schemas"]["EventPredicate"];
-      /** @description The vendor sink operations that deliver the backfilled events. Passed through verbatim, matching the sinks a rule action would carry. */
-      sinks: components["schemas"]["Operation"][];
-      /**
-       * Format: date-time
-       * @description Start of the time interval to backfill, inclusive.
-       * @example 2023-01-01T00:00:00Z
-       */
-      start: string;
-      /**
-       * @description Custom tags added to the backfill job for ease of search.
-       * @default {}
-       * @example {
-       *       "source": "manual"
-       *     }
-       */
+      name?: string;
+      sinks?: components["schemas"]["Operation"][];
+      /** Format: date-time */
+      start?: string;
       tags?: {
         [key: string]: string;
       };
-      /**
-       * @description The team IDs that the backfill job is associated with.
-       * @default []
-       */
       teamIds?: string[];
-      /**
-       * @description Variables used to modify the query while it is parsed.
-       * @default {}
-       */
-      variables?: {
-        [key: string]: components["schemas"]["Any"];
-      };
-      /**
-       * @description Vendor integration IDs, if any, whose prior delivery the backfill skips. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.
-       * @default []
-       */
-      vendorSinkIntegrationIds?: string[];
-    };
+    } & (
+      | components["schemas"]["CreateLogsBackfillJob"]
+      | components["schemas"]["CreateSpansBackfillJob"]
+    );
     /** @description Attributes of the Grepr Job to create */
     CreateJob: {
       /**
@@ -4323,6 +4284,70 @@ export interface components {
        */
       teamIds?: string[];
     };
+    /** @description Parameters for a logs backfill. */
+    CreateLogsBackfillJob: {
+      /**
+       * @description Selects the built-in logs backfill template. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      dataType: CreateLogsBackfillJobDataType;
+      /** @description The dataset the backfill reads from and the dedup sinks track delivery in. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of the time interval to backfill.
+       * @example 2023-01-01T01:00:00Z
+       */
+      end: string;
+      /**
+       * Format: int32
+       * @description Maximum number of rows to backfill. Default and max is 500,000. For spans this applies independently to each vendor source. A negative value means no limit.
+       * @default 500000
+       * @example 100000
+       */
+      limit?: number;
+      /**
+       * @description Name of the backfill job. Must match the job name pattern [a-z0-9_]{1,128}.
+       * @example manual_backfill_1
+       */
+      name: string;
+      query: components["schemas"]["EventPredicate"];
+      /** @description The vendor sink operations that deliver the backfilled events. Passed through verbatim, matching the sinks a rule action would carry. */
+      sinks: components["schemas"]["Operation"][];
+      /**
+       * Format: date-time
+       * @description Start of the time interval to backfill, inclusive.
+       * @example 2023-01-01T00:00:00Z
+       */
+      start: string;
+      /**
+       * @description Custom tags added to the backfill job for ease of search.
+       * @default {}
+       * @example {
+       *       "source": "manual"
+       *     }
+       */
+      tags?: {
+        [key: string]: string;
+      };
+      /**
+       * @description The team IDs that the backfill job is associated with.
+       * @default []
+       */
+      teamIds?: string[];
+      /**
+       * @description Variables used to modify the log query while it is parsed.
+       * @default {}
+       */
+      variables?: {
+        [key: string]: components["schemas"]["Any"];
+      };
+      /**
+       * @description Vendor integration IDs, if any, whose prior delivery the backfill skips. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.
+       * @default []
+       */
+      vendorSinkIntegrationIds?: string[];
+    };
     CreateRole: {
       /** @description Description of the role */
       description: string;
@@ -4354,6 +4379,92 @@ export interface components {
        *     ]
        */
       roleIds: string[];
+    };
+    /** @description Parameters for a spans backfill. */
+    CreateSpansBackfillJob: {
+      /**
+       * @description Selects the built-in spans backfill template. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      dataType: CreateSpansBackfillJobDataType;
+      /** @description The dataset the backfill reads from and the dedup sinks track delivery in. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of the time interval to backfill.
+       * @example 2023-01-01T01:00:00Z
+       */
+      end: string;
+      /** @description Filter by error status */
+      hasError?: boolean;
+      /** @description When true, include only root spans */
+      isRootSpan?: boolean;
+      /**
+       * Format: int32
+       * @description Maximum number of rows to backfill. Default and max is 500,000. For spans this applies independently to each vendor source. A negative value means no limit.
+       * @default 500000
+       * @example 100000
+       */
+      limit?: number;
+      /**
+       * Format: int64
+       * @description Filter by maximum duration in nanoseconds
+       */
+      maxDuration?: number;
+      /**
+       * Format: int64
+       * @description Filter by minimum duration in nanoseconds
+       */
+      minDuration?: number;
+      /**
+       * @description Name of the backfill job. Must match the job name pattern [a-z0-9_]{1,128}.
+       * @example manual_backfill_1
+       */
+      name: string;
+      /**
+       * @description Filter by operation names (exact match)
+       * @default []
+       */
+      operationNames?: string[];
+      /**
+       * @description Filter by service names (exact match)
+       * @default []
+       */
+      serviceNames?: string[];
+      /** @description The vendor sink operations that deliver the backfilled events. Passed through verbatim, matching the sinks a rule action would carry. */
+      sinks: components["schemas"]["Operation"][];
+      sqlOperation?: components["schemas"]["SqlOperation"];
+      /**
+       * Format: date-time
+       * @description Start of the time interval to backfill, inclusive.
+       * @example 2023-01-01T00:00:00Z
+       */
+      start: string;
+      /**
+       * @description Custom tags added to the backfill job for ease of search.
+       * @default {}
+       * @example {
+       *       "source": "manual"
+       *     }
+       */
+      tags?: {
+        [key: string]: string;
+      };
+      /**
+       * @description The team IDs that the backfill job is associated with.
+       * @default []
+       */
+      teamIds?: string[];
+      /**
+       * @description Filter by trace IDs in 32-character hexadecimal format
+       * @default []
+       */
+      traceIds?: string[];
+      /**
+       * @description Filter by trace signatures (supports wildcards with *)
+       * @default []
+       */
+      traceSignatures?: string[];
     };
     CreateUser: {
       /** @description The email associated with the user. */
@@ -6835,37 +6946,41 @@ export interface components {
      */
     LogsBackfillTemplateInput: {
       /**
-       * @description ISO-8601 value stamped onto backfilled events as the grepr.backfilled.timestamp tag. Computed by the builder so the template stays free of time logic.
+       * @description ISO-8601 value stamped onto backfilled records as the grepr.backfilled.timestamp tag. Computed by the builder so the template stays free of time logic.
        * @example 2023-01-01t01:00:00z
        */
       backfillTimestampTag: string;
-      /** @description The dataset the backfill reads from and the dedup sinks track delivery in. */
+      /** @description Dataset containing the raw records and delivery dedup state. */
       datasetId: string;
       /**
        * Format: date-time
-       * @description End of the time interval to backfill.
-       * @example 2023-01-01T01:00:00Z
+       * @description End of the backfill interval.
        */
       end: string;
       /**
        * Format: int32
-       * @description The maximum number of rows to backfill. A negative value means no limit.
+       * @description Maximum rows selected independently by each generated source.
        */
       limit: number;
       query: components["schemas"]["EventPredicate"];
-      /** @description The vendor sink operations to deliver the backfilled events to. */
+      /** @description The vendor sink operations that deliver the backfilled records. */
       sinks: components["schemas"]["Operation"][];
       /**
        * Format: date-time
-       * @description Start of the time interval to backfill.
-       * @example 2023-01-01T00:00:00Z
+       * @description Start of the backfill interval.
        */
       start: string;
-      /** @description Variables used to modify the query while it is parsed. */
+      /**
+       * @description Variables retained on the generated logs source.
+       * @default {}
+       */
       variables?: {
         [key: string]: components["schemas"]["Any"];
       };
-      /** @description Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join (e.g. trace backfills). */
+      /**
+       * @description Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join.
+       * @default []
+       */
       vendorSinkIntegrationIds?: string[];
     };
     LogsBranch: {
@@ -10042,6 +10157,71 @@ export interface components {
       /** @default [] */
       vendorSinkIntegrationIds?: string[];
     };
+    /**
+     * Inputs Schema
+     * @description Schema for the spans backfill job graph.
+     */
+    SpansBackfillTemplateInput: {
+      /**
+       * @description ISO-8601 value stamped onto backfilled records as the grepr.backfilled.timestamp tag. Computed by the builder so the template stays free of time logic.
+       * @example 2023-01-01t01:00:00z
+       */
+      backfillTimestampTag: string;
+      /** @description Dataset containing the raw records and delivery dedup state. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of the backfill interval.
+       */
+      end: string;
+      /** @description Filter by error status. */
+      hasError?: boolean;
+      /** @description When true, include only root spans. */
+      isRootSpan?: boolean;
+      /**
+       * Format: int32
+       * @description Maximum rows selected independently by each generated source.
+       */
+      limit: number;
+      /**
+       * Format: int64
+       * @description Filter by maximum duration in nanoseconds.
+       */
+      maxDuration?: number;
+      /**
+       * Format: int64
+       * @description Filter by minimum duration in nanoseconds.
+       */
+      minDuration?: number;
+      /**
+       * @description Filter by operation names.
+       * @default []
+       */
+      operationNames?: string[];
+      /**
+       * @description Filter by service names.
+       * @default []
+       */
+      serviceNames?: string[];
+      /** @description The vendor sink operations that deliver the backfilled records. */
+      sinks: components["schemas"]["Operation"][];
+      sqlOperation?: components["schemas"]["SqlOperation"];
+      /**
+       * Format: date-time
+       * @description Start of the backfill interval.
+       */
+      start: string;
+      /**
+       * @description Filter by trace IDs.
+       * @default []
+       */
+      traceIds?: string[];
+      /**
+       * @description Filter by trace signatures.
+       * @default []
+       */
+      traceSignatures?: string[];
+    };
     SpansSynchronousSink: {
       /** @example operation_name */
       name: string;
@@ -12370,9 +12550,13 @@ export type SchemaContract = components["schemas"]["Contract"];
 export type SchemaCreateBackfillJob =
   components["schemas"]["CreateBackfillJob"];
 export type SchemaCreateJob = components["schemas"]["CreateJob"];
+export type SchemaCreateLogsBackfillJob =
+  components["schemas"]["CreateLogsBackfillJob"];
 export type SchemaCreateRole = components["schemas"]["CreateRole"];
 export type SchemaCreateServiceAccount =
   components["schemas"]["CreateServiceAccount"];
+export type SchemaCreateSpansBackfillJob =
+  components["schemas"]["CreateSpansBackfillJob"];
 export type SchemaCreateUser = components["schemas"]["CreateUser"];
 export type SchemaCriticalPathAnalysisConfig =
   components["schemas"]["CriticalPathAnalysisConfig"];
@@ -12786,6 +12970,8 @@ export type SchemaSpanLink = components["schemas"]["SpanLink"];
 export type SchemaSpanTagger = components["schemas"]["SpanTagger"];
 export type SchemaSpansBackfillIcebergTableSource =
   components["schemas"]["SpansBackfillIcebergTableSource"];
+export type SchemaSpansBackfillTemplateInput =
+  components["schemas"]["SpansBackfillTemplateInput"];
 export type SchemaSpansSynchronousSink =
   components["schemas"]["SpansSynchronousSink"];
 export type SchemaSplunk = components["schemas"]["Splunk"];
@@ -18926,7 +19112,7 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateBackfillJob"];
       };
@@ -21594,6 +21780,12 @@ export enum ConditionNodeKind {
 }
 export enum ConstantSamplingType {
   constant_sampling = "constant-sampling",
+}
+export enum CreateLogsBackfillJobDataType {
+  logs = "logs",
+}
+export enum CreateSpansBackfillJobDataType {
+  spans = "spans",
 }
 export enum DatabaseUserInfoType {
   DATABASE = "DATABASE",

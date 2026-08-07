@@ -11,7 +11,7 @@ import type { BackfillCommandInputs } from '../lib/backfill.js';
 import { buildBackfillGreprUrl } from '../lib/backfill-grepr-link.js';
 import { buildBackfillVendorLinks } from '../lib/backfill-vendor-links.js';
 import type { CliOptions, MergeConfiguration } from '../types.js';
-import type { SchemaCreateBackfillJob, SchemaReadJob } from '../openapi/openApiTypes.js';
+import type { SchemaCreateLogsBackfillJob, SchemaReadJob } from '../openapi/openApiTypes.js';
 
 interface BackfillCommandOptions extends CliOptions, BackfillCommandInputs {
   dryRun?: boolean;
@@ -134,7 +134,7 @@ export class BackfillCommand implements ICommand {
   }
 
   private async outputJson(
-    data: SchemaCreateBackfillJob | SchemaReadJob,
+    data: SchemaCreateLogsBackfillJob | SchemaReadJob,
     options: BackfillCommandOptions
   ): Promise<void> {
     const json = JSON.stringify(data, null, 2);

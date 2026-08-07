@@ -110,6 +110,7 @@ describe('BackfillCommand', () => {
     expect(mockApiClient.createBackfillJob).toHaveBeenCalledTimes(1);
     const request = mockApiClient.createBackfillJob.mock.calls[0]?.[0];
     expect(request.jobGraph).toBeUndefined();
+    expect(request.dataType).toBe('logs');
     expect(request.datasetId).toBe('ds_raw');
     expect(request.limit).toBe(-1);
     expect(request.vendorSinkIntegrationIds).toEqual(['dd_1']);
