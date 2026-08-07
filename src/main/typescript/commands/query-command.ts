@@ -1,43 +1,180 @@
-import type { Command } from 'commander'
-import { BaseCommand } from './base-command.js'
-import type { ICommand } from '../lib/command-registry.js'
-import { parseIntArg } from '../lib/option-parsers.js'
-import { validateOptionalTimestampRange } from '../lib/time-utils.js'
+import type { Command } from 'commander';
+import { BaseCommand } from './base-command.js';
+import type { ICommand } from '../lib/command-registry.js';
+import { createApiClient } from '../lib/api-client-factory.js';
+import { parseIntArg } from '../lib/option-parsers.js';
+import { validateOptionalTimestampRange } from '../lib/time-utils.js';
 import {
   JobExecution,
   JobProcessing,
   type CommandOption,
   type MergeConfiguration,
   type QueryCommandOptions
-} from '../types.js'
+} from '../types.js';
 import {
+  CreateLogsBackfillJobDataType,
+  CreateSpansBackfillJobDataType,
   GreprLlmPromptResultsSourceSortOrder,
   GreprRawLogsSourceType,
+  GreprRawSpanSourceType,
   LogsIcebergTableSourceType,
   LogsSynchronousSinkType,
+  SpansSynchronousSinkType,
+  TracesIcebergTableSourceType,
+  type SchemaCreateJob,
+  type SchemaEventPredicate,
   type SchemaGreprRawLogsSource,
+  type SchemaGreprRawSpanSource,
   type SchemaLogsIcebergTableSource,
-  type SchemaCreateJob
-} from '../openapi/openApiTypes.js'
-import { buildSourcePredicate } from '../lib/query-predicate.js'
+  type SchemaOperation,
+  type SchemaSpansSynchronousSink,
+  type SchemaTracesIcebergTableSource
+} from '../openapi/openApiTypes.js';
+import {
+  buildLanguageQueryPredicate,
+  buildMessageLengthPredicate,
+  buildSignalPredicate,
+  buildSourcePredicate,
+  warnOnUnliftedSpanQuery,
+  type BuiltSignalPredicate
+} from '../lib/query-predicate.js';
+import {
+  parseSignalDataType,
+  resolveSignalSource,
+  validateSignalSourceInputs,
+  type ResolvedSignalSource
+} from '../lib/signal-source.js';
+
 export {
   buildLanguageQueryPredicate,
   buildMessageLengthPredicate,
+  buildSignalPredicate,
   buildSourcePredicate
-} from '../lib/query-predicate.js'
+};
+
+export function validateQueryOptions(options: QueryCommandOptions): void {
+  validateSignalSourceInputs(options);
+  validateOptionalTimestampRange(options);
+
+  if (options.dataType) {
+    buildSignalPredicate({
+      ...options,
+      dataType: options.dataType
+    });
+  }
+}
+
+export function buildQueryJobDefinition(
+  options: QueryCommandOptions,
+  resolved: ResolvedSignalSource,
+  now = new Date()
+): SchemaCreateJob {
+  const predicate = buildSignalPredicate({
+    ...options,
+    dataType: resolved.dataType
+  });
+  const common: QuerySourceCommonFields = {
+    name: 'source',
+    datasetId: resolved.datasetId,
+    start: options.start ?? new Date(now.getTime() - 10 * 60 * 1000).toISOString(),
+    end: options.end ?? now.toISOString(),
+    sortOrder: options.sortOrder ?? GreprLlmPromptResultsSourceSortOrder.UNSORTED,
+    limit: options.limit ?? 100
+  };
+
+  const vertices: SchemaOperation[] = predicate.dataType === CreateLogsBackfillJobDataType.logs
+    ? buildLogsQueryVertices(options, common, predicate.query)
+    : buildSpansQueryVertices(options, common, predicate);
+
+  return {
+    name: `query_tool_job_${now.getTime()}`,
+    execution: JobExecution.SYNCHRONOUS,
+    processing: JobProcessing.BATCH,
+    jobGraph: {
+      vertices,
+      edges: ['source -> sink']
+    },
+    tags: {},
+    teamIds: resolved.teamIds
+  };
+}
+
+interface QuerySourceCommonFields {
+  name: string;
+  datasetId: string;
+  start: string;
+  end: string;
+  sortOrder: GreprLlmPromptResultsSourceSortOrder;
+  limit: number;
+}
+
+function buildLogsQueryVertices(
+  options: QueryCommandOptions,
+  common: QuerySourceCommonFields,
+  query: SchemaEventPredicate
+): SchemaOperation[] {
+  const source: SchemaGreprRawLogsSource | SchemaLogsIcebergTableSource = {
+    ...common,
+    type: options.queryEngine === 'flink'
+      ? LogsIcebergTableSourceType.logs_iceberg_table_source
+      : GreprRawLogsSourceType.grepr_raw_log_source,
+    query
+  };
+  return [
+    source,
+    {
+      type: LogsSynchronousSinkType.logs_sync_sink,
+      name: 'sink'
+    }
+  ];
+}
+
+function buildSpansQueryVertices(
+  options: QueryCommandOptions,
+  common: QuerySourceCommonFields,
+  predicate: Extract<
+    BuiltSignalPredicate,
+    { dataType: CreateSpansBackfillJobDataType.spans }
+  >
+): SchemaOperation[] {
+  const sourceFields = {
+    ...common,
+    query: predicate.query,
+    ...predicate.spanFilters
+  };
+  const source: SchemaGreprRawSpanSource | SchemaTracesIcebergTableSource =
+    options.queryEngine === 'flink'
+      ? {
+          ...sourceFields,
+          type: TracesIcebergTableSourceType.traces_iceberg_table_source
+        }
+      : {
+          ...sourceFields,
+          type: GreprRawSpanSourceType.grepr_raw_span_source
+        };
+  const sink: SchemaSpansSynchronousSink = {
+    type: SpansSynchronousSinkType.spans_sync_sink,
+    name: 'sink'
+  };
+
+  return [source, sink];
+}
 
 export class QueryCommand extends BaseCommand<QueryCommandOptions> implements ICommand {
-
   getCommandName(): string {
     return 'query';
   }
 
   getCommandDescription(): string {
-    return 'Execute a query against a dataset';
+    return 'Execute a logs or spans query against a dataset';
   }
 
   getCommandOptions(): CommandOption[] {
     return [
+      {
+        flags: '--job-id <id>',
+        description: 'Source pipeline/job ID'
+      },
       {
         flags: '--dataset-id <id>',
         description: 'Dataset ID to query'
@@ -45,6 +182,11 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
       {
         flags: '--dataset-name <name>',
         description: 'Dataset name to query (will be resolved to ID)'
+      },
+      {
+        flags: '--data-type <type>',
+        description: 'Data type (logs or spans; defaults to logs unless inferred from --job-id)',
+        parser: parseSignalDataType
       },
       {
         flags: '--sort-order <order>',
@@ -76,40 +218,42 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
       },
       {
         flags: '--message-length-min <number>',
-        description:
-          'Inclusive minimum message length in characters. Combined with --query as an AND predicate. Use 0 with --message-length-max 0 to find empty messages.',
+        description: 'Inclusive minimum message length in characters (logs only)',
         parser: parseIntArg
       },
       {
         flags: '--message-length-max <number>',
-        description:
-          'Inclusive maximum message length in characters. Combined with --query as an AND predicate. Use a large value (e.g., 32768) to find oversized messages with --message-length-min.',
+        description: 'Inclusive maximum message length in characters (logs only)',
         parser: parseIntArg
       }
     ];
   }
 
-  addToProgram(
-    program: Command,
-    mergeConfiguration: MergeConfiguration
-  ): void {
+  addToProgram(program: Command, mergeConfiguration: MergeConfiguration): void {
     let command = program.command(this.getCommandName())
       .description(this.getCommandDescription());
 
-    // Add command-specific options
     this.getCommandOptions().forEach(option => {
       if (option.parser && option.defaultValue !== undefined) {
-        command = command.option(option.flags, option.description, option.parser, option.defaultValue as string | boolean);
+        command = command.option(
+          option.flags,
+          option.description,
+          option.parser,
+          option.defaultValue as string | boolean
+        );
       } else if (option.parser) {
         command = command.option(option.flags, option.description, option.parser);
       } else if (option.defaultValue !== undefined) {
-        command = command.option(option.flags, option.description, option.defaultValue as string | boolean | string[]);
+        command = command.option(
+          option.flags,
+          option.description,
+          option.defaultValue as string | boolean | string[]
+        );
       } else {
         command = command.option(option.flags, option.description);
       }
     });
 
-    // Add streaming options
     command
       .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', 'table')
       .option('-s, --sort <column:order>', 'Sort table by column (e.g., "eventTimestamp:asc")', 'eventTimestamp:asc')
@@ -117,19 +261,17 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
       .option('--no-timestamps', 'Hide timestamps')
       .option('--no-job-state', 'Hide job state messages')
       .option('--max-lines <number>', 'Maximum lines per table cell', parseIntArg, 4)
-      .action(async (options: Record<string, string | boolean | number>, command: Command) => {
+      .action(async (options: Record<string, string | boolean | number>, actionCommand: Command) => {
         try {
-          const globalOptions = command.parent?.opts() || {};
-          const mergedGlobalOptions = await mergeConfiguration(globalOptions);
+          const globalOptions = actionCommand.parent?.opts() ?? {};
           const mergedOptions: QueryCommandOptions = {
-            ...mergedGlobalOptions,
+            ...await mergeConfiguration(globalOptions),
             ...options
-          };
-
+          } as QueryCommandOptions;
           await this.execute(mergedOptions);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          console.error('Fatal error:', errorMessage);
+          const message = error instanceof Error ? error.message : String(error);
+          console.error('Fatal error:', message);
           process.exit(1);
         }
       });
@@ -137,104 +279,22 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
 
   async execute(options: QueryCommandOptions): Promise<void> {
     try {
-      this.validateQueryOptions(options);
-      this.initializeComponents(options);
-
-      // Resolve dataset ID
-      const datasetId = await this.resolveDatasetId(options);
-
-      // Create job definition
-      const jobDefinition = await this.createJobDefinition(options, datasetId);
-
+      validateQueryOptions(options);
+      const resolved = await resolveSignalSource(
+        options,
+        createApiClient(options),
+        { includeTeamIds: false }
+      );
+      const jobDefinition = buildQueryJobDefinition(options, resolved);
+      if (resolved.dataType === CreateSpansBackfillJobDataType.spans) {
+        warnOnUnliftedSpanQuery(options.query ?? '');
+      }
+      if (!options.quiet && !options.datasetId) {
+        console.log(`Querying ${resolved.dataType} dataset ${resolved.datasetId}`);
+      }
       await this.processJobStream(jobDefinition, options);
-
     } catch (error) {
-      this.handleError(error as Error, 'Query initialization error');
-      process.exit(1);
-    }
-  }
-
-  private validateQueryOptions(options: QueryCommandOptions): void {
-    if (!options.datasetId && !options.datasetName) {
-      console.error('Error: Either --dataset-id or --dataset-name is required');
-      process.exit(1);
-    }
-
-    if (options.datasetId && options.datasetName) {
-      console.error('Error: Cannot specify both --dataset-id and --dataset-name');
-      process.exit(1);
-    }
-
-    validateOptionalTimestampRange(options);
-  }
-
-  private async resolveDatasetId(options: QueryCommandOptions): Promise<string> {
-    if (options.datasetId) {
-      return options.datasetId;
-    }
-
-    if (!options.quiet) {
-      console.log(`Looking up dataset: ${options.datasetName}`);
-    }
-
-    if (!this.apiClient) {
-      throw new Error('API client not initialized');
-    }
-    if (!options.datasetName) {
-      throw new Error('Dataset name is required');
-    }
-    const dataset = await this.apiClient.lookupDataset(options.datasetName);
-
-    if (!dataset) {
-      throw new Error(`Dataset not found: ${options.datasetName}`);
-    }
-
-    if (!options.quiet) {
-      console.log(`Found dataset: ${dataset.name} (ID: ${dataset.id})`);
-    }
-
-    if (!dataset.id) {
-      throw new Error(`Dataset ${options.datasetName} found but has no ID`);
-    }
-
-    return dataset.id;
-  }
-
-  private async createJobDefinition(options: QueryCommandOptions, datasetId: string): Promise<SchemaCreateJob> {
-    try {
-      // Defaults to SchemaGreprRawLogsSource when unset.
-      const sourceQuery = buildSourcePredicate(options);
-      const source: SchemaGreprRawLogsSource | SchemaLogsIcebergTableSource = {
-        type:
-          options.queryEngine === 'flink'
-            ? LogsIcebergTableSourceType.logs_iceberg_table_source
-            : GreprRawLogsSourceType.grepr_raw_log_source,
-        name: 'source',
-        datasetId: datasetId,
-        start: options.start || new Date(Date.now() - 10 * 60 * 1000).toISOString(), // Default: 10 minutes ago
-        end: options.end || new Date().toISOString(), // Default: now
-        query: sourceQuery,
-        sortOrder: options.sortOrder || GreprLlmPromptResultsSourceSortOrder.UNSORTED,
-        limit: options.limit || 100 // Default limit to stay under sync query limit
-      };
-      return {
-        name: `query_tool_job_${Date.now()}`,
-        execution: JobExecution.SYNCHRONOUS,
-        processing: JobProcessing.BATCH,
-        jobGraph: {
-          vertices: [
-            source,
-            {
-              type: LogsSynchronousSinkType.logs_sync_sink,
-              name: 'sink'
-            }
-          ],
-          edges: ['source -> sink']
-        },
-        tags: {}
-      };
-    } catch (error) {
-      throw new Error(`Failed to create job definition: ${(error as Error).message}`);
+      this.handleError(error, 'Query initialization error');
     }
   }
 }

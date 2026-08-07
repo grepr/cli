@@ -46,6 +46,11 @@ vi.mock('../../../main/typescript/lib/auth.js', () => ({
 // Import after mocking
 const { GreprApiClient } = await import('../../../main/typescript/lib/grepr-api-client.js');
 import type { ApiClientConfig } from '../../../main/typescript/types.js';
+import {
+  CreateLogsBackfillJobDataType,
+  DatadogQueryPredicateType,
+  type SchemaCreateBackfillJob
+} from '../../../main/typescript/openapi/openApiTypes.js';
 
 const API_CLIENT_CONFIG: ApiClientConfig = {
   orgName: 'test-org',
@@ -57,6 +62,19 @@ const API_CLIENT_CONFIG: ApiClientConfig = {
   debug: false,
   authCache: true,
   browser: true
+};
+
+const BACKFILL_REQUEST: SchemaCreateBackfillJob = {
+  dataType: CreateLogsBackfillJobDataType.logs,
+  name: 'backfill_test',
+  datasetId: 'dataset_1',
+  start: '2026-07-07T10:00:00Z',
+  end: '2026-07-07T11:00:00Z',
+  query: {
+    type: DatadogQueryPredicateType.datadog_query,
+    query: 'service:test'
+  },
+  sinks: []
 };
 
 describe('GreprApiClient getTemplate', () => {
@@ -101,6 +119,58 @@ describe('GreprApiClient getTemplate', () => {
 
     await expect(client.getTemplate('0qqtysycrgp1a', 16)).rejects.toThrow(
       'Template 0qqtysycrgp1a version 16 not found'
+    );
+  });
+});
+
+describe('GreprApiClient createBackfillJob', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('test_createBackfillJob_success_sendsRequestAndReturnsJob', async () => {
+    const client = new GreprApiClient(API_CLIENT_CONFIG);
+    mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({
+      id: 'job_backfill'
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    }));
+
+    const job = await client.createBackfillJob(BACKFILL_REQUEST);
+
+    expect(job).toMatchObject({ id: 'job_backfill' });
+    const request = mockFetch.mock.calls[0]?.[0];
+    if (!(request instanceof Request)) {
+      throw new Error('Expected openapi-fetch to issue a Request');
+    }
+    expect(await request.json()).toEqual(BACKFILL_REQUEST);
+  });
+
+  it('test_createBackfillJob_bodylessFailure_preservesHttpStatus', async () => {
+    const client = new GreprApiClient(API_CLIENT_CONFIG);
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 502 }));
+
+    const promise = client.createBackfillJob(BACKFILL_REQUEST);
+
+    await expect(promise).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 502,
+      message: 'Failed to create backfill job (HTTP 502)'
+    });
+  });
+
+  it('test_createBackfillJob_structuredFailure_includesResponseBody', async () => {
+    const client = new GreprApiClient(API_CLIENT_CONFIG);
+    mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({
+      message: 'Invalid trace sink'
+    }), {
+      status: 422,
+      headers: { 'Content-Type': 'application/json' }
+    }));
+
+    await expect(client.createBackfillJob(BACKFILL_REQUEST)).rejects.toThrow(
+      'Failed to create backfill job (HTTP 422): {"message":"Invalid trace sink"}'
     );
   });
 });

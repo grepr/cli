@@ -1,49 +1,63 @@
 import {
   CreateLogsBackfillJobDataType,
+  CreateSpansBackfillJobDataType,
   DatadogLogSinkType,
-  LogsIcebergTableSinkType,
+  DatadogTraceSinkType,
   NewRelicLogSinkType,
   OtlpLogSinkType,
+  OtlpTraceSinkType,
   ReadDatadogType,
   ReadNewRelicType,
   ReadOtlpType,
   ReadSplunkType,
   ReadSumoType,
   SplunkLogSinkType,
+  SqlOperationInputs,
+  SqlOperationType,
+  SqlOutputStatementType,
+  SqlViewStatementType,
   SumoLogSinkType,
-  TemplateOperationType,
-  type SchemaCreateLogsBackfillJob,
-  type SchemaDatasetRead,
-  type SchemaLogReducerTemplateInput,
+  type SchemaCreateBackfillJob,
+  type SchemaDatadogTraceSink,
   type SchemaOperation,
-  type SchemaReadJob,
-  type SchemaTemplate
+  type SchemaOtlpTraceSink,
+  type SchemaSqlOperation
 } from '../openapi/openApiTypes.js';
 import type { IntegrationReadType } from '../types.js';
 import {
   findBackfillVendorByIntegrationType,
   isBackfillLogSink,
+  isBackfillTraceSink,
   isSupportedBackfillIntegrationType,
   type BackfillLogSink
 } from './backfill-vendors.js';
-import { buildLanguageQueryPredicate } from './query-predicate.js';
-import type { LanguageQueryType } from './query-predicate.js';
+import {
+  buildSignalPredicate,
+  validateSpanBackfillQuery,
+  type BuiltSignalPredicate,
+  type LanguageQueryType
+} from './query-predicate.js';
+import {
+  resolveSignalSource,
+  validateSignalSourceInputs,
+  type SignalDataType,
+  type SignalSourceApiClient,
+  type SignalSourceInputs
+} from './signal-source.js';
 import { requireTimestampRange } from './time-utils.js';
 
 const DEFAULT_LIMIT = 10000;
 const HOUR_MS = 60 * 60 * 1000;
-const RAW_DATA_LAKE_SINK_NAME_PREFIX = 'raw_data_sink';
-const LOG_REDUCER_TEMPLATE_NAME = 'log-reducer-job-graph-template';
 const PROCESSOR_TAG = 'processor:grepr';
+const OPERATION_NAME_PATTERN = /^[a-z0-9_]{1,128}$/;
+const SQL_IDENTIFIER_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const SQL_OUTPUT_NAME_PATTERN = /^(?=.*_)[A-Za-z_][A-Za-z0-9_]*$/;
 const BACKFILL_TAGS = {
   type: 'backfill',
   backfillType: 'manual'
 };
 
-export interface BackfillCommandInputs {
-  jobId?: string;
-  datasetId?: string;
-  datasetName?: string;
+export interface BackfillCommandInputs extends SignalSourceInputs {
   sinkIds?: string[];
   start?: string;
   end?: string;
@@ -51,20 +65,20 @@ export interface BackfillCommandInputs {
   queryType?: LanguageQueryType;
   limit?: number;
   tags?: string[];
+  sqlOperation?: SchemaSqlOperation;
+  preserveSql?: boolean;
 }
 
-export interface BackfillApiClient {
-  getJob(id: string, version?: number, resolved?: boolean): Promise<SchemaReadJob | undefined>;
-  getTemplate(id: string, version: number): Promise<SchemaTemplate>;
-  listDatasets(): Promise<SchemaDatasetRead[] | undefined>;
-  getDataset(id: string): Promise<SchemaDatasetRead | undefined>;
+export interface BackfillApiClient extends SignalSourceApiClient {
   getIntegrationById(id: string): Promise<IntegrationReadType | null>;
 }
 
 interface BackfillJobInputs {
+  dataType: SignalDataType;
   datasetId: string;
   teamIds: string[];
   sinks: IntegrationReadType[];
+  sqlOperation?: SchemaSqlOperation;
 }
 
 interface SkippedBackfillSink {
@@ -72,268 +86,315 @@ interface SkippedBackfillSink {
   reason: string;
 }
 
-interface BackfillResolvedInputs extends BackfillJobInputs {
+export interface BackfillResolvedInputs extends BackfillJobInputs {
   skippedSinks: SkippedBackfillSink[];
 }
 
-interface BackfillSourceConfig {
-  datasetId: string;
-  sinkOperations: SchemaOperation[];
-}
-
-/**
- * Validates the mutually exclusive backfill modes and shared command bounds
- * before any API lookups or job graph construction happens.
- */
 export function validateBackfillInputs(options: BackfillCommandInputs): void {
-  const hasPipeline = Boolean(options.jobId);
-  const hasDataset = Boolean(options.datasetId || options.datasetName);
+  validateSignalSourceInputs(options);
+  const hasJob = Boolean(options.jobId);
 
-  if (options.datasetId && options.datasetName) {
-    throw new Error('Cannot specify both --dataset-id and --dataset-name');
-  }
-  if (hasPipeline && hasDataset) {
-    throw new Error('Cannot specify explicit dataset flags with --job-id');
-  }
-  if (hasPipeline && options.sinkIds && options.sinkIds.length > 0) {
+  if (hasJob && options.sinkIds && options.sinkIds.length > 0) {
     throw new Error('Cannot specify --sink-id with --job-id');
   }
-  if (!hasPipeline && !hasDataset) {
-    throw new Error('Specify --job-id, --dataset-id, or --dataset-name');
-  }
-  if (!hasPipeline && (!options.sinkIds || options.sinkIds.length === 0)) {
+  if (!hasJob && (!options.sinkIds || options.sinkIds.length === 0)) {
     throw new Error('Explicit mode requires at least one --sink-id');
   }
+  if (options.sqlOperation && options.preserveSql) {
+    throw new Error('--sql-operation and --preserve-sql are mutually exclusive');
+  }
+  if (options.preserveSql && !hasJob) {
+    throw new Error('--preserve-sql requires --job-id');
+  }
+
   validateLimit(options.limit);
   requireTimestampRange(options);
-  buildLanguageQueryPredicate(options);
+  options.tags?.forEach(validateTag);
 
-  const tags = options.tags ?? [];
-  tags.forEach(validateTag);
+  if (options.dataType) {
+    validateForDataType(options, options.dataType);
+  }
+  if (options.sqlOperation) {
+    validateSpansSqlOperation(options.sqlOperation);
+  }
 }
 
-/**
- * Resolves CLI references into the concrete raw logs dataset and vendor log
- * sinks that the backfill job should read from and replay to.
- */
+function validateForDataType(
+  options: BackfillCommandInputs,
+  dataType: SignalDataType
+): BuiltSignalPredicate {
+  if (
+    dataType === CreateLogsBackfillJobDataType.logs &&
+    (options.sqlOperation || options.preserveSql)
+  ) {
+    throw new Error('SQL options only apply to spans backfills');
+  }
+  if (dataType === CreateSpansBackfillJobDataType.spans) {
+    validateSpanBackfillQuery(options.query ?? '');
+  }
+  return buildSignalPredicate({ ...options, dataType });
+}
+
 export async function resolveBackfillInputs(
   options: BackfillCommandInputs,
   apiClient: BackfillApiClient,
   now = new Date()
 ): Promise<BackfillResolvedInputs> {
   validateBackfillInputs(options);
-  const startDate = requireTimestampRange(options).startDate;
-  let dataset: { id: string; teamIds: string[] };
-  let sinkIds: string[];
+  const source = await resolveSignalSource(options, apiClient);
+  validateForDataType(options, source.dataType);
 
-  if (options.jobId) {
-    const job = await resolveSourceJob(options, apiClient);
-    const source = await inferBackfillSource(job, apiClient);
-    dataset = await resolveDataset(source.datasetId, apiClient, 'id', job.teamIds);
-    sinkIds = inferSinkIds(source.sinkOperations);
-    if (sinkIds.length === 0) {
-      throw new Error(`No supported log sinks found in source job ${job.id ?? job.name}`);
-    }
-  } else {
-    dataset = await resolveDatasetFromOptions(options, apiClient);
-    sinkIds = options.sinkIds ?? [];
+  const sqlOperation = resolveSqlOperation(options, source.postReducerSqlOperations);
+  const sinkIds = options.jobId
+    ? inferSinkIds(source.sinkOperations, source.dataType)
+    : options.sinkIds ?? [];
+  if (sinkIds.length === 0) {
+    throw new Error(
+      `No supported ${source.dataType} sinks found in source job ${options.jobId ?? ''}`.trim()
+    );
   }
 
-  return buildResolvedInputs(dataset, await resolveSinks(sinkIds, apiClient), startDate, now);
+  const sinks = await resolveSinks(sinkIds, source.dataType, apiClient);
+  const { eligibleSinks, skippedSinks } = findBackfillEligibleSinks(
+    sinks,
+    source.dataType,
+    requireTimestampRange(options).startDate,
+    now
+  );
+  if (eligibleSinks.length === 0) {
+    const reasons = skippedSinks
+      .map(({ sink, reason }) => `${sink.name} (${sink.id}): ${reason}`)
+      .join('; ');
+    throw new Error(`No sinks are eligible for the requested backfill window. ${reasons}`);
+  }
+
+  return {
+    dataType: source.dataType,
+    datasetId: source.datasetId,
+    teamIds: [
+      ...new Set([
+        ...source.teamIds,
+        ...eligibleSinks.flatMap(sink => sink.teamIds ?? [])
+      ])
+    ],
+    sinks: eligibleSinks,
+    skippedSinks,
+    sqlOperation
+  };
 }
 
-/**
- * Builds the parameters for a manual logs backfill.
- *
- * The server expands these into the backfill job graph from its built-in logs backfill template,
- * so no graph is assembled here. It adds the grepr.backfilled tags, the per-vendor
- * already-sent filters, and the confirmed-delivery dedup sinks itself.
- */
 export function buildBackfillRequest(
   options: BackfillCommandInputs,
   resolved: BackfillJobInputs,
   now = new Date()
-): SchemaCreateLogsBackfillJob {
-  validateBackfillInputs(options);
-  validateResolvedSinks(resolved.sinks);
-  const timeRange = requireTimestampRange(options);
-
-  const sinkTags = buildVendorTags(options.tags ?? []);
-
-  return {
-    dataType: CreateLogsBackfillJobDataType.logs,
+): SchemaCreateBackfillJob {
+  validateResolvedSinks(resolved.sinks, resolved.dataType);
+  const range = requireTimestampRange(options);
+  const predicate = validateForDataType(options, resolved.dataType);
+  const common = {
     name: formatBackfillJobName(now),
     datasetId: resolved.datasetId,
-    start: timeRange.start,
-    end: timeRange.end,
-    query: buildLanguageQueryPredicate(options),
+    start: range.start,
+    end: range.end,
     limit: options.limit ?? DEFAULT_LIMIT,
-    sinks: resolved.sinks.map(sink => buildVendorSink(sink, `sink_${sink.id}`, sinkTags)),
-    vendorSinkIntegrationIds: resolved.sinks.map(sink => sink.id),
     tags: BACKFILL_TAGS,
     teamIds: resolved.teamIds
   };
-}
 
-async function resolveSourceJob(
-  options: BackfillCommandInputs,
-  apiClient: BackfillApiClient
-): Promise<SchemaReadJob> {
-  if (!options.jobId) {
-    throw new Error('--job-id is required');
+  if (predicate.dataType === CreateLogsBackfillJobDataType.logs) {
+    const tags = buildLogVendorTags(options.tags ?? []);
+    return {
+      ...common,
+      dataType: CreateLogsBackfillJobDataType.logs,
+      query: predicate.query,
+      sinks: resolved.sinks.map(sink => buildLogSink(sink, tags)),
+      vendorSinkIntegrationIds: resolved.sinks.map(sink => sink.id)
+    };
   }
 
-  const job = await apiClient.getJob(options.jobId);
-  if (!job) {
-    throw new Error(`Job not found: ${options.jobId}`);
-  }
-  return job;
-}
-
-async function resolveDatasetFromOptions(
-  options: BackfillCommandInputs,
-  apiClient: BackfillApiClient
-): Promise<{ id: string; teamIds: string[] }> {
-  if (options.datasetId) {
-    return resolveDataset(options.datasetId, apiClient, 'id');
-  }
-
-  if (!options.datasetName) {
-    throw new Error('--dataset-name is required');
-  }
-  return resolveDataset(options.datasetName, apiClient, 'name');
-}
-
-async function resolveDataset(
-  datasetReference: string,
-  apiClient: BackfillApiClient,
-  referenceType: 'id' | 'name',
-  fallbackTeamIds: string[] = []
-): Promise<{ id: string; teamIds: string[] }> {
-  const dataset = referenceType === 'id'
-    ? await apiClient.getDataset(datasetReference)
-    : await findDatasetByName(datasetReference, apiClient);
-  if (!dataset?.id) {
-    throw new Error(`Dataset not found: ${datasetReference}`);
-  }
+  const attributes = buildSpanVendorAttributes(options.tags ?? []);
   return {
-    id: dataset.id,
-    teamIds: dataset.teamIds ?? fallbackTeamIds
+    ...common,
+    dataType: CreateSpansBackfillJobDataType.spans,
+    sinks: resolved.sinks.map(sink => buildTraceSink(sink, attributes)),
+    ...predicate.spanFilters,
+    ...(resolved.sqlOperation ? { sqlOperation: resolved.sqlOperation } : {})
   };
 }
 
-async function findDatasetByName(
-  datasetName: string,
-  apiClient: BackfillApiClient
-): Promise<SchemaDatasetRead | undefined> {
-  const datasets = await apiClient.listDatasets();
-  return datasets?.find(dataset => dataset.name === datasetName);
+export function validateSpansSqlOperation(sql: unknown): asserts sql is SchemaSqlOperation {
+  if (
+    !isRecord(sql) ||
+    sql.type !== SqlOperationType.sql_operation
+  ) {
+    throw new Error('Spans backfill SQL must be a sql-operation object');
+  }
+  if (!isNonBlankString(sql.name)) {
+    throw new Error('Spans backfill SQL operation name must be a non-empty string');
+  }
+  if (!OPERATION_NAME_PATTERN.test(sql.name)) {
+    throw new Error(
+      'Spans backfill SQL operation name must match [a-z0-9_]{1,128}'
+    );
+  }
+  if (
+    !isOptionalStringArray(sql.availableDatasets) ||
+    !isOptionalString(sql.globalStateTtl) ||
+    !isOptionalString(sql.watermarkDelay)
+  ) {
+    throw new Error('Spans backfill SQL has invalid operation settings');
+  }
+  const inputEntries = isRecord(sql.inputs) ? Object.entries(sql.inputs) : [];
+  if (
+    inputEntries.length !== 1 ||
+    inputEntries[0]?.[1] !== SqlOperationInputs.COMPLETE_SPAN
+  ) {
+    throw new Error('Spans backfill SQL must define exactly one COMPLETE_SPAN input');
+  }
+  const inputName = inputEntries[0][0];
+  if (!SQL_IDENTIFIER_PATTERN.test(inputName)) {
+    throw new Error(
+      `Spans backfill SQL input name '${inputName}' must be a simple identifier`
+    );
+  }
+  if (
+    !Array.isArray(sql.statements) ||
+    sql.statements.length === 0 ||
+    !sql.statements.every(isRecord)
+  ) {
+    throw new Error('Spans backfill SQL statements must be a non-empty list of objects');
+  }
+  const statements: Record<string, unknown>[] = sql.statements;
+  if (!statements.every(isValidSpanSqlStatement)) {
+    throw new Error('Spans backfill SQL only supports VIEW and OUTPUT statements');
+  }
+  const outputs = statements.filter(
+    statement => statement.type === SqlOutputStatementType.sql_output
+  );
+  if (
+    outputs.length !== 1 ||
+    outputs[0]?.outputType !== SqlOperationInputs.COMPLETE_SPAN
+  ) {
+    throw new Error('Spans backfill SQL must define exactly one COMPLETE_SPAN output');
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isOptionalString(value: unknown): value is string | undefined {
+  return value === undefined || typeof value === 'string';
+}
+
+function isOptionalStringArray(value: unknown): value is string[] | undefined {
+  return value === undefined ||
+    (Array.isArray(value) && value.every(item => typeof item === 'string'));
+}
+
+function hasValidStatementOptions(statement: Record<string, unknown>): boolean {
+  return isOptionalString(statement.eventTimeAttribute) &&
+    (statement.materialized === undefined || typeof statement.materialized === 'boolean');
+}
+
+function isValidSpanSqlStatement(statement: Record<string, unknown>): boolean {
+  if (!hasValidStatementOptions(statement) || !isNonBlankString(statement.sqlQuery)) {
+    return false;
+  }
+  switch (statement.type) {
+    case SqlViewStatementType.sql_view:
+      return typeof statement.tableName === 'string' &&
+        SQL_IDENTIFIER_PATTERN.test(statement.tableName);
+    case SqlOutputStatementType.sql_output:
+      return typeof statement.outputName === 'string' &&
+        SQL_OUTPUT_NAME_PATTERN.test(statement.outputName) &&
+        typeof statement.outputType === 'string';
+    default:
+      return false;
+  }
+}
+
+function isNonBlankString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function resolveSqlOperation(
+  options: BackfillCommandInputs,
+  preserved: SchemaSqlOperation[]
+): SchemaSqlOperation | undefined {
+  if (options.sqlOperation) {
+    return options.sqlOperation;
+  }
+  if (!options.preserveSql) {
+    return undefined;
+  }
+  if (preserved.length === 0) {
+    throw new Error('Source job has no post-reducer SQL to preserve');
+  }
+  if (preserved.length > 1) {
+    throw new Error(
+      'Source job has multiple post-reducer SQL operations; --preserve-sql requires exactly one'
+    );
+  }
+  const operation = preserved[0];
+  validateSpansSqlOperation(operation);
+  return operation;
+}
+
+function inferSinkIds(operations: SchemaOperation[], dataType: SignalDataType): string[] {
+  return [
+    ...new Set(
+      operations.flatMap(operation => {
+        if (
+          (dataType === CreateLogsBackfillJobDataType.logs && isBackfillLogSink(operation)) ||
+          (dataType === CreateSpansBackfillJobDataType.spans && isBackfillTraceSink(operation))
+        ) {
+          return [operation.integrationId];
+        }
+        return [];
+      })
+    )
+  ];
 }
 
 async function resolveSinks(
   sinkIds: string[],
+  dataType: SignalDataType,
   apiClient: BackfillApiClient
 ): Promise<IntegrationReadType[]> {
   const sinks: IntegrationReadType[] = [];
   for (const sinkId of [...new Set(sinkIds)]) {
     const sink = await apiClient.getIntegrationById(sinkId);
     if (!sink) {
-      throw new Error(`Could not load sink integration ${sinkId}. It may not exist, you may not have access, or the request may have failed.`);
+      throw new Error(
+        `Could not load sink integration ${sinkId}. It may not exist, ` +
+        'you may not have access, or the request may have failed.'
+      );
     }
-    if (!isSupportedBackfillIntegrationType(sink.type)) {
-      throw new Error(`Integration ${sinkId} is not a supported logs sink`);
+    if (!isSupportedBackfillIntegrationType(sink.type, dataType)) {
+      throw new Error(`Integration ${sinkId} is not a supported ${dataType} sink`);
     }
     sinks.push(sink);
   }
-  validateResolvedSinks(sinks);
   return sinks;
 }
 
-function validateResolvedSinks(sinks: IntegrationReadType[]): void {
+function validateResolvedSinks(
+  sinks: IntegrationReadType[],
+  dataType: SignalDataType
+): void {
   sinks.forEach(sink => {
-    if (!isSupportedBackfillIntegrationType(sink.type)) {
-      throw new Error(`Integration ${sink.id} is not a supported logs sink`);
+    if (!isSupportedBackfillIntegrationType(sink.type, dataType)) {
+      throw new Error(`Integration ${sink.id} is not a supported ${dataType} sink`);
     }
   });
 }
 
-function adaptJobGraph(job: SchemaReadJob): BackfillSourceConfig {
-  const rawSinks = job.jobGraph.vertices.filter(isRawDataLakeSink);
-  if (rawSinks.length !== 1) {
-    throw new Error(`Source job ${job.id ?? job.name} must have exactly one raw logs data lake sink`);
-  }
-  const datasetId = rawSinks[0]?.datasetId;
-  if (!datasetId) {
-    throw new Error(`Source job ${job.id ?? job.name} raw data lake sink has no datasetId`);
-  }
-  return {
-    datasetId,
-    sinkOperations: job.jobGraph.vertices
-  };
-}
-
-function inferSinkIds(operations: SchemaOperation[]): string[] {
-  return operations
-    .filter(isBackfillLogSink)
-    .map(sink => sink.integrationId)
-    .filter((id, index, ids) => ids.indexOf(id) === index);
-}
-
-async function inferBackfillSource(
-  job: SchemaReadJob,
-  apiClient: BackfillApiClient
-): Promise<BackfillSourceConfig> {
-  const templateOperation = job.jobGraph.vertices.find(
-    vertex => vertex.type === TemplateOperationType.template_operation
-  );
-  if (!templateOperation || templateOperation.type !== TemplateOperationType.template_operation) {
-    return adaptJobGraph(job);
-  }
-
-  const template = await apiClient.getTemplate(
-    templateOperation.templateId,
-    templateOperation.templateVersion
-  );
-
-  switch (template.name) {
-    case LOG_REDUCER_TEMPLATE_NAME: {
-      const templateInput = templateOperation.templateInputs?.input as
-        SchemaLogReducerTemplateInput | undefined;
-      const datasetId = templateInput?.datasetId ?? templateInput?.rawSinkConfig?.datasetId;
-      if (!datasetId) {
-        throw new Error('Log reducer template has no raw logs dataset');
-      }
-
-      return {
-        datasetId,
-        sinkOperations: (templateInput?.sinks ?? [])
-          .map(templateSink => templateSink.sink)
-          .filter(isOperation)
-      };
-    }
-    default:
-      throw new Error(
-        `Template ${template.name} (${templateOperation.templateId}) is not supported for logs backfill`
-      );
-  }
-}
-
-function isRawDataLakeSink(
-  vertex: SchemaOperation
-): vertex is SchemaOperation & { datasetId: string } {
-  return vertex.type === LogsIcebergTableSinkType.logs_iceberg_table_sink &&
-    vertex.name.startsWith(RAW_DATA_LAKE_SINK_NAME_PREFIX);
-}
-
-function isOperation(value: SchemaOperation | undefined): value is SchemaOperation {
-  return value !== undefined;
-}
-
-function buildVendorSink(
+function buildLogSink(
   integration: IntegrationReadType,
-  name: string,
   tags: string[]
 ): BackfillLogSink {
+  const name = `sink_${integration.id}`;
   switch (integration.type) {
     case ReadDatadogType.datadog:
       return {
@@ -375,12 +436,41 @@ function buildVendorSink(
   }
 }
 
-/**
- * Vendor tags to stamp on the backfilled events. The template adds the grepr.backfilled tags
- * server-side, so only the processor tag and the user's own tags ride along on the sink.
- */
-function buildVendorTags(tags: string[]): string[] {
+function buildTraceSink(
+  integration: IntegrationReadType,
+  attributes: Record<string, string>
+): SchemaDatadogTraceSink | SchemaOtlpTraceSink {
+  const common = {
+    name: `sink_${integration.id}`,
+    integrationId: integration.id,
+    additionalAttributes: attributes
+  };
+  switch (integration.type) {
+    case ReadDatadogType.datadog:
+      return {
+        ...common,
+        type: DatadogTraceSinkType.datadog_trace_sink
+      };
+    case ReadOtlpType.otlp:
+      return {
+        ...common,
+        type: OtlpTraceSinkType.otlp_trace_sink
+      };
+    default:
+      throw new Error(`Integration ${integration.id} is not a supported spans sink`);
+  }
+}
+
+function buildLogVendorTags(tags: string[]): string[] {
   return [PROCESSOR_TAG, ...tags];
+}
+
+function buildSpanVendorAttributes(tags: string[]): Record<string, string> {
+  return {
+    ...tagsToAttributes(tags),
+    processor: 'grepr',
+    'grepr.backfilled': 'true'
+  };
 }
 
 function formatBackfillJobName(now: Date): string {
@@ -404,20 +494,14 @@ function validateTag(tag: string): void {
 }
 
 function validateLimit(limit: number | undefined): void {
-  if (limit === undefined) {
-    return;
-  }
-  if (!Number.isInteger(limit) || limit < -1) {
+  if (limit !== undefined && (!Number.isInteger(limit) || limit < -1)) {
     throw new Error('--limit must be an integer greater than or equal to -1');
   }
 }
 
-/**
- * Removes sinks that cannot accept the requested time window while preserving
- * the reasons so the command can report partial backfill behavior.
- */
 function findBackfillEligibleSinks(
   sinks: IntegrationReadType[],
+  dataType: SignalDataType,
   startDate: Date,
   now: Date
 ): { eligibleSinks: IntegrationReadType[]; skippedSinks: SkippedBackfillSink[] } {
@@ -425,44 +509,21 @@ function findBackfillEligibleSinks(
   const skippedSinks: SkippedBackfillSink[] = [];
 
   sinks.forEach(sink => {
-    const vendor = findBackfillVendorByIntegrationType(sink.type);
-    if (!vendor) {
-      eligibleSinks.push(sink);
-      return;
-    }
-    const maxAgeHours = vendor.maxBackfillAgeHours;
-    if (maxAgeHours === undefined ||
-        startDate.getTime() >= now.getTime() - maxAgeHours * HOUR_MS) {
+    const vendor = findBackfillVendorByIntegrationType(sink.type, dataType);
+    const maxAgeHours = vendor?.maxBackfillAgeHours;
+    if (
+      !vendor ||
+      maxAgeHours === undefined ||
+      startDate.getTime() >= now.getTime() - maxAgeHours * HOUR_MS
+    ) {
       eligibleSinks.push(sink);
       return;
     }
     skippedSinks.push({
       sink,
-      reason: `${vendor.vendorName} cannot backfill logs older than ${maxAgeHours} hours`
+      reason: `${vendor.vendorName} cannot backfill ${dataType} older than ${maxAgeHours} hours`
     });
   });
 
   return { eligibleSinks, skippedSinks };
-}
-
-function buildResolvedInputs(
-  dataset: { id: string; teamIds: string[] },
-  sinks: IntegrationReadType[],
-  startDate: Date,
-  now: Date
-): BackfillResolvedInputs {
-  const { eligibleSinks, skippedSinks } = findBackfillEligibleSinks(sinks, startDate, now);
-  if (eligibleSinks.length === 0) {
-    const reasons = skippedSinks
-      .map(({ sink, reason }) => `${sink.name} (${sink.id}): ${reason}`)
-      .join('; ');
-    throw new Error(`No sinks are eligible for the requested backfill window. ${reasons}`);
-  }
-
-  return {
-    datasetId: dataset.id,
-    teamIds: [...new Set([...dataset.teamIds, ...eligibleSinks.flatMap(sink => sink.teamIds ?? [])])],
-    sinks: eligibleSinks,
-    skippedSinks
-  };
 }

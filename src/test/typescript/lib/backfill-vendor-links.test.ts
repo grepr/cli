@@ -2,6 +2,8 @@ import { describe, expect, it } from 'bun:test';
 import { buildBackfillRequest } from '../../../main/typescript/lib/backfill.js';
 import { buildBackfillVendorLinks } from '../../../main/typescript/lib/backfill-vendor-links.js';
 import {
+  CreateLogsBackfillJobDataType,
+  CreateSpansBackfillJobDataType,
   DatadogLogSinkType,
   ReadDatadogType,
   ReadNewRelicType,
@@ -20,6 +22,7 @@ import {
 const now = new Date('2026-07-07T12:00:00Z');
 const baseOptions = {
   datasetId: 'ds_raw',
+  dataType: CreateLogsBackfillJobDataType.logs,
   sinkIds: ['dd_1'],
   start: '2026-07-07T10:00:00Z',
   end: '2026-07-07T11:00:00Z',
@@ -33,6 +36,7 @@ describe('buildBackfillVendorLinks', () => {
       payload: { site: 'us3.datadoghq.com' }
     });
     const request = buildBackfillRequest(baseOptions, {
+      dataType: CreateLogsBackfillJobDataType.logs,
       datasetId: 'ds_raw',
       teamIds: [],
       sinks: [sink]
@@ -63,6 +67,7 @@ describe('buildBackfillVendorLinks', () => {
       ...baseOptions,
       sinkIds: sinks.map(sink => sink.id)
     }, {
+      dataType: CreateLogsBackfillJobDataType.logs,
       datasetId: 'ds_raw',
       teamIds: [],
       sinks
@@ -109,6 +114,7 @@ describe('buildBackfillVendorLinks', () => {
         'empty:'
       ]
     }, {
+      dataType: CreateLogsBackfillJobDataType.logs,
       datasetId: 'ds_raw',
       teamIds: [],
       sinks
@@ -140,12 +146,12 @@ describe('buildBackfillVendorLinks', () => {
       ...baseOptions,
       tags: []
     }, {
+      dataType: CreateLogsBackfillJobDataType.logs,
       datasetId: 'ds_raw',
       teamIds: [],
       sinks: [sink]
     }, now);
 
-    // The sink the server receives carries no backfilled tag; the template adds it downstream.
     expect(request.sinks).toEqual([{
       type: DatadogLogSinkType.datadog_log_sink,
       name: 'sink_dd_1',
@@ -167,6 +173,7 @@ describe('buildBackfillVendorLinks', () => {
       ...baseOptions,
       sinkIds: ['splunk_1']
     }, {
+      dataType: CreateLogsBackfillJobDataType.logs,
       datasetId: 'ds_raw',
       teamIds: [],
       sinks: [sink]
@@ -183,6 +190,7 @@ describe('buildBackfillVendorLinks', () => {
       start: '2026-07-07T10:00:00.999Z',
       end: '2026-07-07T11:00:00.999Z'
     }, {
+      dataType: CreateLogsBackfillJobDataType.logs,
       datasetId: 'ds_raw',
       teamIds: [],
       sinks: [sink]
@@ -195,5 +203,98 @@ describe('buildBackfillVendorLinks', () => {
     // tail of the window while earliest rounds down to include the first event.
     expect(url.searchParams.get('earliest')).toBe('1783418400');
     expect(url.searchParams.get('latest')).toBe('1783422001');
+  });
+
+  it('test_buildBackfillVendorLinks_buildsDatadogTraceExplorerLink', () => {
+    const sink = datadog('dd_1', {
+      payload: { site: 'eu1.datadoghq.com' }
+    });
+    const request = buildBackfillRequest({
+      ...baseOptions,
+      dataType: CreateSpansBackfillJobDataType.spans,
+      tags: ['team:platform']
+    }, {
+      dataType: CreateSpansBackfillJobDataType.spans,
+      datasetId: 'ds_raw',
+      teamIds: [],
+      sinks: [sink]
+    }, now);
+
+    const links = buildBackfillVendorLinks(request, [sink]);
+
+    expect(links).toHaveLength(1);
+    const url = new URL(links[0]?.url ?? '');
+    const query = url.searchParams.get('query') ?? '';
+    expect(`${url.origin}${url.pathname}`).toBe('https://eu1.datadoghq.com/apm/traces');
+    expect(query).toContain('@grepr.backfilled:"true"');
+    expect(query).toContain('@team:"platform"');
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      query,
+      sort: 'desc',
+      spanType: 'all',
+      traceQuery: '',
+      view: 'spans',
+      live: 'false',
+      from_ts: Date.parse(baseOptions.start).toString(),
+      to_ts: Date.parse(baseOptions.end).toString(),
+      historicalData: 'true',
+      paused: 'false'
+    });
+  });
+
+  it('test_buildBackfillVendorLinks_omitsTheServerGeneratedTimestampFromTheTraceQuery', () => {
+    const sink = datadog('dd_1');
+    const request = buildBackfillRequest({
+      ...baseOptions,
+      dataType: CreateSpansBackfillJobDataType.spans
+    }, {
+      dataType: CreateSpansBackfillJobDataType.spans,
+      datasetId: 'ds_raw',
+      teamIds: [],
+      sinks: [sink]
+    }, now);
+
+    const requestAttributes = (request.sinks[0] as { additionalAttributes: Record<string, string> })
+      .additionalAttributes;
+    expect(requestAttributes['grepr.backfilled.timestamp']).toBeUndefined();
+
+    const query = new URL(buildBackfillVendorLinks(request, [sink])[0]?.url ?? '')
+      .searchParams.get('query') ?? '';
+    expect(query).not.toContain('@grepr.backfilled.timestamp:');
+    expect(query).toContain('@grepr.backfilled:"true"');
+    expect(query).toContain('@processor:"grepr"');
+  });
+
+  it('test_buildBackfillVendorLinks_quotesTagValuesContainingSpaces', () => {
+    const sink = datadog('dd_1');
+    const request = buildBackfillRequest({
+      ...baseOptions,
+      dataType: CreateSpansBackfillJobDataType.spans,
+      tags: ['owner:team "a"\\ops']
+    }, {
+      dataType: CreateSpansBackfillJobDataType.spans,
+      datasetId: 'ds_raw',
+      teamIds: [],
+      sinks: [sink]
+    }, now);
+
+    const query = new URL(buildBackfillVendorLinks(request, [sink])[0]?.url ?? '')
+      .searchParams.get('query') ?? '';
+    expect(query).toContain('@owner:"team \\"a\\"\\\\ops"');
+  });
+
+  it('test_buildBackfillVendorLinks_returnsNoLinkForOtlpTraceSinks', () => {
+    const sink = otlp('otlp_1');
+    const request = buildBackfillRequest({
+      ...baseOptions,
+      dataType: CreateSpansBackfillJobDataType.spans
+    }, {
+      dataType: CreateSpansBackfillJobDataType.spans,
+      datasetId: 'ds_raw',
+      teamIds: [],
+      sinks: [sink]
+    }, now);
+
+    expect(buildBackfillVendorLinks(request, [sink])).toEqual([]);
   });
 });

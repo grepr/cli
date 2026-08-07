@@ -2,19 +2,29 @@ import { describe, expect, it, vi } from 'bun:test';
 import {
   buildBackfillRequest,
   resolveBackfillInputs,
-  validateBackfillInputs
+  validateBackfillInputs,
+  validateSpansSqlOperation
 } from '../../../main/typescript/lib/backfill.js';
 import {
+  CreateLogsBackfillJobDataType,
+  CreateSpansBackfillJobDataType,
   DatadogLogSinkType,
   DatadogQueryPredicateType,
+  DatadogTraceSinkType,
   NewRelicLogSinkType,
   OtlpLogSinkType,
+  OtlpTraceSinkType,
   ReadDataWarehouseType,
   SplunkLogSinkType,
+  SqlOperationInputs,
+  SqlOperationType,
+  SqlOutputStatementType,
   SumoLogSinkType,
   TemplateOperationType,
+  TraceReducerType,
   type SchemaReadDataWarehouse,
   type SchemaReadJob,
+  type SchemaSqlOperation,
   type SchemaTemplate
 } from '../../../main/typescript/openapi/openApiTypes.js';
 import type { BackfillApiClient } from '../../../main/typescript/lib/backfill.js';
@@ -42,6 +52,7 @@ const TRACE_REDUCER_TEMPLATE = {
 } satisfies SchemaTemplate;
 const baseOptions = {
   datasetId: 'ds_raw',
+  dataType: CreateLogsBackfillJobDataType.logs,
   sinkIds: ['dd_1'],
   start: '2026-07-07T10:00:00Z',
   end: '2026-07-07T11:00:00Z'
@@ -52,11 +63,14 @@ function dataWarehouse(id = 'warehouse_1'): SchemaReadDataWarehouse {
 }
 
 function apiClient(overrides: Partial<BackfillApiClient> = {}): BackfillApiClient {
+  const listDatasets = overrides.listDatasets ?? vi.fn(async () => []);
   return {
     getJob: vi.fn(),
     getTemplate: vi.fn(async () => LOG_REDUCER_TEMPLATE),
-    listDatasets: vi.fn(async () => []),
+    listDatasets,
     getDataset: vi.fn(async id => ({ id, name: id } as never)),
+    lookupDataset: vi.fn(async reference =>
+      (await listDatasets())?.find(candidate => candidate.name === reference)),
     getIntegrationById: vi.fn(async id => datadog(id)),
     ...overrides
   };
@@ -64,10 +78,58 @@ function apiClient(overrides: Partial<BackfillApiClient> = {}): BackfillApiClien
 
 function resolvedInputs(sinks = [datadog('dd_1')], teamIds: string[] = []) {
   return {
+    dataType: CreateLogsBackfillJobDataType.logs,
     datasetId: 'ds_raw',
     teamIds,
     sinks
   };
+}
+
+function completeSpanSql(name = 'post_reducer_sql'): SchemaSqlOperation {
+  return {
+    type: SqlOperationType.sql_operation,
+    name,
+    inputs: { traces: SqlOperationInputs.COMPLETE_SPAN },
+    statements: [{
+      type: SqlOutputStatementType.sql_output,
+      outputName: 'normalized_spans',
+      outputType: SqlOperationInputs.COMPLETE_SPAN,
+      sqlQuery: 'SELECT * FROM traces'
+    }]
+  };
+}
+
+function traceTemplateSourceJob(sqlOperation?: SchemaSqlOperation): SchemaReadJob {
+  return {
+    id: 'job_1',
+    name: 'pipeline',
+    teamIds: ['team_job'],
+    jobGraph: {
+      vertices: [{
+        type: TemplateOperationType.template_operation,
+        name: 'traces_template',
+        templateId: TRACE_REDUCER_TEMPLATE.id,
+        templateVersion: TRACE_REDUCER_TEMPLATE.version,
+        templateInputs: {
+          input: {
+            datasetId: 'ds_raw',
+            sources: [],
+            sinks: [{
+              sink: {
+                type: DatadogTraceSinkType.datadog_trace_sink,
+                name: 'dd',
+                integrationId: 'dd_1'
+              }
+            }],
+            ...(sqlOperation
+              ? { sqlOperations: { postReducer: { sqlOperation } } }
+              : {})
+          }
+        }
+      }],
+      edges: []
+    }
+  } as SchemaReadJob;
 }
 
 describe('backfill validation', () => {
@@ -81,6 +143,7 @@ describe('backfill validation', () => {
   it('test_validateBackfillInputs_requiresExplicitSink', () => {
     expect(() => validateBackfillInputs({
       datasetId: 'ds_raw',
+      dataType: CreateLogsBackfillJobDataType.logs,
       start: baseOptions.start,
       end: baseOptions.end
     })).toThrow(/requires at least one --sink-id/);
@@ -93,6 +156,13 @@ describe('backfill validation', () => {
       start: baseOptions.start,
       end: baseOptions.end
     })).toThrow(/Cannot specify --sink-id with --job-id/);
+  });
+
+  it('test_validateBackfillInputs_treatsAnEmptyJobIdAsExplicitDatasetMode', () => {
+    expect(() => validateBackfillInputs({
+      ...baseOptions,
+      jobId: ''
+    })).not.toThrow();
   });
 
   it('test_validateBackfillInputs_rejectsInvalidLimit', () => {
@@ -116,9 +186,127 @@ describe('backfill validation', () => {
       start: '2026-07-07T12:00:00Z'
     })).toThrow(/--start must be before or equal to --end/);
   });
+
+  it('test_validateBackfillInputs_rejectsSignalSpecificOptions', () => {
+    expect(() => validateBackfillInputs({
+      jobId: 'job_1',
+      dataType: CreateLogsBackfillJobDataType.logs,
+      start: baseOptions.start,
+      end: baseOptions.end,
+      preserveSql: true
+    })).toThrow(/SQL options only apply to spans backfills/);
+    expect(() => validateBackfillInputs({
+      ...baseOptions,
+      dataType: CreateSpansBackfillJobDataType.spans,
+      queryType: 'newrelic-query'
+    })).toThrow(/Spans only support --query-type datadog-query/);
+  });
+
+  describe('validateSpansSqlOperation', () => {
+    it('test_validateSpansSqlOperation_invalidInput_rejectsContract', () => {
+      expect(() => validateSpansSqlOperation({
+        ...completeSpanSql(),
+        inputs: { logs: SqlOperationInputs.LOG_EVENT }
+      })).toThrow(/exactly one COMPLETE_SPAN input/);
+      expect(() => validateSpansSqlOperation({
+        ...completeSpanSql(),
+        inputs: { 'a -> b': SqlOperationInputs.COMPLETE_SPAN }
+      })).toThrow(/input name 'a -> b' must be a simple identifier/);
+    });
+
+    it('test_validateSpansSqlOperation_malformedStatement_rejectsContract', () => {
+      expect(() => validateSpansSqlOperation({
+        ...completeSpanSql(),
+        statements: [null]
+      })).toThrow(/statements must be a non-empty list of objects/);
+      expect(() => validateSpansSqlOperation({
+        ...completeSpanSql(),
+        statements: []
+      })).toThrow(/statements must be a non-empty list/);
+    });
+
+    it('test_validateSpansSqlOperation_invalidOutputType_rejectsContract', () => {
+      expect(() => validateSpansSqlOperation({
+        ...completeSpanSql(),
+        statements: [{
+          type: SqlOutputStatementType.sql_output,
+          outputName: 'logs_out',
+          outputType: SqlOperationInputs.LOG_EVENT,
+          sqlQuery: 'SELECT * FROM traces'
+        }]
+      })).toThrow(/exactly one COMPLETE_SPAN output/);
+    });
+
+    it('test_validateSpansSqlOperation_multipleSpanOutputs_rejectsContract', () => {
+      const base = completeSpanSql();
+      expect(() => validateSpansSqlOperation({
+        ...base,
+        statements: [
+          ...base.statements,
+          {
+            type: SqlOutputStatementType.sql_output,
+            outputName: 'second_out',
+            outputType: SqlOperationInputs.COMPLETE_SPAN,
+            sqlQuery: 'SELECT * FROM traces'
+          }
+        ]
+      })).toThrow(/exactly one COMPLETE_SPAN output/);
+    });
+
+    it('test_validateSpansSqlOperation_nonSqlOrMissingFields_rejectsContract', () => {
+      expect(() => validateSpansSqlOperation({
+        type: 'grok-parser',
+        name: 'nope'
+      })).toThrow(/must be a sql-operation object/);
+      expect(() => validateSpansSqlOperation({
+        ...completeSpanSql(),
+        name: undefined
+      })).toThrow(/operation name must be a non-empty string/);
+      expect(() => validateSpansSqlOperation({
+        ...completeSpanSql(),
+        name: '   '
+      })).toThrow(/operation name must be a non-empty string/);
+
+      const output = completeSpanSql().statements[0];
+      for (const statement of [
+        { ...output, outputName: undefined },
+        { ...output, outputName: 'spans' },
+        { ...output, sqlQuery: ' ' },
+        { ...output, type: 'unknown-sql-statement' }
+      ]) {
+        expect(() => validateSpansSqlOperation({
+          ...completeSpanSql(),
+          statements: [statement]
+        })).toThrow(/only supports VIEW and OUTPUT statements/);
+      }
+    });
+
+    it('test_validateSpansSqlOperation_enforcesTheWireOperationNamePattern', () => {
+      expect(() => validateSpansSqlOperation(completeSpanSql('post_reducer_sql'))).not.toThrow();
+      expect(() => validateSpansSqlOperation(completeSpanSql('post-reducer-sql')))
+        .toThrow(/must match \[a-z0-9_\]\{1,128\}/);
+      expect(() => validateSpansSqlOperation(completeSpanSql('hostRemapSql')))
+        .toThrow(/must match \[a-z0-9_\]\{1,128\}/);
+      expect(() => validateSpansSqlOperation(completeSpanSql('a'.repeat(129))))
+        .toThrow(/must match \[a-z0-9_\]\{1,128\}/);
+    });
+  });
 });
 
 describe('buildBackfillRequest', () => {
+  it('test_buildBackfillRequest_rejectsUnliftedSpanClauses', () => {
+    expect(() => buildBackfillRequest({
+      ...baseOptions,
+      dataType: CreateSpansBackfillJobDataType.spans,
+      query: 'serviceName:checkout AND @http.status_code:500'
+    }, {
+      dataType: CreateSpansBackfillJobDataType.spans,
+      datasetId: 'ds_raw',
+      teamIds: [],
+      sinks: [datadog('dd_1')]
+    }, now)).toThrow(/cannot be represented by structured span filters/);
+  });
+
   it('test_buildBackfillRequest_sendsParametersWithoutAJobGraph', () => {
     const request = buildBackfillRequest({
       ...baseOptions,
@@ -198,9 +386,92 @@ describe('buildBackfillRequest', () => {
     const [sink] = request.sinks as [{ additionalTags: string[] }];
     expect(sink.additionalTags).toEqual(['processor:grepr']);
   });
+
+  it('test_buildBackfillRequest_buildsTypedSpansRequestAndStructuredFilters', () => {
+    const sqlOperation = completeSpanSql();
+    const query =
+      'serviceName:(web OR api) operationName:checkout traceSignature:"sig-1" ' +
+      'traceId:0123456789abcdef0123456789abcdef hasError:true root:false ' +
+      'durationNanos:>=1000 durationNanos:<5000';
+    const additionalAttributes = {
+      processor: 'grepr',
+      'grepr.backfilled': 'true',
+      team: 'platform',
+      note: 'a:b'
+    };
+    const request = buildBackfillRequest({
+      ...baseOptions,
+      dataType: CreateSpansBackfillJobDataType.spans,
+      sinkIds: ['dd_1', 'otlp_1'],
+      query,
+      tags: ['team:platform', 'note:a:b'],
+      sqlOperation
+    }, {
+      dataType: CreateSpansBackfillJobDataType.spans,
+      datasetId: 'ds_raw',
+      teamIds: ['team_alpha'],
+      sinks: [datadog('dd_1'), otlp('otlp_1')],
+      sqlOperation
+    }, now);
+
+    expect(request).toMatchObject({
+      dataType: CreateSpansBackfillJobDataType.spans,
+      datasetId: 'ds_raw',
+      serviceNames: ['web', 'api'],
+      operationNames: ['checkout'],
+      traceSignatures: ['sig-1'],
+      traceIds: ['0123456789abcdef0123456789abcdef'],
+      hasError: true,
+      isRootSpan: false,
+      minDuration: 1000,
+      maxDuration: 4999,
+      teamIds: ['team_alpha'],
+      sqlOperation,
+      sinks: [
+        {
+          type: DatadogTraceSinkType.datadog_trace_sink,
+          name: 'sink_dd_1',
+          integrationId: 'dd_1',
+          additionalAttributes
+        },
+        {
+          type: OtlpTraceSinkType.otlp_trace_sink,
+          name: 'sink_otlp_1',
+          integrationId: 'otlp_1',
+          additionalAttributes
+        }
+      ]
+    });
+    expect('query' in request).toBe(false);
+    expect('vendorSinkIntegrationIds' in request).toBe(false);
+  });
 });
 
 describe('resolveBackfillInputs', () => {
+  it('test_resolveBackfillInputs_rejectsUnliftedSpanClausesBeforeSubmission', async () => {
+    await expect(resolveBackfillInputs({
+      ...baseOptions,
+      dataType: CreateSpansBackfillJobDataType.spans,
+      query: 'serviceName:checkout AND @http.status_code:500'
+    }, apiClient())).rejects.toThrow(/cannot be represented by structured span filters/);
+
+    await expect(resolveBackfillInputs({
+      ...baseOptions,
+      dataType: CreateSpansBackfillJobDataType.spans,
+      query: 'serviceName:""'
+    }, apiClient())).rejects.toThrow(/cannot be represented by structured span filters/);
+  });
+
+  it('test_resolveBackfillInputs_defaultsExplicitDatasetToLogs', async () => {
+    const resolved = await resolveBackfillInputs({
+      datasetId: 'ds_raw',
+      sinkIds: ['dd_1'],
+      ...recentBackfillRange()
+    }, apiClient());
+
+    expect(resolved.dataType).toBe(CreateLogsBackfillJobDataType.logs);
+  });
+
   it('test_resolveBackfillInputs_explicitDatasetAndMultipleSinks', async () => {
     const client = apiClient({
       getDataset: vi.fn(async id => ({ id, name: id, teamIds: ['team_alpha'] } as never)),
@@ -287,6 +558,39 @@ describe('resolveBackfillInputs', () => {
     }]);
   });
 
+  it('test_resolveBackfillInputs_appliesTheDatadogAgeWindowToSpansToo', async () => {
+    const client = apiClient({
+      getIntegrationById: vi.fn(async id => id === 'dd_1' ? datadog(id) : otlp(id))
+    });
+
+    const resolved = await resolveBackfillInputs({
+      ...baseOptions,
+      dataType: CreateSpansBackfillJobDataType.spans,
+      sinkIds: ['dd_1', 'otlp_1'],
+      start: '2026-07-06T17:59:59Z'
+    }, client, now);
+
+    expect(resolved.sinks.map(sink => sink.id)).toEqual(['otlp_1']);
+    expect(resolved.skippedSinks).toEqual([{
+      sink: datadog('dd_1'),
+      reason: 'Datadog cannot backfill spans older than 18 hours'
+    }]);
+  });
+
+  it('test_resolveBackfillInputs_keepsUncappedSpanSinksAtAnyAge', async () => {
+    const client = apiClient({ getIntegrationById: vi.fn(async id => otlp(id)) });
+
+    const resolved = await resolveBackfillInputs({
+      ...baseOptions,
+      dataType: CreateSpansBackfillJobDataType.spans,
+      sinkIds: ['otlp_1'],
+      start: '2026-01-01T00:00:00Z'
+    }, client, now);
+
+    expect(resolved.sinks.map(sink => sink.id)).toEqual(['otlp_1']);
+    expect(resolved.skippedSinks).toEqual([]);
+  });
+
   it('test_resolveBackfillInputs_rejectsWhenAllSinksAreOutsideTheirAgeWindows', async () => {
     const client = apiClient({
       getIntegrationById: vi.fn(async id => id === 'dd_1' ? datadog(id) : newRelic(id))
@@ -326,6 +630,7 @@ describe('resolveBackfillInputs', () => {
 
     const resolved = await resolveBackfillInputs({
       datasetName: 'raw logs',
+      dataType: CreateLogsBackfillJobDataType.logs,
       sinkIds: ['dd_1'],
       ...recentBackfillRange()
     }, client);
@@ -434,12 +739,18 @@ describe('resolveBackfillInputs', () => {
 
     const resolved = await resolveBackfillInputs({
       datasetId: 'ds_raw',
+      dataType: CreateLogsBackfillJobDataType.logs,
       sinkIds: ['dd_1', 'dd_1'],
       ...range
     }, client);
     expect(resolved.sinks.map(sink => sink.id)).toEqual(['dd_1']);
 
-    const request = buildBackfillRequest({ datasetId: 'ds_raw', sinkIds: ['dd_1', 'dd_1'], ...range }, resolved);
+    const request = buildBackfillRequest({
+      datasetId: 'ds_raw',
+      dataType: CreateLogsBackfillJobDataType.logs,
+      sinkIds: ['dd_1', 'dd_1'],
+      ...range
+    }, resolved);
     expect(request.sinks.filter(sink => sink.name === 'sink_dd_1')).toHaveLength(1);
     expect(request.vendorSinkIntegrationIds).toEqual(['dd_1']);
   });
@@ -486,7 +797,7 @@ describe('resolveBackfillInputs', () => {
     });
 
     await expect(resolveBackfillInputs({ jobId: 'job_1', ...recentBackfillRange() }, client))
-      .rejects.toThrow(/No supported log sinks/);
+      .rejects.toThrow(/No supported logs sinks/);
   });
 
   it('test_resolveBackfillInputs_rejectsMissingOrDuplicateRawSink', async () => {
@@ -512,42 +823,178 @@ describe('resolveBackfillInputs', () => {
         getJob: vi.fn(async () => jobWithRawSinks(count)),
         getIntegrationById: vi.fn(async id => datadog(id))
       });
+      const expected = count === 0
+        ? /no supported raw logs or spans dataset/
+        : /multiple raw logs datasets/;
       await expect(resolveBackfillInputs({ jobId: 'job_1', ...recentBackfillRange() }, client))
-        .rejects.toThrow(/exactly one raw logs data lake sink/);
+        .rejects.toThrow(expected);
     }
   });
 
-  it('test_resolveBackfillInputs_rejectsUnsupportedTemplate', async () => {
+  it('test_resolveBackfillInputs_infersSpansFromTraceTemplate', async () => {
+    const client = apiClient({
+      getJob: vi.fn(async () => traceTemplateSourceJob()),
+      getTemplate: vi.fn(async () => TRACE_REDUCER_TEMPLATE),
+      getIntegrationById: vi.fn(async id => datadog(id))
+    });
+
+    const resolved = await resolveBackfillInputs({
+      jobId: 'job_1',
+      ...recentBackfillRange()
+    }, client);
+
+    expect(resolved.dataType).toBe(CreateSpansBackfillJobDataType.spans);
+    expect(resolved.datasetId).toBe('ds_raw');
+    expect(resolved.sinks.map(sink => sink.id)).toEqual(['dd_1']);
+  });
+
+  it('test_resolveBackfillInputs_preservesTraceTemplatePostReducerSql', async () => {
+    const sqlOperation = completeSpanSql('host_remap_sql');
+    const client = apiClient({
+      getJob: vi.fn(async () => traceTemplateSourceJob(sqlOperation)),
+      getTemplate: vi.fn(async () => TRACE_REDUCER_TEMPLATE),
+      getIntegrationById: vi.fn(async id => datadog(id, { teamIds: ['team_sink'] }))
+    });
+
+    const resolved = await resolveBackfillInputs({
+      jobId: 'job_1',
+      preserveSql: true,
+      ...recentBackfillRange()
+    }, client);
+
+    expect(resolved.dataType).toBe(CreateSpansBackfillJobDataType.spans);
+    expect(resolved.sqlOperation).toEqual(sqlOperation);
+    expect(resolved.teamIds).toEqual(['team_job', 'team_sink']);
+  });
+
+  it('test_resolveBackfillInputs_preserveSqlWithoutSourceSql_rejectsRequest', async () => {
+    const client = apiClient({
+      getJob: vi.fn(async () => traceTemplateSourceJob()),
+      getTemplate: vi.fn(async () => TRACE_REDUCER_TEMPLATE)
+    });
+
+    await expect(resolveBackfillInputs({
+      jobId: 'job_1',
+      preserveSql: true,
+      ...recentBackfillRange()
+    }, client)).rejects.toThrow(/Source job has no post-reducer SQL to preserve/);
+  });
+
+  it('test_resolveBackfillInputs_preserveInvalidSourceSql_rejectsRequest', async () => {
+    const sqlOperation = {
+      ...completeSpanSql(),
+      inputs: { logs: SqlOperationInputs.LOG_EVENT }
+    };
+    const client = apiClient({
+      getJob: vi.fn(async () => traceTemplateSourceJob(sqlOperation)),
+      getTemplate: vi.fn(async () => TRACE_REDUCER_TEMPLATE)
+    });
+
+    await expect(resolveBackfillInputs({
+      jobId: 'job_1',
+      preserveSql: true,
+      ...recentBackfillRange()
+    }, client)).rejects.toThrow(/exactly one COMPLETE_SPAN input/);
+  });
+
+  it('test_resolveBackfillInputs_multipleSourceSqlBranches_onlyRejectsPreservation', async () => {
+    const firstSql = completeSpanSql('first_sql');
+    const secondSql = completeSpanSql('second_sql');
     const sourceJob = {
       id: 'job_1',
       name: 'pipeline',
-      teamIds: ['team_template_source'],
       jobGraph: {
-        vertices: [{
-          type: TemplateOperationType.template_operation,
-          name: 'traces_template',
-          templateId: TRACE_REDUCER_TEMPLATE.id,
-          templateVersion: TRACE_REDUCER_TEMPLATE.version,
-          templateInputs: {
-            input: {
-              datasetId: 'ds_raw',
-              sinks: []
-            }
+        vertices: [
+          {
+            type: TraceReducerType.trace_reducer,
+            name: 'trace_reducer',
+            datasetId: 'ds_spans'
+          },
+          firstSql,
+          secondSql,
+          {
+            type: DatadogTraceSinkType.datadog_trace_sink,
+            name: 'dd',
+            integrationId: 'dd_1'
           }
-        }],
+        ],
+        edges: [
+          'trace_reducer -> first_sql:traces',
+          'trace_reducer -> second_sql:traces'
+        ]
+      }
+    } as SchemaReadJob;
+    const client = apiClient({
+      getJob: vi.fn(async () => sourceJob),
+      getIntegrationById: vi.fn(async id => datadog(id))
+    });
+
+    await expect(resolveBackfillInputs({
+      jobId: 'job_1',
+      ...recentBackfillRange()
+    }, client)).resolves.toMatchObject({ dataType: CreateSpansBackfillJobDataType.spans });
+    await expect(resolveBackfillInputs({
+      jobId: 'job_1',
+      preserveSql: true,
+      ...recentBackfillRange()
+    }, client)).rejects.toThrow(/multiple post-reducer SQL operations/);
+  });
+
+  it('test_resolveBackfillInputs_infersSpansFromRawTraceGraph', async () => {
+    const sourceJob = {
+      id: 'job_1',
+      name: 'pipeline',
+      jobGraph: {
+        vertices: [
+          {
+            type: TraceReducerType.trace_reducer,
+            name: 'trace_reducer',
+            datasetId: 'ds_spans'
+          },
+          {
+            type: DatadogTraceSinkType.datadog_trace_sink,
+            name: 'dd',
+            integrationId: 'dd_1'
+          }
+        ],
         edges: []
       }
     } as SchemaReadJob;
     const client = apiClient({
       getJob: vi.fn(async () => sourceJob),
-      getTemplate: vi.fn(async () => TRACE_REDUCER_TEMPLATE)
+      getIntegrationById: vi.fn(async id => datadog(id))
     });
 
-    await expect(resolveBackfillInputs({ jobId: 'job_1', ...recentBackfillRange() }, client))
-      .rejects.toThrow(
-        `Template ${TRACE_REDUCER_TEMPLATE.name} (${TRACE_REDUCER_TEMPLATE.id}) ` +
-        'is not supported for logs backfill'
-      );
+    const resolved = await resolveBackfillInputs({
+      jobId: 'job_1',
+      dataType: CreateSpansBackfillJobDataType.spans,
+      ...recentBackfillRange()
+    }, client);
+
+    expect(resolved.dataType).toBe(CreateSpansBackfillJobDataType.spans);
+    expect(resolved.datasetId).toBe('ds_spans');
+    expect(resolved.sinks.map(sink => sink.id)).toEqual(['dd_1']);
+  });
+
+  it('test_resolveBackfillInputs_rejectsDataTypeAssertionMismatch', async () => {
+    const sourceJob = {
+      id: 'job_1',
+      name: 'pipeline',
+      jobGraph: {
+        vertices: [
+          { type: 'logs-iceberg-table-sink', name: 'raw_data_sink', datasetId: 'ds_raw' },
+          { type: DatadogLogSinkType.datadog_log_sink, name: 'dd', integrationId: 'dd_1' }
+        ],
+        edges: []
+      }
+    } as SchemaReadJob;
+    const client = apiClient({ getJob: vi.fn(async () => sourceJob) });
+
+    await expect(resolveBackfillInputs({
+      jobId: 'job_1',
+      dataType: CreateSpansBackfillJobDataType.spans,
+      ...recentBackfillRange()
+    }, client)).rejects.toThrow(/does not match source job type logs/);
   });
 
   it('test_resolveBackfillInputs_templateFallsBackToRawSinkConfigDatasetId', async () => {

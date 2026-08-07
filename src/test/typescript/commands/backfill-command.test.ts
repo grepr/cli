@@ -1,13 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'bun:test';
 import { Command } from 'commander';
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir, readFile, writeFile } from 'fs/promises';
 import { BackfillCommand } from '../../../../src/main/typescript/commands/backfill-command.js';
 import { createApiClient } from '../../../../src/main/typescript/lib/api-client-factory.js';
 import {
   createDatadogIntegration as datadog,
+  createOtlpIntegration as otlp,
   createSplunkIntegration as splunk,
   recentBackfillRange
 } from '../lib/test-fixtures.js';
+import {
+  CreateLogsBackfillJobDataType,
+  CreateSpansBackfillJobDataType,
+  DatadogTraceSinkType,
+  OtlpTraceSinkType,
+  SqlOperationInputs,
+  SqlOperationType,
+  SqlOutputStatementType
+} from '../../../../src/main/typescript/openapi/openApiTypes.js';
 
 vi.mock('../../../../src/main/typescript/lib/api-client-factory.js', () => ({
   createApiClient: vi.fn()
@@ -15,6 +25,7 @@ vi.mock('../../../../src/main/typescript/lib/api-client-factory.js', () => ({
 
 vi.mock('fs/promises', () => ({
   mkdir: vi.fn(),
+  readFile: vi.fn(),
   writeFile: vi.fn()
 }));
 
@@ -65,6 +76,7 @@ describe('BackfillCommand', () => {
     };
     asMock(createApiClient).mockReturnValue(mockApiClient as never);
     asMock(mkdir).mockResolvedValue(undefined);
+    asMock(readFile).mockResolvedValue('');
     asMock(writeFile).mockResolvedValue(undefined);
   });
 
@@ -72,6 +84,7 @@ describe('BackfillCommand', () => {
     return {
       ...cliOptions(),
       datasetId: 'ds_raw',
+      dataType: CreateLogsBackfillJobDataType.logs,
       sinkIds: ['dd_1'],
       ...recentBackfillRange(),
       ...overrides
@@ -94,7 +107,6 @@ describe('BackfillCommand', () => {
       limit?: number;
       jobGraph?: unknown;
     };
-    // Parameters only: the server builds the graph from them.
     expect(printed.jobGraph).toBeUndefined();
     expect(printed.datasetId).toBe('ds_raw');
     expect(printed.limit).toBe(10000);
@@ -114,6 +126,14 @@ describe('BackfillCommand', () => {
     expect(request.datasetId).toBe('ds_raw');
     expect(request.limit).toBe(-1);
     expect(request.vendorSinkIntegrationIds).toEqual(['dd_1']);
+  });
+
+  it('test_execute_submitReturnsNoJob_warnsBeforeRetry', async () => {
+    mockApiClient.createBackfillJob.mockResolvedValue(undefined);
+
+    await expect(command.execute(backfillOptions())).rejects.toThrow(
+      /may be running.*check `grepr job:list` before retrying/
+    );
   });
 
   it('test_execute_skipsIneligibleSinkAndWarns', async () => {
@@ -210,6 +230,7 @@ describe('BackfillCommand', () => {
       'grepr',
       'backfill',
       '--dataset-id', 'ds_raw',
+      '--data-type', 'logs',
       '--sink-id', 'dd_1', 'dd_2',
       '--tag', 'env:test', 'source:cli',
       ...Object.entries(recentBackfillRange()).flatMap(([flag, value]) => [`--${flag}`, value]),
@@ -239,6 +260,7 @@ describe('BackfillCommand', () => {
       'grepr',
       'backfill',
       '--dataset-id', 'ds_raw',
+      '--data-type', 'logs',
       '--sink-id', 'dd_1',
       '--sink-id', 'dd_2',
       '--tag', 'env:test',
@@ -297,6 +319,44 @@ describe('BackfillCommand', () => {
       expect.stringContaining('"vendorSinkIntegrationIds"')
     );
     expect(mockApiClient.createBackfillJob).not.toHaveBeenCalled();
+  });
+
+  it('test_execute_spansDryRunBuildsTraceSinksAndLoadsCustomSql', async () => {
+    const sqlOperation = {
+      type: SqlOperationType.sql_operation,
+      name: 'post_reducer_sql',
+      inputs: { traces: SqlOperationInputs.COMPLETE_SPAN },
+      statements: [{
+        type: SqlOutputStatementType.sql_output,
+        outputName: 'normalized_spans',
+        outputType: SqlOperationInputs.COMPLETE_SPAN,
+        sqlQuery: 'SELECT * FROM traces'
+      }]
+    };
+    asMock(readFile).mockResolvedValue(JSON.stringify(sqlOperation));
+    mockApiClient.getIntegrationById.mockImplementation(
+      async id => id === 'dd_1' ? datadog(id) : otlp(id)
+    );
+
+    await command.execute(backfillOptions({
+      dataType: CreateSpansBackfillJobDataType.spans,
+      sinkIds: ['dd_1', 'otlp_1'],
+      sqlOperationPath: 'build/post-reducer-sql.json',
+      dryRun: true
+    }));
+
+    expect(readFile).toHaveBeenCalledWith('build/post-reducer-sql.json', 'utf8');
+    const printed = JSON.parse(String(consoleLogSpy.mock.calls[0]?.[0])) as {
+      dataType?: string;
+      sqlOperation?: unknown;
+      sinks?: { type?: string }[];
+    };
+    expect(printed.dataType).toBe(CreateSpansBackfillJobDataType.spans);
+    expect(printed.sqlOperation).toEqual(sqlOperation);
+    expect(printed.sinks?.map(sink => sink.type)).toEqual([
+      DatadogTraceSinkType.datadog_trace_sink,
+      OtlpTraceSinkType.otlp_trace_sink
+    ]);
   });
 
   it('test_execute_outputWriteFailureAfterSubmit_includesCreatedJobId', async () => {

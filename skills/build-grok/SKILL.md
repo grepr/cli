@@ -1,12 +1,12 @@
 ---
 description: Learn about grok:parse Grepr CLI command. Create, test, and add Grok patterns to Grepr pipelines to parse log messages into structured data to enable more effective and easier queries on log data.
-allowed-tools: Bash(grepr grok:parse), grepr:job-commands, grepr:query-logs, grepr:docs-commands, Read(grok-parse.md)
+allowed-tools: Bash(grepr grok:parse), grepr:job-commands, grepr:query, grepr:docs-commands, Read(grok-parse.md)
 ---
 
 # Building Grok patterns for Grepr
 You will be using the Grepr CLI to test Grok patterns and then updating or creating a new job or pipeline with those grok patterns. You will need the `grepr:job-commands` skill to manage jobs/pipelines.
 
-The user will have to give you some sample messages that you'd like to parse, either in the prompt or via a file. If they don't, you can help them query their raw log data from the data lake using the `grepr:query-logs` skill.
+The user will have to give you some sample messages that you'd like to parse, either in the prompt or via a file. If they don't, you can help them query their raw log data from the data lake using the `grepr:query` skill.
 
 Helper patterns are rules that can be reused in multiple places within the main Grok pattern. They help simplify complex patterns by breaking them down into smaller, reusable components. Use them to make your main patterns easier to read and maintain.
 
@@ -15,7 +15,7 @@ Read through the Grepr documentation on Grok using `grepr:docs-commands` (docs:s
 
 Use `grepr:job-commands` for CLI commands needed to build and test Grok patterns and update jobs/pipelines.
 
-Use `grepr:query-logs` to query raw log data from the data lake if needed to get sample messages.
+Use `grepr:query` to query raw log data from the data lake if needed to get sample messages.
 
 # Notes
 - Don't confuse the `log-attributes-remapper` operation with the `GrokParser` or `grok-parser` operation. The former is used to remap existing fields in a Log Event's attributes to tags or other top-level fields, while the latter is used to parse unstructured log messages into attributes, tags, or top-level fields using Grok patterns. Use `grepr docs:get doc://transforms/remapper/page.mdx` to get for more info on the remapper if needed.

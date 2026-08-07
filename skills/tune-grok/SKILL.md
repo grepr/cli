@@ -1,6 +1,6 @@
 ---
 description: Diagnose and fix broken grok parsing on a Grepr pipeline when log messages stay unparsed in `message` instead of becoming structured attributes — samples unparsed logs, authors a grok pattern, adds a rule to an existing grok parser or inserts a new grok-parser vertex, and routes through test-pipeline-change. Use for "tune grok", "fix grok", "logs not parsing", "grok not matching", "extract attributes from logs".
-allowed-tools: Bash(grepr query), Bash(grepr grok:parse), Bash(grepr job:get), Bash(grepr --conf * query), Bash(grepr --conf * grok:parse), Bash(grepr --conf * job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:build-grok, grepr:query-logs
+allowed-tools: Bash(grepr query), Bash(grepr grok:parse), Bash(grepr job:get), Bash(grepr --conf * query), Bash(grepr --conf * grok:parse), Bash(grepr --conf * job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:build-grok, grepr:query
 ---
 
 # Tune Grok Parsing

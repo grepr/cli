@@ -1,6 +1,6 @@
 ---
 description: Set, modify, or clear pipeline filters on a Grepr pipeline to drop unwanted logs (debug, health checks, vendor heartbeats) at a chosen phase — pre-parser, pre-warehouse, or pre-exceptions. Estimates drop volume first and routes through test-pipeline-change. Use for "add a filter", "drop these logs", "filter is too aggressive", or "stop filtering".
-allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:plan), Bash(grepr --conf * job:draft), Read, Write, grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
+allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:plan), Bash(grepr --conf * job:draft), Read, Write, grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query
 ---
 
 # Change Pipeline Filtering
@@ -87,7 +87,7 @@ grepr query --dataset-id <RAW_DS> --query "NOT (<drop condition>)" \
 
 `grepr query` has no exact-count mode here — report a sample estimate. Treat a
 filter dropping >50% of the sample as a deliberate decision and confirm with the
-user. See `grepr:query-logs` for query mechanics.
+user. See `grepr:query` for query mechanics.
 
 ## Step 4 — Build the patch
 
@@ -135,4 +135,4 @@ than reciting the generic phase description.
 - `grepr:test-pipeline-change` — plan → draft → approval → apply.
 - `grepr:operations-reference` — full op catalog and exact field names.
 - `grepr:cli` — org config (`--conf`) resolution.
-- `grepr:query-logs` — query syntax and mechanics for drop-volume sampling.
+- `grepr:query` — query syntax and mechanics for drop-volume sampling.

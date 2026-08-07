@@ -1,7 +1,9 @@
 import {
   DatadogLogSinkType,
+  DatadogTraceSinkType,
   NewRelicLogSinkType,
   OtlpLogSinkType,
+  OtlpTraceSinkType,
   ReadDatadogType,
   ReadNewRelicType,
   ReadOtlpType,
@@ -15,9 +17,10 @@ import type { IntegrationReadType } from '../types.js';
 import {
   findBackfillVendor,
   isBackfillLogSink,
-  isSupportedBackfillIntegrationType,
+  isBackfillTraceSink,
   type BackfillIntegrationType,
-  type BackfillLogSink
+  type BackfillLogSink,
+  type BackfillTraceSink
 } from './backfill-vendors.js';
 
 export interface BackfillVendorLink {
@@ -28,10 +31,6 @@ export interface BackfillVendorLink {
   url: string;
 }
 
-/**
- * The parts of a backfill the vendor links are derived from. Taken directly rather than read out
- * of a job graph, because the server now builds the graph from these parameters.
- */
 export interface BackfillVendorLinkInputs {
   start: string;
   end: string;
@@ -39,28 +38,22 @@ export interface BackfillVendorLinkInputs {
 }
 
 const DATADOG_REGIONAL_SITE_PREFIX_RE = /^(us|eu|ap)\d+\./;
+const DATADOG_NUMERIC_VALUE_PATTERN = /^-?\d+(?:\.\d+)?$/;
 
 const BACKFILLED_TAG_KEY = 'grepr.backfilled';
 
-/**
- * The logs backfill template stamps grepr.backfilled on every event it replays, upstream of the
- * sink, so the tag is not part of the sink operation sent to the server. Links still need to filter
- * on it, and combined with the time range each URL already carries it identifies the replayed data.
- *
- * The template also stamps grepr.backfilled.timestamp, which is deliberately not used here: its
- * value is the server's normalized rendering of the window end, and reproducing that formatting
- * client-side would silently break the link whenever the two renderings disagree.
- */
 function tagsWithBackfilled(tags?: string[]): string[] {
   return [`${BACKFILLED_TAG_KEY}:true`, ...(tags ?? [])];
 }
 
-/** The attribute-map equivalent of {@link tagsWithBackfilled}. */
 function attributesWithBackfilled(attributes?: Record<string, string>): Record<string, string> {
-  return { [BACKFILLED_TAG_KEY]: 'true', ...(attributes ?? {}) };
+  return {
+    [BACKFILLED_TAG_KEY]: 'true',
+    ...(attributes ?? {})
+  };
 }
 
-/** CLI-local because the frontend link builders depend on browser-only sink classes. */
+/** Builds vendor explorer links using the frontend's URL conventions. */
 export function buildBackfillVendorLinks(
   backfill: BackfillVendorLinkInputs,
   integrations: IntegrationReadType[]
@@ -71,10 +64,12 @@ export function buildBackfillVendorLinks(
 
   const integrationsById = new Map(integrations.map(integration => [integration.id, integration]));
   return backfill.sinks
-    .filter(isBackfillLogSink)
+    .filter((sink): sink is BackfillLogSink | BackfillTraceSink =>
+      isBackfillLogSink(sink) || isBackfillTraceSink(sink)
+    )
     .map((sink): BackfillVendorLink | null => {
       const integration = integrationsById.get(sink.integrationId);
-      if (!integration || !isSupportedBackfillIntegrationType(integration.type)) {
+      if (!integration) {
         return null;
       }
       const vendor = findBackfillVendor(integration.type, sink.type);
@@ -88,7 +83,7 @@ export function buildBackfillVendorLinks(
       return {
         integrationId: integration.id,
         integrationName: integration.name,
-        vendorType: integration.type,
+        vendorType: vendor.integrationType,
         label: `View in ${vendor.vendorName}`,
         url
       };
@@ -98,7 +93,7 @@ export function buildBackfillVendorLinks(
 
 function buildVendorUrl(
   integration: IntegrationReadType,
-  sink: BackfillLogSink,
+  sink: BackfillLogSink | BackfillTraceSink,
   start: string,
   end: string
 ): string | null {
@@ -123,7 +118,39 @@ function buildVendorUrl(
       return integration.type === ReadOtlpType.otlp
         ? buildOtlpUrl(integration, attributesWithBackfilled(sink.additionalAttributes), start, end)
         : null;
+    case DatadogTraceSinkType.datadog_trace_sink:
+      return integration.type === ReadDatadogType.datadog
+        ? buildDatadogTracesUrl(
+            integration,
+            attributesWithBackfilled(sink.additionalAttributes),
+            start,
+            end
+          )
+        : null;
+    case OtlpTraceSinkType.otlp_trace_sink:
+      return null;
   }
+}
+
+function buildDatadogTracesUrl(
+  integration: Extract<IntegrationReadType, { type: ReadDatadogType }>,
+  attributes: Record<string, string>,
+  start: string,
+  end: string
+): string {
+  const params = new URLSearchParams({
+    query: attributesToDatadogQuery(attributes),
+    sort: 'desc',
+    spanType: 'all',
+    traceQuery: '',
+    view: 'spans',
+    live: 'false',
+    from_ts: Date.parse(start).toString(),
+    to_ts: Date.parse(end).toString(),
+    historicalData: 'true',
+    paused: 'false'
+  });
+  return `${getDatadogBaseUrl(integration.payload?.site)}/apm/traces?${params.toString()}`;
 }
 
 function buildDatadogUrl(
@@ -141,16 +168,19 @@ function buildDatadogUrl(
 }
 
 function getDatadogLogsUrl(site?: string): string {
+  return `${getDatadogBaseUrl(site)}/logs`;
+}
+
+function getDatadogBaseUrl(site?: string): string {
   if (!site) {
-    return 'https://app.datadoghq.com/logs';
+    return 'https://app.datadoghq.com';
   }
   if (site.includes('localhost') || site.includes('svc.cluster.local')) {
-    return `http://${site}/logs`;
+    return `http://${site}`;
   }
-  const baseUrl = DATADOG_REGIONAL_SITE_PREFIX_RE.test(site)
+  return DATADOG_REGIONAL_SITE_PREFIX_RE.test(site)
     ? `https://${site}`
     : `https://app.${site}`;
-  return `${baseUrl}/logs`;
 }
 
 function tagsToDatadogQuery(tags: string[]): string {
@@ -160,8 +190,9 @@ function tagsToDatadogQuery(tags: string[]): string {
     const key = tag.slice(0, separatorIndex);
     const values = tag.slice(separatorIndex + 1).split(',');
     values.forEach(value => {
-      if (queryTags[key]) {
-        queryTags[key].push(value);
+      const existingValues = queryTags[key];
+      if (existingValues) {
+        existingValues.push(value);
       } else {
         queryTags[key] = [value];
       }
@@ -171,6 +202,20 @@ function tagsToDatadogQuery(tags: string[]): string {
   return Object.entries(queryTags)
     .map(([key, values]) => `${key}:(${values.map(value => `"${value.toLowerCase()}"`).join(' OR ')})`)
     .join(' ');
+}
+
+function attributesToDatadogQuery(attributes: Record<string, string>): string {
+  return Object.entries(attributes)
+    .map(([key, value]) => `@${key}:${escapeDatadogValue(value)}`)
+    .join(' ');
+}
+
+function escapeDatadogValue(value: string): string {
+  if (DATADOG_NUMERIC_VALUE_PATTERN.test(value)) {
+    return value;
+  }
+  const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `"${escaped}"`;
 }
 
 function buildSplunkUrl(

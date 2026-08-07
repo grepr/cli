@@ -1,6 +1,6 @@
 ---
 description: Mask or redact sensitive substrings (PII, secrets, emails, card numbers, tokens) in logs on a Grepr log-reducer pipeline using the masking operator — a dedicated regex-based masker, not SQL. Replaces each regex match with a decorated label (a match of the regex labeled "email" becomes "[email]") in the log message and at configured attribute paths. Emits a set-masking patch (the masking operator) and routes through test-pipeline-change. Use for "mask/redact PII", "scrub sensitive data", "hide emails/card numbers/tokens", or "stop masking".
-allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:plan), Bash(grepr --conf * job:draft), Read, Write, AskUserQuestion, grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
+allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:plan), Bash(grepr --conf * job:draft), Read, Write, AskUserQuestion, grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query
 ---
 
 # Change Pipeline Masking
@@ -41,7 +41,7 @@ real logs and to confirm the raw lake stays unmasked.
 
 Author masks against the real shape, not guesses. Query the raw dataset over a
 bounded recent window — **last ~10 min, `--limit 100`** (query mechanics in
-`grepr:query-logs`):
+`grepr:query`):
 
 ```bash
 grepr query --dataset-id <RAW_DS> --start <T0> --end <T1> --limit 100 -q -f raw -o sample.ndjson
@@ -143,7 +143,7 @@ mechanics. When inspecting the draft, confirm:
 - `grepr:describe-pipeline` — read the current `masking_operator` and the raw
   dataset id.
 - `grepr:test-pipeline-change` — plan → draft → approval → apply.
-- `grepr:query-logs` — sampling mechanics for authoring and verifying masks.
+- `grepr:query` — sampling mechanics for authoring and verifying masks.
 - `grepr:cli` — org config (`--conf`) resolution.
 - For non-redaction row transforms (reshape, enrich, categorize) or windowed
   logs→metrics, use `grepr:build-sql-transform` instead.

@@ -1,5 +1,5 @@
 ---
-description: Router for the Grepr CLI. Use whenever the user wants to manage Grepr jobs/pipelines, datasets, integrations, or documentation, query log data, or edit a pipeline — it directs to the specialized command and pipeline-editing skills. Start here for any "grepr" command request.
+description: Router for the Grepr CLI. Use whenever the user wants to manage Grepr jobs/pipelines, datasets, integrations, or documentation, query logs or spans, backfill data, or edit a pipeline — it directs to the specialized command and pipeline-editing skills. Start here for any "grepr" command request.
 ---
 
 # Grepr CLI
@@ -61,14 +61,14 @@ Search and retrieve Grepr documentation.
 - Semantic search over docs, API specs, schemas
 - Commands: `docs:search`, `docs:get`
 
-### Query Logs → `grepr:query-logs`
-Query data from datasets with filters and time ranges.
+### Query Data → `grepr:query`
+Query logs or spans from datasets or source pipelines with filters and time ranges.
 - Execute queries on the data lake
 - Command: `query`
 
-### Backfill Logs → `grepr:backfill-logs`
-Replay raw data-lake logs to vendor destinations (Datadog, Splunk, New Relic, Sumo Logic, OTLP).
-- Backfill, resend, or re-deliver logs for a time range/query
+### Backfill Data → `grepr:backfill-logs`
+Replay raw data-lake logs or spans to supported destinations.
+- Backfill, resend, or re-deliver data for a time range/query
 - Command: `backfill`
 
 ### Build Grok Patterns → `grepr:build-grok`

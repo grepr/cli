@@ -1,6 +1,6 @@
 ---
 description: Add or narrow reducer exceptions on a Grepr pipeline when errors/alerts/important traces are wrongly aggregated or a too-broad exception craters reduction — diagnoses volume, builds the patch, routes through test-pipeline-change.
-allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr --conf * query), Bash(grepr --conf * job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs
+allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr --conf * query), Bash(grepr --conf * job:get), grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query
 ---
 
 # Change Reducer Exceptions

@@ -30,7 +30,7 @@ If this fails, ask the user to provide `--org-name` or `--conf` options.
 - Use `--format raw` for JSON output that's easier to parse programmatically
 - Datasets are Iceberg tables in the data lake (S3)
 - Each pipeline writes to one or more datasets
-- Query logs from datasets using the `grepr:query-logs` skill
+- Query logs or spans from datasets using the `grepr:query` skill
 
 ## Common Workflows
 

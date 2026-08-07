@@ -1,6 +1,6 @@
 ---
 description: Author a Flink-SQL transform on a Grepr log-reducer pipeline — reshape, enrich, or filter logs row-by-row, derive metric-shaped logs via windowed aggregation, or run arbitrary supported SQL. Emits a set-sql-transform patch into a template transform slot (pre-parser, pre-warehouse, pre-exceptions) and routes through test-pipeline-change. SQL transforms are TEMPLATE-BACKED ONLY. Use for "add a SQL transform", "transform/reshape logs with SQL", "logs to metrics", "aggregate logs with SQL". For masking/redacting sensitive data, use grepr:change-masking (the masking operator) instead of SQL.
-allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr sql:validate), Bash(grepr docs:search), Bash(grepr docs:get), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:plan), Bash(grepr --conf * job:draft), Bash(grepr --conf * sql:validate), Bash(grepr --conf * docs:search), Bash(grepr --conf * docs:get), Read, Write, AskUserQuestion, grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query-logs, grepr:docs-commands
+allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr sql:validate), Bash(grepr docs:search), Bash(grepr docs:get), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:plan), Bash(grepr --conf * job:draft), Bash(grepr --conf * sql:validate), Bash(grepr --conf * docs:search), Bash(grepr --conf * docs:get), Read, Write, AskUserQuestion, grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query, grepr:docs-commands
 ---
 
 # Build a SQL transform
@@ -60,7 +60,7 @@ overwriting (use `set-transform-chain` to preserve an existing chain).
 
 Author against the real shape, not guesses. Query the raw dataset over a bounded
 recent window — **last ~10 min, `--limit 100`** (dataset id from Step 1; query
-mechanics in `grepr:query-logs`):
+mechanics in `grepr:query`):
 
 - **Scope given** → query with that predicate.
 - **Open-ended** → omit `--query` entirely (do **not** pass `--query "*"`).
@@ -191,6 +191,6 @@ As new genuinely-hard cases emerge, add a case file rather than growing this one
   Grepr-only UDFs, and the compact gotchas table.
 - `logs-to-metric.md` — the windowed-aggregation-to-`LOG_EVENT` case, worked.
 - `grepr:test-pipeline-change` — plan → draft → approval → apply.
-- `grepr:query-logs` — sampling mechanics. `grepr:describe-pipeline` — topology.
+- `grepr:query` — sampling mechanics. `grepr:describe-pipeline` — topology.
 - `grepr:docs-commands` — live SQL function / data-type docs and
   `grepr docs:get schema://SqlOperation`. `grepr:cli` — `--conf` resolution.

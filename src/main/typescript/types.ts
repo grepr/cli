@@ -12,16 +12,15 @@ import {
   // the dedupe equivalence class. The runtime values are the canonical
   // ASCENDING / DESCENDING / UNSORTED.
   type GreprLlmPromptResultsSourceSortOrder,
-  type DatadogQueryPredicateType,
-  type NewRelicQueryPredicateType,
   type SchemaReadDatadog, type SchemaReadDataWarehouse, type SchemaReadS3DataWarehouse,
   type SchemaReadNewRelic, type SchemaReadOtlp, type SchemaReadSplunk, type SchemaReadSumo,
   type SchemaOperation,
 } from './openapi/openApiTypes.js';
+import type { SourcePredicateOptions } from './lib/query-predicate.js';
+import type { SignalSourceInputs } from './lib/signal-source.js';
 
 export type AuthMethod = 'oauth' | 'client-credentials' | 'none';
 
-/** Backing source for `grepr query`: athena (grepr-raw-log-source) or flink (logs-iceberg-table-source). */
 export type QueryEngine = 'athena' | 'flink';
 
 export interface CliOptions {
@@ -68,20 +67,12 @@ export interface FormattableCommandOptions extends CliOptions {
   maxLines?: number;
 }
 
-export interface QueryCommandOptions extends FormattableCommandOptions {
-  datasetId?: string;
-  datasetName?: string;
+export interface QueryCommandOptions
+  extends FormattableCommandOptions, SignalSourceInputs, SourcePredicateOptions {
   sortOrder?: GreprLlmPromptResultsSourceSortOrder;
-  queryType?: DatadogQueryPredicateType.datadog_query | NewRelicQueryPredicateType.newrelic_query;
-  query?: string;
   start?: string;
   end?: string;
   limit?: number;
-  // Optional message-length bounds. When set, the language predicate is
-  // wrapped in an AndEventPredicate with a MessageLengthPredicate child.
-  // Either bound may be set independently.
-  messageLengthMin?: number;
-  messageLengthMax?: number;
 }
 
 export interface JobPlanCommandOptions extends CliOptions {

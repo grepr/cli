@@ -5450,6 +5450,116 @@ export interface components {
         [key: string]: components["schemas"]["Any"];
       };
     };
+    GreprRawSpanSource: {
+      /** @description The ID of the dataset to read data from. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of time interval to query data for.
+       * @example 2023-01-01T01:00:00Z
+       */
+      end: string;
+      /**
+       * @description Filter by error status
+       * @example true
+       */
+      hasError?: boolean;
+      /**
+       * @description Filter by parent span ID (null for root spans only)
+       * @example true
+       */
+      isRootSpan?: boolean;
+      /**
+       * Format: int32
+       * @description The maximum number of rows to process
+       * @default 2500
+       */
+      limit?: number;
+      /**
+       * Format: int64
+       * @description Filter by maximum duration in nanoseconds
+       * @example 5000000000
+       */
+      maxDuration?: number;
+      /**
+       * Format: int64
+       * @description Filter by minimum duration in nanoseconds
+       * @example 1000000000
+       */
+      minDuration?: number;
+      /** @example operation_name */
+      name: string;
+      /**
+       * Format: int32
+       * @description Offset on the number of rows to process
+       * @default 0
+       */
+      offset?: number;
+      /**
+       * @description Filter by operation names (exact match)
+       * @default []
+       * @example [
+       *       "process-payment",
+       *       "validate-user"
+       *     ]
+       */
+      operationNames?: string[];
+      query: components["schemas"]["query"];
+      /**
+       * @description Filter by service names (exact match)
+       * @default []
+       * @example [
+       *       "checkout-service",
+       *       "user-service"
+       *     ]
+       */
+      serviceNames?: string[];
+      /**
+       * @description The order in which the rows should be sorted by
+       * @default ASCENDING
+       * @enum {string}
+       */
+      sortOrder?: GreprLlmPromptResultsSourceSortOrder;
+      /**
+       * Format: date-time
+       * @description Start of time interval to query data for.
+       * @example 2023-01-01T00:00:00Z
+       */
+      start: string;
+      /**
+       * @description Filter by trace IDs (32-character hex format)
+       * @default []
+       * @example [
+       *       "6a33267c000000001001119764423b8d"
+       *     ]
+       */
+      traceIds?: string[];
+      /**
+       * @description Filter by trace signatures (supports wildcards with *)
+       * @default []
+       * @example [
+       *       "user-login-*",
+       *       "checkout-*"
+       *     ]
+       */
+      traceSignatures?: string[];
+      /**
+       * @description Reads spans using Grepr's internal query system out of an Iceberg Table for processing. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: GreprRawSpanSourceType;
+      /**
+       * @description Variables that can be used to modify the query while parsed
+       * @default {}
+       * @example {
+       *       "__application": "app1",
+       *       "__service": "service1"
+       *     }
+       */
+      variables?: {
+        [key: string]: components["schemas"]["Any"];
+      };
+    };
     GreprReducerLogSource: {
       /** @description The ID of the dataset to read data from. */
       datasetId: string;
@@ -7941,6 +8051,7 @@ export interface components {
       | components["schemas"]["LegacyDatadogMetricsSink"]
       | components["schemas"]["GreprReducerLogSource"]
       | components["schemas"]["GreprRawLogsSource"]
+      | components["schemas"]["GreprRawSpanSource"]
       | components["schemas"]["GreprLlmPromptResultsSource"]
       | components["schemas"]["SplunkLogAgentSource"]
       | components["schemas"]["SplunkLogHttpSource"]
@@ -12630,6 +12741,8 @@ export type SchemaGreprMetricsSource =
   components["schemas"]["GreprMetricsSource"];
 export type SchemaGreprRawLogsSource =
   components["schemas"]["GreprRawLogsSource"];
+export type SchemaGreprRawSpanSource =
+  components["schemas"]["GreprRawSpanSource"];
 export type SchemaGreprReducerLogSource =
   components["schemas"]["GreprReducerLogSource"];
 export type SchemaGreprUploadedLogFileSource =
@@ -21883,6 +21996,9 @@ export enum GreprMetricsSourceType {
 }
 export enum GreprRawLogsSourceType {
   grepr_raw_log_source = "grepr-raw-log-source",
+}
+export enum GreprRawSpanSourceType {
+  grepr_raw_span_source = "grepr-raw-span-source",
 }
 export enum GreprReducerLogSourceType {
   grepr_reducer_log_source = "grepr-reducer-log-source",
