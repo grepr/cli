@@ -72,7 +72,7 @@ The scrape endpoint exposes the following metrics. Each metric is a _gauge_, whi
 | `grepr_pipeline_events_in_per_minute` | Events entering the pipeline in the last complete minute. An event is a single log line, span, or metric data point, depending on the pipeline. | `job_id` |
 | `grepr_pipeline_events_out_per_minute` | Events leaving the pipeline in the last complete minute. | `job_id` |
 | `grepr_pipeline_bytes_in_per_minute` | Bytes entering the pipeline in the last complete minute. | `job_id` |
-| `grepr_pipeline_bytes_out_per_minute` | Bytes leaving the pipeline in the last complete minute. | `job_id` |
+| `grepr_pipeline_bytes_out_per_minute` | Bytes delivered to the pipeline's observability vendor sinks in the last complete minute. This is the uncompressed payload size, measured before Grepr compresses the data for transmission. Bytes written to the Grepr data lake are not included. | `job_id` |
 | `grepr_pipeline_lag_seconds_p50` | Median input-output lag observed over the last minute, in seconds. | `job_id` |
 | `grepr_pipeline_lag_seconds_p95` | 95th-percentile input-output lag observed over the last minute, in seconds. | `job_id` |
 | `grepr_pipeline_lag_seconds_p99` | 99th-percentile input-output lag observed over the last minute, in seconds. | `job_id` |
@@ -85,6 +85,8 @@ The three `_lag_seconds_p*` metrics together describe the distribution of input-
 ## Limitations
 
 The endpoint returns data only for pipelines that have been active in the last complete minute. Inactive pipelines do not appear in the response.
+
+`grepr_pipeline_bytes_out_per_minute` appears only for pipelines that deliver data to an observability vendor sink. A pipeline that writes only to the Grepr data lake does not report this metric.
 
 <HiddenFAQ faqs={[
   {
