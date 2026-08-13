@@ -109,6 +109,14 @@ describe('JobListCommand', () => {
       expect((command as any).showQuerySummary).toHaveBeenCalledWith(mockOptions, 3);
     });
 
+    it('test_executeList_noStateFilter_shouldIncludeWaitingInDefaultStates', async () => {
+      mockApiClient.listJobs.mockResolvedValue({ items: [] });
+
+      await command.executeList(mockOptions);
+
+      expect(mockApiClient.listJobs.mock.calls[0][0].state).toContain('WAITING');
+    });
+
     it('test_executeList_emptyJobs_shouldHandleEmptyResponse', async () => {
       mockApiClient.listJobs.mockResolvedValue({ items: [] });
 

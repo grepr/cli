@@ -100,7 +100,7 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
 
     // Without --all, fall back to common "what's happening recently" filters.
     // With --all, no state/since filter is applied unless the user provides one explicitly.
-    const effectiveState = options.state ?? (options.all ? undefined : ['PENDING', 'STARTING', 'RUNNING', 'UPDATING', 'RESTARTING', 'STOPPING', 'STOPPED', 'DELETING', 'FINISHED', 'FAILED']);
+    const effectiveState = options.state ?? (options.all ? undefined : ['PENDING', 'WAITING', 'STARTING', 'RUNNING', 'UPDATING', 'RESTARTING', 'STOPPING', 'STOPPED', 'DELETING', 'FINISHED', 'FAILED']);
     const effectiveSince = options.since ?? (options.all ? undefined : 'PT6H');
 
     if (effectiveSince) params.since = parseSinceOption(effectiveSince);
