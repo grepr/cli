@@ -4,7 +4,6 @@ import {
   buildSignalPredicate,
   buildSourcePredicate,
   deriveSpanQueryFilters,
-  validateSpanBackfillQuery,
   warnOnUnliftedSpanQuery
 } from '../../../main/typescript/lib/query-predicate.js';
 import {
@@ -176,26 +175,6 @@ describe('deriveSpanQueryFilters', () => {
     }
   });
 
-  it('test_validateSpanBackfillQuery_rejectsClausesThatCannotBeLifted', () => {
-    for (const query of [
-      '@http.status_code:500',
-      'serviceName:checkout AND @http.status_code:500',
-      'serviceName:""',
-      '@deployment.serviceName:web'
-    ]) {
-      expect(() => validateSpanBackfillQuery(query)).toThrow(
-        /cannot be represented by structured span filters/
-      );
-    }
-  });
-
-  it('test_validateSpanBackfillQuery_acceptsLosslesslyLiftedClauses', () => {
-    expect(() => validateSpanBackfillQuery(
-      'serviceName:(checkout OR payments) AND operationName:"GET /users" ' +
-      'AND traceId:0123456789abcdef0123456789abcdef AND hasError:true'
-    )).not.toThrow();
-  });
-
   it('test_warnOnUnliftedSpanQuery_warnsWithoutRejectingUnsupportedClauses', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     try {
@@ -285,11 +264,10 @@ describe('buildSignalPredicate', () => {
     });
   });
 
-  it('test_buildSignalPredicate_returnsQueryAndDerivedFiltersForSpans', () => {
-    expect(buildSignalPredicate({ dataType: spans, query: 'serviceName:web' })).toMatchObject({
+  it('test_buildSignalPredicate_returnsTheQueryWithoutDerivedFiltersForSpans', () => {
+    expect(buildSignalPredicate({ dataType: spans, query: 'serviceName:web' })).toEqual({
       dataType: spans,
-      query: { type: DatadogQueryPredicateType.datadog_query, query: 'serviceName:web' },
-      spanFilters: { serviceNames: ['web'] }
+      query: { type: DatadogQueryPredicateType.datadog_query, query: 'serviceName:web' }
     });
   });
 

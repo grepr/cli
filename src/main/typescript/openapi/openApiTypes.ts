@@ -4336,7 +4336,7 @@ export interface components {
        */
       teamIds?: string[];
       /**
-       * @description Variables used to modify the log query while it is parsed.
+       * @description Variables used to modify the query while it is parsed.
        * @default {}
        */
       variables?: {
@@ -4395,10 +4395,6 @@ export interface components {
        * @example 2023-01-01T01:00:00Z
        */
       end: string;
-      /** @description Filter by error status */
-      hasError?: boolean;
-      /** @description When true, include only root spans */
-      isRootSpan?: boolean;
       /**
        * Format: int32
        * @description Maximum number of rows to backfill. Default and max is 500,000. For spans this applies independently to each vendor source. A negative value means no limit.
@@ -4407,30 +4403,11 @@ export interface components {
        */
       limit?: number;
       /**
-       * Format: int64
-       * @description Filter by maximum duration in nanoseconds
-       */
-      maxDuration?: number;
-      /**
-       * Format: int64
-       * @description Filter by minimum duration in nanoseconds
-       */
-      minDuration?: number;
-      /**
        * @description Name of the backfill job. Must match the job name pattern [a-z0-9_]{1,128}.
        * @example manual_backfill_1
        */
       name: string;
-      /**
-       * @description Filter by operation names (exact match)
-       * @default []
-       */
-      operationNames?: string[];
-      /**
-       * @description Filter by service names (exact match)
-       * @default []
-       */
-      serviceNames?: string[];
+      query: components["schemas"]["EventPredicate"];
       /** @description The vendor sink operations that deliver the backfilled events. Passed through verbatim, matching the sinks a rule action would carry. */
       sinks: components["schemas"]["Operation"][];
       sqlOperation?: components["schemas"]["SqlOperation"];
@@ -4456,15 +4433,12 @@ export interface components {
        */
       teamIds?: string[];
       /**
-       * @description Filter by trace IDs in 32-character hexadecimal format
-       * @default []
+       * @description Variables used to modify the query while it is parsed.
+       * @default {}
        */
-      traceIds?: string[];
-      /**
-       * @description Filter by trace signatures (supports wildcards with *)
-       * @default []
-       */
-      traceSignatures?: string[];
+      variables?: {
+        [key: string]: components["schemas"]["Any"];
+      };
     };
     CreateUser: {
       /** @description The email associated with the user. */
@@ -7081,7 +7055,7 @@ export interface components {
        */
       start: string;
       /**
-       * @description Variables retained on the generated logs source.
+       * @description Variables retained on the generated backfill source.
        * @default {}
        */
       variables?: {
@@ -10166,33 +10140,11 @@ export interface components {
        */
       end: string;
       /**
-       * @description Filter by error status
-       * @example true
-       */
-      hasError?: boolean;
-      /**
-       * @description Filter by parent span ID (null for root spans only)
-       * @example true
-       */
-      isRootSpan?: boolean;
-      /**
        * Format: int32
        * @description The maximum number of rows to process
        * @default 2500
        */
       limit?: number;
-      /**
-       * Format: int64
-       * @description Filter by maximum duration in nanoseconds
-       * @example 5000000000
-       */
-      maxDuration?: number;
-      /**
-       * Format: int64
-       * @description Filter by minimum duration in nanoseconds
-       * @example 1000000000
-       */
-      minDuration?: number;
       /** @example operation_name */
       name: string;
       /**
@@ -10201,25 +10153,7 @@ export interface components {
        * @default 0
        */
       offset?: number;
-      /**
-       * @description Filter by operation names (exact match)
-       * @default []
-       * @example [
-       *       "process-payment",
-       *       "validate-user"
-       *     ]
-       */
-      operationNames?: string[];
       query: components["schemas"]["query"];
-      /**
-       * @description Filter by service names (exact match)
-       * @default []
-       * @example [
-       *       "checkout-service",
-       *       "user-service"
-       *     ]
-       */
-      serviceNames?: string[];
       /**
        * @description The order in which the rows should be sorted by
        * @default ASCENDING
@@ -10232,23 +10166,6 @@ export interface components {
        * @example 2023-01-01T00:00:00Z
        */
       start: string;
-      /**
-       * @description Filter by trace IDs (32-character hex format)
-       * @default []
-       * @example [
-       *       "6a33267c000000001001119764423b8d"
-       *     ]
-       */
-      traceIds?: string[];
-      /**
-       * @description Filter by trace signatures (supports wildcards with *)
-       * @default []
-       * @example [
-       *       "user-login-*",
-       *       "checkout-*"
-       *     ]
-       */
-      traceSignatures?: string[];
       /**
        * @description Reads spans from an Iceberg table for backfill, skipping spans already sent to the given vendor sinks (idempotent backfill source). (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -10285,35 +10202,12 @@ export interface components {
        * @description End of the backfill interval.
        */
       end: string;
-      /** @description Filter by error status. */
-      hasError?: boolean;
-      /** @description When true, include only root spans. */
-      isRootSpan?: boolean;
       /**
        * Format: int32
        * @description Maximum rows selected independently by each generated source.
        */
       limit: number;
-      /**
-       * Format: int64
-       * @description Filter by maximum duration in nanoseconds.
-       */
-      maxDuration?: number;
-      /**
-       * Format: int64
-       * @description Filter by minimum duration in nanoseconds.
-       */
-      minDuration?: number;
-      /**
-       * @description Filter by operation names.
-       * @default []
-       */
-      operationNames?: string[];
-      /**
-       * @description Filter by service names.
-       * @default []
-       */
-      serviceNames?: string[];
+      query: components["schemas"]["EventPredicate"];
       /** @description The vendor sink operations that deliver the backfilled records. */
       sinks: components["schemas"]["Operation"][];
       sqlOperation?: components["schemas"]["SqlOperation"];
@@ -10323,15 +10217,12 @@ export interface components {
        */
       start: string;
       /**
-       * @description Filter by trace IDs.
-       * @default []
+       * @description Variables retained on the generated backfill source.
+       * @default {}
        */
-      traceIds?: string[];
-      /**
-       * @description Filter by trace signatures.
-       * @default []
-       */
-      traceSignatures?: string[];
+      variables?: {
+        [key: string]: components["schemas"]["Any"];
+      };
     };
     SpansSynchronousSink: {
       /** @example operation_name */

@@ -35,6 +35,7 @@ import {
   buildMessageLengthPredicate,
   buildSignalPredicate,
   buildSourcePredicate,
+  deriveSpanQueryFilters,
   warnOnUnliftedSpanQuery,
   type BuiltSignalPredicate
 } from '../lib/query-predicate.js';
@@ -140,7 +141,7 @@ function buildSpansQueryVertices(
   const sourceFields = {
     ...common,
     query: predicate.query,
-    ...predicate.spanFilters
+    ...deriveSpanQueryFilters(options.query ?? '')
   };
   const source: SchemaGreprRawSpanSource | SchemaTracesIcebergTableSource =
     options.queryEngine === 'flink'
