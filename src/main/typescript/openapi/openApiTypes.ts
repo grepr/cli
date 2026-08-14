@@ -2015,7 +2015,7 @@ export interface paths {
     put?: never;
     /**
      * Start an investigation
-     * @description Triggers an agent investigation with optional free-form context and returns the new investigation id. The investigation runs asynchronously.
+     * @description Triggers an agent investigation with optional free-form context and returns the new investigation id. The investigation is queued and runs asynchronously once the agent has a free concurrency slot.
      */
     post: operations["start"];
     delete?: never;
@@ -3260,12 +3260,24 @@ export interface components {
       version?: number;
     };
     AgentConfigCreate: {
+      /** Format: int32 */
+      automaticSignalMaxQueueAgeMinutes?: number;
       /** @enum {string} */
       changeApprovalMode: AgentConfigCreateChangeApprovalMode;
+      /** @enum {string} */
+      concurrencyLimitPolicy?: AgentConfigCreateConcurrencyLimitPolicy;
       enabledMcpIntegrations: components["schemas"]["AgentMcpIntegrations"][];
       enabledSkills: string[];
       enabledTools: string[];
-      /** Format: int32 */
+      /**
+       * Format: int32
+       * @default 3
+       */
+      maxConcurrentInvestigations?: number;
+      /**
+       * Format: int32
+       * @default 3000000
+       */
       maxTokens?: number;
       /** Format: int32 */
       maxTurns?: number;
@@ -3275,11 +3287,17 @@ export interface components {
       systemPrompt: string;
     };
     AgentConfigPayload: {
+      /** Format: int32 */
+      automaticSignalMaxQueueAgeMinutes?: number;
       /** @enum {string} */
       changeApprovalMode: AgentConfigCreateChangeApprovalMode;
+      /** @enum {string} */
+      concurrencyLimitPolicy?: AgentConfigCreateConcurrencyLimitPolicy;
       enabledMcpIntegrations: components["schemas"]["AgentMcpIntegrations"][];
       enabledSkills: string[];
       enabledTools: string[];
+      /** Format: int32 */
+      maxConcurrentInvestigations?: number;
       /** Format: int32 */
       maxTokens?: number;
       /** Format: int32 */
@@ -3289,11 +3307,17 @@ export interface components {
       systemPrompt: string;
     };
     AgentConfigUpdate: {
+      /** Format: int32 */
+      automaticSignalMaxQueueAgeMinutes?: number;
       /** @enum {string} */
       changeApprovalMode: AgentConfigCreateChangeApprovalMode;
+      /** @enum {string} */
+      concurrencyLimitPolicy?: AgentConfigCreateConcurrencyLimitPolicy;
       enabledMcpIntegrations: components["schemas"]["AgentMcpIntegrations"][];
       enabledSkills: string[];
       enabledTools: string[];
+      /** Format: int32 */
+      maxConcurrentInvestigations?: number;
       /** Format: int32 */
       maxTokens?: number;
       /** Format: int32 */
@@ -13579,6 +13603,8 @@ export interface operations {
       query?: {
         page?: number;
         pageSize?: number;
+        /** @description Investigation statuses to include, e.g. QUEUED, RUNNING, COMPLETED; repeat for multiple. Absent or empty for all statuses. */
+        statuses?: string[];
       };
       header?: never;
       path: {
@@ -18687,7 +18713,7 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Investigation started */
+      /** @description Investigation queued */
       202: {
         headers: {
           [name: string]: unknown;
@@ -18709,6 +18735,15 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description The agent is at its maximum concurrent investigations and its concurrency-limit policy discards new work instead of queueing it. The response carries the id of the recorded DISCARDED investigation. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StartInvestigationResponse"];
+        };
       };
     };
   };
@@ -21653,6 +21688,10 @@ export enum AgentConfigCreateChangeApprovalMode {
   REQUIRE_APPROVAL = "REQUIRE_APPROVAL",
   AUTO_APPLY = "AUTO_APPLY",
 }
+export enum AgentConfigCreateConcurrencyLimitPolicy {
+  QUEUE = "QUEUE",
+  DISCARD = "DISCARD",
+}
 export enum AggType {
   LATEST = "LATEST",
   SUM = "SUM",
@@ -21910,11 +21949,13 @@ export enum IgnoreAttributesMergeStrategyType {
   ignore = "ignore",
 }
 export enum InvestigationSummaryStatus {
+  QUEUED = "QUEUED",
   RUNNING = "RUNNING",
   STOPPED = "STOPPED",
   COMPLETED = "COMPLETED",
   FAILED = "FAILED",
   CANCELLED = "CANCELLED",
+  DISCARDED = "DISCARDED",
 }
 export enum JobActionRuleType {
   job_rule = "job-rule",
