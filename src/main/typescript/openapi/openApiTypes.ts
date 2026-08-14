@@ -216,6 +216,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/agents/{id}/max-tokens-status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get an agent's max-tokens admission status
+     * @description Returns whether a new investigation could start for the agent right now, the max-tokens limit blocking it when not, and when the current max-tokens window resets.
+     */
+    get: operations["maxTokensStatus"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/agents/{id}/pipelines/{jobId}": {
     parameters: {
       query?: never;
@@ -3260,6 +3280,8 @@ export interface components {
       version?: number;
     };
     AgentConfigCreate: {
+      /** Format: int64 */
+      agentMaxTokens?: number;
       /** Format: int32 */
       automaticSignalMaxQueueAgeMinutes?: number;
       /** @enum {string} */
@@ -3287,6 +3309,8 @@ export interface components {
       systemPrompt: string;
     };
     AgentConfigPayload: {
+      /** Format: int64 */
+      agentMaxTokens?: number;
       /** Format: int32 */
       automaticSignalMaxQueueAgeMinutes?: number;
       /** @enum {string} */
@@ -3307,6 +3331,8 @@ export interface components {
       systemPrompt: string;
     };
     AgentConfigUpdate: {
+      /** Format: int64 */
+      agentMaxTokens?: number;
       /** Format: int32 */
       automaticSignalMaxQueueAgeMinutes?: number;
       /** @enum {string} */
@@ -3342,6 +3368,27 @@ export interface components {
       failed?: number;
       /** Format: int32 */
       total?: number;
+    };
+    AgentMaxTokensStatus: {
+      admits?: boolean;
+      /** Format: int64 */
+      agentLimit?: number;
+      /** Format: int64 */
+      agentReserved?: number;
+      /** Format: int64 */
+      agentUsage?: number;
+      /** @enum {string} */
+      blockedBy?: AgentMaxTokensStatusBlockedBy;
+      /** Format: int64 */
+      integrationLimit?: number;
+      /** Format: int64 */
+      integrationReserved?: number;
+      /** Format: int64 */
+      integrationUsage?: number;
+      /** Format: int64 */
+      reservation?: number;
+      /** Format: date-time */
+      windowResetsAt?: string;
     };
     AgentMcpIntegrations: {
       allowedTools?: string[];
@@ -3576,6 +3623,18 @@ export interface components {
        * @example **************ey
        */
       readonly apiKey?: string;
+      /**
+       * Format: int64
+       * @description Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 20,000,000.
+       * @example 20000000
+       */
+      integrationMaxTokens?: number;
+      /**
+       * Format: int32
+       * @description Length in hours of the UTC-aligned max tokens window; must be a divisor of 24. Null uses the default of 1.
+       * @example 24
+       */
+      maxTokensWindowHours?: number;
       /**
        * @description Indicates whether to validate the API key when saving.
        * @default true
@@ -5256,6 +5315,18 @@ export interface components {
        * @example **************ey
        */
       readonly apiKey?: string;
+      /**
+       * Format: int64
+       * @description Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 20,000,000.
+       * @example 20000000
+       */
+      integrationMaxTokens?: number;
+      /**
+       * Format: int32
+       * @description Length in hours of the UTC-aligned max tokens window; must be a divisor of 24. Null uses the default of 1.
+       * @example 24
+       */
+      maxTokensWindowHours?: number;
       /**
        * @description Indicates whether to validate the API key when saving.
        * @default true
@@ -10553,6 +10624,14 @@ export interface components {
     SsoEnablementRequest: {
       comments?: string;
     };
+    StartInvestigationErrorResponse: {
+      /** Format: int32 */
+      code?: number;
+      message?: string;
+    };
+    StartInvestigationRejectedResponse:
+      | components["schemas"]["StartInvestigationResponse"]
+      | components["schemas"]["StartInvestigationErrorResponse"];
     StartInvestigationRequest: {
       agentId: string;
       parentInvestigationId?: string;
@@ -12484,6 +12563,8 @@ export type SchemaAgentConfigUpdate =
 export type SchemaAgentDetail = components["schemas"]["AgentDetail"];
 export type SchemaAgentInvestigationMetrics =
   components["schemas"]["AgentInvestigationMetrics"];
+export type SchemaAgentMaxTokensStatus =
+  components["schemas"]["AgentMaxTokensStatus"];
 export type SchemaAgentMcpIntegrations =
   components["schemas"]["AgentMcpIntegrations"];
 export type SchemaAgentRecentHealth =
@@ -13022,6 +13103,10 @@ export type SchemaSsoClaimMappingRole =
   components["schemas"]["SsoClaimMappingRole"];
 export type SchemaSsoEnablementRequest =
   components["schemas"]["SsoEnablementRequest"];
+export type SchemaStartInvestigationErrorResponse =
+  components["schemas"]["StartInvestigationErrorResponse"];
+export type SchemaStartInvestigationRejectedResponse =
+  components["schemas"]["StartInvestigationRejectedResponse"];
 export type SchemaStartInvestigationRequest =
   components["schemas"]["StartInvestigationRequest"];
 export type SchemaStartInvestigationResponse =
@@ -13625,6 +13710,42 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  maxTokensStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Max-tokens status retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentMaxTokensStatus"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent not found */
+      404: {
         headers: {
           [name: string]: unknown;
         };
@@ -18736,13 +18857,13 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description The agent is at its maximum concurrent investigations and its concurrency-limit policy discards new work instead of queueing it. The response carries the id of the recorded DISCARDED investigation. */
+      /** @description The agent is at its maximum concurrent investigations and its concurrency-limit policy discards new work instead of queueing it (the response carries the id of the recorded DISCARDED investigation), or the agent's or its LLM integration's max tokens are reached (the response carries a code and message). */
       429: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["StartInvestigationResponse"];
+          "application/json": components["schemas"]["StartInvestigationRejectedResponse"];
         };
       };
     };
@@ -21691,6 +21812,10 @@ export enum AgentConfigCreateChangeApprovalMode {
 export enum AgentConfigCreateConcurrencyLimitPolicy {
   QUEUE = "QUEUE",
   DISCARD = "DISCARD",
+}
+export enum AgentMaxTokensStatusBlockedBy {
+  AGENT_MAX_TOKENS = "AGENT_MAX_TOKENS",
+  INTEGRATION_MAX_TOKENS = "INTEGRATION_MAX_TOKENS",
 }
 export enum AggType {
   LATEST = "LATEST",
