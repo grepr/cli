@@ -4205,6 +4205,7 @@ export interface components {
       serviceName?: string;
       span?: components["schemas"]["Span"];
       traceSignature?: string;
+      traceSignatureId?: string;
       /**
        * @description discriminator enum property added by openapi-typescript
        * @enum {string}
@@ -5604,7 +5605,16 @@ export interface components {
        */
       traceIds?: string[];
       /**
-       * @description Filter by trace signatures (supports wildcards with *)
+       * @description Filter by trace signature ids (exact match)
+       * @default []
+       * @example [
+       *       "3f2a9c1b7d4e5061829304a5b6c7d8e9",
+       *       "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+       *     ]
+       */
+      traceSignatureIds?: string[];
+      /**
+       * @description Filter by trace signature text (supports wildcards with *)
        * @default []
        * @example [
        *       "user-login-*",
@@ -11753,7 +11763,16 @@ export interface components {
        */
       traceIds?: string[];
       /**
-       * @description Filter by trace signatures (supports wildcards with *)
+       * @description Filter by trace signature ids (exact match)
+       * @default []
+       * @example [
+       *       "3f2a9c1b7d4e5061829304a5b6c7d8e9",
+       *       "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+       *     ]
+       */
+      traceSignatureIds?: string[];
+      /**
+       * @description Filter by trace signature text (supports wildcards with *)
        * @default []
        * @example [
        *       "user-login-*",
