@@ -3400,6 +3400,16 @@ export interface components {
       /** Format: int32 */
       failed?: number;
     };
+    /** @description Rewrites agent-emitted span attributes into canonical OTel GenAI semantic-convention attributes after resolving the emitter per span. Stateless and additive: existing non-null attributes are preserved, while explicitly null canonical attributes may be filled from emitter-derived values. */
+    AgentSpanNormalizer: {
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Rewrites agent-emitted span attributes into canonical OTel GenAI semantic conventions after resolving the emitter for each span. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: AgentSpanNormalizerType;
+    };
     AgentSubscriptionCounts: {
       /** Format: int32 */
       pipelines?: number;
@@ -8151,6 +8161,7 @@ export interface components {
       | components["schemas"]["LogRulesApplication"]
       | components["schemas"]["TriggerActionOp"]
       | components["schemas"]["EntityContextAggregation"]
+      | components["schemas"]["AgentSpanNormalizer"]
     );
     OrQueryNode: {
       /**
@@ -12588,6 +12599,8 @@ export type SchemaAgentMcpIntegrations =
   components["schemas"]["AgentMcpIntegrations"];
 export type SchemaAgentRecentHealth =
   components["schemas"]["AgentRecentHealth"];
+export type SchemaAgentSpanNormalizer =
+  components["schemas"]["AgentSpanNormalizer"];
 export type SchemaAgentSubscriptionCounts =
   components["schemas"]["AgentSubscriptionCounts"];
 export type SchemaAgentSuggestion = components["schemas"]["AgentSuggestion"];
@@ -21836,6 +21849,9 @@ export enum AgentMaxTokensStatusBlockedBy {
   AGENT_MAX_TOKENS = "AGENT_MAX_TOKENS",
   INTEGRATION_MAX_TOKENS = "INTEGRATION_MAX_TOKENS",
 }
+export enum AgentSpanNormalizerType {
+  agent_span_normalizer = "agent-span-normalizer",
+}
 export enum AggType {
   LATEST = "LATEST",
   SUM = "SUM",
@@ -22681,6 +22697,7 @@ export const SINK_TYPES = new Set<string>([
 ]);
 
 export const OPERATION_TYPES = new Set<string>([
+  'agent-span-normalizer',
   'clone',
   'entity-context-aggregation',
   'grok-parser',
