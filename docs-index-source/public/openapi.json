@@ -373,6 +373,31 @@
         },
         "type": "object"
       },
+      "AgentLogProcessor": {
+        "description": "Processes native agent-harness OTel logs into canonical agent LogEvents.",
+        "properties": {
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "type": {
+            "description": "Processes native agent-harness OTel logs.",
+            "enum": [
+              "agent-log-processor"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Transforms"
+        ]
+      },
       "AgentInvestigationMetrics": {
         "properties": {
           "avgDurationMs": {
@@ -425,8 +450,8 @@
         },
         "type": "object"
       },
-      "AgentSpanNormalizer": {
-        "description": "Rewrites agent-emitted span attributes into canonical OTel GenAI semantic-convention attributes after resolving the emitter per span. Stateless and additive: existing non-null attributes are preserved, while explicitly null canonical attributes may be filled from emitter-derived values.",
+      "AgentSpanProcessor": {
+        "description": "Normalizes agent span attributes and projects observed transcript content as canonical agent LogEvents in one pass.",
         "properties": {
           "name": {
             "example": "operation_name",
@@ -434,9 +459,9 @@
             "type": "string"
           },
           "type": {
-            "description": "Rewrites agent-emitted span attributes into canonical OTel GenAI semantic conventions after resolving the emitter for each span.",
+            "description": "Processes native agent-harness OTel spans.",
             "enum": [
-              "agent-span-normalizer"
+              "agent-span-processor"
             ],
             "type": "string"
           }
@@ -8534,7 +8559,8 @@
         "description": "Base class of all Operations",
         "discriminator": {
           "mapping": {
-            "agent-span-normalizer": "#/components/schemas/AgentSpanNormalizer",
+            "agent-log-processor": "#/components/schemas/AgentLogProcessor",
+            "agent-span-processor": "#/components/schemas/AgentSpanProcessor",
             "cloudtrail-file-source": "#/components/schemas/CloudTrailLogsFileSource",
             "datadog-log-agent-source": "#/components/schemas/DatadogLogAgentSource",
             "datadog-log-cloud-source": "#/components/schemas/DatadogLogCloudSource",
@@ -8834,7 +8860,10 @@
             "$ref": "#/components/schemas/EntityContextAggregation"
           },
           {
-            "$ref": "#/components/schemas/AgentSpanNormalizer"
+            "$ref": "#/components/schemas/AgentLogProcessor"
+          },
+          {
+            "$ref": "#/components/schemas/AgentSpanProcessor"
           }
         ],
         "properties": {

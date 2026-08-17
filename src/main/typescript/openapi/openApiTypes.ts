@@ -3369,6 +3369,16 @@ export interface components {
       /** Format: int32 */
       total?: number;
     };
+    /** @description Processes native agent-harness OTel logs into canonical agent LogEvents. */
+    AgentLogProcessor: {
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Processes native agent-harness OTel logs. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: AgentLogProcessorType;
+    };
     AgentMaxTokensStatus: {
       admits?: boolean;
       /** Format: int64 */
@@ -3400,15 +3410,15 @@ export interface components {
       /** Format: int32 */
       failed?: number;
     };
-    /** @description Rewrites agent-emitted span attributes into canonical OTel GenAI semantic-convention attributes after resolving the emitter per span. Stateless and additive: existing non-null attributes are preserved, while explicitly null canonical attributes may be filled from emitter-derived values. */
-    AgentSpanNormalizer: {
+    /** @description Normalizes agent span attributes and projects observed transcript content as canonical agent LogEvents in one pass. */
+    AgentSpanProcessor: {
       /** @example operation_name */
       name: string;
       /**
-       * @description Rewrites agent-emitted span attributes into canonical OTel GenAI semantic conventions after resolving the emitter for each span. (enum property replaced by openapi-typescript)
+       * @description Processes native agent-harness OTel spans. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
-      type: AgentSpanNormalizerType;
+      type: AgentSpanProcessorType;
     };
     AgentSubscriptionCounts: {
       /** Format: int32 */
@@ -8161,7 +8171,8 @@ export interface components {
       | components["schemas"]["LogRulesApplication"]
       | components["schemas"]["TriggerActionOp"]
       | components["schemas"]["EntityContextAggregation"]
-      | components["schemas"]["AgentSpanNormalizer"]
+      | components["schemas"]["AgentLogProcessor"]
+      | components["schemas"]["AgentSpanProcessor"]
     );
     OrQueryNode: {
       /**
@@ -12593,14 +12604,16 @@ export type SchemaAgentConfigUpdate =
 export type SchemaAgentDetail = components["schemas"]["AgentDetail"];
 export type SchemaAgentInvestigationMetrics =
   components["schemas"]["AgentInvestigationMetrics"];
+export type SchemaAgentLogProcessor =
+  components["schemas"]["AgentLogProcessor"];
 export type SchemaAgentMaxTokensStatus =
   components["schemas"]["AgentMaxTokensStatus"];
 export type SchemaAgentMcpIntegrations =
   components["schemas"]["AgentMcpIntegrations"];
 export type SchemaAgentRecentHealth =
   components["schemas"]["AgentRecentHealth"];
-export type SchemaAgentSpanNormalizer =
-  components["schemas"]["AgentSpanNormalizer"];
+export type SchemaAgentSpanProcessor =
+  components["schemas"]["AgentSpanProcessor"];
 export type SchemaAgentSubscriptionCounts =
   components["schemas"]["AgentSubscriptionCounts"];
 export type SchemaAgentSuggestion = components["schemas"]["AgentSuggestion"];
@@ -21845,12 +21858,15 @@ export enum AgentConfigCreateConcurrencyLimitPolicy {
   QUEUE = "QUEUE",
   DISCARD = "DISCARD",
 }
+export enum AgentLogProcessorType {
+  agent_log_processor = "agent-log-processor",
+}
 export enum AgentMaxTokensStatusBlockedBy {
   AGENT_MAX_TOKENS = "AGENT_MAX_TOKENS",
   INTEGRATION_MAX_TOKENS = "INTEGRATION_MAX_TOKENS",
 }
-export enum AgentSpanNormalizerType {
-  agent_span_normalizer = "agent-span-normalizer",
+export enum AgentSpanProcessorType {
+  agent_span_processor = "agent-span-processor",
 }
 export enum AggType {
   LATEST = "LATEST",
@@ -22697,7 +22713,8 @@ export const SINK_TYPES = new Set<string>([
 ]);
 
 export const OPERATION_TYPES = new Set<string>([
-  'agent-span-normalizer',
+  'agent-log-processor',
+  'agent-span-processor',
   'clone',
   'entity-context-aggregation',
   'grok-parser',
