@@ -24,6 +24,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/agent-session-analytics/jobs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["list"];
+    put?: never;
+    post: operations["create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agent-session-analytics/jobs/{jobId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["get"];
+    put?: never;
+    post?: never;
+    delete: operations["delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agent-session-analytics/jobs/{jobId}/download": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["download"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/agent-suggestions": {
     parameters: {
       query?: never;
@@ -35,7 +83,7 @@ export interface paths {
      * List agent suggestions
      * @description Returns the organization's agent suggestions, newest first, optionally filtered by pipeline, review status, and proposing agent.
      */
-    get: operations["list"];
+    get: operations["list_1"];
     put?: never;
     post?: never;
     delete?: never;
@@ -55,7 +103,7 @@ export interface paths {
      * Get an agent suggestion
      * @description Returns one agent suggestion, including the template-inputs patch, the job version it was proposed against, and the sample events it was verified with.
      */
-    get: operations["get"];
+    get: operations["get_1"];
     put?: never;
     post?: never;
     delete?: never;
@@ -115,13 +163,13 @@ export interface paths {
      * List agents
      * @description Returns every agent configured for your organization, newest first.
      */
-    get: operations["list_1"];
+    get: operations["list_2"];
     put?: never;
     /**
      * Create an agent
      * @description Creates an agent with the given model configuration, tools and prompt.
      */
-    post: operations["create"];
+    post: operations["create_1"];
     delete?: never;
     options?: never;
     head?: never;
@@ -179,7 +227,7 @@ export interface paths {
      * Get an agent
      * @description Returns a single agent by id.
      */
-    get: operations["get_1"];
+    get: operations["get_2"];
     /**
      * Update an agent
      * @description Updates an agent. The version must match the version the client most recently observed, else a 409 Conflict is returned.
@@ -190,7 +238,7 @@ export interface paths {
      * Delete an agent
      * @description Soft-deletes an agent. Returns 409 while the agent is still subscribed to any pipeline; unsubscribe it first.
      */
-    delete: operations["delete"];
+    delete: operations["delete_1"];
     options?: never;
     head?: never;
     patch?: never;
@@ -554,13 +602,13 @@ export interface paths {
      * List all Anthropic integrations
      * @description Get all Anthropic integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_2"];
+    get: operations["list_3"];
     put?: never;
     /**
      * Create an Anthropic integration
      * @description Creates an integration to connect to Anthropic.
      */
-    post: operations["create_1"];
+    post: operations["create_2"];
     delete?: never;
     options?: never;
     head?: never;
@@ -578,7 +626,7 @@ export interface paths {
      * Get an Anthropic integration
      * @description Get an Anthropic integration by ID.
      */
-    get: operations["get_2"];
+    get: operations["get_3"];
     /**
      * Update an Anthropic integration.
      * @description Updates an Anthropic integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -589,7 +637,7 @@ export interface paths {
      * Delete an Anthropic integration
      * @description Deletes an Anthropic integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_1"];
+    delete: operations["delete_2"];
     options?: never;
     head?: never;
     patch?: never;
@@ -626,13 +674,13 @@ export interface paths {
      * List all Data Warehouse integrations
      * @description Retrieves all Data Warehouse integrations for the organization.
      */
-    get: operations["list_4"];
+    get: operations["list_5"];
     put?: never;
     /**
      * Create a Data Warehouse integration
      * @description Creates a new Data Warehouse integration for connecting to Grepr S3 bucket.
      */
-    post: operations["create_3"];
+    post: operations["create_4"];
     delete?: never;
     options?: never;
     head?: never;
@@ -650,7 +698,7 @@ export interface paths {
      * Get a Data Warehouse integration
      * @description Retrieves a Data Warehouse integration.
      */
-    get: operations["get_4"];
+    get: operations["get_5"];
     /**
      * Update a Data Warehouse integration
      * @description Updates an existing Data Warehouse integration.
@@ -661,7 +709,7 @@ export interface paths {
      * Delete a Data Warehouse integration
      * @description Deletes a Data Warehouse integration if it exists. No-op otherwise.
      */
-    delete: operations["delete_3"];
+    delete: operations["delete_4"];
     options?: never;
     head?: never;
     patch?: never;
@@ -678,13 +726,13 @@ export interface paths {
      * List all Datadog integrations
      * @description Get all Datadog integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_3"];
+    get: operations["list_4"];
     put?: never;
     /**
      * Create a Datadog integration
      * @description Creates an integration to connect to Datadog.
      */
-    post: operations["create_2"];
+    post: operations["create_3"];
     delete?: never;
     options?: never;
     head?: never;
@@ -702,13 +750,13 @@ export interface paths {
      * List all Datadog MCP integrations
      * @description Get all Datadog MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_7"];
+    get: operations["list_8"];
     put?: never;
     /**
      * Create a Datadog MCP integration
      * @description Creates an integration to connect to a Datadog MCP server.
      */
-    post: operations["create_6"];
+    post: operations["create_7"];
     delete?: never;
     options?: never;
     head?: never;
@@ -726,7 +774,7 @@ export interface paths {
      * Get a Datadog MCP integration
      * @description Get a Datadog MCP integration by ID.
      */
-    get: operations["get_7"];
+    get: operations["get_8"];
     /**
      * Update a Datadog MCP integration.
      * @description Updates a Datadog MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -737,7 +785,7 @@ export interface paths {
      * Delete a Datadog MCP integration
      * @description Deletes a Datadog MCP integration. This will delete the associated API keys as well. No-op if already deleted.
      */
-    delete: operations["delete_6"];
+    delete: operations["delete_7"];
     options?: never;
     head?: never;
     patch?: never;
@@ -814,7 +862,7 @@ export interface paths {
      * Get a Datadog integration
      * @description Get an integration to connect to Datadog.
      */
-    get: operations["get_3"];
+    get: operations["get_4"];
     /**
      * Update a Datadog integration.
      * @description Updates an integration to connect to Datadog. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -825,7 +873,7 @@ export interface paths {
      * Delete a Datadog integration
      * @description Deletes an integration to connect to Datadog. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_2"];
+    delete: operations["delete_3"];
     options?: never;
     head?: never;
     patch?: never;
@@ -970,13 +1018,13 @@ export interface paths {
      * List all Gemini integrations
      * @description Get all Google Gemini integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_6"];
+    get: operations["list_7"];
     put?: never;
     /**
      * Create a Gemini integration
      * @description Creates an integration to connect to Google Gemini.
      */
-    post: operations["create_5"];
+    post: operations["create_6"];
     delete?: never;
     options?: never;
     head?: never;
@@ -994,7 +1042,7 @@ export interface paths {
      * Get a Gemini integration
      * @description Get a Gemini integration by ID.
      */
-    get: operations["get_6"];
+    get: operations["get_7"];
     /**
      * Update a Gemini integration.
      * @description Updates a Gemini integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1005,7 +1053,7 @@ export interface paths {
      * Delete a Gemini integration
      * @description Deletes a Gemini integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_5"];
+    delete: operations["delete_6"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1042,13 +1090,13 @@ export interface paths {
      * List all GitHub MCP integrations
      * @description Get all GitHub MCP server integrations for your organization. This will contain masked tokens if present.
      */
-    get: operations["list_8"];
+    get: operations["list_9"];
     put?: never;
     /**
      * Create a GitHub MCP integration
      * @description Creates an integration to connect to a GitHub MCP server.
      */
-    post: operations["create_7"];
+    post: operations["create_8"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1066,7 +1114,7 @@ export interface paths {
      * Get a GitHub MCP integration
      * @description Get a GitHub MCP integration by ID.
      */
-    get: operations["get_8"];
+    get: operations["get_9"];
     /**
      * Update a GitHub MCP integration.
      * @description Updates a GitHub MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1077,7 +1125,7 @@ export interface paths {
      * Delete a GitHub MCP integration
      * @description Deletes a GitHub MCP integration. This will delete the associated token as well. No-op if already deleted.
      */
-    delete: operations["delete_7"];
+    delete: operations["delete_8"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1114,13 +1162,13 @@ export interface paths {
      * List all NewRelic integrations
      * @description Get all NewRelic integrations.
      */
-    get: operations["list_11"];
+    get: operations["list_12"];
     put?: never;
     /**
      * Create a NewRelic integration
      * @description Creates an integration to connect to NewRelic.
      */
-    post: operations["create_10"];
+    post: operations["create_11"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1158,7 +1206,7 @@ export interface paths {
      * Get a NewRelic integration
      * @description Get an integration to connect to NewRelic.
      */
-    get: operations["get_11"];
+    get: operations["get_12"];
     /**
      * Update a NewRelic integration.
      * @description Updates an integration to connect to NewRelic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1169,7 +1217,7 @@ export interface paths {
      * Delete a NewRelic integration
      * @description Deletes an integration to connect to NewRelic. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_10"];
+    delete: operations["delete_11"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1266,13 +1314,13 @@ export interface paths {
      * List all OpenAI integrations
      * @description Get all OpenAI integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_12"];
+    get: operations["list_13"];
     put?: never;
     /**
      * Create an OpenAI integration
      * @description Creates an integration to connect to OpenAI.
      */
-    post: operations["create_11"];
+    post: operations["create_12"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1290,7 +1338,7 @@ export interface paths {
      * Get an OpenAI integration
      * @description Get an OpenAI integration by ID.
      */
-    get: operations["get_12"];
+    get: operations["get_13"];
     /**
      * Update an OpenAI integration.
      * @description Updates an OpenAI integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1301,7 +1349,7 @@ export interface paths {
      * Delete an OpenAI integration
      * @description Deletes an OpenAI integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_11"];
+    delete: operations["delete_12"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1338,13 +1386,13 @@ export interface paths {
      * List all OTLP integrations
      * @description Get all OTLP integrations.
      */
-    get: operations["list_13"];
+    get: operations["list_14"];
     put?: never;
     /**
      * Create an OTLP integration
      * @description Creates an integration to connect to OTLP.
      */
-    post: operations["create_12"];
+    post: operations["create_13"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1362,7 +1410,7 @@ export interface paths {
      * Get a OTLP integration
      * @description Get an integration to connect to OTLP.
      */
-    get: operations["get_13"];
+    get: operations["get_14"];
     /**
      * Update a OTLP integration.
      * @description Updates an integration to connect to OTLP. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1373,7 +1421,7 @@ export interface paths {
      * Delete a OTLP integration
      * @description Deletes an integration to connect to OTLP. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_12"];
+    delete: operations["delete_13"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1434,13 +1482,13 @@ export interface paths {
      * List all PagerDuty MCP integrations
      * @description Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_9"];
+    get: operations["list_10"];
     put?: never;
     /**
      * Create a PagerDuty MCP integration
      * @description Creates an integration to connect to a PagerDuty MCP server.
      */
-    post: operations["create_8"];
+    post: operations["create_9"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1458,7 +1506,7 @@ export interface paths {
      * Get a PagerDuty MCP integration
      * @description Get a PagerDuty MCP integration by ID.
      */
-    get: operations["get_9"];
+    get: operations["get_10"];
     /**
      * Update a PagerDuty MCP integration.
      * @description Updates a PagerDuty MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1469,7 +1517,7 @@ export interface paths {
      * Delete a PagerDuty MCP integration
      * @description Deletes a PagerDuty MCP integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_8"];
+    delete: operations["delete_9"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1503,13 +1551,13 @@ export interface paths {
       cookie?: never;
     };
     /** List all S3 Data Warehouse integrations */
-    get: operations["list_5"];
+    get: operations["list_6"];
     put?: never;
     /**
      * Create a S3 Data Warehouse integration
      * @description Creates an external S3 Data Warehouse integration
      */
-    post: operations["create_4"];
+    post: operations["create_5"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1587,7 +1635,7 @@ export interface paths {
      * Get a S3 Data Warehouse integration
      * @description Gets an external S3 Data Warehouse integration
      */
-    get: operations["get_5"];
+    get: operations["get_6"];
     /**
      * Update a S3 Data Warehouse integration
      * @description Updates an external S3 Data Warehouse integration
@@ -1598,7 +1646,7 @@ export interface paths {
      * Delete a S3 Data Warehouse integration
      * @description Deletes an external S3 Data Warehouse integration if it exists. No-op otherwise.
      */
-    delete: operations["delete_4"];
+    delete: operations["delete_5"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1615,13 +1663,13 @@ export interface paths {
      * List all S3 Vector Index integrations
      * @description Retrieves all S3 Vector Index integrations for the organization.
      */
-    get: operations["list_14"];
+    get: operations["list_15"];
     put?: never;
     /**
      * Create an S3 Vector Index integration
      * @description Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.
      */
-    post: operations["create_13"];
+    post: operations["create_14"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1639,7 +1687,7 @@ export interface paths {
      * Get an S3 Vector Index integration
      * @description Retrieves an S3 Vector Index integration.
      */
-    get: operations["get_14"];
+    get: operations["get_15"];
     /**
      * Update an S3 Vector Index integration
      * @description Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.
@@ -1650,7 +1698,7 @@ export interface paths {
      * Delete an S3 Vector Index integration
      * @description Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn't exist.
      */
-    delete: operations["delete_13"];
+    delete: operations["delete_14"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1667,13 +1715,13 @@ export interface paths {
      * List all Slack MCP integrations
      * @description Get all Slack MCP server integrations for your organization. This will contain masked tokens if present.
      */
-    get: operations["list_10"];
+    get: operations["list_11"];
     put?: never;
     /**
      * Create a Slack MCP integration
      * @description Creates an integration to connect to a Slack MCP server.
      */
-    post: operations["create_9"];
+    post: operations["create_10"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1691,7 +1739,7 @@ export interface paths {
      * Get a Slack MCP integration
      * @description Get a Slack MCP integration by ID.
      */
-    get: operations["get_10"];
+    get: operations["get_11"];
     /**
      * Update a Slack MCP integration.
      * @description Updates a Slack MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1702,7 +1750,7 @@ export interface paths {
      * Delete a Slack MCP integration
      * @description Deletes a Slack MCP integration. This will delete the associated token as well. No-op if already deleted.
      */
-    delete: operations["delete_9"];
+    delete: operations["delete_10"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1739,13 +1787,13 @@ export interface paths {
      * List all Splunk integrations
      * @description Get all Splunk integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_15"];
+    get: operations["list_16"];
     put?: never;
     /**
      * Create a Splunk integration
      * @description Creates an integration to connect to Splunk.
      */
-    post: operations["create_14"];
+    post: operations["create_15"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1763,7 +1811,7 @@ export interface paths {
      * Get a Splunk integration
      * @description Get an integration to connect to Splunk.
      */
-    get: operations["get_15"];
+    get: operations["get_16"];
     /**
      * Update a Splunk integration.
      * @description Updates an integration to connect to Splunk. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1774,7 +1822,7 @@ export interface paths {
      * Delete a Splunk integration
      * @description Deletes an integration to connect to Splunk. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_14"];
+    delete: operations["delete_15"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1871,13 +1919,13 @@ export interface paths {
      * List all SumoLogic integrations
      * @description Get all SumoLogic integrations.
      */
-    get: operations["list_16"];
+    get: operations["list_17"];
     put?: never;
     /**
      * Create a SumoLogic integration
      * @description Creates an integration to connect to SumoLogic.
      */
-    post: operations["create_15"];
+    post: operations["create_16"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1895,7 +1943,7 @@ export interface paths {
      * Get a SumoLogic integration
      * @description Get an integration to connect to SumoLogic.
      */
-    get: operations["get_16"];
+    get: operations["get_17"];
     /**
      * Update a SumoLogic integration.
      * @description Updates an integration to connect to SumoLogic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1906,7 +1954,7 @@ export interface paths {
      * Delete a SumoLogic integration
      * @description Deletes an integration to connect to SumoLogic. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_15"];
+    delete: operations["delete_16"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1943,13 +1991,13 @@ export interface paths {
      * List webhook integrations
      * @description Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.
      */
-    get: operations["list_17"];
+    get: operations["list_18"];
     put?: never;
     /**
      * Create a webhook integration
      * @description Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).
      */
-    post: operations["create_16"];
+    post: operations["create_17"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1967,7 +2015,7 @@ export interface paths {
      * Get a webhook integration
      * @description Get a webhook integration by ID.
      */
-    get: operations["get_17"];
+    get: operations["get_18"];
     /**
      * Update a webhook integration
      * @description Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1978,7 +2026,7 @@ export interface paths {
      * Delete a webhook integration
      * @description Deletes a webhook integration. No-op if already deleted.
      */
-    delete: operations["delete_16"];
+    delete: operations["delete_17"];
     options?: never;
     head?: never;
     patch?: never;
@@ -3092,7 +3140,7 @@ export interface paths {
      * List all users
      * @description Get all users in the system.
      */
-    get: operations["list_18"];
+    get: operations["list_19"];
     put?: never;
     /**
      * Create a new user
@@ -3267,6 +3315,16 @@ export interface components {
       type: AddToListAttributeActionType;
       value: components["schemas"]["Any"];
     };
+    AgentAnalyticsDashboardSummary: {
+      dataQuality?: components["schemas"]["DataQuality"];
+      emitters?: components["schemas"]["Breakdown"][];
+      intentToolMatrix?: components["schemas"]["MatrixCell"][];
+      intentUsage?: components["schemas"]["Breakdown"][];
+      models?: components["schemas"]["Breakdown"][];
+      topIntents?: components["schemas"]["Intent"][];
+      topTools?: components["schemas"]["Tool"][];
+      totals?: components["schemas"]["Totals"];
+    };
     AgentConfig: {
       /** Format: date-time */
       createdAt: string;
@@ -3409,6 +3467,196 @@ export interface components {
       completed?: number;
       /** Format: int32 */
       failed?: number;
+    };
+    AgentSessionAnalytics: {
+      analysisJobId: string;
+      analysisVersion: string;
+      datasetId: string;
+      /** Format: int32 */
+      embeddingCapacity?: number;
+      /** Format: int32 */
+      embeddingDimensions?: number;
+      embeddingModel: string;
+      /** Format: date-time */
+      end: string;
+      labelModel: string;
+      /** Format: int32 */
+      maxRetries?: number;
+      /** Format: int32 */
+      maximumNamedGroups?: number;
+      modelIntegrationId: string;
+      /** @example operation_name */
+      name: string;
+      query: components["schemas"]["EventPredicate"];
+      /**
+       * Format: ISO-8601
+       * @description Duration in ISO-8601 format (e.g., 'PT20.345S' for 20.345 seconds).
+       * @example PT20.345S
+       */
+      requestTimeout: string;
+      /** Format: int64 */
+      retainedAnalyticsMemoryLimitBytes?: number;
+      /** Format: int32 */
+      sessionCap?: number;
+      /** Format: date-time */
+      start: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: AgentSessionAnalyticsType;
+    };
+    AgentSessionAnalyticsDownload: {
+      /** Format: date-time */
+      expiresAt?: string;
+      filename?: string;
+      url?: string;
+    };
+    AgentSessionAnalyticsJob: {
+      analysisVersion?: string;
+      /** Format: int64 */
+      analyzedSessionCount?: number;
+      /** Format: int64 */
+      artifactByteSize?: number;
+      clusteringAlgorithmVersion?: string;
+      /** Format: date-time */
+      completedAt?: string;
+      /** Format: date-time */
+      createdAt?: string;
+      dashboardSummary?: components["schemas"]["AgentAnalyticsDashboardSummary"];
+      datasetId?: string;
+      downloadAvailable?: boolean;
+      /** Format: int32 */
+      embeddingDimensions?: number;
+      embeddingModel?: string;
+      /** Format: int64 */
+      exportedSessionCount?: number;
+      failureReason?: string;
+      jobId?: string;
+      /** @enum {string} */
+      jobState?: PathsV1JobsGetParametersQueryState;
+      labelModel?: string;
+      /** Format: int64 */
+      matchingSessionCount?: number;
+      /** Format: int32 */
+      miscellaneousSessionCount?: number;
+      /** Format: int32 */
+      namedGroupCount?: number;
+      request?: components["schemas"]["CreateAgentSessionAnalyticsJob"];
+      resultWasCapped?: boolean;
+      /** @enum {string} */
+      state?: AgentSessionAnalyticsJobState;
+      /** Format: int32 */
+      warningCount?: number;
+    };
+    AgentSessionAnalyticsPage: {
+      items?: components["schemas"]["AgentSessionAnalyticsJob"][];
+      /** Format: int32 */
+      limit?: number;
+      /** Format: int32 */
+      offset?: number;
+      /** Format: int64 */
+      total?: number;
+    };
+    /**
+     * Inputs Schema
+     * @description Schema for the agent-session analytics job graph.
+     */
+    AgentSessionAnalyticsTemplateInput: {
+      analyticsJobId: string;
+      artifactPrefix: string;
+      datasetId: string;
+      /**
+       * Format: int32
+       * @default 32
+       */
+      embeddingCapacity?: number;
+      /** Format: int32 */
+      embeddingDimensions?: number;
+      embeddingModel: string;
+      /** Format: date-time */
+      end: string;
+      labelModel: string;
+      /**
+       * Format: int32
+       * @default 2
+       */
+      maxRetries?: number;
+      /** Format: int32 */
+      maximumNamedGroups?: number;
+      modelIntegrationId: string;
+      organizationId: string;
+      query: components["schemas"]["EventPredicate"];
+      /**
+       * Format: ISO-8601
+       * @description Duration in ISO-8601 format (e.g., 'PT20.345S' for 20.345 seconds).
+       * @default PT30S
+       * @example PT20.345S
+       */
+      requestTimeout: string;
+      /**
+       * Format: int64
+       * @default 1073741824
+       */
+      retainedAnalyticsMemoryLimitBytes?: number;
+      /** Format: int32 */
+      sessionCap?: number;
+      /** Format: date-time */
+      start: string;
+      warehouseIntegrationId: string;
+    };
+    AgentSessionsIcebergTableSource: {
+      /** @description The ID of the dataset to read data from. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of time interval to query data for.
+       * @example 2023-01-01T01:00:00Z
+       */
+      end: string;
+      /**
+       * Format: int32
+       * @description The maximum number of rows to process
+       * @default 2500
+       */
+      limit?: number;
+      /** @example operation_name */
+      name: string;
+      /**
+       * Format: int32
+       * @description Offset on the number of rows to process
+       * @default 0
+       */
+      offset?: number;
+      query: components["schemas"]["query"];
+      /**
+       * @description The order in which the rows should be sorted by
+       * @default ASCENDING
+       * @enum {string}
+       */
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      /**
+       * Format: date-time
+       * @description Start of time interval to query data for.
+       * @example 2023-01-01T00:00:00Z
+       */
+      start: string;
+      /**
+       * @description Selects complete agent sessions from the logs Iceberg table. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: AgentSessionsIcebergTableSourceType;
+      /**
+       * @description Variables that can be used to modify the query while parsed
+       * @default {}
+       * @example {
+       *       "__application": "app1",
+       *       "__service": "service1"
+       *     }
+       */
+      variables?: {
+        [key: string]: components["schemas"]["Any"];
+      };
     };
     /**
      * Inputs Schema
@@ -4041,6 +4289,28 @@ export interface components {
       period: components["schemas"]["PeriodEntry"];
       summary: components["schemas"]["BillingSummary"];
     };
+    Breakdown: {
+      /** Format: int64 */
+      cacheReadTokens?: number;
+      /** Format: int64 */
+      cacheWriteTokens?: number;
+      /** Format: int64 */
+      calls?: number;
+      /** Format: int64 */
+      callsWithUsage?: number;
+      costReportingComplete?: boolean;
+      /** Format: int64 */
+      inputTokens?: number;
+      name?: string;
+      /** Format: int64 */
+      outputTokens?: number;
+      /** Format: int64 */
+      reasoningTokens?: number;
+      /** Format: double */
+      reportedCostUsd?: number;
+      /** Format: int64 */
+      sessions?: number;
+    };
     BucketAccessResult: {
       accessible?: boolean;
       message?: string;
@@ -4345,6 +4615,25 @@ export interface components {
        */
       startDate: string;
     };
+    CreateAgentSessionAnalyticsJob: {
+      datasetId: string;
+      /** Format: date-time */
+      end: string;
+      /**
+       * Format: int32
+       * @default 20
+       */
+      maximumNamedGroups?: number;
+      modelIntegrationId: string;
+      query: components["schemas"]["EventPredicate"];
+      /**
+       * Format: int32
+       * @default 10000
+       */
+      sessionCap?: number;
+      /** Format: date-time */
+      start: string;
+    };
     /** @description Parameters for creating a logs or spans backfill batch job. */
     CreateBackfillJob: {
       dataType: string;
@@ -4615,6 +4904,22 @@ export interface components {
     };
     Data: {
       resultType: string;
+    };
+    DataQuality: {
+      /** Format: int64 */
+      embeddingFailures?: number;
+      /** Format: int64 */
+      incompleteContentSessions?: number;
+      /** Format: int64 */
+      labelFailures?: number;
+      /** Format: int64 */
+      metadataOnlyEvents?: number;
+      /** Format: int64 */
+      missingUsageSessions?: number;
+      /** Format: int64 */
+      truncatedEvents?: number;
+      /** Format: int64 */
+      warnings?: number;
     };
     /** @description The payload containing integration data. */
     DataWarehouse: Record<string, never>;
@@ -5193,13 +5498,6 @@ export interface components {
       type: EventDedupIcebergTableSinkType;
       vendorSinkId: string;
     };
-    /**
-     * @description Predicate to filter which patterns get processed by the LLM. Only patterns matching this predicate will be sent to the LLM. If not specified, all patterns are processed.
-     * @example {
-     *       "query": "service:auth",
-     *       "type": "datadog-query"
-     *     }
-     */
     EventPredicate: {
       query?: string;
       type: string;
@@ -5453,7 +5751,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: GreprLlmPromptResultsSourceSortOrder;
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -5532,7 +5830,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: GreprLlmPromptResultsSourceSortOrder;
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -5625,7 +5923,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: GreprLlmPromptResultsSourceSortOrder;
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -5716,7 +6014,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: GreprLlmPromptResultsSourceSortOrder;
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -5959,7 +6257,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: GreprLlmPromptResultsSourceSortOrder;
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -6106,6 +6404,15 @@ export interface components {
        * @description Number of items per page
        */
       pageSize?: number;
+    };
+    Intent: {
+      description?: string;
+      label?: string;
+      miscellaneous?: boolean;
+      /** Format: double */
+      percentage?: number;
+      /** Format: int64 */
+      sessions?: number;
     };
     InvestigationAction: {
       description?: string;
@@ -6538,7 +6845,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: GreprLlmPromptResultsSourceSortOrder;
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -7139,7 +7446,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: GreprLlmPromptResultsSourceSortOrder;
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -7309,7 +7616,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: GreprLlmPromptResultsSourceSortOrder;
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -7479,6 +7786,12 @@ export interface components {
        * @enum {string}
        */
       type: MaskingRuleConfigType;
+    };
+    MatrixCell: {
+      intent?: string;
+      operation?: string;
+      /** Format: int64 */
+      sessionsUsing?: number;
     };
     MatrixData: {
       resultType: "MatrixData";
@@ -7871,7 +8184,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: GreprLlmPromptResultsSourceSortOrder;
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -8135,6 +8448,7 @@ export interface components {
       | components["schemas"]["SpanDedupIcebergTableSink"]
       | components["schemas"]["SpansIcebergTableSink"]
       | components["schemas"]["LogsIcebergTableSource"]
+      | components["schemas"]["AgentSessionsIcebergTableSource"]
       | components["schemas"]["LlmPromptResultsIcebergTableSource"]
       | components["schemas"]["MetricsIcebergTableSource"]
       | components["schemas"]["TracesIcebergTableSource"]
@@ -8162,6 +8476,7 @@ export interface components {
       | components["schemas"]["MetricsSynchronousSink"]
       | components["schemas"]["VariantSynchronousSink"]
       | components["schemas"]["SpansSynchronousSink"]
+      | components["schemas"]["QuerySink"]
       | components["schemas"]["DiscardingSink"]
       | components["schemas"]["DatadogMetricsSink"]
       | components["schemas"]["LegacyDatadogMetricsSink"]
@@ -8188,6 +8503,7 @@ export interface components {
       | components["schemas"]["LogRulesApplication"]
       | components["schemas"]["TriggerActionOp"]
       | components["schemas"]["EntityContextAggregation"]
+      | components["schemas"]["AgentSessionAnalytics"]
       | components["schemas"]["AgentLogProcessor"]
       | components["schemas"]["AgentSpanProcessor"]
     );
@@ -8832,6 +9148,30 @@ export interface components {
       error?: string;
       errorType?: string;
       status?: string;
+    };
+    QuerySink: {
+      /**
+       * @description Ordered CSV column names; required only for CSV artifacts
+       * @default []
+       */
+      columns?: string[];
+      /**
+       * @description Artifact serialization format
+       * @default COMPRESSED_JSON
+       * @enum {string}
+       */
+      format: QuerySinkFormat;
+      /** @description The integration to use for writing to the file */
+      integrationId: string;
+      /** @example operation_name */
+      name: string;
+      /** @description Destination path relative to the selected warehouse root */
+      path?: string;
+      /**
+       * @description Write a bounded artifact to a warehouse provided by the given integration id. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: QuerySinkType;
     };
     /** @description RAG workflow that enriches the prompt with similar historical patterns from a vector store before sending to the LLM. */
     Rag: {
@@ -9733,7 +10073,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: GreprLlmPromptResultsSourceSortOrder;
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -10303,7 +10643,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: GreprLlmPromptResultsSourceSortOrder;
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -11524,9 +11864,62 @@ export interface components {
        */
       timestamp: string;
     });
+    Tool: {
+      /** Format: int64 */
+      calls?: number;
+      costReportingComplete?: boolean;
+      /** Format: int64 */
+      durationMs?: number;
+      /** Format: int64 */
+      errors?: number;
+      operation?: string;
+      /** Format: double */
+      reportedCostUsd?: number;
+      /** Format: int64 */
+      resultBytes?: number;
+      /** Format: int64 */
+      sessionsUsing?: number;
+    };
     ToolDescriptor: {
       description?: string;
       name?: string;
+    };
+    Totals: {
+      /** Format: int64 */
+      analyzedSessions?: number;
+      /** Format: int64 */
+      cacheReadTokens?: number;
+      /** Format: int64 */
+      cacheWriteTokens?: number;
+      costReportingComplete?: boolean;
+      /** Format: int64 */
+      exportedSessions?: number;
+      /** Format: int64 */
+      inputTokens?: number;
+      /** Format: int64 */
+      matchingSessions?: number;
+      /** Format: int64 */
+      miscellaneousSessions?: number;
+      /** Format: int64 */
+      modelCalls?: number;
+      /** Format: int64 */
+      namedGroupSessions?: number;
+      /** Format: int64 */
+      outputTokens?: number;
+      /** Format: int64 */
+      reasoningTokens?: number;
+      /** Format: double */
+      reportedCostUsd?: number;
+      /** Format: int64 */
+      sessionDurationMs?: number;
+      /** Format: int64 */
+      toolCalls?: number;
+      /** Format: int64 */
+      toolDurationMs?: number;
+      /** Format: int64 */
+      toolErrors?: number;
+      /** Format: int64 */
+      toolResultBytes?: number;
     };
     /** @description Base class for trace actions. Actions execute on traces matching SQL predicates after sampling decisions have been made. */
     TraceAction: {
@@ -11797,7 +12190,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: GreprLlmPromptResultsSourceSortOrder;
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -12622,6 +13015,8 @@ export type SchemaActivityLogsSearch =
   components["schemas"]["ActivityLogsSearch"];
 export type SchemaAddToListAttributeAction =
   components["schemas"]["AddToListAttributeAction"];
+export type SchemaAgentAnalyticsDashboardSummary =
+  components["schemas"]["AgentAnalyticsDashboardSummary"];
 export type SchemaAgentConfig = components["schemas"]["AgentConfig"];
 export type SchemaAgentConfigCreate =
   components["schemas"]["AgentConfigCreate"];
@@ -12640,6 +13035,18 @@ export type SchemaAgentMcpIntegrations =
   components["schemas"]["AgentMcpIntegrations"];
 export type SchemaAgentRecentHealth =
   components["schemas"]["AgentRecentHealth"];
+export type SchemaAgentSessionAnalytics =
+  components["schemas"]["AgentSessionAnalytics"];
+export type SchemaAgentSessionAnalyticsDownload =
+  components["schemas"]["AgentSessionAnalyticsDownload"];
+export type SchemaAgentSessionAnalyticsJob =
+  components["schemas"]["AgentSessionAnalyticsJob"];
+export type SchemaAgentSessionAnalyticsPage =
+  components["schemas"]["AgentSessionAnalyticsPage"];
+export type SchemaAgentSessionAnalyticsTemplateInput =
+  components["schemas"]["AgentSessionAnalyticsTemplateInput"];
+export type SchemaAgentSessionsIcebergTableSource =
+  components["schemas"]["AgentSessionsIcebergTableSource"];
 export type SchemaAgentSessionsTemplateInput =
   components["schemas"]["AgentSessionsTemplateInput"];
 export type SchemaAgentSpanProcessor =
@@ -12704,6 +13111,7 @@ export type SchemaBillingPeriodsResponse =
 export type SchemaBillingSummary = components["schemas"]["BillingSummary"];
 export type SchemaBillingSummaryResponse =
   components["schemas"]["BillingSummaryResponse"];
+export type SchemaBreakdown = components["schemas"]["Breakdown"];
 export type SchemaBucketAccessResult =
   components["schemas"]["BucketAccessResult"];
 export type SchemaBucketPartitionTransform =
@@ -12729,6 +13137,8 @@ export type SchemaConditionalDataLakeConfig =
 export type SchemaConsoleSetupInfo = components["schemas"]["ConsoleSetupInfo"];
 export type SchemaConstantSampling = components["schemas"]["ConstantSampling"];
 export type SchemaContract = components["schemas"]["Contract"];
+export type SchemaCreateAgentSessionAnalyticsJob =
+  components["schemas"]["CreateAgentSessionAnalyticsJob"];
 export type SchemaCreateBackfillJob =
   components["schemas"]["CreateBackfillJob"];
 export type SchemaCreateJob = components["schemas"]["CreateJob"];
@@ -12744,6 +13154,7 @@ export type SchemaCriticalPathAnalysisConfig =
   components["schemas"]["CriticalPathAnalysisConfig"];
 export type SchemaDailyTable = components["schemas"]["DailyTable"];
 export type SchemaData = components["schemas"]["Data"];
+export type SchemaDataQuality = components["schemas"]["DataQuality"];
 export type SchemaDataWarehouse = components["schemas"]["DataWarehouse"];
 export type SchemaDatabaseUserInfo = components["schemas"]["DatabaseUserInfo"];
 export type SchemaDatadog = components["schemas"]["Datadog"];
@@ -12849,6 +13260,7 @@ export type SchemaIntegrationExceptionConfig =
   components["schemas"]["IntegrationExceptionConfig"];
 export type SchemaIntegrationExceptionsList =
   components["schemas"]["IntegrationExceptionsList"];
+export type SchemaIntent = components["schemas"]["Intent"];
 export type SchemaInvestigationAction =
   components["schemas"]["InvestigationAction"];
 export type SchemaInvestigationSummary =
@@ -12962,6 +13374,7 @@ export type SchemaMaskEntry = components["schemas"]["MaskEntry"];
 export type SchemaMaskingOperator = components["schemas"]["MaskingOperator"];
 export type SchemaMaskingRuleConfig =
   components["schemas"]["MaskingRuleConfig"];
+export type SchemaMatrixCell = components["schemas"]["MatrixCell"];
 export type SchemaMatrixData = components["schemas"]["MatrixData"];
 export type SchemaMatrixResult = components["schemas"]["MatrixResult"];
 export type SchemaMaxAttributesMergeStrategy =
@@ -13072,6 +13485,7 @@ export type SchemaQueryJobToken = components["schemas"]["QueryJobToken"];
 export type SchemaQueryParsingError =
   components["schemas"]["QueryParsingError"];
 export type SchemaQueryResult = components["schemas"]["QueryResult"];
+export type SchemaQuerySink = components["schemas"]["QuerySink"];
 export type SchemaRag = components["schemas"]["Rag"];
 export type SchemaRawLogsSinkConfig =
   components["schemas"]["RawLogsSinkConfig"];
@@ -13244,7 +13658,9 @@ export type SchemaTimeSeriesRuleConfig =
   components["schemas"]["TimeSeriesRuleConfig"];
 export type SchemaTimestampReadingStrategy =
   components["schemas"]["TimestampReadingStrategy"];
+export type SchemaTool = components["schemas"]["Tool"];
 export type SchemaToolDescriptor = components["schemas"]["ToolDescriptor"];
+export type SchemaTotals = components["schemas"]["Totals"];
 export type SchemaTraceAction = components["schemas"]["TraceAction"];
 export type SchemaTraceHeadSamplingRule =
   components["schemas"]["TraceHeadSamplingRule"];
@@ -13365,6 +13781,118 @@ export interface operations {
   list: {
     parameters: {
       query?: {
+        datasetId?: string;
+        offset?: number;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Analytics runs retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentSessionAnalyticsPage"];
+        };
+      };
+    };
+  };
+  create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["CreateAgentSessionAnalyticsJob"];
+      };
+    };
+    responses: {
+      /** @description Analytics run created */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentSessionAnalyticsJob"];
+        };
+      };
+    };
+  };
+  get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Analytics run retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentSessionAnalyticsJob"];
+        };
+      };
+    };
+  };
+  delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Analytics run cancelled */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  download: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Analytics CSV download retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentSessionAnalyticsDownload"];
+        };
+      };
+    };
+  };
+  list_1: {
+    parameters: {
+      query?: {
         jobId?: string;
         status?: PathsV1AgentSuggestionsGetParametersQueryStatus;
         agentId?: string;
@@ -13395,7 +13923,7 @@ export interface operations {
       };
     };
   };
-  get: {
+  get_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -13517,7 +14045,7 @@ export interface operations {
       };
     };
   };
-  list_1: {
+  list_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -13544,7 +14072,7 @@ export interface operations {
       };
     };
   };
-  create: {
+  create_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -13636,7 +14164,7 @@ export interface operations {
       };
     };
   };
-  get_1: {
+  get_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -13726,7 +14254,7 @@ export interface operations {
       };
     };
   };
-  delete: {
+  delete_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -14712,7 +15240,7 @@ export interface operations {
       };
     };
   };
-  list_2: {
+  list_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -14739,7 +15267,7 @@ export interface operations {
       };
     };
   };
-  create_1: {
+  create_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -14779,7 +15307,7 @@ export interface operations {
       };
     };
   };
-  get_2: {
+  get_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -14862,7 +15390,7 @@ export interface operations {
       };
     };
   };
-  delete_1: {
+  delete_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -14941,7 +15469,7 @@ export interface operations {
       };
     };
   };
-  list_4: {
+  list_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -14968,7 +15496,7 @@ export interface operations {
       };
     };
   };
-  create_3: {
+  create_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -15006,7 +15534,7 @@ export interface operations {
       };
     };
   };
-  get_4: {
+  get_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -15082,7 +15610,7 @@ export interface operations {
       };
     };
   };
-  delete_3: {
+  delete_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -15109,7 +15637,7 @@ export interface operations {
       };
     };
   };
-  list_3: {
+  list_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -15136,7 +15664,7 @@ export interface operations {
       };
     };
   };
-  create_2: {
+  create_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -15176,7 +15704,7 @@ export interface operations {
       };
     };
   };
-  list_7: {
+  list_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -15203,7 +15731,7 @@ export interface operations {
       };
     };
   };
-  create_6: {
+  create_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -15243,7 +15771,7 @@ export interface operations {
       };
     };
   };
-  get_7: {
+  get_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -15326,7 +15854,7 @@ export interface operations {
       };
     };
   };
-  delete_6: {
+  delete_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -15456,7 +15984,7 @@ export interface operations {
       };
     };
   };
-  get_3: {
+  get_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -15539,7 +16067,7 @@ export interface operations {
       };
     };
   };
-  delete_2: {
+  delete_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -15880,7 +16408,7 @@ export interface operations {
       };
     };
   };
-  list_6: {
+  list_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -15907,7 +16435,7 @@ export interface operations {
       };
     };
   };
-  create_5: {
+  create_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -15947,7 +16475,7 @@ export interface operations {
       };
     };
   };
-  get_6: {
+  get_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -16030,7 +16558,7 @@ export interface operations {
       };
     };
   };
-  delete_5: {
+  delete_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -16109,7 +16637,7 @@ export interface operations {
       };
     };
   };
-  list_8: {
+  list_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -16136,7 +16664,7 @@ export interface operations {
       };
     };
   };
-  create_7: {
+  create_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -16176,7 +16704,7 @@ export interface operations {
       };
     };
   };
-  get_8: {
+  get_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -16259,7 +16787,7 @@ export interface operations {
       };
     };
   };
-  delete_7: {
+  delete_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -16324,7 +16852,7 @@ export interface operations {
       };
     };
   };
-  list_11: {
+  list_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -16351,7 +16879,7 @@ export interface operations {
       };
     };
   };
-  create_10: {
+  create_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -16418,7 +16946,7 @@ export interface operations {
       };
     };
   };
-  get_11: {
+  get_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -16501,7 +17029,7 @@ export interface operations {
       };
     };
   };
-  delete_10: {
+  delete_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -16689,7 +17217,7 @@ export interface operations {
       };
     };
   };
-  list_12: {
+  list_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -16716,7 +17244,7 @@ export interface operations {
       };
     };
   };
-  create_11: {
+  create_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -16756,7 +17284,7 @@ export interface operations {
       };
     };
   };
-  get_12: {
+  get_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -16839,7 +17367,7 @@ export interface operations {
       };
     };
   };
-  delete_11: {
+  delete_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -16904,7 +17432,7 @@ export interface operations {
       };
     };
   };
-  list_13: {
+  list_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -16931,7 +17459,7 @@ export interface operations {
       };
     };
   };
-  create_12: {
+  create_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -16971,7 +17499,7 @@ export interface operations {
       };
     };
   };
-  get_13: {
+  get_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -17054,7 +17582,7 @@ export interface operations {
       };
     };
   };
-  delete_12: {
+  delete_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -17198,7 +17726,7 @@ export interface operations {
       };
     };
   };
-  list_9: {
+  list_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -17225,7 +17753,7 @@ export interface operations {
       };
     };
   };
-  create_8: {
+  create_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -17265,7 +17793,7 @@ export interface operations {
       };
     };
   };
-  get_9: {
+  get_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -17348,7 +17876,7 @@ export interface operations {
       };
     };
   };
-  delete_8: {
+  delete_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -17413,7 +17941,7 @@ export interface operations {
       };
     };
   };
-  list_5: {
+  list_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -17440,7 +17968,7 @@ export interface operations {
       };
     };
   };
-  create_4: {
+  create_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -17574,7 +18102,7 @@ export interface operations {
       };
     };
   };
-  get_5: {
+  get_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -17664,7 +18192,7 @@ export interface operations {
       };
     };
   };
-  delete_4: {
+  delete_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -17691,7 +18219,7 @@ export interface operations {
       };
     };
   };
-  list_14: {
+  list_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -17718,7 +18246,7 @@ export interface operations {
       };
     };
   };
-  create_13: {
+  create_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -17756,7 +18284,7 @@ export interface operations {
       };
     };
   };
-  get_14: {
+  get_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -17832,7 +18360,7 @@ export interface operations {
       };
     };
   };
-  delete_13: {
+  delete_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -17859,7 +18387,7 @@ export interface operations {
       };
     };
   };
-  list_10: {
+  list_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -17886,7 +18414,7 @@ export interface operations {
       };
     };
   };
-  create_9: {
+  create_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -17926,7 +18454,7 @@ export interface operations {
       };
     };
   };
-  get_10: {
+  get_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -18009,7 +18537,7 @@ export interface operations {
       };
     };
   };
-  delete_9: {
+  delete_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -18074,7 +18602,7 @@ export interface operations {
       };
     };
   };
-  list_15: {
+  list_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -18101,7 +18629,7 @@ export interface operations {
       };
     };
   };
-  create_14: {
+  create_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -18141,7 +18669,7 @@ export interface operations {
       };
     };
   };
-  get_15: {
+  get_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -18224,7 +18752,7 @@ export interface operations {
       };
     };
   };
-  delete_14: {
+  delete_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -18412,7 +18940,7 @@ export interface operations {
       };
     };
   };
-  list_16: {
+  list_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -18439,7 +18967,7 @@ export interface operations {
       };
     };
   };
-  create_15: {
+  create_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -18479,7 +19007,7 @@ export interface operations {
       };
     };
   };
-  get_16: {
+  get_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -18562,7 +19090,7 @@ export interface operations {
       };
     };
   };
-  delete_15: {
+  delete_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -18627,7 +19155,7 @@ export interface operations {
       };
     };
   };
-  list_17: {
+  list_18: {
     parameters: {
       query?: {
         /** @description Only return integrations targeting this agent. */
@@ -18657,7 +19185,7 @@ export interface operations {
       };
     };
   };
-  create_16: {
+  create_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -18695,7 +19223,7 @@ export interface operations {
       };
     };
   };
-  get_17: {
+  get_18: {
     parameters: {
       query?: never;
       header?: never;
@@ -18778,7 +19306,7 @@ export interface operations {
       };
     };
   };
-  delete_16: {
+  delete_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -21584,7 +22112,7 @@ export interface operations {
       };
     };
   };
-  list_18: {
+  list_19: {
     parameters: {
       query?: {
         page?: number;
@@ -21897,6 +22425,23 @@ export enum AgentMaxTokensStatusBlockedBy {
   AGENT_MAX_TOKENS = "AGENT_MAX_TOKENS",
   INTEGRATION_MAX_TOKENS = "INTEGRATION_MAX_TOKENS",
 }
+export enum AgentSessionAnalyticsType {
+  agent_session_analytics = "agent-session-analytics",
+}
+export enum AgentSessionAnalyticsJobState {
+  RUNNING = "RUNNING",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
+  CANCELLED = "CANCELLED",
+}
+export enum AgentSessionsIcebergTableSourceSortOrder {
+  ASCENDING = "ASCENDING",
+  DESCENDING = "DESCENDING",
+  UNSORTED = "UNSORTED",
+}
+export enum AgentSessionsIcebergTableSourceType {
+  agent_sessions_iceberg_table_source = "agent-sessions-iceberg-table-source",
+}
 export enum AgentSpanProcessorType {
   agent_span_processor = "agent-span-processor",
 }
@@ -22112,11 +22657,6 @@ export enum ExactAttributesMergeStrategyType {
 }
 export enum ExternalSourceTriggerType {
   external_source = "external-source",
-}
-export enum GreprLlmPromptResultsSourceSortOrder {
-  ASCENDING = "ASCENDING",
-  DESCENDING = "DESCENDING",
-  UNSORTED = "UNSORTED",
 }
 export enum GreprLlmPromptResultsSourceType {
   grepr_llm_prompt_results_source = "grepr-llm-prompt-results-source",
@@ -22374,6 +22914,14 @@ export enum QueryJobInfoStatus {
   FAILED = "FAILED",
   TIMEOUT = "TIMEOUT",
   CANCELLED = "CANCELLED",
+}
+export enum QuerySinkFormat {
+  COMPRESSED_JSON = "COMPRESSED_JSON",
+  JSON_LINES = "JSON_LINES",
+  CSV = "CSV",
+}
+export enum QuerySinkType {
+  query_sink = "query-sink",
 }
 export enum RagType {
   rag = "rag",
@@ -22687,6 +23235,7 @@ export enum WindowBasedLogarithmicSamplingType {
 // =============================================================================
 
 export const SOURCE_TYPES = new Set<string>([
+  'agent-sessions-iceberg-table-source',
   'bounded-datadog-source',
   'cloudtrail-file-source',
   'datadog-log-agent-source',
@@ -22750,6 +23299,7 @@ export const SINK_TYPES = new Set<string>([
 
 export const OPERATION_TYPES = new Set<string>([
   'agent-log-processor',
+  'agent-session-analytics',
   'agent-span-processor',
   'clone',
   'entity-context-aggregation',
