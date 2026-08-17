@@ -3410,6 +3410,22 @@ export interface components {
       /** Format: int32 */
       failed?: number;
     };
+    /**
+     * Inputs Schema
+     * @description Schema for the Agent Sessions job graph.
+     */
+    AgentSessionsTemplateInput: {
+      /** @description Dataset receiving canonical events and normalized spans. */
+      datasetId: string;
+      /** @description Optional downstream log sinks fed canonical agent events. */
+      logSinks?: components["schemas"]["TemplateLogSink"][];
+      /** @description OTLP log sources carrying native harness events. */
+      logSources: components["schemas"]["Operation"][];
+      /** @description Optional downstream trace sinks fed normalized execution spans. */
+      traceSinks?: components["schemas"]["TemplateTraceSink"][];
+      /** @description OTLP trace sources carrying agent execution spans. */
+      traceSources: components["schemas"]["Operation"][];
+    };
     /** @description Normalizes agent span attributes and projects observed transcript content as canonical agent LogEvents in one pass. */
     AgentSpanProcessor: {
       /** @example operation_name */
@@ -8117,6 +8133,7 @@ export interface components {
       | components["schemas"]["EventDedupIcebergTableSink"]
       | components["schemas"]["VendorLogEventDedupIcebergTableSink"]
       | components["schemas"]["SpanDedupIcebergTableSink"]
+      | components["schemas"]["SpansIcebergTableSink"]
       | components["schemas"]["LogsIcebergTableSource"]
       | components["schemas"]["LlmPromptResultsIcebergTableSource"]
       | components["schemas"]["MetricsIcebergTableSource"]
@@ -10350,6 +10367,17 @@ export interface components {
       variables?: {
         [key: string]: components["schemas"]["Any"];
       };
+    };
+    SpansIcebergTableSink: {
+      /** @description The id of the dataset to write to */
+      datasetId: string;
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Writes individual spans to the raw spans Iceberg table. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: SpansIcebergTableSinkType;
     };
     SpansSynchronousSink: {
       /** @example operation_name */
@@ -12612,6 +12640,8 @@ export type SchemaAgentMcpIntegrations =
   components["schemas"]["AgentMcpIntegrations"];
 export type SchemaAgentRecentHealth =
   components["schemas"]["AgentRecentHealth"];
+export type SchemaAgentSessionsTemplateInput =
+  components["schemas"]["AgentSessionsTemplateInput"];
 export type SchemaAgentSpanProcessor =
   components["schemas"]["AgentSpanProcessor"];
 export type SchemaAgentSubscriptionCounts =
@@ -13126,6 +13156,8 @@ export type SchemaSpansBackfillIcebergTableSource =
   components["schemas"]["SpansBackfillIcebergTableSource"];
 export type SchemaSpansBackfillTemplateInput =
   components["schemas"]["SpansBackfillTemplateInput"];
+export type SchemaSpansIcebergTableSink =
+  components["schemas"]["SpansIcebergTableSink"];
 export type SchemaSpansSynchronousSink =
   components["schemas"]["SpansSynchronousSink"];
 export type SchemaSplunk = components["schemas"]["Splunk"];
@@ -22460,6 +22492,9 @@ export enum SpanTaggerType {
 export enum SpansBackfillIcebergTableSourceType {
   spans_backfill_iceberg_table_source = "spans-backfill-iceberg-table-source",
 }
+export enum SpansIcebergTableSinkType {
+  spans_iceberg_table_sink = "spans-iceberg-table-sink",
+}
 export enum SpansSynchronousSinkType {
   spans_sync_sink = "spans-sync-sink",
 }
@@ -22705,6 +22740,7 @@ export const SINK_TYPES = new Set<string>([
   'pattern-lookup-iceberg-table-sink',
   'query-sink',
   'spans-dedup-iceberg-table-sink',
+  'spans-iceberg-table-sink',
   'spans-sync-sink',
   'splunk-log-sink',
   'sumologic-log-sink',

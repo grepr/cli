@@ -450,6 +450,51 @@
         },
         "type": "object"
       },
+      "AgentSessionsTemplateInput": {
+        "description": "Schema for the Agent Sessions job graph.",
+        "properties": {
+          "datasetId": {
+            "description": "Dataset receiving canonical events and normalized spans.",
+            "pattern": "^[0-9a-z]{13}$",
+            "type": "string"
+          },
+          "logSinks": {
+            "description": "Optional downstream log sinks fed canonical agent events.",
+            "items": {
+              "$ref": "#/components/schemas/TemplateLogSink"
+            },
+            "type": "array"
+          },
+          "logSources": {
+            "description": "OTLP log sources carrying native harness events.",
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "type": "array"
+          },
+          "traceSinks": {
+            "description": "Optional downstream trace sinks fed normalized execution spans.",
+            "items": {
+              "$ref": "#/components/schemas/TemplateTraceSink"
+            },
+            "type": "array"
+          },
+          "traceSources": {
+            "description": "OTLP trace sources carrying agent execution spans.",
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "datasetId",
+          "logSources",
+          "traceSources"
+        ],
+        "title": "Inputs Schema",
+        "type": "object"
+      },
       "AgentSpanProcessor": {
         "description": "Normalizes agent span attributes and projects observed transcript content as canonical agent LogEvents in one pass.",
         "properties": {
@@ -8615,6 +8660,7 @@
             "span-tagger": "#/components/schemas/SpanTagger",
             "spans-backfill-iceberg-table-source": "#/components/schemas/SpansBackfillIcebergTableSource",
             "spans-dedup-iceberg-table-sink": "#/components/schemas/SpanDedupIcebergTableSink",
+            "spans-iceberg-table-sink": "#/components/schemas/SpansIcebergTableSink",
             "spans-sync-sink": "#/components/schemas/SpansSynchronousSink",
             "splunk-log-agent-source": "#/components/schemas/SplunkLogAgentSource",
             "splunk-log-http-source": "#/components/schemas/SplunkLogHttpSource",
@@ -8699,6 +8745,9 @@
           },
           {
             "$ref": "#/components/schemas/SpanDedupIcebergTableSink"
+          },
+          {
+            "$ref": "#/components/schemas/SpansIcebergTableSink"
           },
           {
             "$ref": "#/components/schemas/LogsIcebergTableSource"
@@ -13054,6 +13103,36 @@
         "type": "object",
         "x-tags": [
           "Sources"
+        ]
+      },
+      "SpansIcebergTableSink": {
+        "properties": {
+          "datasetId": {
+            "description": "The id of the dataset to write to",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "type": {
+            "description": "Writes individual spans to the raw spans Iceberg table.",
+            "enum": [
+              "spans-iceberg-table-sink"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "datasetId",
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sinks"
         ]
       },
       "SpansSynchronousSink": {
