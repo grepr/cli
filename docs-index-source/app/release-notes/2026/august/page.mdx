@@ -1,0 +1,58 @@
+---
+description: Release notes for new features, improvements, and bug fixes to the Grepr platform released in August 2026.
+---
+
+# Release notes for August 2026
+
+Grepr released these feature updates, improvements, and bug fixes in August 2026.
+
+## August 15, 2026
+
+{/* ENGT-5073, ENGT-5205, ENGT-5261 */}
+### Query and backfill spans with the Grepr CLI
+
+You can now run `grepr query` and `grepr backfill` against span data as well as logs by adding `--data-type spans`, or by passing a trace pipeline to `--job-id`, which infers the data type from the pipeline. A span backfill replays raw spans from the Grepr data lake to your Datadog or OpenTelemetry trace destinations, selected with the same Datadog-like syntax you use in Trace Explorer, and Grepr tracks which spans it has already delivered so that repeating a backfill does not send them twice. See [_](/cli).
+
+### Other improvements and fixes
+
+- {/* ENGT-5415 */} The Datadog integration setup guide now includes examples for the Datadog Agent deployed with the Datadog Helm chart and with the Datadog Operator, and every collector example shows how to dual ship by adding Grepr as an additional endpoint while your existing Datadog intake stays in place. See [_](/integrations/datadog).
+- {/* ENGT-5251 */} Spans now carry an identifier for their trace signature, which Trace Explorer uses to group spans by signature. Spans stored before this release do not have this identifier, so signature grouping and the tree view are unavailable for them.
+- {/* ENGT-5204 */} Backfilled logs now carry the `grepr.backfilled` and `grepr.backfilled.timestamp` tags as event tags rather than as vendor sink tags, and the timestamp value is the end of the backfill time range instead of the time you created the backfill.
+- {/* ENGT-5375 */} Reduced the storage that the Grepr data lake uses to track which spans a backfill has already delivered.
+- {/* ENGT-5274 */} The text field that confirms a deletion now has a label, so assistive technologies can announce what it is for.
+- {/* ENGT-5362 */} Fixed an issue where auto-synced exceptions were deleted when Grepr could not read some of the monitors or dashboards in your observability vendor account, such as when an access key lacked permission for a dashboard or the vendor rate limited the request. See [_](/transforms/reducer/exceptions#vendor-exceptions).
+- {/* ENGT-5226 */} Fixed several issues where searching logs by tag matched the wrong records, including a tag holding more than one value failing to match an exact search, wildcard and prefix searches missing records, a negated search such as `-env:prod` excluding records that carry no `env` tag at all, and tag values containing a comma being split into separate values.
+- {/* ENGT-5371 */} Fixed an issue where two queries translated at the same time could interfere with each other, so a search could lose part of its filter and return records it should have excluded, or fail while being planned.
+- {/* ENGT-5236 */} Fixed an issue where Log Explorer results stopped loading when a log contained a number of 22 digits or more.
+- {/* ENGT-5236 */} Fixed an issue where filtering on an attribute whose value has mixed-case letters, such as `@env:Prod`, missed matching records in Log Explorer.
+- {/* ENGT-5265, ENGT-5394 */} Fixed an issue where a backfill that overlapped one already running was allowed to start, which could deliver the same logs to your vendor twice, and extended the same protection to span backfills.
+- {/* ENGT-5405 */} `grepr_pipeline_bytes_out_per_minute` now reports the bytes Grepr delivered to your observability vendor sinks in the last complete minute instead of always reporting 0, and a pipeline that writes only to the Grepr data lake reports no series for this metric. See [_](/grepr-platform/monitoring).
+- {/* ENGT-5414 */} Fixed an issue where the teams you selected on a Datadog integration were discarded when you saved, and where an unsaved team selection could appear on the integration card as though you had saved it.
+- {/* ENGT-5392 */} Fixed an issue where a pipeline that combines several inputs could leave some of its processing tasks without work, which reduced throughput.
+- {/* ENGT-5242 */} Fixed an issue where updating a stopped pipeline reported the update as failed even though it succeeded.
+- {/* ENGT-5274 */} Fixed inconsistent text sizes, weights, and line spacing across the Grepr UI, including a delete confirmation dialog whose message rendered smaller than the text around it.
+
+## August 4, 2026
+
+{/* ENGT-4924 */}
+### Cut span volume with drop and merge rules on trace pipelines
+
+You can now add span reduction rules to a trace pipeline to reduce what you send to your vendor while the complete trace stays queryable in the Grepr data lake. A drop rule removes spans you do not need along with everything beneath them, and a merge rule collapses repeated identical sibling spans, such as those produced by a fan-out or a loop, into one representative span carrying a count. Drop and merge rules are configured independently. See [_](/pipelines/trace-pipelines).
+
+{/* ENGT-4806 */}
+### Add multiple API keys to a Datadog integration
+
+A Datadog integration can now hold more than one API key, so an existing fleet of Datadog keys can route through a single Grepr integration instead of needing one integration per key. Any key on the integration authenticates incoming telemetry, keys carry optional labels and rotate independently, and one designated send key is used for the data Grepr writes back to Datadog. See [_](/integrations/datadog).
+
+### Other improvements and fixes
+
+- {/* ENGT-5023 */} A query that references a template variable, such as `host:__host`, now matches instead of being read as literal text, and a negated clause such as `-sometag:value` now also matches records where the tag is absent, following the Datadog behavior.
+- {/* ENGT-5232 */} Fixed an issue where a span without a service name could stop the pipeline reading it, and a malformed JSON record caused the rest of the file to be skipped without being reported.
+- {/* ENGT-5223 */} Fixed an issue where an hour of usage could be lost or recorded against the wrong hour, which affected the daily usage table, your commitment figures, and your invoice.
+- {/* ENGT-5225 */} Fixed several issues in the Grepr CLI, including streaming CSV export misaligning columns and cutting output short, `job:get` ignoring `--resolved`, saved timezone and authentication settings being overwritten by defaults, and generated Splunk backfill links covering slightly the wrong time range.
+- {/* ENGT-5234 */} Fixed an issue where several endpoints rejected a request that omitted an optional parameter, which affected paging through vendor exceptions, searching activity logs, SSO claim mappings, and role updates.
+- {/* ENGT-5122 */} Fixed an issue where impact estimation could fail on a high-volume dataset, which left the passthrough estimate for that dataset out of date.
+- {/* ENGT-5230 */} Fixed an issue where a pipeline that could not resume from its saved state had that state deleted, which removed the snapshot you would have rolled back to.
+- {/* ENGT-5191 */} Fixed an issue where each update to a running pipeline left connections open, so a pipeline updated many times ran out of memory and restarted on its own.
+- {/* ENGT-5237 */} Blank sessionization durations and blank span sampling rates are now rejected when you submit them instead of being saved as invalid values.
+- {/* ENGT-5238 */} Fixed an issue where time range presets in search resolved to the wrong window, so a range of `yesterday` produced a rolling 24-hour window rather than the previous calendar day.

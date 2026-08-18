@@ -39,6 +39,7 @@
             "type": "string"
           },
           "limit": {
+            "default": 100,
             "description": "Maximum number of results to return",
             "example": 100,
             "format": "int32",
@@ -170,6 +171,53 @@
         ],
         "type": "object"
       },
+      "AgentAnalyticsDashboardSummary": {
+        "properties": {
+          "dataQuality": {
+            "$ref": "#/components/schemas/DataQuality"
+          },
+          "emitters": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "type": "array"
+          },
+          "intentToolMatrix": {
+            "items": {
+              "$ref": "#/components/schemas/MatrixCell"
+            },
+            "type": "array"
+          },
+          "intentUsage": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "type": "array"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "type": "array"
+          },
+          "topIntents": {
+            "items": {
+              "$ref": "#/components/schemas/Intent"
+            },
+            "type": "array"
+          },
+          "topTools": {
+            "items": {
+              "$ref": "#/components/schemas/Tool"
+            },
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/Totals"
+          }
+        },
+        "type": "object"
+      },
       "AgentConfig": {
         "properties": {
           "createdAt": {
@@ -210,6 +258,30 @@
       },
       "AgentConfigCreate": {
         "properties": {
+          "agentMaxTokens": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "automaticSignalMaxQueueAgeMinutes": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "changeApprovalMode": {
+            "enum": [
+              "REQUIRE_APPROVAL",
+              "AUTO_APPLY"
+            ],
+            "type": "string"
+          },
+          "concurrencyLimitPolicy": {
+            "enum": [
+              "QUEUE",
+              "DISCARD"
+            ],
+            "type": "string"
+          },
           "enabledMcpIntegrations": {
             "items": {
               "$ref": "#/components/schemas/AgentMcpIntegrations"
@@ -228,7 +300,14 @@
             },
             "type": "array"
           },
+          "maxConcurrentInvestigations": {
+            "default": 3,
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
           "maxTokens": {
+            "default": 3000000,
             "format": "int32",
             "maximum": 100000000,
             "minimum": 1,
@@ -245,22 +324,51 @@
           "name": {
             "type": "string"
           },
+          "serviceAccountId": {
+            "type": "string"
+          },
           "systemPrompt": {
             "type": "string"
           }
         },
         "required": [
+          "changeApprovalMode",
           "enabledMcpIntegrations",
           "enabledSkills",
           "enabledTools",
           "modelConfiguration",
           "name",
+          "serviceAccountId",
           "systemPrompt"
         ],
         "type": "object"
       },
       "AgentConfigPayload": {
         "properties": {
+          "agentMaxTokens": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "automaticSignalMaxQueueAgeMinutes": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "changeApprovalMode": {
+            "enum": [
+              "REQUIRE_APPROVAL",
+              "AUTO_APPLY"
+            ],
+            "type": "string"
+          },
+          "concurrencyLimitPolicy": {
+            "enum": [
+              "QUEUE",
+              "DISCARD"
+            ],
+            "type": "string"
+          },
           "enabledMcpIntegrations": {
             "items": {
               "$ref": "#/components/schemas/AgentMcpIntegrations"
@@ -278,6 +386,11 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "maxConcurrentInvestigations": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
           },
           "maxTokens": {
             "format": "int32",
@@ -293,21 +406,50 @@
           "modelConfiguration": {
             "$ref": "#/components/schemas/ModelConfiguration"
           },
+          "serviceAccountId": {
+            "type": "string"
+          },
           "systemPrompt": {
             "type": "string"
           }
         },
         "required": [
+          "changeApprovalMode",
           "enabledMcpIntegrations",
           "enabledSkills",
           "enabledTools",
           "modelConfiguration",
+          "serviceAccountId",
           "systemPrompt"
         ],
         "type": "object"
       },
       "AgentConfigUpdate": {
         "properties": {
+          "agentMaxTokens": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "automaticSignalMaxQueueAgeMinutes": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "changeApprovalMode": {
+            "enum": [
+              "REQUIRE_APPROVAL",
+              "AUTO_APPLY"
+            ],
+            "type": "string"
+          },
+          "concurrencyLimitPolicy": {
+            "enum": [
+              "QUEUE",
+              "DISCARD"
+            ],
+            "type": "string"
+          },
           "enabledMcpIntegrations": {
             "items": {
               "$ref": "#/components/schemas/AgentMcpIntegrations"
@@ -325,6 +467,11 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "maxConcurrentInvestigations": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
           },
           "maxTokens": {
             "format": "int32",
@@ -341,6 +488,9 @@
             "$ref": "#/components/schemas/ModelConfiguration"
           },
           "name": {
+            "type": "string"
+          },
+          "serviceAccountId": {
             "type": "string"
           },
           "systemPrompt": {
@@ -353,11 +503,13 @@
           }
         },
         "required": [
+          "changeApprovalMode",
           "enabledMcpIntegrations",
           "enabledSkills",
           "enabledTools",
           "modelConfiguration",
           "name",
+          "serviceAccountId",
           "systemPrompt"
         ],
         "type": "object"
@@ -394,6 +546,78 @@
         },
         "type": "object"
       },
+      "AgentLogProcessor": {
+        "description": "Processes native agent-harness OTel logs into canonical agent LogEvents.",
+        "properties": {
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "type": {
+            "description": "Processes native agent-harness OTel logs.",
+            "enum": [
+              "agent-log-processor"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Transforms"
+        ]
+      },
+      "AgentMaxTokensStatus": {
+        "properties": {
+          "admits": {
+            "type": "boolean"
+          },
+          "agentLimit": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "agentReserved": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "agentUsage": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "blockedBy": {
+            "enum": [
+              "AGENT_MAX_TOKENS",
+              "INTEGRATION_MAX_TOKENS"
+            ],
+            "type": "string"
+          },
+          "integrationLimit": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "integrationReserved": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "integrationUsage": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reservation": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "windowResetsAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "AgentMcpIntegrations": {
         "properties": {
           "allowedTools": {
@@ -425,11 +649,629 @@
         },
         "type": "object"
       },
+      "AgentSessionAnalytics": {
+        "properties": {
+          "analysisJobId": {
+            "type": "string"
+          },
+          "analysisVersion": {
+            "type": "string"
+          },
+          "datasetId": {
+            "type": "string"
+          },
+          "embeddingCapacity": {
+            "format": "int32",
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "embeddingDimensions": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "embeddingModel": {
+            "type": "string"
+          },
+          "end": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "labelModel": {
+            "type": "string"
+          },
+          "maxRetries": {
+            "format": "int32",
+            "maximum": 5,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "maximumNamedGroups": {
+            "format": "int32",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "modelIntegrationId": {
+            "type": "string"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/EventPredicate"
+          },
+          "requestTimeout": {
+            "description": "Duration in ISO-8601 format (e.g., \u0027PT20.345S\u0027 for 20.345 seconds). ",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "retainedAnalyticsMemoryLimitBytes": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "sessionCap": {
+            "format": "int32",
+            "maximum": 100000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "start": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "agent-session-analytics"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "analysisJobId",
+          "analysisVersion",
+          "datasetId",
+          "embeddingModel",
+          "end",
+          "labelModel",
+          "modelIntegrationId",
+          "name",
+          "query",
+          "requestTimeout",
+          "start",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Transforms"
+        ]
+      },
+      "AgentSessionAnalyticsDownload": {
+        "properties": {
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AgentSessionAnalyticsJob": {
+        "properties": {
+          "analysisVersion": {
+            "type": "string"
+          },
+          "analyzedSessionCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "artifactByteSize": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "clusteringAlgorithmVersion": {
+            "type": "string"
+          },
+          "completedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "dashboardSummary": {
+            "$ref": "#/components/schemas/AgentAnalyticsDashboardSummary"
+          },
+          "datasetId": {
+            "type": "string"
+          },
+          "downloadAvailable": {
+            "type": "boolean"
+          },
+          "embeddingDimensions": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "embeddingModel": {
+            "type": "string"
+          },
+          "exportedSessionCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "failureReason": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "jobState": {
+            "enum": [
+              "CREATED",
+              "PENDING",
+              "INFRA_UPDATE",
+              "INFRA_UPDATE_WAIT",
+              "VERIFYING",
+              "WAITING",
+              "RUNNING",
+              "STOPPED",
+              "FINISHED",
+              "FAILED",
+              "CANCELLED",
+              "DELETED",
+              "UPDATING",
+              "STARTING",
+              "RESTARTING",
+              "STOPPING",
+              "ROLLING_BACK",
+              "DELETING"
+            ],
+            "type": "string"
+          },
+          "labelModel": {
+            "type": "string"
+          },
+          "matchingSessionCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "miscellaneousSessionCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "namedGroupCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "request": {
+            "$ref": "#/components/schemas/CreateAgentSessionAnalyticsJob"
+          },
+          "resultWasCapped": {
+            "type": "boolean"
+          },
+          "state": {
+            "enum": [
+              "RUNNING",
+              "COMPLETED",
+              "FAILED",
+              "CANCELLED"
+            ],
+            "type": "string"
+          },
+          "warningCount": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "AgentSessionAnalyticsPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AgentSessionAnalyticsJob"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "offset": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "AgentSessionAnalyticsTemplateInput": {
+        "description": "Schema for the agent-session analytics job graph.",
+        "properties": {
+          "analyticsJobId": {
+            "type": "string"
+          },
+          "artifactPrefix": {
+            "type": "string"
+          },
+          "datasetId": {
+            "type": "string"
+          },
+          "embeddingCapacity": {
+            "default": 32,
+            "format": "int32",
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "embeddingDimensions": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "embeddingModel": {
+            "type": "string"
+          },
+          "end": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "labelModel": {
+            "type": "string"
+          },
+          "maxRetries": {
+            "default": 2,
+            "format": "int32",
+            "maximum": 5,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "maximumNamedGroups": {
+            "format": "int32",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "modelIntegrationId": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/EventPredicate"
+          },
+          "requestTimeout": {
+            "default": "PT30S",
+            "description": "Duration in ISO-8601 format (e.g., \u0027PT20.345S\u0027 for 20.345 seconds). ",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "retainedAnalyticsMemoryLimitBytes": {
+            "default": 1073741824,
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "sessionCap": {
+            "format": "int32",
+            "maximum": 100000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "start": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "warehouseIntegrationId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "analyticsJobId",
+          "artifactPrefix",
+          "datasetId",
+          "embeddingModel",
+          "end",
+          "labelModel",
+          "modelIntegrationId",
+          "organizationId",
+          "query",
+          "requestTimeout",
+          "start",
+          "warehouseIntegrationId"
+        ],
+        "title": "Inputs Schema",
+        "type": "object"
+      },
+      "AgentSessionsIcebergTableSource": {
+        "properties": {
+          "datasetId": {
+            "description": "The ID of the dataset to read data from.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of time interval to query data for.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "default": 2500,
+            "description": "The maximum number of rows to process",
+            "format": "int32",
+            "type": "integer"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Offset on the number of rows to process",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "query": {
+            "$ref": "#/components/schemas/query"
+          },
+          "sortOrder": {
+            "default": "ASCENDING",
+            "description": "The order in which the rows should be sorted by",
+            "enum": [
+              "ASCENDING",
+              "DESCENDING",
+              "UNSORTED"
+            ],
+            "type": "string"
+          },
+          "start": {
+            "description": "Start of time interval to query data for.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Selects complete agent sessions from the logs Iceberg table.",
+            "enum": [
+              "agent-sessions-iceberg-table-source"
+            ],
+            "type": "string"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables that can be used to modify the query while parsed",
+            "example": {
+              "__application": "app1",
+              "__service": "service1"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "start",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
+      },
+      "AgentSessionsTemplateInput": {
+        "description": "Schema for the Agent Sessions job graph.",
+        "properties": {
+          "datasetId": {
+            "description": "Dataset receiving canonical events and normalized spans.",
+            "pattern": "^[0-9a-z]{13}$",
+            "type": "string"
+          },
+          "logSinks": {
+            "description": "Optional downstream log sinks fed canonical agent events.",
+            "items": {
+              "$ref": "#/components/schemas/TemplateLogSink"
+            },
+            "type": "array"
+          },
+          "logSources": {
+            "description": "OTLP log sources carrying native harness events.",
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "type": "array"
+          },
+          "traceSinks": {
+            "description": "Optional downstream trace sinks fed normalized execution spans.",
+            "items": {
+              "$ref": "#/components/schemas/TemplateTraceSink"
+            },
+            "type": "array"
+          },
+          "traceSources": {
+            "description": "OTLP trace sources carrying agent execution spans.",
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "datasetId",
+          "logSources",
+          "traceSources"
+        ],
+        "title": "Inputs Schema",
+        "type": "object"
+      },
+      "AgentSpanProcessor": {
+        "description": "Normalizes agent span attributes and projects observed transcript content as canonical agent LogEvents in one pass.",
+        "properties": {
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "type": {
+            "description": "Processes native agent-harness OTel spans.",
+            "enum": [
+              "agent-span-processor"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Transforms"
+        ]
+      },
       "AgentSubscriptionCounts": {
         "properties": {
           "pipelines": {
             "format": "int32",
             "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "AgentSuggestion": {
+        "properties": {
+          "agentId": {
+            "type": "string"
+          },
+          "appliedJobVersion": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "baseJobVersion": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "investigationId": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "reviewedBy": {
+            "type": "string"
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/LogEvent"
+            },
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "APPLIED",
+              "REJECTED"
+            ],
+            "type": "string"
+          },
+          "teamIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "templateInputsPatch": {
+            "$ref": "#/components/schemas/JsonNode"
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AgentSuggestionApplyResult": {
+        "properties": {
+          "appliedJobVersion": {
+            "description": "The new job version the suggestion was applied as, or absent when it was rejected by verification. Applying restarts the pipeline from a savepoint, so the new version reaches its desired state asynchronously.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "findings": {
+            "default": [],
+            "description": "Verification findings that blocked the apply. When present the pipeline is untouched and the suggestion stays PENDING: the pipeline changed since the suggestion was recorded, so the change is no longer safe to apply as-is.",
+            "items": {
+              "$ref": "#/components/schemas/ChangeFinding"
+            },
+            "type": "array"
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/AgentSuggestion"
+          }
+        },
+        "required": [
+          "suggestion"
+        ],
+        "type": "object"
+      },
+      "AgentSuggestionsList": {
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "limit": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "start": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "suggestions": {
+            "$ref": "#/components/schemas/ItemsCollectionAgentSuggestion"
           }
         },
         "type": "object"
@@ -779,6 +1621,21 @@
             "readOnly": true,
             "type": "string"
           },
+          "integrationMaxTokens": {
+            "description": "Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 20,000,000.",
+            "example": 20000000,
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxTokensWindowHours": {
+            "description": "Length in hours of the UTC-aligned max tokens window; must be a divisor of 24. Null uses the default of 1.",
+            "example": 24,
+            "format": "int32",
+            "maximum": 24,
+            "minimum": 1,
+            "type": "integer"
+          },
           "validateKeysOnSave": {
             "default": true,
             "description": "Indicates whether to validate the API key when saving.",
@@ -805,6 +1662,33 @@
             3
           ]
         ]
+      },
+      "ApiKey": {
+        "description": "One key in the desired set",
+        "properties": {
+          "keyId": {
+            "description": "Id of an existing key to keep or rotate",
+            "example": "k_7f3a",
+            "maxLength": 64,
+            "minLength": 0,
+            "type": "string"
+          },
+          "label": {
+            "description": "User-supplied display name for the key, purely informational. Omitting it clears any existing label.",
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string"
+          },
+          "sendKey": {
+            "description": "Whether this key is used to send data back to Datadog",
+            "type": "boolean"
+          },
+          "value": {
+            "description": "The cleartext key value (for an added or rotated key)",
+            "type": "string"
+          }
+        },
+        "type": "object"
       },
       "ArrayData": {
         "type": "object"
@@ -1413,6 +2297,53 @@
         ],
         "type": "object"
       },
+      "Breakdown": {
+        "properties": {
+          "cacheReadTokens": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "cacheWriteTokens": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "calls": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "callsWithUsage": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "costReportingComplete": {
+            "type": "boolean"
+          },
+          "inputTokens": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "outputTokens": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reasoningTokens": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reportedCostUsd": {
+            "format": "double",
+            "type": "number"
+          },
+          "sessions": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
       "BucketAccessResult": {
         "properties": {
           "accessible": {
@@ -1481,6 +2412,44 @@
         "required": [
           "kind"
         ],
+        "type": "object"
+      },
+      "ChangeFinding": {
+        "description": "Verification findings that blocked the change. When present the pipeline is untouched: fix the findings and submit again.",
+        "properties": {
+          "code": {
+            "enum": [
+              "INVALID_GROK_RULE",
+              "SAMPLE_PREDICATE_MISMATCH",
+              "RULE_NOT_MATCHED",
+              "RULE_SHADOWED",
+              "RULE_EXTRACTED_NOTHING",
+              "RULE_NOT_FOUND",
+              "AMBIGUOUS_PREDICATE",
+              "NO_SAMPLES",
+              "OPERATION_DELETED",
+              "RULE_DELETED",
+              "HELPER_RULE_DELETED",
+              "RESOLUTION_FAILED",
+              "DISALLOWED_INPUT_CHANGE",
+              "UNVERIFIABLE_CHANGE",
+              "NO_EFFECTIVE_CHANGE"
+            ],
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "message": {
+            "type": "string"
+          },
+          "sampleId": {
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "ChunkedOutputEventRecordReadableData": {
@@ -1797,6 +2766,9 @@
           },
           "traceSignature": {
             "type": "string"
+          },
+          "traceSignatureId": {
+            "type": "string"
           }
         },
         "type": "object"
@@ -1980,89 +2952,110 @@
         ],
         "type": "object"
       },
-      "CreateBackfillJob": {
-        "description": "Parameters for creating a logs backfill batch job.",
+      "CreateAgentSessionAnalyticsJob": {
         "properties": {
           "datasetId": {
-            "description": "The dataset the backfill reads from and the dedup sinks track delivery in.",
-            "pattern": "[a-z0-9]{1,13}",
             "type": "string"
           },
           "end": {
-            "description": "End of the time interval to backfill.",
-            "example": "2023-01-01T01:00:00Z",
             "format": "date-time",
             "type": "string"
           },
-          "limit": {
-            "default": 500000,
-            "description": "Maximum number of rows to backfill. Default and max is 500,000. A negative value means no limit.",
-            "example": 100000,
+          "maximumNamedGroups": {
+            "default": 20,
             "format": "int32",
-            "maximum": 500000,
+            "maximum": 100,
+            "minimum": 1,
             "type": "integer"
           },
-          "name": {
-            "description": "Name of the backfill job. Must match the job name pattern [a-z0-9_]{1,128}.",
-            "example": "manual_backfill_1",
-            "pattern": "[a-z0-9_]{1,128}",
+          "modelIntegrationId": {
             "type": "string"
           },
           "query": {
             "$ref": "#/components/schemas/EventPredicate"
           },
+          "sessionCap": {
+            "default": 10000,
+            "format": "int32",
+            "maximum": 100000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "start": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "modelIntegrationId",
+          "query",
+          "start"
+        ],
+        "type": "object"
+      },
+      "CreateBackfillJob": {
+        "description": "Parameters for creating a logs or spans backfill batch job.",
+        "discriminator": {
+          "mapping": {
+            "logs": "#/components/schemas/CreateLogsBackfillJob",
+            "spans": "#/components/schemas/CreateSpansBackfillJob"
+          },
+          "propertyName": "dataType"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/CreateLogsBackfillJob"
+          },
+          {
+            "$ref": "#/components/schemas/CreateSpansBackfillJob"
+          }
+        ],
+        "properties": {
+          "dataType": {
+            "type": "string"
+          },
+          "datasetId": {
+            "type": "string"
+          },
+          "end": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
           "sinks": {
-            "description": "The vendor sink operations that deliver the backfilled events. Passed through verbatim, matching the sinks a rule action would carry.",
             "items": {
               "$ref": "#/components/schemas/Operation"
             },
             "type": "array"
           },
           "start": {
-            "description": "Start of the time interval to backfill, inclusive.",
-            "example": "2023-01-01T00:00:00Z",
             "format": "date-time",
             "type": "string"
           },
           "tags": {
             "additionalProperties": {
-              "description": "Custom tags added to the backfill job for ease of search.",
-              "example": "{\"source\":\"manual\"}",
               "type": "string"
             },
-            "default": {},
-            "description": "Custom tags added to the backfill job for ease of search.",
-            "example": {
-              "source": "manual"
-            },
             "type": "object"
           },
-          "variables": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/Any"
-            },
-            "default": {},
-            "description": "Variables used to modify the query while it is parsed.",
-            "type": "object"
-          },
-          "vendorSinkIntegrationIds": {
-            "default": [],
-            "description": "Vendor integration IDs, if any, whose prior delivery the backfill skips. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
+          "teamIds": {
             "items": {
-              "description": "Vendor integration IDs, if any, whose prior delivery the backfill skips. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
-              "pattern": "[a-z0-9]{1,13}",
               "type": "string"
             },
-            "type": "array"
+            "type": "array",
+            "uniqueItems": true
           }
         },
         "required": [
-          "datasetId",
-          "end",
-          "name",
-          "query",
-          "sinks",
-          "start"
+          "dataType"
         ],
         "type": "object"
       },
@@ -2131,6 +3124,110 @@
         ],
         "type": "object"
       },
+      "CreateLogsBackfillJob": {
+        "description": "Parameters for a logs backfill.",
+        "properties": {
+          "dataType": {
+            "description": "Selects the built-in logs backfill template.",
+            "enum": [
+              "logs"
+            ],
+            "type": "string"
+          },
+          "datasetId": {
+            "description": "The dataset the backfill reads from and the dedup sinks track delivery in.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of the time interval to backfill.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "default": 500000,
+            "description": "Maximum number of rows to backfill. Default and max is 500,000. For spans this applies independently to each vendor source. A negative value means no limit.",
+            "example": 100000,
+            "format": "int32",
+            "maximum": 500000,
+            "type": "integer"
+          },
+          "name": {
+            "description": "Name of the backfill job. Must match the job name pattern [a-z0-9_]{1,128}.",
+            "example": "manual_backfill_1",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/EventPredicate"
+          },
+          "sinks": {
+            "description": "The vendor sink operations that deliver the backfilled events. Passed through verbatim, matching the sinks a rule action would carry.",
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "type": "array"
+          },
+          "start": {
+            "description": "Start of the time interval to backfill, inclusive.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "tags": {
+            "additionalProperties": {
+              "description": "Custom tags added to the backfill job for ease of search.",
+              "example": "{\"source\":\"manual\"}",
+              "type": "string"
+            },
+            "default": {},
+            "description": "Custom tags added to the backfill job for ease of search.",
+            "example": {
+              "source": "manual"
+            },
+            "type": "object"
+          },
+          "teamIds": {
+            "default": [],
+            "description": "The team IDs that the backfill job is associated with.",
+            "items": {
+              "description": "The team IDs that the backfill job is associated with.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables used to modify the query while it is parsed.",
+            "type": "object"
+          },
+          "vendorSinkIntegrationIds": {
+            "default": [],
+            "description": "Vendor integration IDs, if any, whose prior delivery the backfill skips. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
+            "items": {
+              "description": "Vendor integration IDs, if any, whose prior delivery the backfill skips. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
+              "pattern": "[a-z0-9]{1,13}",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "dataType",
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "sinks",
+          "start"
+        ],
+        "type": "object"
+      },
       "CreateRole": {
         "properties": {
           "description": {
@@ -2195,6 +3292,103 @@
         "required": [
           "name",
           "roleIds"
+        ],
+        "type": "object"
+      },
+      "CreateSpansBackfillJob": {
+        "description": "Parameters for a spans backfill.",
+        "properties": {
+          "dataType": {
+            "description": "Selects the built-in spans backfill template.",
+            "enum": [
+              "spans"
+            ],
+            "type": "string"
+          },
+          "datasetId": {
+            "description": "The dataset the backfill reads from and the dedup sinks track delivery in.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of the time interval to backfill.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "default": 500000,
+            "description": "Maximum number of rows to backfill. Default and max is 500,000. For spans this applies independently to each vendor source. A negative value means no limit.",
+            "example": 100000,
+            "format": "int32",
+            "maximum": 500000,
+            "type": "integer"
+          },
+          "name": {
+            "description": "Name of the backfill job. Must match the job name pattern [a-z0-9_]{1,128}.",
+            "example": "manual_backfill_1",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/EventPredicate"
+          },
+          "sinks": {
+            "description": "The vendor sink operations that deliver the backfilled events. Passed through verbatim, matching the sinks a rule action would carry.",
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "type": "array"
+          },
+          "sqlOperation": {
+            "$ref": "#/components/schemas/SqlOperation"
+          },
+          "start": {
+            "description": "Start of the time interval to backfill, inclusive.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "tags": {
+            "additionalProperties": {
+              "description": "Custom tags added to the backfill job for ease of search.",
+              "example": "{\"source\":\"manual\"}",
+              "type": "string"
+            },
+            "default": {},
+            "description": "Custom tags added to the backfill job for ease of search.",
+            "example": {
+              "source": "manual"
+            },
+            "type": "object"
+          },
+          "teamIds": {
+            "default": [],
+            "description": "The team IDs that the backfill job is associated with.",
+            "items": {
+              "description": "The team IDs that the backfill job is associated with.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables used to modify the query while it is parsed.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "dataType",
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "sinks",
+          "start"
         ],
         "type": "object"
       },
@@ -2312,6 +3506,39 @@
         ],
         "type": "object"
       },
+      "DataQuality": {
+        "properties": {
+          "embeddingFailures": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "incompleteContentSessions": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "labelFailures": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "metadataOnlyEvents": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "missingUsageSessions": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "truncatedEvents": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "warnings": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
       "DataWarehouse": {
         "description": "The payload containing integration data.",
         "type": "object",
@@ -2363,6 +3590,14 @@
             "readOnly": true,
             "type": "string"
           },
+          "apiKeys": {
+            "description": "The API keys configured for this integration (masked).",
+            "items": {
+              "$ref": "#/components/schemas/IngestKeyView"
+            },
+            "readOnly": true,
+            "type": "array"
+          },
           "appKey": {
             "description": "Masked App key for Datadog",
             "example": "**************ey",
@@ -2388,6 +3623,13 @@
             "description": "Filter to apply when reading any data from the Datadog API",
             "example": "service:my-service",
             "maxLength": 1024,
+            "minLength": 0,
+            "type": "string"
+          },
+          "sendKeyId": {
+            "description": "Identifier of the API key used to send data back to Datadog. Defaults to the only key when unset.",
+            "example": "k_7f3a",
+            "maxLength": 64,
             "minLength": 0,
             "type": "string"
           },
@@ -3403,7 +4645,6 @@
         ]
       },
       "EventPredicate": {
-        "description": "Predicate to filter which patterns get processed by the LLM. Only patterns matching this predicate will be sent to the LLM. If not specified, all patterns are processed.",
         "discriminator": {
           "mapping": {
             "and-predicate": "#/components/schemas/AndEventPredicate",
@@ -3414,10 +4655,6 @@
             "nrql-query": "#/components/schemas/NrqlQueryPredicate"
           },
           "propertyName": "type"
-        },
-        "example": {
-          "query": "service:auth",
-          "type": "datadog-query"
         },
         "oneOf": [
           {
@@ -3718,6 +4955,21 @@
             "example": "**************ey",
             "readOnly": true,
             "type": "string"
+          },
+          "integrationMaxTokens": {
+            "description": "Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 20,000,000.",
+            "example": 20000000,
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxTokensWindowHours": {
+            "description": "Length in hours of the UTC-aligned max tokens window; must be a divisor of 24. Null uses the default of 1.",
+            "example": 24,
+            "format": "int32",
+            "maximum": 24,
+            "minimum": 1,
+            "type": "integer"
           },
           "validateKeysOnSave": {
             "default": true,
@@ -4024,6 +5276,182 @@
             "description": "Reads raw log events using Grepr\u0027s internal query system from an Iceberg Table without pattern enrichment.",
             "enum": [
               "grepr-raw-log-source"
+            ],
+            "type": "string"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables that can be used to modify the query while parsed",
+            "example": {
+              "__application": "app1",
+              "__service": "service1"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "start",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
+      },
+      "GreprRawSpanSource": {
+        "properties": {
+          "datasetId": {
+            "description": "The ID of the dataset to read data from.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of time interval to query data for.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "hasError": {
+            "description": "Filter by error status",
+            "example": true,
+            "type": "boolean"
+          },
+          "isRootSpan": {
+            "description": "Filter by parent span ID (null for root spans only)",
+            "example": true,
+            "type": "boolean"
+          },
+          "limit": {
+            "default": 2500,
+            "description": "The maximum number of rows to process",
+            "format": "int32",
+            "type": "integer"
+          },
+          "maxDuration": {
+            "description": "Filter by maximum duration in nanoseconds",
+            "example": 5000000000,
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "minDuration": {
+            "description": "Filter by minimum duration in nanoseconds",
+            "example": 1000000000,
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Offset on the number of rows to process",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "operationNames": {
+            "default": [],
+            "description": "Filter by operation names (exact match)",
+            "example": [
+              "process-payment",
+              "validate-user"
+            ],
+            "items": {
+              "description": "Filter by operation names (exact match)",
+              "example": "[\"process-payment\",\"validate-user\"]",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "query": {
+            "$ref": "#/components/schemas/query"
+          },
+          "serviceNames": {
+            "default": [],
+            "description": "Filter by service names (exact match)",
+            "example": [
+              "checkout-service",
+              "user-service"
+            ],
+            "items": {
+              "description": "Filter by service names (exact match)",
+              "example": "[\"checkout-service\",\"user-service\"]",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sortOrder": {
+            "default": "ASCENDING",
+            "description": "The order in which the rows should be sorted by",
+            "enum": [
+              "ASCENDING",
+              "DESCENDING",
+              "UNSORTED"
+            ],
+            "type": "string"
+          },
+          "start": {
+            "description": "Start of time interval to query data for.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "traceIds": {
+            "default": [],
+            "description": "Filter by trace IDs (32-character hex format)",
+            "example": [
+              "6a33267c000000001001119764423b8d"
+            ],
+            "items": {
+              "description": "Filter by trace IDs (32-character hex format)",
+              "example": "[\"6a33267c000000001001119764423b8d\"]",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "traceSignatureIds": {
+            "default": [],
+            "description": "Filter by trace signature ids (exact match)",
+            "example": [
+              "3f2a9c1b7d4e5061829304a5b6c7d8e9",
+              "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+            ],
+            "items": {
+              "description": "Filter by trace signature ids (exact match)",
+              "example": "[\"3f2a9c1b7d4e5061829304a5b6c7d8e9\",\"a1b2c3d4e5f60718293a4b5c6d7e8f90\"]",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "traceSignatures": {
+            "default": [],
+            "description": "Filter by trace signature text (supports wildcards with *)",
+            "example": [
+              "user-login-*",
+              "checkout-*"
+            ],
+            "items": {
+              "description": "Filter by trace signature text (supports wildcards with *)",
+              "example": "[\"user-login-*\",\"checkout-*\"]",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": {
+            "description": "Reads spans using Grepr\u0027s internal query system out of an Iceberg Table for processing.",
+            "enum": [
+              "grepr-raw-span-source"
             ],
             "type": "string"
           },
@@ -4670,6 +6098,31 @@
         "title": "Inputs Schema",
         "type": "object"
       },
+      "IngestKeyView": {
+        "description": "The API keys configured for this integration (masked).",
+        "properties": {
+          "keyId": {
+            "description": "Opaque identifier of the API key",
+            "example": "k_7f3a",
+            "type": "string"
+          },
+          "label": {
+            "description": "User-supplied display name for the key, purely informational",
+            "type": "string"
+          },
+          "maskedValue": {
+            "description": "Masked value of the API key",
+            "example": "**************a1",
+            "type": "string"
+          },
+          "sendKey": {
+            "description": "Whether this key is used to send data back to the vendor",
+            "type": "boolean"
+          }
+        },
+        "readOnly": true,
+        "type": "object"
+      },
       "InstrumentationScope": {
         "description": "Instrumentation scope information describing the library/framework that produced the telemetry.",
         "properties": {
@@ -4762,6 +6215,28 @@
         },
         "type": "object"
       },
+      "Intent": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "miscellaneous": {
+            "type": "boolean"
+          },
+          "percentage": {
+            "format": "double",
+            "type": "number"
+          },
+          "sessions": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
       "InvestigationAction": {
         "properties": {
           "description": {
@@ -4817,11 +6292,13 @@
           },
           "status": {
             "enum": [
+              "QUEUED",
               "RUNNING",
               "STOPPED",
               "COMPLETED",
               "FAILED",
-              "CANCELLED"
+              "CANCELLED",
+              "DISCARDED"
             ],
             "type": "string"
           },
@@ -4861,11 +6338,13 @@
           },
           "status": {
             "enum": [
+              "QUEUED",
               "RUNNING",
               "STOPPED",
               "COMPLETED",
               "FAILED",
-              "CANCELLED"
+              "CANCELLED",
+              "DISCARDED"
             ],
             "type": "string"
           },
@@ -4877,9 +6356,6 @@
       },
       "InvestigationsList": {
         "properties": {
-          "hasMore": {
-            "type": "boolean"
-          },
           "investigations": {
             "$ref": "#/components/schemas/ItemsCollectionInvestigationSummary"
           },
@@ -4888,6 +6364,10 @@
             "type": "integer"
           },
           "start": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "total": {
             "format": "int32",
             "type": "integer"
           }
@@ -4933,6 +6413,18 @@
             },
             "type": "array",
             "uniqueItems": true
+          }
+        },
+        "type": "object"
+      },
+      "ItemsCollectionAgentSuggestion": {
+        "properties": {
+          "items": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AgentSuggestion"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -5450,6 +6942,10 @@
         "x-tags": [
           "Transforms"
         ]
+      },
+      "JsonNode": {
+        "description": "A partial templateInputs object to deep-merge into the pipeline\u0027s current inputs. Objects merge recursively, and an array of named objects (like input.parsers) merges by entry name, so entries you omit are kept. Scalars and arrays of non-objects replace whole.",
+        "type": "object"
       },
       "LatestReadingStrategy": {
         "allOf": [
@@ -6845,23 +8341,22 @@
         "description": "Schema for the logs backfill job graph.",
         "properties": {
           "backfillTimestampTag": {
-            "description": "ISO-8601 value stamped onto backfilled events as the grepr.backfilled.timestamp tag. Computed by the builder so the template stays free of time logic.",
+            "description": "ISO-8601 value stamped onto backfilled records as the grepr.backfilled.timestamp tag. Computed by the builder so the template stays free of time logic.",
             "example": "2023-01-01t01:00:00z",
             "type": "string"
           },
           "datasetId": {
-            "description": "The dataset the backfill reads from and the dedup sinks track delivery in.",
+            "description": "Dataset containing the raw records and delivery dedup state.",
             "pattern": "^[0-9a-z]{13}$",
             "type": "string"
           },
           "end": {
-            "description": "End of the time interval to backfill.",
-            "example": "2023-01-01T01:00:00Z",
+            "description": "End of the backfill interval.",
             "format": "date-time",
             "type": "string"
           },
           "limit": {
-            "description": "The maximum number of rows to backfill. A negative value means no limit.",
+            "description": "Maximum rows selected independently by each generated source.",
             "format": "int32",
             "type": "integer"
           },
@@ -6869,15 +8364,14 @@
             "$ref": "#/components/schemas/EventPredicate"
           },
           "sinks": {
-            "description": "The vendor sink operations to deliver the backfilled events to.",
+            "description": "The vendor sink operations that deliver the backfilled records.",
             "items": {
               "$ref": "#/components/schemas/Operation"
             },
             "type": "array"
           },
           "start": {
-            "description": "Start of the time interval to backfill.",
-            "example": "2023-01-01T00:00:00Z",
+            "description": "Start of the backfill interval.",
             "format": "date-time",
             "type": "string"
           },
@@ -6885,13 +8379,15 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/Any"
             },
-            "description": "Variables used to modify the query while it is parsed.",
+            "default": {},
+            "description": "Variables retained on the generated backfill source.",
             "type": "object"
           },
           "vendorSinkIntegrationIds": {
-            "description": "Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join (e.g. trace backfills).",
+            "default": [],
+            "description": "Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join.",
             "items": {
-              "description": "Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join (e.g. trace backfills).",
+              "description": "Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join.",
               "pattern": "^[0-9a-z]{13}$",
               "type": "string"
             },
@@ -7380,6 +8876,21 @@
         "required": [
           "masks"
         ],
+        "type": "object"
+      },
+      "MatrixCell": {
+        "properties": {
+          "intent": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "sessionsUsing": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
         "type": "object"
       },
       "MatrixData": {
@@ -8506,6 +10017,10 @@
         "description": "Base class of all Operations",
         "discriminator": {
           "mapping": {
+            "agent-log-processor": "#/components/schemas/AgentLogProcessor",
+            "agent-session-analytics": "#/components/schemas/AgentSessionAnalytics",
+            "agent-sessions-iceberg-table-source": "#/components/schemas/AgentSessionsIcebergTableSource",
+            "agent-span-processor": "#/components/schemas/AgentSpanProcessor",
             "cloudtrail-file-source": "#/components/schemas/CloudTrailLogsFileSource",
             "datadog-log-agent-source": "#/components/schemas/DatadogLogAgentSource",
             "datadog-log-cloud-source": "#/components/schemas/DatadogLogCloudSource",
@@ -8520,6 +10035,7 @@
             "grepr-llm-prompt-results-source": "#/components/schemas/GreprLlmPromptResultsSource",
             "grepr-metrics-source": "#/components/schemas/GreprMetricsSource",
             "grepr-raw-log-source": "#/components/schemas/GreprRawLogsSource",
+            "grepr-raw-span-source": "#/components/schemas/GreprRawSpanSource",
             "grepr-reducer-log-source": "#/components/schemas/GreprReducerLogSource",
             "grepr-uploaded-log-file-source": "#/components/schemas/GreprUploadedLogFileSource",
             "grok-parser": "#/components/schemas/GrokParser",
@@ -8554,12 +10070,14 @@
             "otlp-trace-sink": "#/components/schemas/OtlpTraceSink",
             "pattern-lookup-iceberg-table-sink": "#/components/schemas/PatternLookupIcebergTableSink",
             "pattern-matcher": "#/components/schemas/PatternMatcher",
+            "query-sink": "#/components/schemas/QuerySink",
             "reducer-logs-iceberg-table-source": "#/components/schemas/ReducerLogsQuerySource",
             "rule-engine": "#/components/schemas/LogsRuleEngine",
             "s3-file-source": "#/components/schemas/S3LogsFileSource",
             "span-tagger": "#/components/schemas/SpanTagger",
             "spans-backfill-iceberg-table-source": "#/components/schemas/SpansBackfillIcebergTableSource",
             "spans-dedup-iceberg-table-sink": "#/components/schemas/SpanDedupIcebergTableSink",
+            "spans-iceberg-table-sink": "#/components/schemas/SpansIcebergTableSink",
             "spans-sync-sink": "#/components/schemas/SpansSynchronousSink",
             "splunk-log-agent-source": "#/components/schemas/SplunkLogAgentSource",
             "splunk-log-http-source": "#/components/schemas/SplunkLogHttpSource",
@@ -8646,7 +10164,13 @@
             "$ref": "#/components/schemas/SpanDedupIcebergTableSink"
           },
           {
+            "$ref": "#/components/schemas/SpansIcebergTableSink"
+          },
+          {
             "$ref": "#/components/schemas/LogsIcebergTableSource"
+          },
+          {
+            "$ref": "#/components/schemas/AgentSessionsIcebergTableSource"
           },
           {
             "$ref": "#/components/schemas/LlmPromptResultsIcebergTableSource"
@@ -8730,6 +10254,9 @@
             "$ref": "#/components/schemas/SpansSynchronousSink"
           },
           {
+            "$ref": "#/components/schemas/QuerySink"
+          },
+          {
             "$ref": "#/components/schemas/DiscardingSink"
           },
           {
@@ -8743,6 +10270,9 @@
           },
           {
             "$ref": "#/components/schemas/GreprRawLogsSource"
+          },
+          {
+            "$ref": "#/components/schemas/GreprRawSpanSource"
           },
           {
             "$ref": "#/components/schemas/GreprLlmPromptResultsSource"
@@ -8803,6 +10333,15 @@
           },
           {
             "$ref": "#/components/schemas/EntityContextAggregation"
+          },
+          {
+            "$ref": "#/components/schemas/AgentSessionAnalytics"
+          },
+          {
+            "$ref": "#/components/schemas/AgentLogProcessor"
+          },
+          {
+            "$ref": "#/components/schemas/AgentSpanProcessor"
           }
         ],
         "properties": {
@@ -9693,6 +11232,63 @@
         ],
         "type": "object"
       },
+      "PipelineChangeRequest": {
+        "properties": {
+          "autoApply": {
+            "description": "Whether to apply the change directly (true) or record it as a suggestion for a human to review (false). This expresses intent only: the server enforces the proposing agent\u0027s approval mode, so a suggest-only agent\u0027s change is always recorded as a suggestion no matter what is passed here.",
+            "type": "boolean"
+          },
+          "changeDescription": {
+            "description": "One or two sentences a human reviewer reads first: what the change does and why. Required when the change is recorded as a suggestion.",
+            "type": "string"
+          },
+          "changeId": {
+            "description": "A caller-chosen idempotency key for this change, unique within the investigation. Resending the same changeId records one suggestion rather than a duplicate, so a retried call is safe. Required when the change is recorded as a suggestion.",
+            "type": "string"
+          },
+          "investigationId": {
+            "description": "The investigation proposing the change, identifying the agent whose approval mode governs the request. Server-supplied on the MCP transport, where an agent sandbox\u0027s provenance is bound to the connection: anything sent here is ignored and replaced. Without provenance the change is applied under the caller\u0027s own permission.",
+            "type": "string"
+          },
+          "samples": {
+            "default": [],
+            "description": "Sample log events the changed operations are verified against before anything is applied. Required when the change adds or edits a Grok rule, so the new rule can be run against a real log.",
+            "items": {
+              "$ref": "#/components/schemas/LogEvent"
+            },
+            "type": "array"
+          },
+          "templateInputsPatch": {
+            "$ref": "#/components/schemas/JsonNode"
+          }
+        },
+        "required": [
+          "templateInputsPatch"
+        ],
+        "type": "object"
+      },
+      "PipelineChangeResult": {
+        "properties": {
+          "appliedVersion": {
+            "description": "The new job version the change was applied as. Applying restarts the pipeline from a savepoint, so the new version reaches its desired state asynchronously.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "findings": {
+            "default": [],
+            "description": "Verification findings that blocked the change. When present the pipeline is untouched: fix the findings and submit again.",
+            "items": {
+              "$ref": "#/components/schemas/ChangeFinding"
+            },
+            "type": "array"
+          },
+          "suggestionId": {
+            "description": "The agent suggestion the change was recorded as. The pipeline is NOT updated and will not restart, so there is nothing to wait for and the change must not be resubmitted; a human reviews and applies it from the pipeline page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "PipelineRef": {
         "properties": {
           "id": {
@@ -10016,6 +11612,59 @@
         },
         "type": "object"
       },
+      "QuerySink": {
+        "properties": {
+          "columns": {
+            "default": [],
+            "description": "Ordered CSV column names; required only for CSV artifacts",
+            "items": {
+              "description": "Ordered CSV column names; required only for CSV artifacts",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "format": {
+            "default": "COMPRESSED_JSON",
+            "description": "Artifact serialization format",
+            "enum": [
+              "COMPRESSED_JSON",
+              "JSON_LINES",
+              "CSV"
+            ],
+            "type": "string"
+          },
+          "integrationId": {
+            "description": "The integration to use for writing to the file",
+            "type": "string"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "path": {
+            "description": "Destination path relative to the selected warehouse root",
+            "type": "string"
+          },
+          "type": {
+            "description": "Write a bounded artifact to a warehouse provided by the given integration id.",
+            "enum": [
+              "query-sink"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "integrationId",
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sinks"
+        ]
+      },
       "Rag": {
         "description": "RAG workflow that enriches the prompt with similar historical patterns from a vector store before sending to the LLM.",
         "properties": {
@@ -10117,7 +11766,6 @@
                 "SEARCH_ICEBERG_SOURCE",
                 "QUERY_JOBS",
                 "AUTH0_SSO_CONNECTION",
-                "DATASET_TABLE_CONFIG",
                 "UNKNOWN"
               ],
               "type": "string"
@@ -10975,6 +12623,11 @@
             "type": "integer"
           },
           "maxDataWarehouseIntegrations": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxDatadogApiKeysPerIntegration": {
             "format": "int32",
             "minimum": 1,
             "type": "integer"
@@ -12393,6 +14046,24 @@
         },
         "type": "object"
       },
+      "SetApiKeysRequest": {
+        "description": "Replaces the full set of API keys for a Datadog integration in one atomic write",
+        "properties": {
+          "keys": {
+            "description": "The complete desired set of API keys",
+            "items": {
+              "$ref": "#/components/schemas/ApiKey"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "keys"
+        ],
+        "type": "object"
+      },
       "SeverityNode": {
         "properties": {
           "comparator": {
@@ -12433,6 +14104,21 @@
       },
       "ShardingConfig": {
         "description": "Configuration for dynamic partitioning when enabled.",
+        "type": "object"
+      },
+      "SiblingMergeRule": {
+        "description": "Merges sibling spans that share an identical subtree signature and match a CompleteSpan SQL predicate. The earliest-start match is kept (with its children); the other matching same-signature siblings are removed and counted under grepr.merged_siblings.",
+        "properties": {
+          "predicate": {
+            "description": "Boolean SQL expression evaluated per span over the CompleteSpan schema. Uses the same fields and functions as head sampling predicates: top-level columns such as servicename, nested fields such as span.operationName, and VARIANT_VALUE(...) for span/resource attributes.",
+            "example": "span.operationName LIKE \u0027GET /health%\u0027 OR VARIANT_VALUE(span.attributes, \u0027$[\"http.status_code\"]\u0027, \u0027INT\u0027) \u003d 200",
+            "type": "string"
+          }
+        },
+        "required": [
+          "predicate"
+        ],
+        "title": "Sibling Merge Rules",
         "type": "object"
       },
       "SignupRequest": {
@@ -12688,6 +14374,21 @@
           "Sinks"
         ]
       },
+      "SpanDropRule": {
+        "description": "Drops spans matching a CompleteSpan SQL predicate, along with their descendants.",
+        "properties": {
+          "predicate": {
+            "description": "Boolean SQL expression evaluated per span over the CompleteSpan schema. Uses the same fields and functions as head sampling predicates: top-level columns such as servicename, nested fields such as span.operationName, and VARIANT_VALUE(...) for span/resource attributes.",
+            "example": "span.operationName LIKE \u0027GET /health%\u0027 OR VARIANT_VALUE(span.attributes, \u0027$[\"http.status_code\"]\u0027, \u0027INT\u0027) \u003d 200",
+            "type": "string"
+          }
+        },
+        "required": [
+          "predicate"
+        ],
+        "title": "Span Drop Rules",
+        "type": "object"
+      },
       "SpanEvent": {
         "description": "A timestamped event within a span.",
         "properties": {
@@ -12821,34 +14522,10 @@
             "format": "date-time",
             "type": "string"
           },
-          "hasError": {
-            "description": "Filter by error status",
-            "example": true,
-            "type": "boolean"
-          },
-          "isRootSpan": {
-            "description": "Filter by parent span ID (null for root spans only)",
-            "example": true,
-            "type": "boolean"
-          },
           "limit": {
             "default": 2500,
             "description": "The maximum number of rows to process",
             "format": "int32",
-            "type": "integer"
-          },
-          "maxDuration": {
-            "description": "Filter by maximum duration in nanoseconds",
-            "example": 5000000000,
-            "format": "int64",
-            "minimum": 0,
-            "type": "integer"
-          },
-          "minDuration": {
-            "description": "Filter by minimum duration in nanoseconds",
-            "example": 1000000000,
-            "format": "int64",
-            "minimum": 0,
             "type": "integer"
           },
           "name": {
@@ -12863,36 +14540,8 @@
             "minimum": 0,
             "type": "integer"
           },
-          "operationNames": {
-            "default": [],
-            "description": "Filter by operation names (exact match)",
-            "example": [
-              "process-payment",
-              "validate-user"
-            ],
-            "items": {
-              "description": "Filter by operation names (exact match)",
-              "example": "[\"process-payment\",\"validate-user\"]",
-              "type": "string"
-            },
-            "type": "array"
-          },
           "query": {
             "$ref": "#/components/schemas/query"
-          },
-          "serviceNames": {
-            "default": [],
-            "description": "Filter by service names (exact match)",
-            "example": [
-              "checkout-service",
-              "user-service"
-            ],
-            "items": {
-              "description": "Filter by service names (exact match)",
-              "example": "[\"checkout-service\",\"user-service\"]",
-              "type": "string"
-            },
-            "type": "array"
           },
           "sortOrder": {
             "default": "ASCENDING",
@@ -12909,33 +14558,6 @@
             "example": "2023-01-01T00:00:00Z",
             "format": "date-time",
             "type": "string"
-          },
-          "traceIds": {
-            "default": [],
-            "description": "Filter by trace IDs (32-character hex format)",
-            "example": [
-              "6a33267c000000001001119764423b8d"
-            ],
-            "items": {
-              "description": "Filter by trace IDs (32-character hex format)",
-              "example": "[\"6a33267c000000001001119764423b8d\"]",
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "traceSignatures": {
-            "default": [],
-            "description": "Filter by trace signatures (supports wildcards with *)",
-            "example": [
-              "user-login-*",
-              "checkout-*"
-            ],
-            "items": {
-              "description": "Filter by trace signatures (supports wildcards with *)",
-              "example": "[\"user-login-*\",\"checkout-*\"]",
-              "type": "string"
-            },
-            "type": "array"
           },
           "type": {
             "description": "Reads spans from an Iceberg table for backfill, skipping spans already sent to the given vendor sinks (idempotent backfill source).",
@@ -12979,6 +14601,98 @@
         "type": "object",
         "x-tags": [
           "Sources"
+        ]
+      },
+      "SpansBackfillTemplateInput": {
+        "description": "Schema for the spans backfill job graph.",
+        "properties": {
+          "backfillTimestampTag": {
+            "description": "ISO-8601 value stamped onto backfilled records as the grepr.backfilled.timestamp tag. Computed by the builder so the template stays free of time logic.",
+            "example": "2023-01-01t01:00:00z",
+            "type": "string"
+          },
+          "datasetId": {
+            "description": "Dataset containing the raw records and delivery dedup state.",
+            "pattern": "^[0-9a-z]{13}$",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of the backfill interval.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Maximum rows selected independently by each generated source.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "query": {
+            "$ref": "#/components/schemas/EventPredicate"
+          },
+          "sinks": {
+            "description": "The vendor sink operations that deliver the backfilled records.",
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "type": "array"
+          },
+          "sqlOperation": {
+            "$ref": "#/components/schemas/SqlOperation"
+          },
+          "start": {
+            "description": "Start of the backfill interval.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables retained on the generated backfill source.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "backfillTimestampTag",
+          "datasetId",
+          "end",
+          "limit",
+          "query",
+          "sinks",
+          "start"
+        ],
+        "title": "Inputs Schema",
+        "type": "object"
+      },
+      "SpansIcebergTableSink": {
+        "properties": {
+          "datasetId": {
+            "description": "The id of the dataset to write to",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "type": {
+            "description": "Writes individual spans to the raw spans Iceberg table.",
+            "enum": [
+              "spans-iceberg-table-sink"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "datasetId",
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sinks"
         ]
       },
       "SpansSynchronousSink": {
@@ -13535,6 +15249,29 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "StartInvestigationErrorResponse": {
+        "properties": {
+          "code": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "StartInvestigationRejectedResponse": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/StartInvestigationResponse"
+          },
+          {
+            "$ref": "#/components/schemas/StartInvestigationErrorResponse"
+          }
+        ],
         "type": "object"
       },
       "StartInvestigationRequest": {
@@ -14938,6 +16675,41 @@
         ],
         "type": "object"
       },
+      "Tool": {
+        "properties": {
+          "calls": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "costReportingComplete": {
+            "type": "boolean"
+          },
+          "durationMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "errors": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "reportedCostUsd": {
+            "format": "double",
+            "type": "number"
+          },
+          "resultBytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "sessionsUsing": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
       "ToolDescriptor": {
         "properties": {
           "description": {
@@ -14945,6 +16717,82 @@
           },
           "name": {
             "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Totals": {
+        "properties": {
+          "analyzedSessions": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "cacheReadTokens": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "cacheWriteTokens": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "costReportingComplete": {
+            "type": "boolean"
+          },
+          "exportedSessions": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "inputTokens": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "matchingSessions": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "miscellaneousSessions": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "modelCalls": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "namedGroupSessions": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "outputTokens": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reasoningTokens": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reportedCostUsd": {
+            "format": "double",
+            "type": "number"
+          },
+          "sessionDurationMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "toolCalls": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "toolDurationMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "toolErrors": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "toolResultBytes": {
+            "format": "int64",
+            "type": "integer"
           }
         },
         "type": "object"
@@ -15076,6 +16924,24 @@
             "example": "operation_name",
             "pattern": "[a-z0-9_]{1,128}",
             "type": "string"
+          },
+          "siblingMergeRules": {
+            "default": [],
+            "description": "Rules that merge same-signature sibling spans matching a predicate, after tail sampling decisions. The earliest-start match is kept with its children; the other matching same-signature siblings are removed and counted under grepr.merged_siblings. Requires tail sampling to be configured.",
+            "items": {
+              "$ref": "#/components/schemas/SiblingMergeRule"
+            },
+            "title": "Sibling Merge Rules",
+            "type": "array"
+          },
+          "spanDropRules": {
+            "default": [],
+            "description": "Rules that drop matching spans and their descendants after tail sampling decisions. Requires tail sampling to be configured.",
+            "items": {
+              "$ref": "#/components/schemas/SpanDropRule"
+            },
+            "title": "Span Drop Rules",
+            "type": "array"
           },
           "spanHeadSamplingRules": {
             "default": [],
@@ -15404,15 +17270,29 @@
             },
             "type": "array"
           },
+          "traceSignatureIds": {
+            "default": [],
+            "description": "Filter by trace signature ids (exact match)",
+            "example": [
+              "3f2a9c1b7d4e5061829304a5b6c7d8e9",
+              "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+            ],
+            "items": {
+              "description": "Filter by trace signature ids (exact match)",
+              "example": "[\"3f2a9c1b7d4e5061829304a5b6c7d8e9\",\"a1b2c3d4e5f60718293a4b5c6d7e8f90\"]",
+              "type": "string"
+            },
+            "type": "array"
+          },
           "traceSignatures": {
             "default": [],
-            "description": "Filter by trace signatures (supports wildcards with *)",
+            "description": "Filter by trace signature text (supports wildcards with *)",
             "example": [
               "user-login-*",
               "checkout-*"
             ],
             "items": {
-              "description": "Filter by trace signatures (supports wildcards with *)",
+              "description": "Filter by trace signature text (supports wildcards with *)",
               "example": "[\"user-login-*\",\"checkout-*\"]",
               "type": "string"
             },
@@ -17175,10 +19055,432 @@
         ]
       }
     },
+    "/v1/agent-session-analytics/jobs": {
+      "get": {
+        "operationId": "list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "datasetId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSessionAnalyticsPage"
+                }
+              }
+            },
+            "description": "Analytics runs retrieved"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "tags": [
+          "Agent Session Analytics"
+        ]
+      },
+      "post": {
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAgentSessionAnalyticsJob"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSessionAnalyticsJob"
+                }
+              }
+            },
+            "description": "Analytics run created"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "tags": [
+          "Agent Session Analytics"
+        ]
+      }
+    },
+    "/v1/agent-session-analytics/jobs/{jobId}": {
+      "delete": {
+        "operationId": "delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Analytics run cancelled"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "tags": [
+          "Agent Session Analytics"
+        ]
+      },
+      "get": {
+        "operationId": "get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSessionAnalyticsJob"
+                }
+              }
+            },
+            "description": "Analytics run retrieved"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "tags": [
+          "Agent Session Analytics"
+        ]
+      }
+    },
+    "/v1/agent-session-analytics/jobs/{jobId}/download": {
+      "get": {
+        "operationId": "download",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSessionAnalyticsDownload"
+                }
+              }
+            },
+            "description": "Analytics CSV download retrieved"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "tags": [
+          "Agent Session Analytics"
+        ]
+      }
+    },
+    "/v1/agent-suggestions": {
+      "get": {
+        "description": "Returns the organization\u0027s agent suggestions, newest first, optionally filtered by pipeline, review status, and proposing agent.",
+        "operationId": "list_1",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "jobId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "enum": [
+                "PENDING",
+                "APPLIED",
+                "REJECTED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "default": 0,
+              "format": "int32",
+              "maximum": 21474836,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "default": 25,
+              "format": "int32",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSuggestionsList"
+                }
+              }
+            },
+            "description": "Suggestions retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "List agent suggestions",
+        "tags": [
+          "Agent Suggestions"
+        ]
+      }
+    },
+    "/v1/agent-suggestions/{id}": {
+      "get": {
+        "description": "Returns one agent suggestion, including the template-inputs patch, the job version it was proposed against, and the sample events it was verified with.",
+        "operationId": "get_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSuggestion"
+                }
+              }
+            },
+            "description": "Suggestion retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Suggestion not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get an agent suggestion",
+        "tags": [
+          "Agent Suggestions"
+        ]
+      }
+    },
+    "/v1/agent-suggestions/{id}/apply": {
+      "post": {
+        "description": "Re-verifies the suggestion\u0027s template-inputs patch against the pipeline\u0027s current version and applies it as a new job version, marking the suggestion APPLIED. The resolution is compare-and-set on the pending status: a reviewer who loses a race to another gets 409 rather than overwriting it. Findings mean the pipeline changed since the suggestion was recorded; nothing is applied and the suggestion stays PENDING. Applying restarts the pipeline from a savepoint.",
+        "operationId": "apply",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSuggestionApplyResult"
+                }
+              }
+            },
+            "description": "Suggestion applied, or rejected by verification with findings"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Suggestion not found"
+          },
+          "409": {
+            "description": "Suggestion is no longer pending"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Apply a pending agent suggestion",
+        "tags": [
+          "Agent Suggestions"
+        ]
+      }
+    },
+    "/v1/agent-suggestions/{id}/reject": {
+      "post": {
+        "description": "Marks a pending suggestion REJECTED, recording the reviewer. Returns 409 when the suggestion was already resolved by another reviewer.",
+        "operationId": "reject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSuggestion"
+                }
+              }
+            },
+            "description": "Suggestion rejected successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Suggestion not found"
+          },
+          "409": {
+            "description": "Suggestion is no longer pending"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Reject a pending agent suggestion",
+        "tags": [
+          "Agent Suggestions"
+        ]
+      }
+    },
     "/v1/agents": {
       "get": {
         "description": "Returns every agent configured for your organization, newest first.",
-        "operationId": "list",
+        "operationId": "list_2",
         "responses": {
           "200": {
             "content": {
@@ -17212,7 +19514,7 @@
       },
       "post": {
         "description": "Creates an agent with the given model configuration, tools and prompt.",
-        "operationId": "create",
+        "operationId": "create_1",
         "requestBody": {
           "content": {
             "application/json": {
@@ -17329,7 +19631,7 @@
     "/v1/agents/{id}": {
       "delete": {
         "description": "Soft-deletes an agent. Returns 409 while the agent is still subscribed to any pipeline; unsubscribe it first.",
-        "operationId": "delete",
+        "operationId": "delete_1",
         "parameters": [
           {
             "in": "path",
@@ -17366,7 +19668,7 @@
       },
       "get": {
         "description": "Returns a single agent by id.",
-        "operationId": "get",
+        "operationId": "get_2",
         "parameters": [
           {
             "in": "path",
@@ -17502,6 +19804,17 @@
               "minimum": 1,
               "type": "integer"
             }
+          },
+          {
+            "description": "Investigation statuses to include, e.g. QUEUED, RUNNING, COMPLETED; repeat for multiple. Absent or empty for all statuses.",
+            "in": "query",
+            "name": "statuses",
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
           }
         ],
         "responses": {
@@ -17528,6 +19841,52 @@
           }
         ],
         "summary": "List an agent\u0027s investigations",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
+    "/v1/agents/{id}/max-tokens-status": {
+      "get": {
+        "description": "Returns whether a new investigation could start for the agent right now, the max-tokens limit blocking it when not, and when the current max-tokens window resets.",
+        "operationId": "maxTokensStatus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentMaxTokensStatus"
+                }
+              }
+            },
+            "description": "Max-tokens status retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Agent not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get an agent\u0027s max-tokens admission status",
         "tags": [
           "Agents"
         ]
@@ -18633,7 +20992,7 @@
     "/v1/integrations/anthropic": {
       "get": {
         "description": "Get all Anthropic integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_1",
+        "operationId": "list_3",
         "responses": {
           "200": {
             "content": {
@@ -18664,7 +21023,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Anthropic.",
-        "operationId": "create_1",
+        "operationId": "create_2",
         "requestBody": {
           "content": {
             "application/json": {
@@ -18716,7 +21075,7 @@
     "/v1/integrations/anthropic/{id}": {
       "delete": {
         "description": "Deletes an Anthropic integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_1",
+        "operationId": "delete_2",
         "parameters": [
           {
             "in": "path",
@@ -18750,7 +21109,7 @@
       },
       "get": {
         "description": "Get an Anthropic integration by ID.",
-        "operationId": "get_1",
+        "operationId": "get_3",
         "parameters": [
           {
             "in": "path",
@@ -18906,7 +21265,7 @@
     "/v1/integrations/data-warehouse": {
       "get": {
         "description": "Retrieves all Data Warehouse integrations for the organization.",
-        "operationId": "list_3",
+        "operationId": "list_5",
         "responses": {
           "200": {
             "content": {
@@ -18937,7 +21296,7 @@
       },
       "post": {
         "description": "Creates a new Data Warehouse integration for connecting to Grepr S3 bucket.",
-        "operationId": "create_3",
+        "operationId": "create_4",
         "requestBody": {
           "content": {
             "application/json": {
@@ -18982,7 +21341,7 @@
     "/v1/integrations/data-warehouse/{id}": {
       "delete": {
         "description": "Deletes a Data Warehouse integration if it exists. No-op otherwise.",
-        "operationId": "delete_3",
+        "operationId": "delete_4",
         "parameters": [
           {
             "in": "path",
@@ -19016,7 +21375,7 @@
       },
       "get": {
         "description": "Retrieves a Data Warehouse integration.",
-        "operationId": "get_3",
+        "operationId": "get_5",
         "parameters": [
           {
             "in": "path",
@@ -19115,7 +21474,7 @@
     "/v1/integrations/datadog": {
       "get": {
         "description": "Get all Datadog integrations for your organization. This will contain masked keys if present.",
-        "operationId": "list_2",
+        "operationId": "list_4",
         "responses": {
           "200": {
             "content": {
@@ -19146,7 +21505,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Datadog.",
-        "operationId": "create_2",
+        "operationId": "create_3",
         "requestBody": {
           "content": {
             "application/json": {
@@ -19198,7 +21557,7 @@
     "/v1/integrations/datadog-mcp": {
       "get": {
         "description": "Get all Datadog MCP server integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_6",
+        "operationId": "list_8",
         "responses": {
           "200": {
             "content": {
@@ -19229,7 +21588,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a Datadog MCP server.",
-        "operationId": "create_6",
+        "operationId": "create_7",
         "requestBody": {
           "content": {
             "application/json": {
@@ -19281,7 +21640,7 @@
     "/v1/integrations/datadog-mcp/{id}": {
       "delete": {
         "description": "Deletes a Datadog MCP integration. This will delete the associated API keys as well. No-op if already deleted.",
-        "operationId": "delete_6",
+        "operationId": "delete_7",
         "parameters": [
           {
             "in": "path",
@@ -19315,7 +21674,7 @@
       },
       "get": {
         "description": "Get a Datadog MCP integration by ID.",
-        "operationId": "get_6",
+        "operationId": "get_8",
         "parameters": [
           {
             "in": "path",
@@ -19549,7 +21908,7 @@
     "/v1/integrations/datadog/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to Datadog. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_2",
+        "operationId": "delete_3",
         "parameters": [
           {
             "in": "path",
@@ -19583,7 +21942,7 @@
       },
       "get": {
         "description": "Get an integration to connect to Datadog.",
-        "operationId": "get_2",
+        "operationId": "get_4",
         "parameters": [
           {
             "in": "path",
@@ -19725,6 +22084,64 @@
           }
         ],
         "summary": "Creates or updates a Datadog integration api key",
+        "tags": [
+          "Datadog Integration"
+        ]
+      }
+    },
+    "/v1/integrations/datadog/{id}/api-keys": {
+      "put": {
+        "description": "Replaces the integration\u0027s entire set of API keys in one atomic write. Existing keys are referenced by id (kept or rotated), new keys carry only a value, and omitted keys are removed; one key is marked as the send key used to write data back to Datadog. If any key is rejected the existing set is left unchanged. All keys are accepted for inbound telemetry. Requires the organization to have multiple Datadog API keys enabled. Adding, removing, relabeling, or rotating a key other than the send key is allowed while the integration\u0027s pipeline is running; a change that affects the send key (which key it is, or its value) requires the pipeline to be stopped, since that key is baked into the running Flink job.",
+        "operationId": "setApiKeys",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetApiKeysRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadDatadog"
+                }
+              }
+            },
+            "description": "API keys updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration or a referenced key not found."
+          },
+          "409": {
+            "description": "The key count exceeds the limit, or the change affects the send key while the integration is in use by a running pipeline."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Set a Datadog integration\u0027s API keys",
         "tags": [
           "Datadog Integration"
         ]
@@ -19915,11 +22332,11 @@
             }
           },
           {
-            "description": "Page size (100-2000, default: 50)",
+            "description": "Page size (100-2000, default: 100)",
             "in": "query",
             "name": "pageSize",
             "schema": {
-              "default": 50,
+              "default": 100,
               "format": "int32",
               "maximum": 2000,
               "minimum": 100,
@@ -20022,7 +22439,7 @@
     "/v1/integrations/gemini": {
       "get": {
         "description": "Get all Google Gemini integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_5",
+        "operationId": "list_7",
         "responses": {
           "200": {
             "content": {
@@ -20053,7 +22470,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Google Gemini.",
-        "operationId": "create_5",
+        "operationId": "create_6",
         "requestBody": {
           "content": {
             "application/json": {
@@ -20105,7 +22522,7 @@
     "/v1/integrations/gemini/{id}": {
       "delete": {
         "description": "Deletes a Gemini integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_5",
+        "operationId": "delete_6",
         "parameters": [
           {
             "in": "path",
@@ -20139,7 +22556,7 @@
       },
       "get": {
         "description": "Get a Gemini integration by ID.",
-        "operationId": "get_5",
+        "operationId": "get_7",
         "parameters": [
           {
             "in": "path",
@@ -20295,7 +22712,7 @@
     "/v1/integrations/github-mcp": {
       "get": {
         "description": "Get all GitHub MCP server integrations for your organization. This will contain masked tokens if present.",
-        "operationId": "list_7",
+        "operationId": "list_9",
         "responses": {
           "200": {
             "content": {
@@ -20326,7 +22743,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a GitHub MCP server.",
-        "operationId": "create_7",
+        "operationId": "create_8",
         "requestBody": {
           "content": {
             "application/json": {
@@ -20378,7 +22795,7 @@
     "/v1/integrations/github-mcp/{id}": {
       "delete": {
         "description": "Deletes a GitHub MCP integration. This will delete the associated token as well. No-op if already deleted.",
-        "operationId": "delete_7",
+        "operationId": "delete_8",
         "parameters": [
           {
             "in": "path",
@@ -20412,7 +22829,7 @@
       },
       "get": {
         "description": "Get a GitHub MCP integration by ID.",
-        "operationId": "get_7",
+        "operationId": "get_9",
         "parameters": [
           {
             "in": "path",
@@ -20562,7 +22979,7 @@
     "/v1/integrations/newrelic": {
       "get": {
         "description": "Get all NewRelic integrations.",
-        "operationId": "list_10",
+        "operationId": "list_12",
         "responses": {
           "200": {
             "content": {
@@ -20593,7 +23010,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to NewRelic.",
-        "operationId": "create_10",
+        "operationId": "create_11",
         "requestBody": {
           "content": {
             "application/json": {
@@ -20681,7 +23098,7 @@
     "/v1/integrations/newrelic/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to NewRelic. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_10",
+        "operationId": "delete_11",
         "parameters": [
           {
             "in": "path",
@@ -20715,7 +23132,7 @@
       },
       "get": {
         "description": "Get an integration to connect to NewRelic.",
-        "operationId": "get_10",
+        "operationId": "get_12",
         "parameters": [
           {
             "in": "path",
@@ -20877,11 +23294,11 @@
             }
           },
           {
-            "description": "Page size (100-2000, default: 50)",
+            "description": "Page size (100-2000, default: 100)",
             "in": "query",
             "name": "pageSize",
             "schema": {
-              "default": 50,
+              "default": 100,
               "format": "int32",
               "maximum": 2000,
               "minimum": 100,
@@ -21032,7 +23449,7 @@
     "/v1/integrations/openai": {
       "get": {
         "description": "Get all OpenAI integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_11",
+        "operationId": "list_13",
         "responses": {
           "200": {
             "content": {
@@ -21063,7 +23480,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to OpenAI.",
-        "operationId": "create_11",
+        "operationId": "create_12",
         "requestBody": {
           "content": {
             "application/json": {
@@ -21115,7 +23532,7 @@
     "/v1/integrations/openai/{id}": {
       "delete": {
         "description": "Deletes an OpenAI integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_11",
+        "operationId": "delete_12",
         "parameters": [
           {
             "in": "path",
@@ -21149,7 +23566,7 @@
       },
       "get": {
         "description": "Get an OpenAI integration by ID.",
-        "operationId": "get_11",
+        "operationId": "get_13",
         "parameters": [
           {
             "in": "path",
@@ -21299,7 +23716,7 @@
     "/v1/integrations/otlp": {
       "get": {
         "description": "Get all OTLP integrations.",
-        "operationId": "list_12",
+        "operationId": "list_14",
         "responses": {
           "200": {
             "content": {
@@ -21330,7 +23747,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to OTLP.",
-        "operationId": "create_12",
+        "operationId": "create_13",
         "requestBody": {
           "content": {
             "application/json": {
@@ -21382,7 +23799,7 @@
     "/v1/integrations/otlp/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to OTLP. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_12",
+        "operationId": "delete_13",
         "parameters": [
           {
             "in": "path",
@@ -21416,7 +23833,7 @@
       },
       "get": {
         "description": "Get an integration to connect to OTLP.",
-        "operationId": "get_12",
+        "operationId": "get_14",
         "parameters": [
           {
             "in": "path",
@@ -21668,7 +24085,7 @@
     "/v1/integrations/pagerduty-mcp": {
       "get": {
         "description": "Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_8",
+        "operationId": "list_10",
         "responses": {
           "200": {
             "content": {
@@ -21699,7 +24116,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a PagerDuty MCP server.",
-        "operationId": "create_8",
+        "operationId": "create_9",
         "requestBody": {
           "content": {
             "application/json": {
@@ -21751,7 +24168,7 @@
     "/v1/integrations/pagerduty-mcp/{id}": {
       "delete": {
         "description": "Deletes a PagerDuty MCP integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_8",
+        "operationId": "delete_9",
         "parameters": [
           {
             "in": "path",
@@ -21785,7 +24202,7 @@
       },
       "get": {
         "description": "Get a PagerDuty MCP integration by ID.",
-        "operationId": "get_8",
+        "operationId": "get_10",
         "parameters": [
           {
             "in": "path",
@@ -21934,7 +24351,7 @@
     },
     "/v1/integrations/s3-data-warehouse": {
       "get": {
-        "operationId": "list_4",
+        "operationId": "list_6",
         "responses": {
           "200": {
             "content": {
@@ -21965,7 +24382,7 @@
       },
       "post": {
         "description": "Creates an external S3 Data Warehouse integration",
-        "operationId": "create_4",
+        "operationId": "create_5",
         "requestBody": {
           "content": {
             "application/json": {
@@ -22143,7 +24560,7 @@
     "/v1/integrations/s3-data-warehouse/{id}": {
       "delete": {
         "description": "Deletes an external S3 Data Warehouse integration if it exists. No-op otherwise.",
-        "operationId": "delete_4",
+        "operationId": "delete_5",
         "parameters": [
           {
             "in": "path",
@@ -22177,7 +24594,7 @@
       },
       "get": {
         "description": "Gets an external S3 Data Warehouse integration",
-        "operationId": "get_4",
+        "operationId": "get_6",
         "parameters": [
           {
             "in": "path",
@@ -22282,7 +24699,7 @@
     "/v1/integrations/s3-vector-index": {
       "get": {
         "description": "Retrieves all S3 Vector Index integrations for the organization.",
-        "operationId": "list_13",
+        "operationId": "list_15",
         "responses": {
           "200": {
             "content": {
@@ -22313,7 +24730,7 @@
       },
       "post": {
         "description": "Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.",
-        "operationId": "create_13",
+        "operationId": "create_14",
         "requestBody": {
           "content": {
             "application/json": {
@@ -22358,7 +24775,7 @@
     "/v1/integrations/s3-vector-index/{id}": {
       "delete": {
         "description": "Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn\u0027t exist.",
-        "operationId": "delete_13",
+        "operationId": "delete_14",
         "parameters": [
           {
             "in": "path",
@@ -22392,7 +24809,7 @@
       },
       "get": {
         "description": "Retrieves an S3 Vector Index integration.",
-        "operationId": "get_13",
+        "operationId": "get_15",
         "parameters": [
           {
             "in": "path",
@@ -22491,7 +24908,7 @@
     "/v1/integrations/slack-mcp": {
       "get": {
         "description": "Get all Slack MCP server integrations for your organization. This will contain masked tokens if present.",
-        "operationId": "list_9",
+        "operationId": "list_11",
         "responses": {
           "200": {
             "content": {
@@ -22522,7 +24939,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a Slack MCP server.",
-        "operationId": "create_9",
+        "operationId": "create_10",
         "requestBody": {
           "content": {
             "application/json": {
@@ -22574,7 +24991,7 @@
     "/v1/integrations/slack-mcp/{id}": {
       "delete": {
         "description": "Deletes a Slack MCP integration. This will delete the associated token as well. No-op if already deleted.",
-        "operationId": "delete_9",
+        "operationId": "delete_10",
         "parameters": [
           {
             "in": "path",
@@ -22608,7 +25025,7 @@
       },
       "get": {
         "description": "Get a Slack MCP integration by ID.",
-        "operationId": "get_9",
+        "operationId": "get_11",
         "parameters": [
           {
             "in": "path",
@@ -22758,7 +25175,7 @@
     "/v1/integrations/splunk": {
       "get": {
         "description": "Get all Splunk integrations for your organization. This will contain masked keys if present.",
-        "operationId": "list_14",
+        "operationId": "list_16",
         "responses": {
           "200": {
             "content": {
@@ -22786,7 +25203,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Splunk.",
-        "operationId": "create_14",
+        "operationId": "create_15",
         "requestBody": {
           "content": {
             "application/json": {
@@ -22835,7 +25252,7 @@
     "/v1/integrations/splunk/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to Splunk. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_14",
+        "operationId": "delete_15",
         "parameters": [
           {
             "in": "path",
@@ -22866,7 +25283,7 @@
       },
       "get": {
         "description": "Get an integration to connect to Splunk.",
-        "operationId": "get_14",
+        "operationId": "get_16",
         "parameters": [
           {
             "in": "path",
@@ -23019,11 +25436,11 @@
             }
           },
           {
-            "description": "Page size (100-2000, default: 50)",
+            "description": "Page size (100-2000, default: 100)",
             "in": "query",
             "name": "pageSize",
             "schema": {
-              "default": 50,
+              "default": 100,
               "format": "int32",
               "maximum": 2000,
               "minimum": 100,
@@ -23165,7 +25582,7 @@
     "/v1/integrations/sumo": {
       "get": {
         "description": "Get all SumoLogic integrations.",
-        "operationId": "list_15",
+        "operationId": "list_17",
         "responses": {
           "200": {
             "content": {
@@ -23196,7 +25613,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to SumoLogic.",
-        "operationId": "create_15",
+        "operationId": "create_16",
         "requestBody": {
           "content": {
             "application/json": {
@@ -23248,7 +25665,7 @@
     "/v1/integrations/sumo/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to SumoLogic. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_15",
+        "operationId": "delete_16",
         "parameters": [
           {
             "in": "path",
@@ -23282,7 +25699,7 @@
       },
       "get": {
         "description": "Get an integration to connect to SumoLogic.",
-        "operationId": "get_15",
+        "operationId": "get_17",
         "parameters": [
           {
             "in": "path",
@@ -23432,7 +25849,7 @@
     "/v1/integrations/webhooks": {
       "get": {
         "description": "Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.",
-        "operationId": "list_16",
+        "operationId": "list_18",
         "parameters": [
           {
             "description": "Only return integrations targeting this agent.",
@@ -23473,7 +25890,7 @@
       },
       "post": {
         "description": "Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).",
-        "operationId": "create_16",
+        "operationId": "create_17",
         "requestBody": {
           "content": {
             "application/json": {
@@ -23518,7 +25935,7 @@
     "/v1/integrations/webhooks/{id}": {
       "delete": {
         "description": "Deletes a webhook integration. No-op if already deleted.",
-        "operationId": "delete_16",
+        "operationId": "delete_17",
         "parameters": [
           {
             "in": "path",
@@ -23552,7 +25969,7 @@
       },
       "get": {
         "description": "Get a webhook integration by ID.",
-        "operationId": "get_16",
+        "operationId": "get_18",
         "parameters": [
           {
             "in": "path",
@@ -23756,7 +26173,7 @@
     },
     "/v1/investigations": {
       "post": {
-        "description": "Triggers an agent investigation with optional free-form context and returns the new investigation id. The investigation runs asynchronously.",
+        "description": "Triggers an agent investigation with optional free-form context and returns the new investigation id. The investigation is queued and runs asynchronously once the agent has a free concurrency slot.",
         "operationId": "start",
         "requestBody": {
           "content": {
@@ -23776,13 +26193,23 @@
                 }
               }
             },
-            "description": "Investigation started"
+            "description": "Investigation queued"
           },
           "401": {
             "description": "Unauthorized"
           },
           "404": {
             "description": "Agent not found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartInvestigationRejectedResponse"
+                }
+              }
+            },
+            "description": "The agent is at its maximum concurrent investigations and its concurrency-limit policy discards new work instead of queueing it (the response carries the id of the recorded DISCARDED investigation), or the agent\u0027s or its LLM integration\u0027s max tokens are reached (the response carries a code and message)."
           }
         },
         "security": [
@@ -24375,7 +26802,7 @@
     },
     "/v1/jobs/backfills": {
       "post": {
-        "description": "Creates a logs backfill batch job from backfill parameters (time window, query, vendor sinks, and optional limit, variables, and tags). This is an asynchronous batch job: the response returns an identifier (field: `id`) that can be used to query the status of the job using the `GET` jobs endpoint. The server builds the backfill job graph from the parameters, so callers do not assemble it themselves.",
+        "description": "Creates a logs or spans backfill batch job from backfill parameters (time window, query, vendor sinks, and optional type-specific fields). The `dataType` selects the built-in logs or spans template. This is an asynchronous batch job: the response returns an identifier (field: `id`) that can be used to query the status of the job using the `GET` jobs endpoint. The server builds the backfill job graph from the parameters, so callers do not assemble it themselves.",
         "operationId": "submitBackfillJob",
         "requestBody": {
           "content": {
@@ -24384,7 +26811,8 @@
                 "$ref": "#/components/schemas/CreateBackfillJob"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "201": {
@@ -24412,7 +26840,7 @@
             "grepr-oidc": []
           }
         ],
-        "summary": "Create a logs backfill job",
+        "summary": "Create a backfill job",
         "tags": [
           "Jobs"
         ]
@@ -25245,6 +27673,69 @@
         "summary": "Get available permissions",
         "tags": [
           "Permission"
+        ]
+      }
+    },
+    "/v1/pipelines/{jobId}/apply-change": {
+      "post": {
+        "description": "Deep-merges a partial templateInputs patch into the pipeline\u0027s current configuration and verifies the result against the supplied samples. A change that fails verification is rejected with findings and nothing is touched. A change that verifies cleanly is recorded as an agent suggestion for human review when the proposing agent requires approval, and applied as a new job version otherwise. Works only on pipelines with a single template-operation vertex.",
+        "operationId": "applyChange",
+        "parameters": [
+          {
+            "description": "Id of the pipeline to change",
+            "example": "0ABC12DEF4G",
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PipelineChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineChangeResult"
+                }
+              }
+            },
+            "description": "Change applied, recorded as a suggestion, or rejected with findings"
+          },
+          "400": {
+            "description": "The request is malformed or the pipeline is not templated"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Pipeline not found"
+          },
+          "409": {
+            "description": "The pipeline changed while the request was being verified"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Verify and apply or suggest a pipeline change",
+        "tags": [
+          "Pipeline Changes"
         ]
       }
     },
@@ -26963,7 +29454,7 @@
     "/v1/users": {
       "get": {
         "description": "Get all users in the system.",
-        "operationId": "list_17",
+        "operationId": "list_19",
         "parameters": [
           {
             "in": "query",

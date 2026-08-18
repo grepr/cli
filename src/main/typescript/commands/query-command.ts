@@ -12,9 +12,9 @@ import {
   type QueryCommandOptions
 } from '../types.js';
 import {
+  AgentSessionsIcebergTableSourceSortOrder,
   CreateLogsBackfillJobDataType,
   CreateSpansBackfillJobDataType,
-  GreprLlmPromptResultsSourceSortOrder,
   GreprRawLogsSourceType,
   GreprRawSpanSourceType,
   LogsIcebergTableSourceType,
@@ -35,6 +35,7 @@ import {
   buildMessageLengthPredicate,
   buildSignalPredicate,
   buildSourcePredicate,
+  deriveSpanQueryFilters,
   warnOnUnliftedSpanQuery,
   type BuiltSignalPredicate
 } from '../lib/query-predicate.js';
@@ -78,7 +79,7 @@ export function buildQueryJobDefinition(
     datasetId: resolved.datasetId,
     start: options.start ?? new Date(now.getTime() - 10 * 60 * 1000).toISOString(),
     end: options.end ?? now.toISOString(),
-    sortOrder: options.sortOrder ?? GreprLlmPromptResultsSourceSortOrder.UNSORTED,
+    sortOrder: options.sortOrder ?? AgentSessionsIcebergTableSourceSortOrder.UNSORTED,
     limit: options.limit ?? 100
   };
 
@@ -104,7 +105,7 @@ interface QuerySourceCommonFields {
   datasetId: string;
   start: string;
   end: string;
-  sortOrder: GreprLlmPromptResultsSourceSortOrder;
+  sortOrder: AgentSessionsIcebergTableSourceSortOrder;
   limit: number;
 }
 
@@ -140,7 +141,7 @@ function buildSpansQueryVertices(
   const sourceFields = {
     ...common,
     query: predicate.query,
-    ...predicate.spanFilters
+    ...deriveSpanQueryFilters(options.query ?? '')
   };
   const source: SchemaGreprRawSpanSource | SchemaTracesIcebergTableSource =
     options.queryEngine === 'flink'

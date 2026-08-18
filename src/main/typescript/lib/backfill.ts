@@ -33,7 +33,6 @@ import {
 } from './backfill-vendors.js';
 import {
   buildSignalPredicate,
-  validateSpanBackfillQuery,
   type BuiltSignalPredicate,
   type LanguageQueryType
 } from './query-predicate.js';
@@ -129,9 +128,6 @@ function validateForDataType(
   ) {
     throw new Error('SQL options only apply to spans backfills');
   }
-  if (dataType === CreateSpansBackfillJobDataType.spans) {
-    validateSpanBackfillQuery(options.query ?? '');
-  }
   return buildSignalPredicate({ ...options, dataType });
 }
 
@@ -216,8 +212,9 @@ export function buildBackfillRequest(
   return {
     ...common,
     dataType: CreateSpansBackfillJobDataType.spans,
+    query: predicate.query,
+    variables: {},
     sinks: resolved.sinks.map(sink => buildTraceSink(sink, attributes)),
-    ...predicate.spanFilters,
     ...(resolved.sqlOperation ? { sqlOperation: resolved.sqlOperation } : {})
   };
 }

@@ -5,8 +5,8 @@ import {
   DatadogQueryPredicateType,
   MessageLengthPredicateType,
   NewRelicQueryPredicateType,
-  type SchemaCreateSpansBackfillJob,
   type SchemaEventPredicate,
+  type SchemaGreprRawSpanSource,
   type SchemaMessageLengthPredicate,
   type SchemaQuery
 } from '../openapi/openApiTypes.js';
@@ -31,7 +31,7 @@ export interface SignalPredicateOptions extends SourcePredicateOptions {
 }
 
 export type SpanQueryFilters = Pick<
-  SchemaCreateSpansBackfillJob,
+  SchemaGreprRawSpanSource,
   | 'serviceNames'
   | 'operationNames'
   | 'traceSignatures'
@@ -48,12 +48,10 @@ export type BuiltSignalPredicate =
   | {
       dataType: CreateLogsBackfillJobDataType.logs;
       query: SchemaEventPredicate;
-      spanFilters?: undefined;
     }
   | {
       dataType: CreateSpansBackfillJobDataType.spans;
       query: SchemaQuery;
-      spanFilters: SpanQueryFilters;
     };
 
 export function buildLanguageQueryPredicate(options: LanguageQueryOptions): SchemaQuery {
@@ -119,19 +117,22 @@ export function buildSignalPredicate(options: SignalPredicateOptions): BuiltSign
         query: buildSourcePredicate(options)
       };
     case CreateSpansBackfillJobDataType.spans:
-      validateSpansPredicateOptions(options);
       return {
         dataType: CreateSpansBackfillJobDataType.spans,
-        query: buildLanguageQueryPredicate(options),
-        spanFilters: deriveSpanQueryFilters(options.query ?? '')
+        query: buildSpanQueryPredicate(options)
       };
   }
 }
 
+export function buildSpanQueryPredicate(options: SourcePredicateOptions): SchemaQuery {
+  validateSpansPredicateOptions(options);
+  return buildLanguageQueryPredicate(options);
+}
+
 /**
- * Lifts the subset of Datadog span-query syntax that the structured source filters can represent
- * without changing its meaning. The CLI rejects lossy Boolean and wildcard forms instead of
- * silently narrowing or widening the query.
+ * Lifts the subset of Datadog span-query syntax that synchronous structured source filters can
+ * represent without changing its meaning. Synchronous queries reject lossy Boolean and wildcard
+ * forms instead of silently narrowing or widening the query; span backfills do not use this path.
  */
 export function deriveSpanQueryFilters(query: string): SpanQueryFilters {
   rejectNegatedSpanQuery(query);
@@ -147,19 +148,6 @@ export function deriveSpanQueryFilters(query: string): SpanQueryFilters {
     maxDuration,
     isRootSpan: extractBoolean(query, 'root')
   };
-}
-
-/**
- * Rejects span backfill predicates that cannot be represented losslessly by structured filters.
- */
-export function validateSpanBackfillQuery(query: string): void {
-  deriveSpanQueryFilters(query);
-  if (hasUnliftedSpanQuery(query)) {
-    throw new Error(
-      'Spans backfill query contains clauses that cannot be represented by structured span ' +
-      `filters: ${query}`
-    );
-  }
 }
 
 /**
