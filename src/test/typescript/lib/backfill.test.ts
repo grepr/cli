@@ -294,8 +294,8 @@ describe('backfill validation', () => {
 });
 
 describe('buildBackfillRequest', () => {
-  it('test_buildBackfillRequest_keepsTheCompleteSpanQuery', () => {
-    const request = buildBackfillRequest({
+  it('test_buildBackfillRequest_rejectsUnliftedSpanClauses', () => {
+    expect(() => buildBackfillRequest({
       ...baseOptions,
       dataType: CreateSpansBackfillJobDataType.spans,
       query: 'serviceName:checkout AND @http.status_code:500'
@@ -304,12 +304,7 @@ describe('buildBackfillRequest', () => {
       datasetId: 'ds_raw',
       teamIds: [],
       sinks: [datadog('dd_1')]
-    }, now);
-
-    expect(request.query).toEqual({
-      type: DatadogQueryPredicateType.datadog_query,
-      query: 'serviceName:checkout AND @http.status_code:500'
-    });
+    }, now)).toThrow(/cannot be represented by structured span filters/);
   });
 
   it('test_buildBackfillRequest_sendsParametersWithoutAJobGraph', () => {
@@ -392,7 +387,7 @@ describe('buildBackfillRequest', () => {
     expect(sink.additionalTags).toEqual(['processor:grepr']);
   });
 
-  it('test_buildBackfillRequest_buildsQueryDrivenSpansRequest', () => {
+  it('test_buildBackfillRequest_buildsTypedSpansRequestAndStructuredFilters', () => {
     const sqlOperation = completeSpanSql();
     const query =
       'serviceName:(web OR api) operationName:checkout traceSignature:"sig-1" ' +
@@ -422,11 +417,14 @@ describe('buildBackfillRequest', () => {
     expect(request).toMatchObject({
       dataType: CreateSpansBackfillJobDataType.spans,
       datasetId: 'ds_raw',
-      query: {
-        type: DatadogQueryPredicateType.datadog_query,
-        query
-      },
-      variables: {},
+      serviceNames: ['web', 'api'],
+      operationNames: ['checkout'],
+      traceSignatures: ['sig-1'],
+      traceIds: ['0123456789abcdef0123456789abcdef'],
+      hasError: true,
+      isRootSpan: false,
+      minDuration: 1000,
+      maxDuration: 4999,
       teamIds: ['team_alpha'],
       sqlOperation,
       sinks: [
@@ -444,20 +442,24 @@ describe('buildBackfillRequest', () => {
         }
       ]
     });
+    expect('query' in request).toBe(false);
     expect('vendorSinkIntegrationIds' in request).toBe(false);
   });
 });
 
 describe('resolveBackfillInputs', () => {
-  it('test_resolveBackfillInputs_queryOnlySpanClauses_shouldResolve', async () => {
-    const resolved = await resolveBackfillInputs({
+  it('test_resolveBackfillInputs_rejectsUnliftedSpanClausesBeforeSubmission', async () => {
+    await expect(resolveBackfillInputs({
       ...baseOptions,
       dataType: CreateSpansBackfillJobDataType.spans,
       query: 'serviceName:checkout AND @http.status_code:500'
-    }, apiClient(), now);
+    }, apiClient())).rejects.toThrow(/cannot be represented by structured span filters/);
 
-    expect(resolved.dataType).toBe(CreateSpansBackfillJobDataType.spans);
-    expect(resolved.sinks.map(sink => sink.id)).toEqual(['dd_1']);
+    await expect(resolveBackfillInputs({
+      ...baseOptions,
+      dataType: CreateSpansBackfillJobDataType.spans,
+      query: 'serviceName:""'
+    }, apiClient())).rejects.toThrow(/cannot be represented by structured span filters/);
   });
 
   it('test_resolveBackfillInputs_defaultsExplicitDatasetToLogs', async () => {

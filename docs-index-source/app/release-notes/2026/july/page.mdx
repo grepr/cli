@@ -6,120 +6,65 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in July 2026.
 
-## July 30, 2026
-
-{/* ENGT-5138 */}
-### Create a backfill job with a single API request
-
-You can now start a backfill by posting just the parameters that describe it, such as the time window, the query, and the destinations, to `/v1/jobs/backfills`. Grepr builds the job from those parameters, so you no longer have to assemble a complete job graph to run a backfill through the API. See [_](/apis).
-
-### Other improvements and fixes
-
-- {/* ENGT-4493 */} Grok date parsing now follows the Datadog date format specification, so quoted literals are treated as literals, separator characters are escaped, and timezone offsets are applied in the right direction. See [_](/transforms/grok).
-- {/* ENGT-5194, ENGT-5195 */} Fixed an intermittent increase in error responses on the ingestion endpoint.
-- {/* ENGT-5217 */} Fixed an issue where the totals on the Integrations tab read too low over any time range longer than a minute, and the pipeline Sources step now also shows data received and messages processed.
-- {/* ENGT-5241 */} Fixed an issue where a transient error during teardown could leave a pipeline stuck in DELETING with some of its resources still in place.
-- {/* ENGT-5233 */} Fixed an issue in SQL transforms where reading a nested field, an array element, or a value out of a variant column could return the wrong result, and a query using the `ANY_VALUE` aggregate could fail to plan.
-- {/* ENGT-5145 */} Fixed an issue where the billing page and its notification emails reported no invoice for a pay-as-you-go subscription that billed on a day other than the first of the month, even though the invoice had been issued and charged.
-- {/* ENGT-5248 */} A pipeline reconfiguration that cannot complete now fails after 5 minutes instead of 10, so an automatic rollback starts sooner and the pipeline spends less time unavailable.
-- {/* ENGT-5159 */} Fixed an issue where the CLI `docs:get` command failed in an offline or network-restricted environment because it tried to build a search index it could not download.
-
-## July 24, 2026
-
-{/* ENGT-5113 */}
-### Generate metrics from spans and preview spans as you build
-
-A SQL step in a trace pipeline can now generate metrics from spans, and the pipeline sends them to each of your Datadog integrations. The trace pipeline editor also has a span viewer in its draft preview, so you can follow an individual span and its attributes through each stage of trace reduction while you are still building the pipeline. See [_](/pipelines/trace-pipelines).
-
-{/* ENGT-5090 */}
-### See how much data each pipeline source is receiving
-
-The Sources step of a pipeline now reports the volume of data each source has received, not just a request count. You can switch between requests and bytes ingested to find sources that are lagging or carrying more traffic than you expect, and select individual sources to narrow the summary to a subset. The list is now a table, so pipelines with many sources stay readable.
-
-{/* ENGT-4916 */}
-### Failed pipeline updates now roll back automatically
-
-When an update to a pipeline fails, Grepr now restores the previous working configuration instead of leaving the pipeline in a partially updated state. This applies to updates you make in the pipelines page and to `job:update` and `job:apply` in the Grepr CLI. To keep a failed update in place so you can inspect it, pass `--no-rollback-enabled` to the CLI.
-
-### Other improvements and fixes
-
-- {/* ENGT-5147 */} You can now attach a filter to the processed logs sink to control which logs are written to your data warehouse, using the same query syntax as the filters on your vendor destinations.
-- {/* ENGT-5160 */} Trace pipelines process spans using noticeably less CPU, so a pipeline keeps up with a given volume of spans on fewer resources.
-- {/* ENGT-5171 */} Fixed an issue where a pipeline with several sources could leave some of its capacity idle, so it processed data more slowly than its scale suggested.
-- {/* ENGT-5135 */} Fixed an issue where the agent setup guide for an OpenTelemetry integration showed a literal token placeholder instead of your integration's token, so the commands it displayed could not authenticate.
-- {/* ENGT-5148 */} Fixed an issue where changing which teams an S3 data warehouse or vector index integration belonged to showed your selection but discarded it on save.
-- {/* ENGT-5125 */} Fixed an issue where deleting a pipeline and creating a new one in its place could leave the earlier job version showing UPDATING indefinitely in version history.
-- {/* ENGT-5124 */} Fixed an issue where the Grafana Cloud and Amazon CloudWatch links on the **Vendor setup examples** panel of the OpenTelemetry integration form appeared as a bare underscore instead of their titles.
-
-## July 22, 2026
+## July 21, 2026
 
 {/* ENGT-4866 */}
-### Trace pipelines are now available to all organizations
+### New feature: Trace pipelines are now available to all organizations
 
 Trace collection, processing, and exploration are now available to every organization. You can select **Trace Pipeline** in the create-pipeline type selector, open Trace Explorer from the navigation menu, and explore trace datasets from the data warehouse, without needing the feature enabled for your organization. See [_](/pipelines/trace-pipelines).
 
+## July 22, 2026
+
 {/* ENGT-4917 */}
-### Install the Grepr Terraform provider from the OpenTofu registry
+### New feature: Install the Grepr Terraform provider from the OpenTofu registry
 
 The Grepr Terraform provider is now published to the OpenTofu registry, so it's now easier for you to integrate pipelines into your IaC workflows. Declare the provider in the `required_providers` block of your configuration and initialize your working directory to download it. The provider works with both the OpenTofu CLI and the Terraform CLI. To learn more about managing Grepr pipelines with the provider, see [_](/admin/terraform-provider).
 
 ## July 18, 2026
 
-### Other improvements and fixes
+{/* ENGT-5118 */}
+### New feature: Clearer handling of long pipeline names
 
-- {/* ENGT-5065 */} Fixed an issue where a log reduction rule whose condition referred to a variable its trigger had extracted, such as matching a tag against `__tag`, was silently ignored and never matched.
-- {/* ENGT-5088 */} Fixed an issue where a search containing emoji, Chinese, Japanese, or Korean characters, or typographic curly quotes, failed instead of returning results.
-- {/* ENGT-5096 */} Fixed an issue where saving a pipeline exception, a destination filter, or a data lake route rejected a query containing a tag wildcard such as `service:registry*`, even though the same query worked once the pipeline was running.
-- {/* ENGT-5116 */} Fixed an issue where a logs backfill submitted with the Grepr CLI was rejected for a pipeline built from a template, because the CLI could not work out which dataset and destination to use.
-- {/* ENGT-5066 */} Fixed an issue where a search on an attribute whose key contains a quote character failed while running.
-- {/* ENGT-5118 */} The pipeline name field now caps input at 128 characters, matching the limit the backend enforces, and long names are truncated with a hover tooltip wherever they appear instead of overflowing the interface.
-- {/* ENGT-5098 */} Fixed an issue where a pipeline with many sources made the pipeline details page wider than the browser window; the sources section now scrolls within its own area.
-- {/* ENGT-5117 */} Restored the dashed connectors and the source and destination arrow markers on the pipeline details page, which an earlier change had removed.
+The pipeline name field now caps input at 128 characters, matching the limit the backend enforces, so you get immediate feedback while typing instead of a generic error when you save a name that is too long. Long pipeline names are also truncated with a hover tooltip wherever they appear, such as on pipeline cards and in creation dialogs, so they no longer overflow the interface.
+
+{/* ENGT-5098 */}
+### Bug fix: The pipeline details page overflowed horizontally with many sources
+
+On the pipeline details page, a pipeline with many sources could make the page wider than the browser window and add a horizontal scrollbar to the entire page. The sources section now scrolls within its own area, so the page no longer overflows horizontally.
 
 ## July 15, 2026
 
 {/* ENGT-5021 */}
-### Backfill logs to your vendors from the Grepr CLI
+### New feature: Backfill logs to your vendors from the Grepr CLI
 
 You can now replay raw logs from the Grepr data lake to your observability vendor from the command line using the Grepr CLI and the CLI `backfill` command or the `backfill-logs` skill. The `backfill` command is a scriptable equivalent of the backfill flow in Log Explorer, and the `backfill-logs` skill lets you use an AI coding assistant, such as Claude Code or Codex, to create a backfill job using natural language. See [_](/cli#backfill) and [_](/cli#agent-plugins).
 
+{/* ENGT-4866 */}
+### New feature: Trace pipelines are now available to all organizations
+
 {/* ENGT-5089 */}
-### Some imported queries were rejected by the query parser
+### Bug fix: Some imported queries were rejected by the query parser
 
 When you imported queries from Datadog dashboards or monitors, some valid queries were rejected by the query parser. This affected queries that contained a bare equals sign such as `code=500`, square brackets in free text such as `[Errno 24]`, and unquoted quote characters inside wildcard values. These queries now parse and run correctly.
 
-### Other improvements and fixes
-
-- {/* ENGT-5078 */} Fixed an issue where the parallelism Grepr had scaled a pipeline up to was reset to the default when the pipeline restarted, so a busy pipeline had to scale up again from the beginning and fell behind while it did.
-- {/* ENGT-4903 */} Buttons and links that referred to the search pages as "Logs explorer" and "Traces explorer" now consistently read Log Explorer and Trace Explorer.
-- {/* ENGT-5084 */} Tables now show placeholder rows while they load instead of an overlay on their previous contents, and the code editor shows a spinner instead of a line of text.
-
 ## July 11, 2026
 
-{/* ENGT-3898 */}
-### Vendor-rejected logs stay available to backfill
-
-Grepr now records a log as sent only once the vendor accepts it, so logs a vendor rejects during delivery stay available to backfill again from the raw data lake. Previously a rejected log was still recorded as sent, which meant a later backfill skipped it and there was no way to retry it.
-
 {/* ENGT-4699 */}
-### Usability enhancements to the pipeline details page
+### New feature: Usability enhancements to the pipeline details page
 
-The pipeline details page has a visual and usability refresh across the different pipeline types, with consistent typography, rounded surfaces, clearer source and destination indicators, and per-step validation warnings. Warning and status messaging is also improved. A log-reducer pipeline whose only output is a processed-logs destination is now accepted as a valid, non-draft configuration.
+The pipeline details page has a visual and usability refresh across the different pipeline types:
+- Consistent typography, rounded surfaces, clearer source and destination indicators, and per-step validation warnings improve usability.
+- Warning and status messaging is improved.
+- A log-reducer pipeline whose only output is a processed-logs destination is now accepted as a valid, non-draft configuration.
 
-{/* ENGT-4852 */}
-### Check a SQL transform for errors from the Grepr CLI
+{/* ENGT-4934 */}
+### New feature: Source and destination cards for trace pipelines
 
-The Grepr CLI has a new `sql:validate` command that checks a SQL query against the server and reports any errors, so you can confirm a SQL transform is valid before you add it to a pipeline. See [_](/cli) and [_](/transforms/sql-transform).
+Trace pipelines now display the same source and destination cards as log pipelines on the pipeline details page, so you can see the ingested spans on each source and the vendor responses on each destination at a glance instead of the older table view. This release also fixes log source cards that rendered empty, so the ingested message count now appears for every source. See [_](/pipelines/trace-pipelines)
 
-### Other improvements and fixes
+{/* ENGT-5079 */}
+### Bug fix: A newly created integration key could appear empty right after saving
 
-- {/* ENGT-5038 */} Fixed an issue where a Datadog-like query that grouped values with OR inside parentheses, such as `service:(broker OR broker-gateway OR broker-nginx)`, was rejected as an unsupported function.
-- {/* ENGT-5064 */} Fixed an issue where a Datadog-like query using a severity comparison, such as `severity:13` or `severity:>11`, failed to compile and stopped a pipeline containing it from starting.
-- {/* ENGT-5080 */} Fixed an issue where a trace pipeline could stall when the same span was delivered more than once.
-- {/* ENGT-4954 */} Fixed an issue where scaling a pipeline that held a large amount of state could fail with an out-of-memory error or a malformed-value error and restart the pipeline.
-- {/* ENGT-5020 */} Fixed an issue where an impact estimation run stopped with an error when it read logs whose attribute values were empty, so the estimate never completed for those datasets.
-- {/* ENGT-4934 */} The sources and destinations on the pipeline details page now show cards with the spans ingested on each source and the vendor responses on each destination, and cards that rendered empty now show the ingested message count.
-- {/* ENGT-5079 */} Fixed an issue where an API key or application key could appear empty for a short time immediately after you created an integration.
-- {/* ENGT-5002 */} Fixed an issue where the billing page could not display your usage at all if your pay-as-you-go plan included an item priced at zero.
-- {/* ENGT-4940 */} The Quickstart now has a create-pipeline button in the sidebar, selecting an integration adds it as a source straight away, and a data lake destination keeps the name you gave it when you return from advanced configuration.
-- {/* ENGT-5070 */} Fixed an issue where the pipeline editor sidebar drifted out of line with the step beside it on taller forms.
+An API key or application key could appear empty for a short time immediately after you created an integration, such as Datadog, in the interface. Keys now appear correctly as soon as the integration is created, instead of after an internal cache expires.
+
+Trace collection, processing, and exploration are now available to every organization. You can select **Trace Pipeline** in the create-pipeline type selector, open Trace Explorer from the navigation menu, and explore trace datasets from the data warehouse, without needing the feature enabled for your organization. See [_](/pipelines/trace-pipelines).

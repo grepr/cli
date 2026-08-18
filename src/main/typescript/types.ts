@@ -4,14 +4,14 @@
 
 // Import OpenAPI generated types
 import {
-  type AgentSessionsIcebergTableSourceSortOrder,
   PathsV1JobsGetParametersQueryExecution,
   PathsV1JobsGetParametersQueryProcessing,
   PathsV1JobsGetParametersQueryState,
   // openapi-typescript dedupes identical SortOrder enums under one canonical
-  // name; AgentSessionsIcebergTableSourceSortOrder is the surviving member of
+  // name; GreprLlmPromptResultsSourceSortOrder is the surviving member of
   // the dedupe equivalence class. The runtime values are the canonical
   // ASCENDING / DESCENDING / UNSORTED.
+  type GreprLlmPromptResultsSourceSortOrder,
   type SchemaReadDatadog, type SchemaReadDataWarehouse, type SchemaReadS3DataWarehouse,
   type SchemaReadNewRelic, type SchemaReadOtlp, type SchemaReadSplunk, type SchemaReadSumo,
   type SchemaOperation,
@@ -69,7 +69,7 @@ export interface FormattableCommandOptions extends CliOptions {
 
 export interface QueryCommandOptions
   extends FormattableCommandOptions, SignalSourceInputs, SourcePredicateOptions {
-  sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+  sortOrder?: GreprLlmPromptResultsSourceSortOrder;
   start?: string;
   end?: string;
   limit?: number;
