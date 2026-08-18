@@ -999,6 +999,25 @@
         "title": "Inputs Schema",
         "type": "object"
       },
+      "AgentSessionsEndpoint": {
+        "description": "An OTLP integration attached as an Agent Sessions source or sink.",
+        "properties": {
+          "integrationId": {
+            "description": "OTLP integration carrying both agent event logs and execution spans.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Base operation name; the generated logs and traces operations suffix it.",
+            "pattern": "^[a-z0-9_]+$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "integrationId",
+          "name"
+        ],
+        "type": "object"
+      },
       "AgentSessionsIcebergTableSource": {
         "properties": {
           "datasetId": {
@@ -1090,39 +1109,24 @@
             "pattern": "^[0-9a-z]{13}$",
             "type": "string"
           },
-          "logSinks": {
-            "description": "Optional downstream log sinks fed canonical agent events.",
+          "sinks": {
+            "description": "Optional OTLP integrations fed canonical agent events and normalized spans.",
             "items": {
-              "$ref": "#/components/schemas/TemplateLogSink"
+              "$ref": "#/components/schemas/AgentSessionsEndpoint"
             },
             "type": "array"
           },
-          "logSources": {
-            "description": "OTLP log sources carrying native harness events.",
+          "sources": {
+            "description": "OTLP integrations receiving agent harness events and execution spans.",
             "items": {
-              "$ref": "#/components/schemas/Operation"
-            },
-            "type": "array"
-          },
-          "traceSinks": {
-            "description": "Optional downstream trace sinks fed normalized execution spans.",
-            "items": {
-              "$ref": "#/components/schemas/TemplateTraceSink"
-            },
-            "type": "array"
-          },
-          "traceSources": {
-            "description": "OTLP trace sources carrying agent execution spans.",
-            "items": {
-              "$ref": "#/components/schemas/Operation"
+              "$ref": "#/components/schemas/AgentSessionsEndpoint"
             },
             "type": "array"
           }
         },
         "required": [
           "datasetId",
-          "logSources",
-          "traceSources"
+          "sources"
         ],
         "title": "Inputs Schema",
         "type": "object"

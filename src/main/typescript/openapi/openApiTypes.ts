@@ -3605,6 +3605,13 @@ export interface components {
       start: string;
       warehouseIntegrationId: string;
     };
+    /** @description An OTLP integration attached as an Agent Sessions source or sink. */
+    AgentSessionsEndpoint: {
+      /** @description OTLP integration carrying both agent event logs and execution spans. */
+      integrationId: string;
+      /** @description Base operation name; the generated logs and traces operations suffix it. */
+      name: string;
+    };
     AgentSessionsIcebergTableSource: {
       /** @description The ID of the dataset to read data from. */
       datasetId: string;
@@ -3665,14 +3672,10 @@ export interface components {
     AgentSessionsTemplateInput: {
       /** @description Dataset receiving canonical events and normalized spans. */
       datasetId: string;
-      /** @description Optional downstream log sinks fed canonical agent events. */
-      logSinks?: components["schemas"]["TemplateLogSink"][];
-      /** @description OTLP log sources carrying native harness events. */
-      logSources: components["schemas"]["Operation"][];
-      /** @description Optional downstream trace sinks fed normalized execution spans. */
-      traceSinks?: components["schemas"]["TemplateTraceSink"][];
-      /** @description OTLP trace sources carrying agent execution spans. */
-      traceSources: components["schemas"]["Operation"][];
+      /** @description Optional OTLP integrations fed canonical agent events and normalized spans. */
+      sinks?: components["schemas"]["AgentSessionsEndpoint"][];
+      /** @description OTLP integrations receiving agent harness events and execution spans. */
+      sources: components["schemas"]["AgentSessionsEndpoint"][];
     };
     /** @description Normalizes agent span attributes and projects observed transcript content as canonical agent LogEvents in one pass. */
     AgentSpanProcessor: {
@@ -13045,6 +13048,8 @@ export type SchemaAgentSessionAnalyticsPage =
   components["schemas"]["AgentSessionAnalyticsPage"];
 export type SchemaAgentSessionAnalyticsTemplateInput =
   components["schemas"]["AgentSessionAnalyticsTemplateInput"];
+export type SchemaAgentSessionsEndpoint =
+  components["schemas"]["AgentSessionsEndpoint"];
 export type SchemaAgentSessionsIcebergTableSource =
   components["schemas"]["AgentSessionsIcebergTableSource"];
 export type SchemaAgentSessionsTemplateInput =
