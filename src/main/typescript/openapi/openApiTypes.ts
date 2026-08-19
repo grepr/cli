@@ -176,6 +176,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/agents/mcp-integrations/{integrationId}/tools": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List an MCP integration's tools
+     * @description Returns the tools the MCP server publishes, so an agent's allowed-tools list can name them exactly. Read live from the server with the integration's credentials, and cached briefly.
+     */
+    get: operations["mcpIntegrationTools"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/agents/skills": {
     parameters: {
       query?: never;
@@ -188,6 +208,26 @@ export interface paths {
      * @description Returns the catalog of skills that can be enabled on an agent.
      */
     get: operations["skills"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agents/skills/{skillName}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get an agent skill
+     * @description Returns one skill's description, granted tools, and the guidance body the agent reads.
+     */
+    get: operations["skillDetail"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7814,6 +7854,19 @@ export interface components {
        */
       type: MaxAttributesMergeStrategyType;
     };
+    McpToolDescriptor: {
+      description?: string;
+      name?: string;
+      parameters?: components["schemas"]["McpToolParameter"][];
+      readOnly?: boolean;
+      title?: string;
+    };
+    McpToolParameter: {
+      description?: string;
+      name?: string;
+      required?: boolean;
+      type?: string;
+    };
     MergeMapAttributeAction: {
       /**
        * Format: int32
@@ -10400,6 +10453,12 @@ export interface components {
     };
     SkillDescriptor: {
       description?: string;
+      name?: string;
+      tools?: components["schemas"]["ToolDescriptor"][];
+    };
+    SkillDetail: {
+      description?: string;
+      guidance?: string;
       name?: string;
       tools?: components["schemas"]["ToolDescriptor"][];
     };
@@ -13384,6 +13443,9 @@ export type SchemaMatrixData = components["schemas"]["MatrixData"];
 export type SchemaMatrixResult = components["schemas"]["MatrixResult"];
 export type SchemaMaxAttributesMergeStrategy =
   components["schemas"]["MaxAttributesMergeStrategy"];
+export type SchemaMcpToolDescriptor =
+  components["schemas"]["McpToolDescriptor"];
+export type SchemaMcpToolParameter = components["schemas"]["McpToolParameter"];
 export type SchemaMergeMapAttributeAction =
   components["schemas"]["MergeMapAttributeAction"];
 export type SchemaMessageExactMatchNode =
@@ -13559,6 +13621,7 @@ export type SchemaSiblingMergeRule = components["schemas"]["SiblingMergeRule"];
 export type SchemaSignupRequest = components["schemas"]["SignupRequest"];
 export type SchemaSimple = components["schemas"]["Simple"];
 export type SchemaSkillDescriptor = components["schemas"]["SkillDescriptor"];
+export type SchemaSkillDetail = components["schemas"]["SkillDetail"];
 export type SchemaSlackMcp = components["schemas"]["SlackMcp"];
 export type SchemaSocialUserInfo = components["schemas"]["SocialUserInfo"];
 export type SchemaSortFieldConfig = components["schemas"]["SortFieldConfig"];
@@ -14115,6 +14178,58 @@ export interface operations {
       };
     };
   };
+  mcpIntegrationTools: {
+    parameters: {
+      query?: {
+        refresh?: boolean;
+      };
+      header?: never;
+      path: {
+        integrationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tools retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["McpToolDescriptor"][];
+        };
+      };
+      /** @description The integration is not an MCP server, or has no stored credential to list with */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No MCP integration with that id */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The MCP server could not be reached, or refused the request */
+      502: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   skills: {
     parameters: {
       query?: never;
@@ -14135,6 +14250,42 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  skillDetail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        skillName: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Skill retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SkillDetail"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No skill with that name */
+      404: {
         headers: {
           [name: string]: unknown;
         };
