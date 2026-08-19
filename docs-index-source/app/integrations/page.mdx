@@ -176,7 +176,7 @@ To have Grepr recompute impact percentages during the next impact estimation cyc
 
 ## Limitations
 
-Grepr might split log events over 1MB, causing them to lose their original structured format. Each split event includes a common `grepr.splitOriginId` attribute if you need to reconstruct the original message.
+Grepr might split log events over 900KB, causing them to lose their original structured format. Each split event includes a common `grepr.splitOriginId` attribute if you need to reconstruct the original message.
 
 <HiddenFAQ faqs={[
   {
@@ -216,7 +216,7 @@ Grepr might split log events over 1MB, causing them to lose their original struc
     a: "Grepr might drop incoming data from external integration sources with timestamps older than 48 hours. This limitation helps optimize storage and processing while allowing you to retain raw logs in the data lake for longer-term analysis."
   },
   {
-    q: "What happens when a log event is larger than 1MB?",
-    a: "If a log event exceeds 1MB, Grepr might split it into smaller events, which can cause them to lose their original structured format. Each split event includes a common 'grepr.splitOriginId' attribute that you can use to reconstruct the original message from its component parts."
+    q: "What happens when a log event is larger than 900KB?",
+    a: "If a log event exceeds 900KB, Grepr might split it into smaller events, which can cause them to lose their original structured format. Each split event includes a common 'grepr.splitOriginId' attribute that you can use to reconstruct the original message from its component parts."
   }
 ]} />
