@@ -8300,6 +8300,36 @@ export interface components {
        */
       type: MonthlyCreditPoolSummaryType;
     };
+    MultiGrokParser: {
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Ordered list of grok rule sets. Each rule set has its own predicate, optional extract attribute, parsing rules, and helper rules. Rule sets extracting from enriched attributes should be ordered after rule sets that populate those attributes.
+       * @default []
+       */
+      ruleSets?: components["schemas"]["MultiGrokRuleSet"][];
+      /**
+       * @description Processes unstructured logs and extracts fields from them using Grok patterns. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: MultiGrokParserType;
+    };
+    /** @description Ordered list of grok rule sets. Each rule set has its own predicate, optional extract attribute, parsing rules, and helper rules. Rule sets extracting from enriched attributes should be ordered after rule sets that populate those attributes. */
+    MultiGrokRuleSet: {
+      /** @description Optional attribute to extract from. If null, extracts from the log message. Rules that extract from enriched attributes should be ordered after rules that populate those attributes. */
+      extractAttribute?: string;
+      /**
+       * @description Helper rules scoped to this rule set
+       * @default []
+       */
+      grokHelperRules?: string[];
+      /**
+       * @description Grok parsing rules for this rule set
+       * @default []
+       */
+      grokParsingRules?: string[];
+      predicate?: components["schemas"]["EventPredicate"];
+    };
     /** @description The payload containing integration data. */
     NewRelic: {
       /**
@@ -8559,6 +8589,7 @@ export interface components {
       | components["schemas"]["LogRulesApplication"]
       | components["schemas"]["TriggerActionOp"]
       | components["schemas"]["EntityContextAggregation"]
+      | components["schemas"]["MultiGrokParser"]
       | components["schemas"]["AgentSessionAnalytics"]
       | components["schemas"]["AgentLogProcessor"]
       | components["schemas"]["AgentSpanProcessor"]
@@ -13486,6 +13517,8 @@ export type SchemaModelConfiguration =
   components["schemas"]["ModelConfiguration"];
 export type SchemaMonthlyCreditPoolSummary =
   components["schemas"]["MonthlyCreditPoolSummary"];
+export type SchemaMultiGrokParser = components["schemas"]["MultiGrokParser"];
+export type SchemaMultiGrokRuleSet = components["schemas"]["MultiGrokRuleSet"];
 export type SchemaNewRelic = components["schemas"]["NewRelic"];
 export type SchemaNewRelicLogAgentSource =
   components["schemas"]["NewRelicLogAgentSource"];
@@ -22995,6 +23028,9 @@ export enum ModelConfigurationProvider {
 export enum MonthlyCreditPoolSummaryType {
   monthly_credit_pool = "monthly-credit-pool",
 }
+export enum MultiGrokParserType {
+  multi_grok_parser = "multi-grok-parser",
+}
 export enum NewRelicLogAgentSourceType {
   newrelic_log_agent_source = "newrelic-log-agent-source",
 }
@@ -23469,6 +23505,7 @@ export const OPERATION_TYPES = new Set<string>([
   'logs-event-sampler',
   'logs-filter',
   'masking-operator',
+  'multi-grok-parser',
   'pattern-matcher',
   'rule-engine',
   'span-tagger',
