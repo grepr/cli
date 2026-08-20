@@ -11454,7 +11454,7 @@
         "type": "object"
       },
       "QuantileSamplingTier": {
-        "description": "List of quantile sampling tiers for performance-based sampling. Each tier defines a percentile threshold, sampling rate, and label. Traces ABOVE each quantile get the corresponding sampling rate and are labeled with the tier\u0027s label. Always include a 0.0 quantile tier for baseline rate. Evaluated in descending quantile order.",
+        "description": "List of quantile sampling tiers for performance-based sampling. Each tier defines a percentile threshold, sampling rate, and label. Traces ABOVE each quantile get the corresponding sampling rate and are labeled with the tier\u0027s label. Evaluated in descending quantile order. A tier at quantile 0.0 is a catch-all that matches unconditionally, giving the fastest traces a baseline rate; without one, traces below the lowest configured quantile are dropped.",
         "example": "[{quantile: 0.99, samplingRate: 0.8, label: \u0027very_slow\u0027}, {quantile: 0.95, samplingRate: 0.1, label: \u0027slow\u0027}, {quantile: 0.5, samplingRate: 0.05, label: \u0027medium\u0027}, {quantile: 0.0, samplingRate: 0.01, label: \u0027fast\u0027}]",
         "properties": {
           "label": {
@@ -15955,7 +15955,7 @@
                 "samplingRate": 0.01
               }
             ],
-            "description": "List of quantile sampling tiers for performance-based sampling. Each tier defines a percentile threshold, sampling rate, and label. Traces ABOVE each quantile get the corresponding sampling rate and are labeled with the tier\u0027s label. Always include a 0.0 quantile tier for baseline rate. Evaluated in descending quantile order.",
+            "description": "List of quantile sampling tiers for performance-based sampling. Each tier defines a percentile threshold, sampling rate, and label. Traces ABOVE each quantile get the corresponding sampling rate and are labeled with the tier\u0027s label. Evaluated in descending quantile order. A tier at quantile 0.0 is a catch-all that matches unconditionally, giving the fastest traces a baseline rate; without one, traces below the lowest configured quantile are dropped.",
             "example": "[{quantile: 0.99, samplingRate: 0.8, label: \u0027very_slow\u0027}, {quantile: 0.95, samplingRate: 0.1, label: \u0027slow\u0027}, {quantile: 0.5, samplingRate: 0.05, label: \u0027medium\u0027}, {quantile: 0.0, samplingRate: 0.01, label: \u0027fast\u0027}]",
             "items": {
               "$ref": "#/components/schemas/QuantileSamplingTier"

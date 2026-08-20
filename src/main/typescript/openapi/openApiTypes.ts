@@ -9158,7 +9158,7 @@ export interface components {
     };
     /**
      * Quantile Sampling Tiers
-     * @description List of quantile sampling tiers for performance-based sampling. Each tier defines a percentile threshold, sampling rate, and label. Traces ABOVE each quantile get the corresponding sampling rate and are labeled with the tier's label. Always include a 0.0 quantile tier for baseline rate. Evaluated in descending quantile order.
+     * @description List of quantile sampling tiers for performance-based sampling. Each tier defines a percentile threshold, sampling rate, and label. Traces ABOVE each quantile get the corresponding sampling rate and are labeled with the tier's label. Evaluated in descending quantile order. A tier at quantile 0.0 is a catch-all that matches unconditionally, giving the fastest traces a baseline rate; without one, traces below the lowest configured quantile are dropped.
      * @example [{quantile: 0.99, samplingRate: 0.8, label: 'very_slow'}, {quantile: 0.95, samplingRate: 0.1, label: 'slow'}, {quantile: 0.5, samplingRate: 0.05, label: 'medium'}, {quantile: 0.0, samplingRate: 0.01, label: 'fast'}]
      */
     QuantileSamplingTier: {
@@ -11494,7 +11494,7 @@ export interface components {
       maxTraceDelay?: string;
       /**
        * Quantile Sampling Tiers
-       * @description List of quantile sampling tiers for performance-based sampling. Each tier defines a percentile threshold, sampling rate, and label. Traces ABOVE each quantile get the corresponding sampling rate and are labeled with the tier's label. Always include a 0.0 quantile tier for baseline rate. Evaluated in descending quantile order.
+       * @description List of quantile sampling tiers for performance-based sampling. Each tier defines a percentile threshold, sampling rate, and label. Traces ABOVE each quantile get the corresponding sampling rate and are labeled with the tier's label. Evaluated in descending quantile order. A tier at quantile 0.0 is a catch-all that matches unconditionally, giving the fastest traces a baseline rate; without one, traces below the lowest configured quantile are dropped.
        * @default [
        *       {
        *         "label": "very_slow",

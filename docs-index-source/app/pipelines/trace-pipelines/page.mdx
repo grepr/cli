@@ -130,6 +130,8 @@ A trace pipeline includes the following default tiers:
 
 With these defaults, Grepr samples 80% of the traces at or above the 99th latency percentile and 1% of the fastest traces, which retains a representative sample while emphasizing the slowest traces.
 
+A tier at `P0` is a catch-all: it matches unconditionally, so every trace that falls below the percentile of every higher tier receives that tier's sampling rate and label. Keep a `P0` tier to give the fastest traces a baseline rate, or omit one to drop every trace below your lowest tier's percentile.
+
 ### Group traces by signature [#key-attributes]
 
 Grepr groups traces by their signature and computes latency percentiles separately for each group, rather than across all traces. The **Key Attribute Paths** setting defines the span attributes that Grepr includes in each signature, as well as the operation names and nesting of the trace. Including an attribute in the signature separates traces that differ by that attribute into different groups. You enter one attribute path per line, and by default, Grepr includes the `service.name` and `http.method` attributes.
