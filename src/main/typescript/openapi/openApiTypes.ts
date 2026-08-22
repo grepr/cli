@@ -196,46 +196,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/agents/skills": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List available agent skills
-     * @description Returns the catalog of skills that can be enabled on an agent.
-     */
-    get: operations["skills"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/agents/skills/{skillName}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Get an agent skill
-     * @description Returns one skill's description, granted tools, and the guidance body the agent reads.
-     */
-    get: operations["skillDetail"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/agents/tools": {
     parameters: {
       query?: never;
@@ -642,13 +602,13 @@ export interface paths {
      * List all Anthropic integrations
      * @description Get all Anthropic integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_3"];
+    get: operations["list_4"];
     put?: never;
     /**
      * Create an Anthropic integration
      * @description Creates an integration to connect to Anthropic.
      */
-    post: operations["create_2"];
+    post: operations["create_3"];
     delete?: never;
     options?: never;
     head?: never;
@@ -666,12 +626,12 @@ export interface paths {
      * Get an Anthropic integration
      * @description Get an Anthropic integration by ID.
      */
-    get: operations["get_3"];
+    get: operations["get_4"];
     /**
      * Update an Anthropic integration.
      * @description Updates an Anthropic integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_1"];
+    put: operations["update_2"];
     post?: never;
     /**
      * Delete an Anthropic integration
@@ -714,13 +674,13 @@ export interface paths {
      * List all Data Warehouse integrations
      * @description Retrieves all Data Warehouse integrations for the organization.
      */
-    get: operations["list_5"];
+    get: operations["list_6"];
     put?: never;
     /**
      * Create a Data Warehouse integration
      * @description Creates a new Data Warehouse integration for connecting to Grepr S3 bucket.
      */
-    post: operations["create_4"];
+    post: operations["create_5"];
     delete?: never;
     options?: never;
     head?: never;
@@ -738,12 +698,12 @@ export interface paths {
      * Get a Data Warehouse integration
      * @description Retrieves a Data Warehouse integration.
      */
-    get: operations["get_5"];
+    get: operations["get_6"];
     /**
      * Update a Data Warehouse integration
      * @description Updates an existing Data Warehouse integration.
      */
-    put: operations["update_3"];
+    put: operations["update_4"];
     post?: never;
     /**
      * Delete a Data Warehouse integration
@@ -766,13 +726,13 @@ export interface paths {
      * List all Datadog integrations
      * @description Get all Datadog integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_4"];
+    get: operations["list_5"];
     put?: never;
     /**
      * Create a Datadog integration
      * @description Creates an integration to connect to Datadog.
      */
-    post: operations["create_3"];
+    post: operations["create_4"];
     delete?: never;
     options?: never;
     head?: never;
@@ -790,13 +750,13 @@ export interface paths {
      * List all Datadog MCP integrations
      * @description Get all Datadog MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_8"];
+    get: operations["list_9"];
     put?: never;
     /**
      * Create a Datadog MCP integration
      * @description Creates an integration to connect to a Datadog MCP server.
      */
-    post: operations["create_7"];
+    post: operations["create_8"];
     delete?: never;
     options?: never;
     head?: never;
@@ -814,12 +774,12 @@ export interface paths {
      * Get a Datadog MCP integration
      * @description Get a Datadog MCP integration by ID.
      */
-    get: operations["get_8"];
+    get: operations["get_9"];
     /**
      * Update a Datadog MCP integration.
      * @description Updates a Datadog MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_6"];
+    put: operations["update_7"];
     post?: never;
     /**
      * Delete a Datadog MCP integration
@@ -902,12 +862,12 @@ export interface paths {
      * Get a Datadog integration
      * @description Get an integration to connect to Datadog.
      */
-    get: operations["get_4"];
+    get: operations["get_5"];
     /**
      * Update a Datadog integration.
      * @description Updates an integration to connect to Datadog. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_2"];
+    put: operations["update_3"];
     post?: never;
     /**
      * Delete a Datadog integration
@@ -1058,13 +1018,13 @@ export interface paths {
      * List all Gemini integrations
      * @description Get all Google Gemini integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_7"];
+    get: operations["list_8"];
     put?: never;
     /**
      * Create a Gemini integration
      * @description Creates an integration to connect to Google Gemini.
      */
-    post: operations["create_6"];
+    post: operations["create_7"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1082,12 +1042,12 @@ export interface paths {
      * Get a Gemini integration
      * @description Get a Gemini integration by ID.
      */
-    get: operations["get_7"];
+    get: operations["get_8"];
     /**
      * Update a Gemini integration.
      * @description Updates a Gemini integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_5"];
+    put: operations["update_6"];
     post?: never;
     /**
      * Delete a Gemini integration
@@ -1130,13 +1090,13 @@ export interface paths {
      * List all GitHub MCP integrations
      * @description Get all GitHub MCP server integrations for your organization. This will contain masked tokens if present.
      */
-    get: operations["list_9"];
+    get: operations["list_10"];
     put?: never;
     /**
      * Create a GitHub MCP integration
      * @description Creates an integration to connect to a GitHub MCP server.
      */
-    post: operations["create_8"];
+    post: operations["create_9"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1154,12 +1114,12 @@ export interface paths {
      * Get a GitHub MCP integration
      * @description Get a GitHub MCP integration by ID.
      */
-    get: operations["get_9"];
+    get: operations["get_10"];
     /**
      * Update a GitHub MCP integration.
      * @description Updates a GitHub MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_7"];
+    put: operations["update_8"];
     post?: never;
     /**
      * Delete a GitHub MCP integration
@@ -1202,13 +1162,13 @@ export interface paths {
      * List all NewRelic integrations
      * @description Get all NewRelic integrations.
      */
-    get: operations["list_12"];
+    get: operations["list_13"];
     put?: never;
     /**
      * Create a NewRelic integration
      * @description Creates an integration to connect to NewRelic.
      */
-    post: operations["create_11"];
+    post: operations["create_12"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1246,12 +1206,12 @@ export interface paths {
      * Get a NewRelic integration
      * @description Get an integration to connect to NewRelic.
      */
-    get: operations["get_12"];
+    get: operations["get_13"];
     /**
      * Update a NewRelic integration.
      * @description Updates an integration to connect to NewRelic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_10"];
+    put: operations["update_11"];
     post?: never;
     /**
      * Delete a NewRelic integration
@@ -1354,13 +1314,13 @@ export interface paths {
      * List all OpenAI integrations
      * @description Get all OpenAI integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_13"];
+    get: operations["list_14"];
     put?: never;
     /**
      * Create an OpenAI integration
      * @description Creates an integration to connect to OpenAI.
      */
-    post: operations["create_12"];
+    post: operations["create_13"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1378,12 +1338,12 @@ export interface paths {
      * Get an OpenAI integration
      * @description Get an OpenAI integration by ID.
      */
-    get: operations["get_13"];
+    get: operations["get_14"];
     /**
      * Update an OpenAI integration.
      * @description Updates an OpenAI integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_11"];
+    put: operations["update_12"];
     post?: never;
     /**
      * Delete an OpenAI integration
@@ -1426,13 +1386,13 @@ export interface paths {
      * List all OTLP integrations
      * @description Get all OTLP integrations.
      */
-    get: operations["list_14"];
+    get: operations["list_15"];
     put?: never;
     /**
      * Create an OTLP integration
      * @description Creates an integration to connect to OTLP.
      */
-    post: operations["create_13"];
+    post: operations["create_14"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1450,12 +1410,12 @@ export interface paths {
      * Get a OTLP integration
      * @description Get an integration to connect to OTLP.
      */
-    get: operations["get_14"];
+    get: operations["get_15"];
     /**
      * Update a OTLP integration.
      * @description Updates an integration to connect to OTLP. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_12"];
+    put: operations["update_13"];
     post?: never;
     /**
      * Delete a OTLP integration
@@ -1522,13 +1482,13 @@ export interface paths {
      * List all PagerDuty MCP integrations
      * @description Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_10"];
+    get: operations["list_11"];
     put?: never;
     /**
      * Create a PagerDuty MCP integration
      * @description Creates an integration to connect to a PagerDuty MCP server.
      */
-    post: operations["create_9"];
+    post: operations["create_10"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1546,12 +1506,12 @@ export interface paths {
      * Get a PagerDuty MCP integration
      * @description Get a PagerDuty MCP integration by ID.
      */
-    get: operations["get_10"];
+    get: operations["get_11"];
     /**
      * Update a PagerDuty MCP integration.
      * @description Updates a PagerDuty MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_8"];
+    put: operations["update_9"];
     post?: never;
     /**
      * Delete a PagerDuty MCP integration
@@ -1591,13 +1551,13 @@ export interface paths {
       cookie?: never;
     };
     /** List all S3 Data Warehouse integrations */
-    get: operations["list_6"];
+    get: operations["list_7"];
     put?: never;
     /**
      * Create a S3 Data Warehouse integration
      * @description Creates an external S3 Data Warehouse integration
      */
-    post: operations["create_5"];
+    post: operations["create_6"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1675,12 +1635,12 @@ export interface paths {
      * Get a S3 Data Warehouse integration
      * @description Gets an external S3 Data Warehouse integration
      */
-    get: operations["get_6"];
+    get: operations["get_7"];
     /**
      * Update a S3 Data Warehouse integration
      * @description Updates an external S3 Data Warehouse integration
      */
-    put: operations["update_4"];
+    put: operations["update_5"];
     post?: never;
     /**
      * Delete a S3 Data Warehouse integration
@@ -1703,13 +1663,13 @@ export interface paths {
      * List all S3 Vector Index integrations
      * @description Retrieves all S3 Vector Index integrations for the organization.
      */
-    get: operations["list_15"];
+    get: operations["list_16"];
     put?: never;
     /**
      * Create an S3 Vector Index integration
      * @description Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.
      */
-    post: operations["create_14"];
+    post: operations["create_15"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1727,12 +1687,12 @@ export interface paths {
      * Get an S3 Vector Index integration
      * @description Retrieves an S3 Vector Index integration.
      */
-    get: operations["get_15"];
+    get: operations["get_16"];
     /**
      * Update an S3 Vector Index integration
      * @description Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.
      */
-    put: operations["update_13"];
+    put: operations["update_14"];
     post?: never;
     /**
      * Delete an S3 Vector Index integration
@@ -1755,13 +1715,13 @@ export interface paths {
      * List all Slack MCP integrations
      * @description Get all Slack MCP server integrations for your organization. This will contain masked tokens if present.
      */
-    get: operations["list_11"];
+    get: operations["list_12"];
     put?: never;
     /**
      * Create a Slack MCP integration
      * @description Creates an integration to connect to a Slack MCP server.
      */
-    post: operations["create_10"];
+    post: operations["create_11"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1779,12 +1739,12 @@ export interface paths {
      * Get a Slack MCP integration
      * @description Get a Slack MCP integration by ID.
      */
-    get: operations["get_11"];
+    get: operations["get_12"];
     /**
      * Update a Slack MCP integration.
      * @description Updates a Slack MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_9"];
+    put: operations["update_10"];
     post?: never;
     /**
      * Delete a Slack MCP integration
@@ -1827,13 +1787,13 @@ export interface paths {
      * List all Splunk integrations
      * @description Get all Splunk integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_16"];
+    get: operations["list_17"];
     put?: never;
     /**
      * Create a Splunk integration
      * @description Creates an integration to connect to Splunk.
      */
-    post: operations["create_15"];
+    post: operations["create_16"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1851,12 +1811,12 @@ export interface paths {
      * Get a Splunk integration
      * @description Get an integration to connect to Splunk.
      */
-    get: operations["get_16"];
+    get: operations["get_17"];
     /**
      * Update a Splunk integration.
      * @description Updates an integration to connect to Splunk. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_14"];
+    put: operations["update_15"];
     post?: never;
     /**
      * Delete a Splunk integration
@@ -1959,13 +1919,13 @@ export interface paths {
      * List all SumoLogic integrations
      * @description Get all SumoLogic integrations.
      */
-    get: operations["list_17"];
+    get: operations["list_18"];
     put?: never;
     /**
      * Create a SumoLogic integration
      * @description Creates an integration to connect to SumoLogic.
      */
-    post: operations["create_16"];
+    post: operations["create_17"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1983,12 +1943,12 @@ export interface paths {
      * Get a SumoLogic integration
      * @description Get an integration to connect to SumoLogic.
      */
-    get: operations["get_17"];
+    get: operations["get_18"];
     /**
      * Update a SumoLogic integration.
      * @description Updates an integration to connect to SumoLogic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_15"];
+    put: operations["update_16"];
     post?: never;
     /**
      * Delete a SumoLogic integration
@@ -2031,13 +1991,13 @@ export interface paths {
      * List webhook integrations
      * @description Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.
      */
-    get: operations["list_18"];
+    get: operations["list_19"];
     put?: never;
     /**
      * Create a webhook integration
      * @description Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).
      */
-    post: operations["create_17"];
+    post: operations["create_18"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2055,12 +2015,12 @@ export interface paths {
      * Get a webhook integration
      * @description Get a webhook integration by ID.
      */
-    get: operations["get_18"];
+    get: operations["get_19"];
     /**
      * Update a webhook integration
      * @description Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_16"];
+    put: operations["update_17"];
     post?: never;
     /**
      * Delete a webhook integration
@@ -2916,6 +2876,43 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/skills": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List skills */
+    get: operations["list_3"];
+    put?: never;
+    /** Create an organization skill */
+    post: operations["create_2"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/skills/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get a skill */
+    get: operations["get_3"];
+    /** Update an organization skill */
+    put: operations["update_1"];
+    post?: never;
+    /** Archive an organization skill */
+    delete: operations["archive"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/sso-claim-mapping": {
     parameters: {
       query?: never;
@@ -3180,7 +3177,7 @@ export interface paths {
      * List all users
      * @description Get all users in the system.
      */
-    get: operations["list_19"];
+    get: operations["list_20"];
     put?: never;
     /**
      * Create a new user
@@ -4831,6 +4828,11 @@ export interface components {
        *     ]
        */
       roleIds: string[];
+    };
+    CreateSkillRequest: {
+      displayName: string;
+      files: components["schemas"]["SkillFile"][];
+      toolIds: string[];
     };
     /** @description Parameters for a spans backfill. */
     CreateSpansBackfillJob: {
@@ -10482,16 +10484,25 @@ export interface components {
        */
       type: SimpleType;
     };
-    SkillDescriptor: {
-      description?: string;
-      name?: string;
-      tools?: components["schemas"]["ToolDescriptor"][];
+    SkillFile: {
+      content: string;
+      path: string;
     };
-    SkillDetail: {
+    SkillView: {
+      /** Format: date-time */
+      createdAt?: string;
       description?: string;
-      guidance?: string;
-      name?: string;
-      tools?: components["schemas"]["ToolDescriptor"][];
+      displayName?: string;
+      files?: components["schemas"]["SkillFile"][];
+      id?: string;
+      /** Format: int64 */
+      revision?: number;
+      /** @enum {string} */
+      scope?: SkillViewScope;
+      slug?: string;
+      toolIds?: string[];
+      /** Format: date-time */
+      updatedAt?: string;
     };
     /** @description The payload containing integration data. */
     SlackMcp: {
@@ -12513,6 +12524,13 @@ export interface components {
        */
       roleIds: string[];
     };
+    UpdateSkillRequest: {
+      displayName: string;
+      /** Format: int64 */
+      expectedRevision?: number;
+      files: components["schemas"]["SkillFile"][];
+      toolIds: string[];
+    };
     /** @description Base class for the information of a user signing up. */
     UserInfo: {
       type: string;
@@ -13242,6 +13260,8 @@ export type SchemaCreateLogsBackfillJob =
 export type SchemaCreateRole = components["schemas"]["CreateRole"];
 export type SchemaCreateServiceAccount =
   components["schemas"]["CreateServiceAccount"];
+export type SchemaCreateSkillRequest =
+  components["schemas"]["CreateSkillRequest"];
 export type SchemaCreateSpansBackfillJob =
   components["schemas"]["CreateSpansBackfillJob"];
 export type SchemaCreateUser = components["schemas"]["CreateUser"];
@@ -13653,8 +13673,8 @@ export type SchemaShardingConfig = components["schemas"]["ShardingConfig"];
 export type SchemaSiblingMergeRule = components["schemas"]["SiblingMergeRule"];
 export type SchemaSignupRequest = components["schemas"]["SignupRequest"];
 export type SchemaSimple = components["schemas"]["Simple"];
-export type SchemaSkillDescriptor = components["schemas"]["SkillDescriptor"];
-export type SchemaSkillDetail = components["schemas"]["SkillDetail"];
+export type SchemaSkillFile = components["schemas"]["SkillFile"];
+export type SchemaSkillView = components["schemas"]["SkillView"];
 export type SchemaSlackMcp = components["schemas"]["SlackMcp"];
 export type SchemaSocialUserInfo = components["schemas"]["SocialUserInfo"];
 export type SchemaSortFieldConfig = components["schemas"]["SortFieldConfig"];
@@ -13797,6 +13817,8 @@ export type SchemaUpdateJob = components["schemas"]["UpdateJob"];
 export type SchemaUpdateRole = components["schemas"]["UpdateRole"];
 export type SchemaUpdateServiceAccount =
   components["schemas"]["UpdateServiceAccount"];
+export type SchemaUpdateSkillRequest =
+  components["schemas"]["UpdateSkillRequest"];
 export type SchemaUserInfo = components["schemas"]["UserInfo"];
 export type SchemaUserPermissionsResponse =
   components["schemas"]["UserPermissionsResponse"];
@@ -14256,69 +14278,6 @@ export interface operations {
       };
       /** @description The MCP server could not be reached, or refused the request */
       502: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  skills: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Skills retrieved successfully */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SkillDescriptor"][];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  skillDetail: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        skillName: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Skill retrieved successfully */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SkillDetail"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description No skill with that name */
-      404: {
         headers: {
           [name: string]: unknown;
         };
@@ -15429,7 +15388,7 @@ export interface operations {
       };
     };
   };
-  list_3: {
+  list_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -15456,7 +15415,7 @@ export interface operations {
       };
     };
   };
-  create_2: {
+  create_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -15496,7 +15455,7 @@ export interface operations {
       };
     };
   };
-  get_3: {
+  get_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -15532,7 +15491,7 @@ export interface operations {
       };
     };
   };
-  update_1: {
+  update_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -15658,7 +15617,7 @@ export interface operations {
       };
     };
   };
-  list_5: {
+  list_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -15685,7 +15644,7 @@ export interface operations {
       };
     };
   };
-  create_4: {
+  create_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -15723,7 +15682,7 @@ export interface operations {
       };
     };
   };
-  get_5: {
+  get_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -15759,7 +15718,7 @@ export interface operations {
       };
     };
   };
-  update_3: {
+  update_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -15826,7 +15785,7 @@ export interface operations {
       };
     };
   };
-  list_4: {
+  list_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -15853,7 +15812,7 @@ export interface operations {
       };
     };
   };
-  create_3: {
+  create_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -15893,7 +15852,7 @@ export interface operations {
       };
     };
   };
-  list_8: {
+  list_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -15920,7 +15879,7 @@ export interface operations {
       };
     };
   };
-  create_7: {
+  create_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -15960,7 +15919,7 @@ export interface operations {
       };
     };
   };
-  get_8: {
+  get_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -15996,7 +15955,7 @@ export interface operations {
       };
     };
   };
-  update_6: {
+  update_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -16173,7 +16132,7 @@ export interface operations {
       };
     };
   };
-  get_4: {
+  get_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -16209,7 +16168,7 @@ export interface operations {
       };
     };
   };
-  update_2: {
+  update_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -16597,7 +16556,7 @@ export interface operations {
       };
     };
   };
-  list_7: {
+  list_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -16624,7 +16583,7 @@ export interface operations {
       };
     };
   };
-  create_6: {
+  create_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -16664,7 +16623,7 @@ export interface operations {
       };
     };
   };
-  get_7: {
+  get_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -16700,7 +16659,7 @@ export interface operations {
       };
     };
   };
-  update_5: {
+  update_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -16826,7 +16785,7 @@ export interface operations {
       };
     };
   };
-  list_9: {
+  list_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -16853,7 +16812,7 @@ export interface operations {
       };
     };
   };
-  create_8: {
+  create_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -16893,7 +16852,7 @@ export interface operations {
       };
     };
   };
-  get_9: {
+  get_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -16929,7 +16888,7 @@ export interface operations {
       };
     };
   };
-  update_7: {
+  update_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -17041,7 +17000,7 @@ export interface operations {
       };
     };
   };
-  list_12: {
+  list_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -17068,7 +17027,7 @@ export interface operations {
       };
     };
   };
-  create_11: {
+  create_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -17135,7 +17094,7 @@ export interface operations {
       };
     };
   };
-  get_12: {
+  get_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -17171,7 +17130,7 @@ export interface operations {
       };
     };
   };
-  update_10: {
+  update_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -17406,7 +17365,7 @@ export interface operations {
       };
     };
   };
-  list_13: {
+  list_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -17433,7 +17392,7 @@ export interface operations {
       };
     };
   };
-  create_12: {
+  create_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -17473,7 +17432,7 @@ export interface operations {
       };
     };
   };
-  get_13: {
+  get_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -17509,7 +17468,7 @@ export interface operations {
       };
     };
   };
-  update_11: {
+  update_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -17621,7 +17580,7 @@ export interface operations {
       };
     };
   };
-  list_14: {
+  list_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -17648,7 +17607,7 @@ export interface operations {
       };
     };
   };
-  create_13: {
+  create_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -17688,7 +17647,7 @@ export interface operations {
       };
     };
   };
-  get_14: {
+  get_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -17724,7 +17683,7 @@ export interface operations {
       };
     };
   };
-  update_12: {
+  update_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -17915,7 +17874,7 @@ export interface operations {
       };
     };
   };
-  list_10: {
+  list_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -17942,7 +17901,7 @@ export interface operations {
       };
     };
   };
-  create_9: {
+  create_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -17982,7 +17941,7 @@ export interface operations {
       };
     };
   };
-  get_10: {
+  get_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -18018,7 +17977,7 @@ export interface operations {
       };
     };
   };
-  update_8: {
+  update_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -18130,7 +18089,7 @@ export interface operations {
       };
     };
   };
-  list_6: {
+  list_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -18157,7 +18116,7 @@ export interface operations {
       };
     };
   };
-  create_5: {
+  create_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -18291,7 +18250,7 @@ export interface operations {
       };
     };
   };
-  get_6: {
+  get_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -18327,7 +18286,7 @@ export interface operations {
       };
     };
   };
-  update_4: {
+  update_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -18408,7 +18367,7 @@ export interface operations {
       };
     };
   };
-  list_15: {
+  list_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -18435,7 +18394,7 @@ export interface operations {
       };
     };
   };
-  create_14: {
+  create_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -18473,7 +18432,7 @@ export interface operations {
       };
     };
   };
-  get_15: {
+  get_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -18509,7 +18468,7 @@ export interface operations {
       };
     };
   };
-  update_13: {
+  update_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -18576,7 +18535,7 @@ export interface operations {
       };
     };
   };
-  list_11: {
+  list_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -18603,7 +18562,7 @@ export interface operations {
       };
     };
   };
-  create_10: {
+  create_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -18643,7 +18602,7 @@ export interface operations {
       };
     };
   };
-  get_11: {
+  get_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -18679,7 +18638,7 @@ export interface operations {
       };
     };
   };
-  update_9: {
+  update_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -18791,7 +18750,7 @@ export interface operations {
       };
     };
   };
-  list_16: {
+  list_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -18818,7 +18777,7 @@ export interface operations {
       };
     };
   };
-  create_15: {
+  create_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -18858,7 +18817,7 @@ export interface operations {
       };
     };
   };
-  get_16: {
+  get_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -18894,7 +18853,7 @@ export interface operations {
       };
     };
   };
-  update_14: {
+  update_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -19129,7 +19088,7 @@ export interface operations {
       };
     };
   };
-  list_17: {
+  list_18: {
     parameters: {
       query?: never;
       header?: never;
@@ -19156,7 +19115,7 @@ export interface operations {
       };
     };
   };
-  create_16: {
+  create_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -19196,7 +19155,7 @@ export interface operations {
       };
     };
   };
-  get_17: {
+  get_18: {
     parameters: {
       query?: never;
       header?: never;
@@ -19232,7 +19191,7 @@ export interface operations {
       };
     };
   };
-  update_15: {
+  update_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -19344,7 +19303,7 @@ export interface operations {
       };
     };
   };
-  list_18: {
+  list_19: {
     parameters: {
       query?: {
         /** @description Only return integrations targeting this agent. */
@@ -19374,7 +19333,7 @@ export interface operations {
       };
     };
   };
-  create_17: {
+  create_18: {
     parameters: {
       query?: never;
       header?: never;
@@ -19412,7 +19371,7 @@ export interface operations {
       };
     };
   };
-  get_18: {
+  get_19: {
     parameters: {
       query?: never;
       header?: never;
@@ -19448,7 +19407,7 @@ export interface operations {
       };
     };
   };
-  update_16: {
+  update_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -21558,6 +21517,125 @@ export interface operations {
       };
     };
   };
+  list_3: {
+    parameters: {
+      query?: {
+        query?: string;
+        scope?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Skills retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SkillView"][];
+        };
+      };
+    };
+  };
+  create_2: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["CreateSkillRequest"];
+      };
+    };
+    responses: {
+      /** @description Skill created successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SkillView"];
+        };
+      };
+    };
+  };
+  get_3: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Skill retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SkillView"];
+        };
+      };
+    };
+  };
+  update_1: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdateSkillRequest"];
+      };
+    };
+    responses: {
+      /** @description Skill updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SkillView"];
+        };
+      };
+    };
+  };
+  archive: {
+    parameters: {
+      query: {
+        expectedRevision: number;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description default response */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
   listClaimMappings: {
     parameters: {
       query?: never;
@@ -22301,7 +22379,7 @@ export interface operations {
       };
     };
   };
-  list_19: {
+  list_20: {
     parameters: {
       query?: {
         page?: number;
@@ -23206,6 +23284,10 @@ export enum SeverityNodeType {
 }
 export enum SimpleType {
   simple = "simple",
+}
+export enum SkillViewScope {
+  PLATFORM = "PLATFORM",
+  ORGANIZATION = "ORGANIZATION",
 }
 export enum SocialUserInfoType {
   SOCIAL = "SOCIAL",
