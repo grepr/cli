@@ -4055,13 +4055,13 @@ export interface components {
      */
     AttributeMask: {
       /**
-       * @description Masks to apply to the value at this path, as a map of label to regular expression. The same matching rules as messageMasks apply.
+       * @description Masks to apply to the value at this path, as a map of label to mask. The same matching rules as messageMasks apply.
        * @example {
        *       "email": "\\S+@\\S+"
        *     }
        */
       masks: {
-        [key: string]: string;
+        [key: string]: components["schemas"]["Mask"];
       };
       /**
        * @description Attribute path to mask, as a list of segments.
@@ -7776,6 +7776,29 @@ export interface components {
       auth: components["schemas"]["AuthConfig"];
       frontend?: components["schemas"]["FrontendConfig"];
     };
+    /**
+     * @description A mask: the regular expression to match, and how to rewrite the match. May also be written as a bare regex string when no replacement or preserved prefix is needed.
+     * @example {
+     *       "email": "\\S+@\\S+"
+     *     }
+     */
+    Mask: {
+      /**
+       * @description Delimiter ending a prefix of the match that is kept verbatim instead of being replaced. The match is split at the first occurrence of this text, so a regex matching "?token=abc123" with a delimiter of "=" keeps "?token=" and rewrites only the value. When the delimiter does not occur in the match, the whole match is replaced.
+       * @example =
+       */
+      preserveThrough?: string;
+      /**
+       * @description Regular expression whose matches are rewritten. Must be compatible with Hyperscan syntax: no lookbehind and no backreferences. Prefer unbounded repeats (`+`, `*`) over bounded ones (`{1,50}`) — a bounded repeat is expanded into that many copies of the pattern and can exceed the compiler's size limit.
+       * @example [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}
+       */
+      regex: string;
+      /**
+       * @description Text substituted for the match. Defaults to the mask's label in square brackets, e.g. a mask labeled "email" becomes "[email]".
+       * @example <redacted>
+       */
+      replacement?: string;
+    };
     MaskEntry: {
       name: string;
       pattern: string;
@@ -7799,17 +7822,18 @@ export interface components {
        */
       attributeMasks: components["schemas"]["AttributeMask"][];
       /**
-       * @description Masks to apply to the log message, as a map of label to regular expression. Each match is replaced with the label in square brackets, e.g. a match of the regex labeled "email" becomes "[email]". Labels may be up to 64 characters. Overlapping matches resolve to the leftmost match first, then the longest; declaration order breaks remaining ties, so declare more specific patterns first. Regexes must be compatible with Hyperscan syntax (no lookbehind or backreferences).
+       * @description Masks to apply to the log message, as a map of label to mask. A mask may be written as a bare regex string, in which case each match is replaced with the label in square brackets — a match of the regex labeled "email" becomes "[email]". Labels may be up to 64 characters. Overlapping matches resolve to the leftmost match first, then the longest; declaration order breaks remaining ties, so declare more specific patterns first.
        * @default {}
        * @example {
        *       "email": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
        *     }
        */
       messageMasks: {
-        [key: string]: string;
+        [key: string]: components["schemas"]["Mask"];
       };
       /** @example operation_name */
       name: string;
+      predicate?: components["schemas"]["EventPredicate"];
       /**
        * @description Masks sensitive substrings in log events by replacing regex matches with decorated labels. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -13485,6 +13509,7 @@ export type SchemaLogsSynchronousSink =
   components["schemas"]["LogsSynchronousSink"];
 export type SchemaLogsValuesSource = components["schemas"]["LogsValuesSource"];
 export type SchemaManifest = components["schemas"]["Manifest"];
+export type SchemaMask = components["schemas"]["Mask"];
 export type SchemaMaskEntry = components["schemas"]["MaskEntry"];
 export type SchemaMaskingOperator = components["schemas"]["MaskingOperator"];
 export type SchemaMaskingRuleConfig =

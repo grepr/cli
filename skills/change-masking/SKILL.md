@@ -11,18 +11,24 @@ the literal `[email]`. It masks the log `message` and string values at configure
 attribute paths. Prefer this over a SQL `REGEXP_REPLACE` transform — it is
 purpose-built for redaction, dynamically reconfigurable, and needs no SQL.
 
-Two facts that shape every decision:
+Three facts that shape every decision:
 
-- **It runs after the post-warehouse (pre-exceptions) stage.** Raw logs written
-  to the data lake keep their **original, unmasked** content; masking applies only
-  to what flows onward — the exceptions branch, the reducer, and forwarding
-  (vendor) sinks. So masking protects data leaving Grepr, not the raw dataset. The
-  operator **cannot** mask the raw lake (it runs after the lake write); if a user
-  needs that, surface it as a separate requirement the masking operator does not
-  cover rather than assuming this scrubs the lake.
-- **Masks are dynamically reconfigurable.** Editing `messageMasks`/`attributeMasks`
-  updates the running pipeline in place (the regex databases rebuild) without a
-  job restart, so iterating on patterns is cheap.
+- **It gates the data-lake fan-out on the normal path.** Masking sits directly
+  after the post-parsing (pre-warehouse) filter and feeds **both** the raw
+  data-lake write and the step after it, so on that path nothing reaches Iceberg,
+  the exceptions branch, the reducer, or the forwarding (vendor) sinks unmasked.
+  It is **not** an unconditional guarantee — see the two bypasses below.
+- **Two bypasses.** An **explicit SQL output edge** keeps its user-selected
+  destination: only a `data-warehouse` target is redirected through the masker, so
+  a pre-warehouse SQL output routed to `log-reducer` or `sinks` edges straight
+  past it. And masking **fails open**: an event whose masking or predicate
+  evaluation throws is tagged `grepr.failedOperations` and forwarded unmasked
+  rather than dropped. Check both before calling a pipeline compliant, and say so
+  explicitly when reporting coverage.
+- **Masks are dynamically reconfigurable.** Editing `messageMasks`,
+  `attributeMasks`, or `predicate` updates the running pipeline in place (the
+  regex databases rebuild) without a job restart, so iterating on patterns is
+  cheap.
 
 This skill diagnoses and proposes; production writes happen only through
 `grepr:test-pipeline-change` after explicit approval. Template-backed log-reducer
@@ -54,21 +60,44 @@ real shape is the signature failure here.
 
 ## Step 3 — Author the masks
 
-The operator has two fields. Each is a **label → regex** relationship; the label
-becomes the literal `[label]` in masked output.
+The operator has two mask fields plus an optional `predicate`. Each mask field is
+a **label → mask** relationship; a mask is either a bare regex string (matches are
+replaced with the literal `[label]`) or an object that says how to rewrite the
+match:
 
-- **`messageMasks`** — `{ "<label>": "<regex>", ... }` applied to the `message`.
-- **`attributeMasks`** — `[ { "path": ["seg", "seg"], "masks": { "<label>": "<regex>" } }, ... ]`.
+```json
+{ "regex": "<regex>", "replacement": "<text>", "preserveThrough": "<delimiter>" }
+```
+
+- `replacement` — text substituted for the match, instead of `[label]`.
+- `preserveThrough` — keep the match up to and including the **first** occurrence
+  of this delimiter, and rewrite only what follows. This is how you redact a
+  value while keeping the key that names it: Hyperscan has no lookbehind, so
+  match the key *and* the value, then split on the delimiter between them. A mask
+  of `{"regex": "[?&][a-zA-Z_]+=[^& ]+", "preserveThrough": "=", "replacement":
+  "<redacted>"}` turns `?token=abc123` into `?token=<redacted>`. If the delimiter
+  does not occur inside the match, the whole match is replaced — a mismatched
+  delimiter over-redacts rather than leaking.
+
+The fields:
+
+- **`messageMasks`** — `{ "<label>": <mask>, ... }` applied to the `message`.
+- **`attributeMasks`** — `[ { "path": ["seg", "seg"], "masks": { "<label>": <mask> } }, ... ]`.
   The `path` is a **list of segments** (a segment may itself contain a dot), so
   attribute `user.contact` is `["user", "contact"]`. Only **string** values at the
   exact path are masked; missing or non-string attributes are skipped. Paths must
   be unique.
+- **`predicate`** — optional query restricting which logs are masked at all, e.g.
+  `{"type": "datadog-query", "query": "service:payments"}`. Omit it to mask every
+  log. It gates the whole operator, so every mask shares one predicate; there is
+  no per-mask predicate.
 
 Rules that bite:
 
 | Rule | Why it matters |
 |------|----------------|
-| **Hyperscan syntax only** — no lookbehind, no backreferences (`\1`), no `\b` word-boundary in some builds. | The operator compiles patterns with Hyperscan; unsupported constructs fail at draft/apply, not offline. Keep patterns to character classes, quantifiers, anchors, and alternation. |
+| **Hyperscan syntax only** — no lookbehind, no backreferences (`\1`), no `\b` word-boundary in some builds. | The operator compiles patterns with Hyperscan; unsupported constructs fail at draft/apply, not offline. Keep patterns to character classes, quantifiers, anchors, and alternation. Where a lookbehind is what you *want*, use `preserveThrough` instead. |
+| **Prefer `+`/`*` over bounded repeats like `{1,50}`.** | Hyperscan unrolls a bounded repeat into that many copies of the sub-pattern, where `+` compiles to a self-loop. A bounded repeat alone compiles fine even at `{1,80}`, but combined with other unbounded context the unrolled graph can exceed the compile limit — `[?&][a-zA-Z_]{1,50}=[^& ]+` is rejected with "pattern is too large". Validation catches this at apply time. |
 | **JSON-escape the regex.** A `\` in the pattern is `\\` in JSON (`\\d+`, `\\S+@\\S+`, `\\.`). | A single backslash is invalid JSON and silently mangles the pattern. |
 | **Labels ≤ 64 chars**, become literal `[label]`. | Pick short, meaningful labels — they appear in every masked line and in the reduced output. |
 | **Overlap resolution: leftmost match first, then longest, then declaration order.** | Declare the **more specific** pattern first so it wins over a broad one (e.g. a full-card pattern before a bare `\d+`). |
@@ -94,7 +123,12 @@ to `patch-masking-<tag>.json`:
         "name": "masking_operator",
         "messageMasks": {
           "card": "[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}",
-          "email": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+          "email": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
+          "query_param": {
+            "regex": "[?&][a-zA-Z_]+=[^& ]+",
+            "preserveThrough": "=",
+            "replacement": "<redacted>"
+          }
         },
         "attributeMasks": [
           { "path": ["user", "contact"], "masks": { "email": "\\S+@\\S+" } }
@@ -112,7 +146,10 @@ Notes:
   `masking_operator`) if you omit them, so a bare `messageMasks`/`attributeMasks`
   patch still applies. Set `name` explicitly only if you want a specific vertex name.
 - `set-masking` **replaces** the whole masking operator. To add a mask to an
-  existing operator, include the existing masks (from Step 1) plus the new one.
+  existing operator, include the existing masks (from Step 1) plus the new one —
+  **and carry the existing `predicate` through**. Dropping it widens masking from
+  the scope the customer chose to all traffic, and the plan diff will not flag the
+  removal.
 - To **remove all masking**, use `clear-masking`:
   ```json
   { "operations": [ { "op": "clear-masking" } ] }
@@ -133,8 +170,9 @@ mechanics. When inspecting the draft, confirm:
 
 | Stage (in `.data.tags["sink-source"]`) | Expect |
 |----------------------------------------|--------|
-| `Masking -> Exceptions`, `Exceptions -> Reducer`, `Reducer -> <sink>` (post-masking) | every match replaced by `[label]` (e.g. `[email]`); **no raw value survives** here. If one does, the regex missed it — fix and re-draft. |
-| The raw data-lake write (pre-masking) | keeps the **original** value — expected, masking runs after the lake write. |
+| `Post-parsing Filter -> Masking` (pre-masking) | the **original** value — this is the last stage that sees it. |
+| `Masking -> Post-warehouse Filter` and everything after it (`Exceptions -> Reducer`, `Reducer -> <sink>`) | every match rewritten (`[label]`, or the mask's `replacement`); **no raw value survives** here, including in the raw data-lake write. If one does, the regex missed it — fix and re-draft. |
+| A mask with `preserveThrough` | the key still readable, only the value rewritten (`?token=<redacted>`, not `[redacted]`). If the whole match vanished, the delimiter is not inside the match — check it. |
 
 ## Resources
 

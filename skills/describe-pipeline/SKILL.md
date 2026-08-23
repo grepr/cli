@@ -96,9 +96,14 @@ Include only populated fields — keep the output focused.
   `partitionByAttributePaths` / `partitionByTags`,
   `attributeMergeStrategyEntries` (path + strategy type), `logReducerExceptions`
   (count + a sample predicate or two), `integrationExceptionConfigs`.
-- **Masking** (`masking-operator`) — the `messageMasks` (label→regex) and
-  `attributeMasks` (path + label→regex). It runs pre-exceptions, so note that the
-  raw data lake stays unmasked. Edit via `grepr:change-masking`.
+- **Masking** (`masking-operator`) — the `messageMasks` (label→mask),
+  `attributeMasks` (path + label→mask), and the optional `predicate` that limits
+  which logs are masked at all (always report it; its absence means every log is
+  masked). A mask is a bare regex string or an object with
+  `replacement`/`preserveThrough`. It gates the data-lake fan-out on the normal
+  path, so everything downstream — the raw lake included — is masked, except for
+  explicit SQL output edges routed past it and events whose masking failed (tagged
+  `grepr.failedOperations`). Edit via `grepr:change-masking`.
 - **Sinks** — name, type, `integrationId`, `datasetId` (iceberg), any
   sink-level filter/predicate.
 - **Job-level state** — `id`, `name`, `version`, `desiredState`, `state`,

@@ -1,6 +1,6 @@
 {
   "name": "grepr",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Skills for managing Grepr jobs and pipelines, building grok parsers, querying log data, and debugging log reduction. Requires the Grepr CLI (npm install -g @grepr/cli).",
   "author": {
     "name": "Grepr",
