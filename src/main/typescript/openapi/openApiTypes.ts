@@ -12457,9 +12457,13 @@ export interface components {
       };
     };
     TranscriptMessage: {
+      /** Format: int64 */
+      durationNanos?: number;
       id?: string;
       /** @enum {string} */
       role?: TranscriptMessageRole;
+      /** Format: date-time */
+      startedAt?: string;
       text?: string;
       /** Format: date-time */
       timestamp?: string;
