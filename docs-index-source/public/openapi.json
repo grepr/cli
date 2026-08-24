@@ -16222,7 +16222,7 @@
           },
           "incompleteSamplingRate": {
             "default": 0.5,
-            "description": "Sampling rate for incomplete/partial traces. Partial traces occur when some spans are missing, which can indicate data loss or system issues. Applied before quantile-based sampling.",
+            "description": "Sampling rate for incomplete/partial traces. Partial traces occur when some spans are missing or when an assembly span/byte bound forces a buffered segment to emit. Applied before quantile-based sampling.",
             "example": 0.5,
             "exclusiveMaximum": false,
             "exclusiveMinimum": false,
@@ -16309,14 +16309,14 @@
           },
           "maxSessionLength": {
             "default": "PT1M",
-            "description": "Upper bound on how long a single trace assembly session may accumulate spans in state before being force-emitted. Protects against long-running traces that would otherwise hold spans in Flink keyed state indefinitely. When the cap is hit, the trace is emitted as partial and later spans form a new session. Must be strictly greater than maxTraceDelay.",
+            "description": "Upper bound on how long a single trace assembly session may accumulate spans in memory before being force-emitted. Protects against long-running traces that would otherwise hold spans in the assembly buffer indefinitely. When the cap is hit, the trace is classified as long-running and later spans form a new session. Must be strictly greater than maxTraceDelay.",
             "example": "PT20.345S",
             "format": "ISO-8601",
             "type": "string"
           },
           "maxTraceDelay": {
             "default": "PT20S",
-            "description": "The maximum time to wait for all spans of a trace to arrive before assembling the trace. This determines the size of the tumbling window used for trace assembly. Traces that span longer than this duration may be assembled as partial traces. Should be set based on the expected maximum trace duration in your system. Large values may lead to memory issues if traces are too long and will delay sending traces to the sink by that amount. The pipeline may also fail if configured too high.",
+            "description": "Idle gap after which an in-memory trace assembly session is considered complete. Each accepted span pushes the processing-time deadline forward by this duration. Larger values retain inactive sessions longer and delay emission, while the per-subtask byte bound still caps buffered span bytes.",
             "example": "PT20.345S",
             "format": "ISO-8601",
             "type": "string"

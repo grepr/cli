@@ -11603,7 +11603,7 @@ export interface components {
       longRunningTraceSamplingRate?: number;
       /**
        * Format: ISO-8601
-       * @description Upper bound on how long a single trace assembly session may accumulate spans in state before being force-emitted. Protects against long-running traces that would otherwise hold spans in Flink keyed state indefinitely. When the cap is hit, the trace is emitted as partial and later spans form a new session. Must be strictly greater than maxTraceDelay.
+       * @description Upper bound on how long a single trace assembly session may accumulate spans in memory before being force-emitted. Protects against long-running traces that would otherwise hold spans in the assembly buffer indefinitely. When the cap is hit, the trace is classified as long-running and later spans form a new session. Must be strictly greater than maxTraceDelay.
        * @default PT1M
        * @example PT20.345S
        */
