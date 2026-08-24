@@ -3642,6 +3642,29 @@ export interface components {
       start: string;
       warehouseIntegrationId: string;
     };
+    AgentSessionSummary: {
+      emitter: string;
+      /** Format: int64 */
+      errorCount: number;
+      /** Format: date-time */
+      firstActivityTimestamp: string;
+      firstPrompt?: string;
+      identity?: {
+        [key: string]: string;
+      };
+      /** Format: date-time */
+      lastActivityTimestamp: string;
+      matchedPreview?: string;
+      model?: string;
+      sessionId: string;
+      /** Format: int64 */
+      toolCallCount: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: AgentSessionSummaryType;
+    };
     /** @description An OTLP integration attached as an Agent Sessions source or sink. */
     AgentSessionsEndpoint: {
       /** @description OTLP integration carrying both agent event logs and execution spans. */
@@ -3686,7 +3709,7 @@ export interface components {
        */
       start: string;
       /**
-       * @description Selects complete agent sessions from the logs Iceberg table. (enum property replaced by openapi-typescript)
+       * @description Selects grouped agent session summaries from the logs Iceberg table. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: AgentSessionsIcebergTableSourceType;
@@ -3701,6 +3724,15 @@ export interface components {
       variables?: {
         [key: string]: components["schemas"]["Any"];
       };
+    };
+    AgentSessionsSynchronousSink: {
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Sink for returning agent session summaries to the caller. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: AgentSessionsSynchronousSinkType;
     };
     /**
      * Inputs Schema
@@ -3997,6 +4029,59 @@ export interface components {
       value?: string;
     };
     ArrayData: Record<string, never>;
+    AthenaAgentSessionsSource: {
+      /** @description The ID of the dataset to read data from. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of time interval to query data for.
+       * @example 2023-01-01T01:00:00Z
+       */
+      end: string;
+      /**
+       * Format: int32
+       * @description The maximum number of rows to process
+       * @default 2500
+       */
+      limit?: number;
+      /** @example operation_name */
+      name: string;
+      /**
+       * Format: int32
+       * @description Offset on the number of rows to process
+       * @default 0
+       */
+      offset?: number;
+      query: components["schemas"]["query"];
+      /**
+       * @description The order in which the rows should be sorted by
+       * @default ASCENDING
+       * @enum {string}
+       */
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      /**
+       * Format: date-time
+       * @description Start of time interval to query data for.
+       * @example 2023-01-01T00:00:00Z
+       */
+      start: string;
+      /**
+       * @description Returns grouped agent session summaries through Athena. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: AthenaAgentSessionsSourceType;
+      /**
+       * @description Variables that can be used to modify the query while parsed
+       * @default {}
+       * @example {
+       *       "__application": "app1",
+       *       "__service": "service1"
+       *     }
+       */
+      variables?: {
+        [key: string]: components["schemas"]["Any"];
+      };
+    };
     /**
      * @description Maps a log event attribute path to an HTTP header name
      * @example [
@@ -8585,6 +8670,7 @@ export interface components {
       | components["schemas"]["LogsRuleEngine"]
       | components["schemas"]["ReducerLogsQuerySource"]
       | components["schemas"]["LogsSynchronousSink"]
+      | components["schemas"]["AgentSessionsSynchronousSink"]
       | components["schemas"]["MetricsSynchronousSink"]
       | components["schemas"]["VariantSynchronousSink"]
       | components["schemas"]["SpansSynchronousSink"]
@@ -8593,6 +8679,7 @@ export interface components {
       | components["schemas"]["DatadogMetricsSink"]
       | components["schemas"]["LegacyDatadogMetricsSink"]
       | components["schemas"]["GreprReducerLogSource"]
+      | components["schemas"]["AthenaAgentSessionsSource"]
       | components["schemas"]["GreprRawLogsSource"]
       | components["schemas"]["GreprRawSpanSource"]
       | components["schemas"]["GreprLlmPromptResultsSource"]
@@ -10144,6 +10231,7 @@ export interface components {
       | components["schemas"]["DoubleDatapoint"]
       | components["schemas"]["CompleteSpan"]
       | components["schemas"]["MetricData"]
+      | components["schemas"]["AgentSessionSummary"]
     );
     ReducerLogsQuerySource: {
       /** @description The ID of the dataset to read data from. */
@@ -13180,10 +13268,14 @@ export type SchemaAgentSessionAnalyticsPage =
   components["schemas"]["AgentSessionAnalyticsPage"];
 export type SchemaAgentSessionAnalyticsTemplateInput =
   components["schemas"]["AgentSessionAnalyticsTemplateInput"];
+export type SchemaAgentSessionSummary =
+  components["schemas"]["AgentSessionSummary"];
 export type SchemaAgentSessionsEndpoint =
   components["schemas"]["AgentSessionsEndpoint"];
 export type SchemaAgentSessionsIcebergTableSource =
   components["schemas"]["AgentSessionsIcebergTableSource"];
+export type SchemaAgentSessionsSynchronousSink =
+  components["schemas"]["AgentSessionsSynchronousSink"];
 export type SchemaAgentSessionsTemplateInput =
   components["schemas"]["AgentSessionsTemplateInput"];
 export type SchemaAgentSpanProcessor =
@@ -13217,6 +13309,8 @@ export type SchemaAnthropic = components["schemas"]["Anthropic"];
 export type SchemaAny = components["schemas"]["Any"];
 export type SchemaApiKey = components["schemas"]["ApiKey"];
 export type SchemaArrayData = components["schemas"]["ArrayData"];
+export type SchemaAthenaAgentSessionsSource =
+  components["schemas"]["AthenaAgentSessionsSource"];
 export type SchemaAttributeHeaderMapping =
   components["schemas"]["AttributeHeaderMapping"];
 export type SchemaAttributeKeyTermNode =
@@ -22726,6 +22820,9 @@ export enum AgentSessionAnalyticsJobState {
   FAILED = "FAILED",
   CANCELLED = "CANCELLED",
 }
+export enum AgentSessionSummaryType {
+  agent_session_summary = "agent-session-summary",
+}
 export enum AgentSessionsIcebergTableSourceSortOrder {
   ASCENDING = "ASCENDING",
   DESCENDING = "DESCENDING",
@@ -22733,6 +22830,9 @@ export enum AgentSessionsIcebergTableSourceSortOrder {
 }
 export enum AgentSessionsIcebergTableSourceType {
   agent_sessions_iceberg_table_source = "agent-sessions-iceberg-table-source",
+}
+export enum AgentSessionsSynchronousSinkType {
+  agent_sessions_sync_sink = "agent-sessions-sync-sink",
 }
 export enum AgentSpanProcessorType {
   agent_span_processor = "agent-span-processor",
@@ -22769,6 +22869,9 @@ export enum AnnualDataProcessingSummaryType {
 }
 export enum AnnualSaasPreCommitmentSummaryType {
   annual_saas_pre_commitment = "annual-saas-pre-commitment",
+}
+export enum AthenaAgentSessionsSourceType {
+  athena_agent_sessions_source = "athena-agent-sessions-source",
 }
 export enum AttributeKeyTermNodeType {
   attribute_key_term_node = "attribute-key-term-node",
@@ -23534,6 +23637,7 @@ export enum WindowBasedLogarithmicSamplingType {
 
 export const SOURCE_TYPES = new Set<string>([
   'agent-sessions-iceberg-table-source',
+  'athena-agent-sessions-source',
   'bounded-datadog-source',
   'cloudtrail-file-source',
   'datadog-log-agent-source',
@@ -23567,6 +23671,7 @@ export const SOURCE_TYPES = new Set<string>([
 ]);
 
 export const SINK_TYPES = new Set<string>([
+  'agent-sessions-sync-sink',
   'datadog-log-sink',
   'datadog-metrics-sink',
   'datadog-stats-sink',

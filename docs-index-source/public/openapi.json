@@ -1005,6 +1005,56 @@
         "title": "Inputs Schema",
         "type": "object"
       },
+      "AgentSessionSummary": {
+        "properties": {
+          "emitter": {
+            "type": "string"
+          },
+          "errorCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "firstActivityTimestamp": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "firstPrompt": {
+            "type": "string"
+          },
+          "identity": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "lastActivityTimestamp": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "matchedPreview": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "toolCallCount": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "emitter",
+          "errorCount",
+          "firstActivityTimestamp",
+          "lastActivityTimestamp",
+          "sessionId",
+          "toolCallCount"
+        ],
+        "type": "object"
+      },
       "AgentSessionsEndpoint": {
         "description": "An OTLP integration attached as an Agent Sessions source or sink.",
         "properties": {
@@ -1075,7 +1125,7 @@
             "type": "string"
           },
           "type": {
-            "description": "Selects complete agent sessions from the logs Iceberg table.",
+            "description": "Selects grouped agent session summaries from the logs Iceberg table.",
             "enum": [
               "agent-sessions-iceberg-table-source"
             ],
@@ -1105,6 +1155,30 @@
         "type": "object",
         "x-tags": [
           "Sources"
+        ]
+      },
+      "AgentSessionsSynchronousSink": {
+        "properties": {
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "type": {
+            "description": "Sink for returning agent session summaries to the caller.",
+            "enum": [
+              "agent-sessions-sync-sink"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sinks"
         ]
       },
       "AgentSessionsTemplateInput": {
@@ -1702,6 +1776,89 @@
       },
       "ArrayData": {
         "type": "object"
+      },
+      "AthenaAgentSessionsSource": {
+        "properties": {
+          "datasetId": {
+            "description": "The ID of the dataset to read data from.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of time interval to query data for.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "default": 2500,
+            "description": "The maximum number of rows to process",
+            "format": "int32",
+            "type": "integer"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Offset on the number of rows to process",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "query": {
+            "$ref": "#/components/schemas/query"
+          },
+          "sortOrder": {
+            "default": "ASCENDING",
+            "description": "The order in which the rows should be sorted by",
+            "enum": [
+              "ASCENDING",
+              "DESCENDING",
+              "UNSORTED"
+            ],
+            "type": "string"
+          },
+          "start": {
+            "description": "Start of time interval to query data for.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Returns grouped agent session summaries through Athena.",
+            "enum": [
+              "athena-agent-sessions-source"
+            ],
+            "type": "string"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables that can be used to modify the query while parsed",
+            "example": {
+              "__application": "app1",
+              "__service": "service1"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "start",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
       },
       "AttributeHeaderMapping": {
         "description": "Maps a log event attribute path to an HTTP header name",
@@ -10192,7 +10349,9 @@
             "agent-log-processor": "#/components/schemas/AgentLogProcessor",
             "agent-session-analytics": "#/components/schemas/AgentSessionAnalytics",
             "agent-sessions-iceberg-table-source": "#/components/schemas/AgentSessionsIcebergTableSource",
+            "agent-sessions-sync-sink": "#/components/schemas/AgentSessionsSynchronousSink",
             "agent-span-processor": "#/components/schemas/AgentSpanProcessor",
+            "athena-agent-sessions-source": "#/components/schemas/AthenaAgentSessionsSource",
             "cloudtrail-file-source": "#/components/schemas/CloudTrailLogsFileSource",
             "datadog-log-agent-source": "#/components/schemas/DatadogLogAgentSource",
             "datadog-log-cloud-source": "#/components/schemas/DatadogLogCloudSource",
@@ -10418,6 +10577,9 @@
             "$ref": "#/components/schemas/LogsSynchronousSink"
           },
           {
+            "$ref": "#/components/schemas/AgentSessionsSynchronousSink"
+          },
+          {
             "$ref": "#/components/schemas/MetricsSynchronousSink"
           },
           {
@@ -10440,6 +10602,9 @@
           },
           {
             "$ref": "#/components/schemas/GreprReducerLogSource"
+          },
+          {
+            "$ref": "#/components/schemas/AthenaAgentSessionsSource"
           },
           {
             "$ref": "#/components/schemas/GreprRawLogsSource"
@@ -13609,6 +13774,7 @@
         "description": "Readable data via a synchronous job.",
         "discriminator": {
           "mapping": {
+            "agent-session-summary": "#/components/schemas/AgentSessionSummary",
             "complete_span": "#/components/schemas/CompleteSpan",
             "double-datapoint": "#/components/schemas/DoubleDatapoint",
             "log": "#/components/schemas/LogEvent",
@@ -13628,6 +13794,9 @@
           },
           {
             "$ref": "#/components/schemas/MetricData"
+          },
+          {
+            "$ref": "#/components/schemas/AgentSessionSummary"
           }
         ],
         "properties": {
