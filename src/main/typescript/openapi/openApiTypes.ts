@@ -6564,6 +6564,8 @@ export interface components {
       /** Format: int32 */
       outputTokens?: number;
       resumable?: boolean;
+      /** Format: date-time */
+      startedAt?: string;
       /** @enum {string} */
       status?: InvestigationSummaryStatus;
       summary?: string;
@@ -6577,6 +6579,8 @@ export interface components {
       /** Format: date-time */
       endedAt?: string;
       investigationId?: string;
+      /** Format: date-time */
+      startedAt?: string;
       /** @enum {string} */
       status?: InvestigationSummaryStatus;
       summary?: string;
