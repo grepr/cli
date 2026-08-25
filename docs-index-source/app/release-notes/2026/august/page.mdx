@@ -6,29 +6,6 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in August 2026.
 
-## August 20, 2026
-
-{/* ENGT-4539 */}
-### Grok rules that name an unrecognized transformer are now rejected
-
-<Callout type="warning">
-Action required: correct any grok rule that names a transformer Grepr does not recognize. A pipeline that contains one no longer starts.
-</Callout>
-
-Grepr used to skip a transformer it did not recognize and parse the rest of the rule, so a misspelled transformer silently left the extracted value as a raw string. A rule that names an unrecognized transformer is now reported as an error, both when you test the rule and when you start the pipeline holding it. Testing a rule also reports an error for a regular expression construct Grepr cannot match, such as an atomic group `(?>...)`. See [_](/transforms/grok/transformers).
-
-{/* ENGT-5419 */}
-### Tune how a dataset stores its raw logs
-
-You can now edit the partitioning and the promoted tag columns of a dataset's raw log table from the dataset's settings. Adding hashed bucket partitions on the fields you filter by most, and promoting tag keys to top-level columns, speeds up the searches and backfills you run against that dataset. This was previously limited to selected organizations and is now available to every organization.
-
-### Other improvements and fixes
-
-- {/* ENGT-5445 */} Grepr now splits log events larger than 900KB, reduced from 1MB. See [_](/integrations#limitations).
-- {/* ENGT-5368 */} The pipelines, jobs, datasets, and log search pages load faster and repeat far fewer requests, and a browser tab in the background no longer keeps refreshing pipeline charts and job lists.
-- {/* ENGT-5444 */} Fixed an issue where, in rare circumstances, a pipeline assigned to one or more teams became assigned to the organization instead.
-- {/* ENGT-5449 */} Fixed an issue where tail sampling on a trace pipeline dropped the shortest trace recorded for a trace signature instead of keeping it at the lowest configured tier, which made the set of traces kept depend on the order they arrived in.
-
 ## August 15, 2026
 
 {/* ENGT-5073, ENGT-5205, ENGT-5261 */}
