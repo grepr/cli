@@ -2424,6 +2424,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/llm-usage/{integrationId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get the current maxTokens window of one LLM integration */
+    get: operations["currentWindow"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/manifest": {
     parameters: {
       query?: never;
@@ -3490,6 +3507,8 @@ export interface components {
       integrationReserved?: number;
       /** Format: int64 */
       integrationUsage?: number;
+      /** Format: int32 */
+      investigationsQueued?: number;
       /** Format: int64 */
       reservation?: number;
       /** Format: date-time */
@@ -3642,6 +3661,29 @@ export interface components {
       start: string;
       warehouseIntegrationId: string;
     };
+    AgentSessionSummary: {
+      emitter: string;
+      /** Format: int64 */
+      errorCount: number;
+      /** Format: date-time */
+      firstActivityTimestamp: string;
+      firstPrompt?: string;
+      identity?: {
+        [key: string]: string;
+      };
+      /** Format: date-time */
+      lastActivityTimestamp: string;
+      matchedPreview?: string;
+      model?: string;
+      sessionId: string;
+      /** Format: int64 */
+      toolCallCount: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: AgentSessionSummaryType;
+    };
     /** @description An OTLP integration attached as an Agent Sessions source or sink. */
     AgentSessionsEndpoint: {
       /** @description OTLP integration carrying both agent event logs and execution spans. */
@@ -3686,7 +3728,7 @@ export interface components {
        */
       start: string;
       /**
-       * @description Selects complete agent sessions from the logs Iceberg table. (enum property replaced by openapi-typescript)
+       * @description Selects grouped agent session summaries from the logs Iceberg table. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: AgentSessionsIcebergTableSourceType;
@@ -3701,6 +3743,15 @@ export interface components {
       variables?: {
         [key: string]: components["schemas"]["Any"];
       };
+    };
+    AgentSessionsSynchronousSink: {
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Sink for returning agent session summaries to the caller. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: AgentSessionsSynchronousSinkType;
     };
     /**
      * Inputs Schema
@@ -3997,6 +4048,59 @@ export interface components {
       value?: string;
     };
     ArrayData: Record<string, never>;
+    AthenaAgentSessionsSource: {
+      /** @description The ID of the dataset to read data from. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of time interval to query data for.
+       * @example 2023-01-01T01:00:00Z
+       */
+      end: string;
+      /**
+       * Format: int32
+       * @description The maximum number of rows to process
+       * @default 2500
+       */
+      limit?: number;
+      /** @example operation_name */
+      name: string;
+      /**
+       * Format: int32
+       * @description Offset on the number of rows to process
+       * @default 0
+       */
+      offset?: number;
+      query: components["schemas"]["query"];
+      /**
+       * @description The order in which the rows should be sorted by
+       * @default ASCENDING
+       * @enum {string}
+       */
+      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      /**
+       * Format: date-time
+       * @description Start of time interval to query data for.
+       * @example 2023-01-01T00:00:00Z
+       */
+      start: string;
+      /**
+       * @description Returns grouped agent session summaries through Athena. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: AthenaAgentSessionsSourceType;
+      /**
+       * @description Variables that can be used to modify the query while parsed
+       * @default {}
+       * @example {
+       *       "__application": "app1",
+       *       "__service": "service1"
+       *     }
+       */
+      variables?: {
+        [key: string]: components["schemas"]["Any"];
+      };
+    };
     /**
      * @description Maps a log event attribute path to an HTTP header name
      * @example [
@@ -6479,6 +6583,8 @@ export interface components {
       /** Format: int32 */
       outputTokens?: number;
       resumable?: boolean;
+      /** Format: date-time */
+      startedAt?: string;
       /** @enum {string} */
       status?: InvestigationSummaryStatus;
       summary?: string;
@@ -6492,6 +6598,8 @@ export interface components {
       /** Format: date-time */
       endedAt?: string;
       investigationId?: string;
+      /** Format: date-time */
+      startedAt?: string;
       /** @enum {string} */
       status?: InvestigationSummaryStatus;
       summary?: string;
@@ -6925,6 +7033,22 @@ export interface components {
        * @example 0kk67gfs56a
        */
       integrationId: string;
+    };
+    LlmUsageWindow: {
+      /** Format: date-time */
+      end?: string;
+      /** Format: int64 */
+      investigationsQueued?: number;
+      /** Format: int64 */
+      investigationsRunning?: number;
+      /** Format: date-time */
+      start?: string;
+      /** Format: int64 */
+      tokensLimit?: number;
+      /** Format: int64 */
+      tokensReserved?: number;
+      /** Format: int64 */
+      tokensUsed?: number;
     };
     /** @description Configuration for the LLM workflow strategy. */
     LlmWorkflowConfig:
@@ -8585,6 +8709,7 @@ export interface components {
       | components["schemas"]["LogsRuleEngine"]
       | components["schemas"]["ReducerLogsQuerySource"]
       | components["schemas"]["LogsSynchronousSink"]
+      | components["schemas"]["AgentSessionsSynchronousSink"]
       | components["schemas"]["MetricsSynchronousSink"]
       | components["schemas"]["VariantSynchronousSink"]
       | components["schemas"]["SpansSynchronousSink"]
@@ -8593,6 +8718,7 @@ export interface components {
       | components["schemas"]["DatadogMetricsSink"]
       | components["schemas"]["LegacyDatadogMetricsSink"]
       | components["schemas"]["GreprReducerLogSource"]
+      | components["schemas"]["AthenaAgentSessionsSource"]
       | components["schemas"]["GreprRawLogsSource"]
       | components["schemas"]["GreprRawSpanSource"]
       | components["schemas"]["GreprLlmPromptResultsSource"]
@@ -10144,6 +10270,7 @@ export interface components {
       | components["schemas"]["DoubleDatapoint"]
       | components["schemas"]["CompleteSpan"]
       | components["schemas"]["MetricData"]
+      | components["schemas"]["AgentSessionSummary"]
     );
     ReducerLogsQuerySource: {
       /** @description The ID of the dataset to read data from. */
@@ -11515,7 +11642,7 @@ export interface components {
       longRunningTraceSamplingRate?: number;
       /**
        * Format: ISO-8601
-       * @description Upper bound on how long a single trace assembly session may accumulate spans in state before being force-emitted. Protects against long-running traces that would otherwise hold spans in Flink keyed state indefinitely. When the cap is hit, the trace is emitted as partial and later spans form a new session. Must be strictly greater than maxTraceDelay.
+       * @description Upper bound on how long a single trace assembly session may accumulate spans in memory before being force-emitted. Protects against long-running traces that would otherwise hold spans in the assembly buffer indefinitely. When the cap is hit, the trace is classified as long-running and later spans form a new session. Must be strictly greater than maxTraceDelay.
        * @default PT1M
        * @example PT20.345S
        */
@@ -12369,9 +12496,13 @@ export interface components {
       };
     };
     TranscriptMessage: {
+      /** Format: int64 */
+      durationNanos?: number;
       id?: string;
       /** @enum {string} */
       role?: TranscriptMessageRole;
+      /** Format: date-time */
+      startedAt?: string;
       text?: string;
       /** Format: date-time */
       timestamp?: string;
@@ -13180,10 +13311,14 @@ export type SchemaAgentSessionAnalyticsPage =
   components["schemas"]["AgentSessionAnalyticsPage"];
 export type SchemaAgentSessionAnalyticsTemplateInput =
   components["schemas"]["AgentSessionAnalyticsTemplateInput"];
+export type SchemaAgentSessionSummary =
+  components["schemas"]["AgentSessionSummary"];
 export type SchemaAgentSessionsEndpoint =
   components["schemas"]["AgentSessionsEndpoint"];
 export type SchemaAgentSessionsIcebergTableSource =
   components["schemas"]["AgentSessionsIcebergTableSource"];
+export type SchemaAgentSessionsSynchronousSink =
+  components["schemas"]["AgentSessionsSynchronousSink"];
 export type SchemaAgentSessionsTemplateInput =
   components["schemas"]["AgentSessionsTemplateInput"];
 export type SchemaAgentSpanProcessor =
@@ -13217,6 +13352,8 @@ export type SchemaAnthropic = components["schemas"]["Anthropic"];
 export type SchemaAny = components["schemas"]["Any"];
 export type SchemaApiKey = components["schemas"]["ApiKey"];
 export type SchemaArrayData = components["schemas"]["ArrayData"];
+export type SchemaAthenaAgentSessionsSource =
+  components["schemas"]["AthenaAgentSessionsSource"];
 export type SchemaAttributeHeaderMapping =
   components["schemas"]["AttributeHeaderMapping"];
 export type SchemaAttributeKeyTermNode =
@@ -13478,6 +13615,7 @@ export type SchemaLlmPrompt = components["schemas"]["LlmPrompt"];
 export type SchemaLlmPromptResultsIcebergTableSource =
   components["schemas"]["LlmPromptResultsIcebergTableSource"];
 export type SchemaLlmToolConfig = components["schemas"]["LlmToolConfig"];
+export type SchemaLlmUsageWindow = components["schemas"]["LlmUsageWindow"];
 export type SchemaLlmWorkflowConfig =
   components["schemas"]["LlmWorkflowConfig"];
 export type SchemaLogAttributesRemapper =
@@ -20396,6 +20534,28 @@ export interface operations {
       };
     };
   };
+  currentWindow: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        integrationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Current window retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["LlmUsageWindow"];
+        };
+      };
+    };
+  };
   getManifest: {
     parameters: {
       query?: never;
@@ -22726,6 +22886,9 @@ export enum AgentSessionAnalyticsJobState {
   FAILED = "FAILED",
   CANCELLED = "CANCELLED",
 }
+export enum AgentSessionSummaryType {
+  agent_session_summary = "agent-session-summary",
+}
 export enum AgentSessionsIcebergTableSourceSortOrder {
   ASCENDING = "ASCENDING",
   DESCENDING = "DESCENDING",
@@ -22733,6 +22896,9 @@ export enum AgentSessionsIcebergTableSourceSortOrder {
 }
 export enum AgentSessionsIcebergTableSourceType {
   agent_sessions_iceberg_table_source = "agent-sessions-iceberg-table-source",
+}
+export enum AgentSessionsSynchronousSinkType {
+  agent_sessions_sync_sink = "agent-sessions-sync-sink",
 }
 export enum AgentSpanProcessorType {
   agent_span_processor = "agent-span-processor",
@@ -22769,6 +22935,9 @@ export enum AnnualDataProcessingSummaryType {
 }
 export enum AnnualSaasPreCommitmentSummaryType {
   annual_saas_pre_commitment = "annual-saas-pre-commitment",
+}
+export enum AthenaAgentSessionsSourceType {
+  athena_agent_sessions_source = "athena-agent-sessions-source",
 }
 export enum AttributeKeyTermNodeType {
   attribute_key_term_node = "attribute-key-term-node",
@@ -23534,6 +23703,7 @@ export enum WindowBasedLogarithmicSamplingType {
 
 export const SOURCE_TYPES = new Set<string>([
   'agent-sessions-iceberg-table-source',
+  'athena-agent-sessions-source',
   'bounded-datadog-source',
   'cloudtrail-file-source',
   'datadog-log-agent-source',
@@ -23567,6 +23737,7 @@ export const SOURCE_TYPES = new Set<string>([
 ]);
 
 export const SINK_TYPES = new Set<string>([
+  'agent-sessions-sync-sink',
   'datadog-log-sink',
   'datadog-metrics-sink',
   'datadog-stats-sink',

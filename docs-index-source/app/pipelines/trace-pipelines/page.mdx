@@ -7,7 +7,7 @@ import { HiddenFAQ } from '@/components/HiddenFAQ'
 
 # Use a trace reduction pipeline for your APM data
 
-A _trace reduction pipeline_ processes the Application Performance Monitoring (APM) data produced by your applications and agents, transforming and reshaping it before forwarding it to your observability platform. As traces flow through the pipeline, Grepr applies any configured transformations and then samples them to forward a representative subset rather than the full volume. By forwarding fewer traces, a trace pipeline reduces the volume and cost of data sent to your observability platform, while retaining the complete set of raw traces in a Grepr data lake, so you keep full access to your APM data when you need it. A trace pipeline can also derive metrics from your trace data and forward them to Datadog, so you can track trends across your traces without forwarding every trace.
+A _trace reduction pipeline_ processes the Application Performance Monitoring (APM) data produced by your applications and agents, transforming and reshaping it before forwarding it to your observability platform. As traces flow through the pipeline, Grepr applies any configured transformations and then samples them to forward a representative subset rather than the full volume. By forwarding fewer traces, a trace pipeline reduces the volume and cost of data sent to your observability platform, while storing processed trace spans in a Grepr data lake so you can access them when needed. A trace pipeline can also derive metrics from your trace data and forward them to Datadog, so you can track trends across your traces without forwarding every trace.
 
 This page details how to create and manage trace pipelines in the Grepr UI, including the steps in a trace pipeline and the settings available for each step. This page also explains how to search the traces stored in your data lake with Trace Explorer.
 
@@ -73,9 +73,9 @@ To configure SQL transforms, on the **Configure SQL Transformation** form:
 - Optionally select **Reuse calculation** to materialize the results of query processing for reuse in subsequent views.
 - In the **Outputs** section, connect each view to a destination that receives the results of its SQL processing. The output type determines the valid destinations for a view: A view with the **Spans** output type sends its results downstream to the next step in the pipeline, and a view with the **Metrics** output type sends its results to a Datadog sink. Because it's the only sink type that can receive metrics, your pipeline must include a Datadog sink. Grepr forwards the metrics to every Datadog sink that you configure.
 
-## Store raw traces in the data lake [#apm-data-lake]
+## Store traces in the data lake [#apm-data-lake]
 
-A trace pipeline persists the complete set of raw spans to a Grepr data lake, so that you retain full access to your input trace data even though the pipeline forwards only a sampled subset to your observability platform. You configure the data lake step by selecting the _dataset_ that identifies where Grepr stores the raw spans. Storing raw traces in the data lake also makes them searchable in [Trace Explorer](#trace-explorer) and retrievable for tasks such as [backfilling](#trace-actions).
+A trace pipeline persists the processed spans that reach the data lake step, even though the pipeline forwards only a sampled subset to your observability platform. You configure the data lake step by selecting the _dataset_ that identifies where Grepr stores the spans. Storing traces in the data lake also makes them searchable in [Trace Explorer](#trace-explorer) and retrievable for tasks such as [backfilling](#trace-actions). When you configure tail sampling, spans that require trace assembly reach this step after assembly; see the buffering note in [_](#tail-sampling).
 
 To learn more about how Grepr stores your raw telemetry data, see [_](/grepr-platform/data-lake).
 
@@ -104,6 +104,10 @@ If both trace head sampling and a span head sampling rule retain the same span, 
 ## Use tail sampling to sample traces [#tail-sampling]
 
 Tail sampling makes a sampling decision after Grepr assembles a complete trace within a time window, so it can base the decision on the characteristics of the whole trace. Tail sampling includes dedicated settings for traces likely to be valuable for troubleshooting, along with performance-based sampling tiers that sample traces based on their latency.
+
+<Callout type="warning">
+  Trace assembly buffers tail-sampling candidates in task memory. Regular checkpoints do not include this buffer. If trace processing restarts after a failure or you cancel the pipeline, spans still in the buffer are lost and are not available in Trace Explorer. A planned stop with a savepoint drains the buffer before stopping. Spans retained by trace-level head sampling bypass trace assembly, and pipelines without tail sampling send retained spans directly to the data lake.
+</Callout>
 
 Several tail sampling settings accept durations in ISO-8601 duration format. For example, `PT20S` represents 20 seconds and `PT1M` represents one minute.
 
@@ -182,7 +186,7 @@ The key difference is where the data originates. Grepr produces metrics from you
 
 ## Search traces with Trace Explorer [#trace-explorer]
 
-Because a trace pipeline stores the complete set of raw spans in your data lake, you can search and inspect those spans even when the pipeline forwards only a sampled subset to your observability platform. Use Trace Explorer to search the spans stored in a dataset, group them to find patterns, and view the details of individual spans and traces. You can open Trace Explorer from the data lake step of a pipeline.
+You can use Trace Explorer to search and inspect the spans stored in your data lake even when the pipeline forwards only a sampled subset to your observability platform. Use Trace Explorer to search the spans stored in a dataset, group them to find patterns, and view the details of individual spans and traces. You can open Trace Explorer from the data lake step of a pipeline.
 
 Trace Explorer provides the following search controls:
 
@@ -216,7 +220,7 @@ When you select a span, Trace Explorer displays a details panel with the span's 
   faqs={[
     {
       q: "What is a trace reduction pipeline in Grepr?",
-      a: "A trace reduction pipeline processes APM data from your applications and agents, transforming and sampling traces before forwarding a representative subset to your observability platform. It reduces the volume and cost of forwarded data while retaining the complete set of raw traces in a Grepr data lake."
+      a: "A trace reduction pipeline processes APM data from your applications and agents, transforming and sampling traces before forwarding a representative subset to your observability platform. It reduces the volume and cost of forwarded data while storing processed trace spans in a Grepr data lake."
     },
     {
       q: "What are traces and spans in APM data?",
@@ -256,7 +260,7 @@ When you select a span, Trace Explorer displays a details panel with the span's 
     },
     {
       q: "Can I still access traces that the pipeline does not forward?",
-      a: "Yes. A trace pipeline stores the complete set of raw spans in a Grepr data lake. You can search and inspect those spans in Trace Explorer, and you can use the logs backfill action to retrieve the full logs for a representative sample of traces."
+      a: "You can search and inspect spans that reach the Grepr data lake in Trace Explorer, and you can use the logs backfill action to retrieve the full logs for a representative sample of traces. Tail-sampling candidates still buffered when a task fails or a pipeline is canceled are lost because regular checkpoints do not include the in-memory trace assembly buffer."
     },
     {
       q: "What is Trace Explorer?",

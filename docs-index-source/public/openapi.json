@@ -292,6 +292,8 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 20,
+            "minItems": 0,
             "type": "array"
           },
           "enabledTools": {
@@ -379,6 +381,8 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 20,
+            "minItems": 0,
             "type": "array"
           },
           "enabledTools": {
@@ -460,6 +464,8 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 20,
+            "minItems": 0,
             "type": "array"
           },
           "enabledTools": {
@@ -999,6 +1005,56 @@
         "title": "Inputs Schema",
         "type": "object"
       },
+      "AgentSessionSummary": {
+        "properties": {
+          "emitter": {
+            "type": "string"
+          },
+          "errorCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "firstActivityTimestamp": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "firstPrompt": {
+            "type": "string"
+          },
+          "identity": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "lastActivityTimestamp": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "matchedPreview": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "toolCallCount": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "emitter",
+          "errorCount",
+          "firstActivityTimestamp",
+          "lastActivityTimestamp",
+          "sessionId",
+          "toolCallCount"
+        ],
+        "type": "object"
+      },
       "AgentSessionsEndpoint": {
         "description": "An OTLP integration attached as an Agent Sessions source or sink.",
         "properties": {
@@ -1069,7 +1125,7 @@
             "type": "string"
           },
           "type": {
-            "description": "Selects complete agent sessions from the logs Iceberg table.",
+            "description": "Selects grouped agent session summaries from the logs Iceberg table.",
             "enum": [
               "agent-sessions-iceberg-table-source"
             ],
@@ -1099,6 +1155,30 @@
         "type": "object",
         "x-tags": [
           "Sources"
+        ]
+      },
+      "AgentSessionsSynchronousSink": {
+        "properties": {
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "type": {
+            "description": "Sink for returning agent session summaries to the caller.",
+            "enum": [
+              "agent-sessions-sync-sink"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sinks"
         ]
       },
       "AgentSessionsTemplateInput": {
@@ -1697,6 +1777,89 @@
       "ArrayData": {
         "type": "object"
       },
+      "AthenaAgentSessionsSource": {
+        "properties": {
+          "datasetId": {
+            "description": "The ID of the dataset to read data from.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of time interval to query data for.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "default": 2500,
+            "description": "The maximum number of rows to process",
+            "format": "int32",
+            "type": "integer"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Offset on the number of rows to process",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "query": {
+            "$ref": "#/components/schemas/query"
+          },
+          "sortOrder": {
+            "default": "ASCENDING",
+            "description": "The order in which the rows should be sorted by",
+            "enum": [
+              "ASCENDING",
+              "DESCENDING",
+              "UNSORTED"
+            ],
+            "type": "string"
+          },
+          "start": {
+            "description": "Start of time interval to query data for.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Returns grouped agent session summaries through Athena.",
+            "enum": [
+              "athena-agent-sessions-source"
+            ],
+            "type": "string"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables that can be used to modify the query while parsed",
+            "example": {
+              "__application": "app1",
+              "__service": "service1"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "start",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
+      },
       "AttributeHeaderMapping": {
         "description": "Maps a log event attribute path to an HTTP header name",
         "example": [
@@ -1773,11 +1936,9 @@
         "properties": {
           "masks": {
             "additionalProperties": {
-              "description": "Masks to apply to the value at this path, as a map of label to regular expression. The same matching rules as messageMasks apply.",
-              "example": "{\"email\":\"\\\\S+@\\\\S+\"}",
-              "type": "string"
+              "$ref": "#/components/schemas/Mask"
             },
-            "description": "Masks to apply to the value at this path, as a map of label to regular expression. The same matching rules as messageMasks apply.",
+            "description": "Masks to apply to the value at this path, as a map of label to mask. The same matching rules as messageMasks apply.",
             "example": {
               "email": "\\S+@\\S+"
             },
@@ -3296,6 +3457,35 @@
         "required": [
           "name",
           "roleIds"
+        ],
+        "type": "object"
+      },
+      "CreateSkillRequest": {
+        "properties": {
+          "displayName": {
+            "maxLength": 120,
+            "minLength": 0,
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/SkillFile"
+            },
+            "maxItems": 25,
+            "minItems": 1,
+            "type": "array"
+          },
+          "toolIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "displayName",
+          "files",
+          "toolIds"
         ],
         "type": "object"
       },
@@ -8351,7 +8541,7 @@
           },
           "datasetId": {
             "description": "Dataset containing the raw records and delivery dedup state.",
-            "pattern": "^[0-9a-z]{13}$",
+            "pattern": "^[0-9a-z]{1,13}$",
             "type": "string"
           },
           "end": {
@@ -8392,7 +8582,7 @@
             "description": "Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join.",
             "items": {
               "description": "Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join.",
-              "pattern": "^[0-9a-z]{13}$",
+              "pattern": "^[0-9a-z]{1,13}$",
               "type": "string"
             },
             "type": "array"
@@ -8777,6 +8967,37 @@
         ],
         "type": "object"
       },
+      "Mask": {
+        "description": "A mask: the regular expression to match, and how to rewrite the match. May also be written as a bare regex string when no replacement or preserved prefix is needed.",
+        "example": {
+          "email": "\\S+@\\S+"
+        },
+        "properties": {
+          "preserveThrough": {
+            "description": "Delimiter ending a prefix of the match that is kept verbatim instead of being replaced. The match is split at the first occurrence of this text, so a regex matching \"?token\u003dabc123\" with a delimiter of \"\u003d\" keeps \"?token\u003d\" and rewrites only the value. When the delimiter does not occur in the match, the whole match is replaced.",
+            "example": "\u003d",
+            "maxLength": 16,
+            "minLength": 1,
+            "type": "string"
+          },
+          "regex": {
+            "description": "Regular expression whose matches are rewritten. Must be compatible with Hyperscan syntax: no lookbehind and no backreferences. Prefer unbounded repeats (`+`, `*`) over bounded ones (`{1,50}`) — a bounded repeat is expanded into that many copies of the pattern and can exceed the compiler\u0027s size limit.",
+            "example": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\\.[a-zA-Z]{2,}",
+            "type": "string"
+          },
+          "replacement": {
+            "description": "Text substituted for the match. Defaults to the mask\u0027s label in square brackets, e.g. a mask labeled \"email\" becomes \"[email]\".",
+            "example": "\u003credacted\u003e",
+            "maxLength": 64,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "required": [
+          "regex"
+        ],
+        "type": "object"
+      },
       "MaskEntry": {
         "properties": {
           "name": {
@@ -8819,12 +9040,10 @@
           },
           "messageMasks": {
             "additionalProperties": {
-              "description": "Masks to apply to the log message, as a map of label to regular expression. Each match is replaced with the label in square brackets, e.g. a match of the regex labeled \"email\" becomes \"[email]\". Labels may be up to 64 characters. Overlapping matches resolve to the leftmost match first, then the longest; declaration order breaks remaining ties, so declare more specific patterns first. Regexes must be compatible with Hyperscan syntax (no lookbehind or backreferences).",
-              "example": "{\"email\":\"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\\.[a-zA-Z]{2,}\"}",
-              "type": "string"
+              "$ref": "#/components/schemas/Mask"
             },
             "default": {},
-            "description": "Masks to apply to the log message, as a map of label to regular expression. Each match is replaced with the label in square brackets, e.g. a match of the regex labeled \"email\" becomes \"[email]\". Labels may be up to 64 characters. Overlapping matches resolve to the leftmost match first, then the longest; declaration order breaks remaining ties, so declare more specific patterns first. Regexes must be compatible with Hyperscan syntax (no lookbehind or backreferences).",
+            "description": "Masks to apply to the log message, as a map of label to mask. A mask may be written as a bare regex string, in which case each match is replaced with the label in square brackets — a match of the regex labeled \"email\" becomes \"[email]\". Labels may be up to 64 characters. Overlapping matches resolve to the leftmost match first, then the longest; declaration order breaks remaining ties, so declare more specific patterns first.",
             "example": {
               "email": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
             },
@@ -8834,6 +9053,9 @@
             "example": "operation_name",
             "pattern": "[a-z0-9_]{1,128}",
             "type": "string"
+          },
+          "predicate": {
+            "$ref": "#/components/schemas/EventPredicate"
           },
           "type": {
             "description": "Masks sensitive substrings in log events by replacing regex matches with decorated labels.",
@@ -8949,6 +9171,46 @@
         "required": [
           "type"
         ],
+        "type": "object"
+      },
+      "McpToolDescriptor": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/McpToolParameter"
+            },
+            "type": "array"
+          },
+          "readOnly": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "McpToolParameter": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "MergeMapAttributeAction": {
@@ -9733,6 +9995,69 @@
         ],
         "type": "object"
       },
+      "MultiGrokParser": {
+        "properties": {
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "ruleSets": {
+            "default": [],
+            "description": "Ordered list of grok rule sets. Each rule set has its own predicate, optional extract attribute, parsing rules, and helper rules. Rule sets extracting from enriched attributes should be ordered after rule sets that populate those attributes.",
+            "items": {
+              "$ref": "#/components/schemas/MultiGrokRuleSet"
+            },
+            "type": "array"
+          },
+          "type": {
+            "description": "Processes unstructured logs and extracts fields from them using Grok patterns.",
+            "enum": [
+              "multi-grok-parser"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Transforms"
+        ]
+      },
+      "MultiGrokRuleSet": {
+        "description": "Ordered list of grok rule sets. Each rule set has its own predicate, optional extract attribute, parsing rules, and helper rules. Rule sets extracting from enriched attributes should be ordered after rule sets that populate those attributes.",
+        "properties": {
+          "extractAttribute": {
+            "description": "Optional attribute to extract from. If null, extracts from the log message. Rules that extract from enriched attributes should be ordered after rules that populate those attributes.",
+            "type": "string"
+          },
+          "grokHelperRules": {
+            "default": [],
+            "description": "Helper rules scoped to this rule set",
+            "items": {
+              "description": "Helper rules scoped to this rule set",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "grokParsingRules": {
+            "default": [],
+            "description": "Grok parsing rules for this rule set",
+            "items": {
+              "description": "Grok parsing rules for this rule set",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "predicate": {
+            "$ref": "#/components/schemas/EventPredicate"
+          }
+        },
+        "type": "object"
+      },
       "NewRelic": {
         "description": "The payload containing integration data.",
         "properties": {
@@ -10024,7 +10349,9 @@
             "agent-log-processor": "#/components/schemas/AgentLogProcessor",
             "agent-session-analytics": "#/components/schemas/AgentSessionAnalytics",
             "agent-sessions-iceberg-table-source": "#/components/schemas/AgentSessionsIcebergTableSource",
+            "agent-sessions-sync-sink": "#/components/schemas/AgentSessionsSynchronousSink",
             "agent-span-processor": "#/components/schemas/AgentSpanProcessor",
+            "athena-agent-sessions-source": "#/components/schemas/AthenaAgentSessionsSource",
             "cloudtrail-file-source": "#/components/schemas/CloudTrailLogsFileSource",
             "datadog-log-agent-source": "#/components/schemas/DatadogLogAgentSource",
             "datadog-log-cloud-source": "#/components/schemas/DatadogLogCloudSource",
@@ -10066,6 +10393,7 @@
             "metrics-iceberg-table-sink": "#/components/schemas/MetricsIcebergTableSink",
             "metrics-iceberg-table-source": "#/components/schemas/MetricsIcebergTableSource",
             "metrics-sync-sink": "#/components/schemas/MetricsSynchronousSink",
+            "multi-grok-parser": "#/components/schemas/MultiGrokParser",
             "newrelic-log-agent-source": "#/components/schemas/NewRelicLogAgentSource",
             "newrelic-log-sink": "#/components/schemas/NewRelicLogSink",
             "otlp-log-agent-source": "#/components/schemas/OtlpLogAgentSource",
@@ -10249,6 +10577,9 @@
             "$ref": "#/components/schemas/LogsSynchronousSink"
           },
           {
+            "$ref": "#/components/schemas/AgentSessionsSynchronousSink"
+          },
+          {
             "$ref": "#/components/schemas/MetricsSynchronousSink"
           },
           {
@@ -10271,6 +10602,9 @@
           },
           {
             "$ref": "#/components/schemas/GreprReducerLogSource"
+          },
+          {
+            "$ref": "#/components/schemas/AthenaAgentSessionsSource"
           },
           {
             "$ref": "#/components/schemas/GreprRawLogsSource"
@@ -10337,6 +10671,9 @@
           },
           {
             "$ref": "#/components/schemas/EntityContextAggregation"
+          },
+          {
+            "$ref": "#/components/schemas/MultiGrokParser"
           },
           {
             "$ref": "#/components/schemas/AgentSessionAnalytics"
@@ -13437,6 +13774,7 @@
         "description": "Readable data via a synchronous job.",
         "discriminator": {
           "mapping": {
+            "agent-session-summary": "#/components/schemas/AgentSessionSummary",
             "complete_span": "#/components/schemas/CompleteSpan",
             "double-datapoint": "#/components/schemas/DoubleDatapoint",
             "log": "#/components/schemas/LogEvent",
@@ -13456,6 +13794,9 @@
           },
           {
             "$ref": "#/components/schemas/MetricData"
+          },
+          {
+            "$ref": "#/components/schemas/AgentSessionSummary"
           }
         ],
         "properties": {
@@ -14161,19 +14502,67 @@
         ],
         "type": "object"
       },
-      "SkillDescriptor": {
+      "SkillFile": {
         "properties": {
+          "content": {
+            "type": "string"
+          },
+          "path": {
+            "maxLength": 240,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "path"
+        ],
+        "type": "object"
+      },
+      "SkillView": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
           "description": {
             "type": "string"
           },
-          "name": {
+          "displayName": {
             "type": "string"
           },
-          "tools": {
+          "files": {
             "items": {
-              "$ref": "#/components/schemas/ToolDescriptor"
+              "$ref": "#/components/schemas/SkillFile"
             },
             "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "scope": {
+            "enum": [
+              "PLATFORM",
+              "ORGANIZATION"
+            ],
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "toolIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
           }
         },
         "type": "object"
@@ -14617,7 +15006,7 @@
           },
           "datasetId": {
             "description": "Dataset containing the raw records and delivery dedup state.",
-            "pattern": "^[0-9a-z]{13}$",
+            "pattern": "^[0-9a-z]{1,13}$",
             "type": "string"
           },
           "end": {
@@ -15833,7 +16222,7 @@
           },
           "incompleteSamplingRate": {
             "default": 0.5,
-            "description": "Sampling rate for incomplete/partial traces. Partial traces occur when some spans are missing, which can indicate data loss or system issues. Applied before quantile-based sampling.",
+            "description": "Sampling rate for incomplete/partial traces. Partial traces occur when some spans are missing or when an assembly span/byte bound forces a buffered segment to emit. Applied before quantile-based sampling.",
             "example": 0.5,
             "exclusiveMaximum": false,
             "exclusiveMinimum": false,
@@ -15920,14 +16309,14 @@
           },
           "maxSessionLength": {
             "default": "PT1M",
-            "description": "Upper bound on how long a single trace assembly session may accumulate spans in state before being force-emitted. Protects against long-running traces that would otherwise hold spans in Flink keyed state indefinitely. When the cap is hit, the trace is emitted as partial and later spans form a new session. Must be strictly greater than maxTraceDelay.",
+            "description": "Upper bound on how long a single trace assembly session may accumulate spans in memory before being force-emitted. Protects against long-running traces that would otherwise hold spans in the assembly buffer indefinitely. When the cap is hit, the trace is classified as long-running and later spans form a new session. Must be strictly greater than maxTraceDelay.",
             "example": "PT20.345S",
             "format": "ISO-8601",
             "type": "string"
           },
           "maxTraceDelay": {
             "default": "PT20S",
-            "description": "The maximum time to wait for all spans of a trace to arrive before assembling the trace. This determines the size of the tumbling window used for trace assembly. Traces that span longer than this duration may be assembled as partial traces. Should be set based on the expected maximum trace duration in your system. Large values may lead to memory issues if traces are too long and will delay sending traces to the sink by that amount. The pipeline may also fail if configured too high.",
+            "description": "Idle gap after which an in-memory trace assembly session is considered complete. Each accepted span pushes the processing-time deadline forward by this duration. Larger values retain inactive sessions longer and delay emission, while the per-subtask byte bound still caps buffered span bytes.",
             "example": "PT20.345S",
             "format": "ISO-8601",
             "type": "string"
@@ -17726,6 +18115,40 @@
         "required": [
           "name",
           "roleIds"
+        ],
+        "type": "object"
+      },
+      "UpdateSkillRequest": {
+        "properties": {
+          "displayName": {
+            "maxLength": 120,
+            "minLength": 0,
+            "type": "string"
+          },
+          "expectedRevision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/SkillFile"
+            },
+            "maxItems": 25,
+            "minItems": 1,
+            "type": "array"
+          },
+          "toolIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "displayName",
+          "files",
+          "toolIds"
         ],
         "type": "object"
       },
@@ -19560,26 +19983,53 @@
         ]
       }
     },
-    "/v1/agents/skills": {
+    "/v1/agents/mcp-integrations/{integrationId}/tools": {
       "get": {
-        "description": "Returns the catalog of skills that can be enabled on an agent.",
-        "operationId": "skills",
+        "description": "Returns the tools the MCP server publishes, so an agent\u0027s allowed-tools list can name them exactly. Read live from the server with the integration\u0027s credentials, and cached briefly.",
+        "operationId": "mcpIntegrationTools",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "integrationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "refresh",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/SkillDescriptor"
+                    "$ref": "#/components/schemas/McpToolDescriptor"
                   },
                   "type": "array"
                 }
               }
             },
-            "description": "Skills retrieved successfully"
+            "description": "Tools retrieved successfully"
+          },
+          "400": {
+            "description": "The integration is not an MCP server, or has no stored credential to list with"
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No MCP integration with that id"
+          },
+          "502": {
+            "description": "The MCP server could not be reached, or refused the request"
           }
         },
         "security": [
@@ -19590,7 +20040,7 @@
             "grepr-oidc": []
           }
         ],
-        "summary": "List available agent skills",
+        "summary": "List an MCP integration\u0027s tools",
         "tags": [
           "Agents"
         ]
@@ -20996,7 +21446,7 @@
     "/v1/integrations/anthropic": {
       "get": {
         "description": "Get all Anthropic integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_3",
+        "operationId": "list_4",
         "responses": {
           "200": {
             "content": {
@@ -21027,7 +21477,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Anthropic.",
-        "operationId": "create_2",
+        "operationId": "create_3",
         "requestBody": {
           "content": {
             "application/json": {
@@ -21113,7 +21563,7 @@
       },
       "get": {
         "description": "Get an Anthropic integration by ID.",
-        "operationId": "get_3",
+        "operationId": "get_4",
         "parameters": [
           {
             "in": "path",
@@ -21157,7 +21607,7 @@
       },
       "put": {
         "description": "Updates an Anthropic integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_1",
+        "operationId": "update_2",
         "parameters": [
           {
             "in": "path",
@@ -21269,7 +21719,7 @@
     "/v1/integrations/data-warehouse": {
       "get": {
         "description": "Retrieves all Data Warehouse integrations for the organization.",
-        "operationId": "list_5",
+        "operationId": "list_6",
         "responses": {
           "200": {
             "content": {
@@ -21300,7 +21750,7 @@
       },
       "post": {
         "description": "Creates a new Data Warehouse integration for connecting to Grepr S3 bucket.",
-        "operationId": "create_4",
+        "operationId": "create_5",
         "requestBody": {
           "content": {
             "application/json": {
@@ -21379,7 +21829,7 @@
       },
       "get": {
         "description": "Retrieves a Data Warehouse integration.",
-        "operationId": "get_5",
+        "operationId": "get_6",
         "parameters": [
           {
             "in": "path",
@@ -21423,7 +21873,7 @@
       },
       "put": {
         "description": "Updates an existing Data Warehouse integration.",
-        "operationId": "update_3",
+        "operationId": "update_4",
         "parameters": [
           {
             "in": "path",
@@ -21478,7 +21928,7 @@
     "/v1/integrations/datadog": {
       "get": {
         "description": "Get all Datadog integrations for your organization. This will contain masked keys if present.",
-        "operationId": "list_4",
+        "operationId": "list_5",
         "responses": {
           "200": {
             "content": {
@@ -21509,7 +21959,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Datadog.",
-        "operationId": "create_3",
+        "operationId": "create_4",
         "requestBody": {
           "content": {
             "application/json": {
@@ -21561,7 +22011,7 @@
     "/v1/integrations/datadog-mcp": {
       "get": {
         "description": "Get all Datadog MCP server integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_8",
+        "operationId": "list_9",
         "responses": {
           "200": {
             "content": {
@@ -21592,7 +22042,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a Datadog MCP server.",
-        "operationId": "create_7",
+        "operationId": "create_8",
         "requestBody": {
           "content": {
             "application/json": {
@@ -21678,7 +22128,7 @@
       },
       "get": {
         "description": "Get a Datadog MCP integration by ID.",
-        "operationId": "get_8",
+        "operationId": "get_9",
         "parameters": [
           {
             "in": "path",
@@ -21722,7 +22172,7 @@
       },
       "put": {
         "description": "Updates a Datadog MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_6",
+        "operationId": "update_7",
         "parameters": [
           {
             "in": "path",
@@ -21946,7 +22396,7 @@
       },
       "get": {
         "description": "Get an integration to connect to Datadog.",
-        "operationId": "get_4",
+        "operationId": "get_5",
         "parameters": [
           {
             "in": "path",
@@ -21990,7 +22440,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to Datadog. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_2",
+        "operationId": "update_3",
         "parameters": [
           {
             "in": "path",
@@ -22443,7 +22893,7 @@
     "/v1/integrations/gemini": {
       "get": {
         "description": "Get all Google Gemini integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_7",
+        "operationId": "list_8",
         "responses": {
           "200": {
             "content": {
@@ -22474,7 +22924,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Google Gemini.",
-        "operationId": "create_6",
+        "operationId": "create_7",
         "requestBody": {
           "content": {
             "application/json": {
@@ -22560,7 +23010,7 @@
       },
       "get": {
         "description": "Get a Gemini integration by ID.",
-        "operationId": "get_7",
+        "operationId": "get_8",
         "parameters": [
           {
             "in": "path",
@@ -22604,7 +23054,7 @@
       },
       "put": {
         "description": "Updates a Gemini integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_5",
+        "operationId": "update_6",
         "parameters": [
           {
             "in": "path",
@@ -22716,7 +23166,7 @@
     "/v1/integrations/github-mcp": {
       "get": {
         "description": "Get all GitHub MCP server integrations for your organization. This will contain masked tokens if present.",
-        "operationId": "list_9",
+        "operationId": "list_10",
         "responses": {
           "200": {
             "content": {
@@ -22747,7 +23197,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a GitHub MCP server.",
-        "operationId": "create_8",
+        "operationId": "create_9",
         "requestBody": {
           "content": {
             "application/json": {
@@ -22833,7 +23283,7 @@
       },
       "get": {
         "description": "Get a GitHub MCP integration by ID.",
-        "operationId": "get_9",
+        "operationId": "get_10",
         "parameters": [
           {
             "in": "path",
@@ -22877,7 +23327,7 @@
       },
       "put": {
         "description": "Updates a GitHub MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_7",
+        "operationId": "update_8",
         "parameters": [
           {
             "in": "path",
@@ -22983,7 +23433,7 @@
     "/v1/integrations/newrelic": {
       "get": {
         "description": "Get all NewRelic integrations.",
-        "operationId": "list_12",
+        "operationId": "list_13",
         "responses": {
           "200": {
             "content": {
@@ -23014,7 +23464,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to NewRelic.",
-        "operationId": "create_11",
+        "operationId": "create_12",
         "requestBody": {
           "content": {
             "application/json": {
@@ -23136,7 +23586,7 @@
       },
       "get": {
         "description": "Get an integration to connect to NewRelic.",
-        "operationId": "get_12",
+        "operationId": "get_13",
         "parameters": [
           {
             "in": "path",
@@ -23180,7 +23630,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to NewRelic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_10",
+        "operationId": "update_11",
         "parameters": [
           {
             "in": "path",
@@ -23453,7 +23903,7 @@
     "/v1/integrations/openai": {
       "get": {
         "description": "Get all OpenAI integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_13",
+        "operationId": "list_14",
         "responses": {
           "200": {
             "content": {
@@ -23484,7 +23934,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to OpenAI.",
-        "operationId": "create_12",
+        "operationId": "create_13",
         "requestBody": {
           "content": {
             "application/json": {
@@ -23570,7 +24020,7 @@
       },
       "get": {
         "description": "Get an OpenAI integration by ID.",
-        "operationId": "get_13",
+        "operationId": "get_14",
         "parameters": [
           {
             "in": "path",
@@ -23614,7 +24064,7 @@
       },
       "put": {
         "description": "Updates an OpenAI integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_11",
+        "operationId": "update_12",
         "parameters": [
           {
             "in": "path",
@@ -23720,7 +24170,7 @@
     "/v1/integrations/otlp": {
       "get": {
         "description": "Get all OTLP integrations.",
-        "operationId": "list_14",
+        "operationId": "list_15",
         "responses": {
           "200": {
             "content": {
@@ -23751,7 +24201,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to OTLP.",
-        "operationId": "create_13",
+        "operationId": "create_14",
         "requestBody": {
           "content": {
             "application/json": {
@@ -23837,7 +24287,7 @@
       },
       "get": {
         "description": "Get an integration to connect to OTLP.",
-        "operationId": "get_14",
+        "operationId": "get_15",
         "parameters": [
           {
             "in": "path",
@@ -23881,7 +24331,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to OTLP. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_12",
+        "operationId": "update_13",
         "parameters": [
           {
             "in": "path",
@@ -24089,7 +24539,7 @@
     "/v1/integrations/pagerduty-mcp": {
       "get": {
         "description": "Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_10",
+        "operationId": "list_11",
         "responses": {
           "200": {
             "content": {
@@ -24120,7 +24570,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a PagerDuty MCP server.",
-        "operationId": "create_9",
+        "operationId": "create_10",
         "requestBody": {
           "content": {
             "application/json": {
@@ -24206,7 +24656,7 @@
       },
       "get": {
         "description": "Get a PagerDuty MCP integration by ID.",
-        "operationId": "get_10",
+        "operationId": "get_11",
         "parameters": [
           {
             "in": "path",
@@ -24250,7 +24700,7 @@
       },
       "put": {
         "description": "Updates a PagerDuty MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_8",
+        "operationId": "update_9",
         "parameters": [
           {
             "in": "path",
@@ -24355,7 +24805,7 @@
     },
     "/v1/integrations/s3-data-warehouse": {
       "get": {
-        "operationId": "list_6",
+        "operationId": "list_7",
         "responses": {
           "200": {
             "content": {
@@ -24386,7 +24836,7 @@
       },
       "post": {
         "description": "Creates an external S3 Data Warehouse integration",
-        "operationId": "create_5",
+        "operationId": "create_6",
         "requestBody": {
           "content": {
             "application/json": {
@@ -24598,7 +25048,7 @@
       },
       "get": {
         "description": "Gets an external S3 Data Warehouse integration",
-        "operationId": "get_6",
+        "operationId": "get_7",
         "parameters": [
           {
             "in": "path",
@@ -24642,7 +25092,7 @@
       },
       "put": {
         "description": "Updates an external S3 Data Warehouse integration",
-        "operationId": "update_4",
+        "operationId": "update_5",
         "parameters": [
           {
             "in": "path",
@@ -24703,7 +25153,7 @@
     "/v1/integrations/s3-vector-index": {
       "get": {
         "description": "Retrieves all S3 Vector Index integrations for the organization.",
-        "operationId": "list_15",
+        "operationId": "list_16",
         "responses": {
           "200": {
             "content": {
@@ -24734,7 +25184,7 @@
       },
       "post": {
         "description": "Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.",
-        "operationId": "create_14",
+        "operationId": "create_15",
         "requestBody": {
           "content": {
             "application/json": {
@@ -24813,7 +25263,7 @@
       },
       "get": {
         "description": "Retrieves an S3 Vector Index integration.",
-        "operationId": "get_15",
+        "operationId": "get_16",
         "parameters": [
           {
             "in": "path",
@@ -24857,7 +25307,7 @@
       },
       "put": {
         "description": "Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.",
-        "operationId": "update_13",
+        "operationId": "update_14",
         "parameters": [
           {
             "in": "path",
@@ -24912,7 +25362,7 @@
     "/v1/integrations/slack-mcp": {
       "get": {
         "description": "Get all Slack MCP server integrations for your organization. This will contain masked tokens if present.",
-        "operationId": "list_11",
+        "operationId": "list_12",
         "responses": {
           "200": {
             "content": {
@@ -24943,7 +25393,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a Slack MCP server.",
-        "operationId": "create_10",
+        "operationId": "create_11",
         "requestBody": {
           "content": {
             "application/json": {
@@ -25029,7 +25479,7 @@
       },
       "get": {
         "description": "Get a Slack MCP integration by ID.",
-        "operationId": "get_11",
+        "operationId": "get_12",
         "parameters": [
           {
             "in": "path",
@@ -25073,7 +25523,7 @@
       },
       "put": {
         "description": "Updates a Slack MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_9",
+        "operationId": "update_10",
         "parameters": [
           {
             "in": "path",
@@ -25179,7 +25629,7 @@
     "/v1/integrations/splunk": {
       "get": {
         "description": "Get all Splunk integrations for your organization. This will contain masked keys if present.",
-        "operationId": "list_16",
+        "operationId": "list_17",
         "responses": {
           "200": {
             "content": {
@@ -25207,7 +25657,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Splunk.",
-        "operationId": "create_15",
+        "operationId": "create_16",
         "requestBody": {
           "content": {
             "application/json": {
@@ -25287,7 +25737,7 @@
       },
       "get": {
         "description": "Get an integration to connect to Splunk.",
-        "operationId": "get_16",
+        "operationId": "get_17",
         "parameters": [
           {
             "in": "path",
@@ -25328,7 +25778,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to Splunk. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_14",
+        "operationId": "update_15",
         "parameters": [
           {
             "in": "path",
@@ -25586,7 +26036,7 @@
     "/v1/integrations/sumo": {
       "get": {
         "description": "Get all SumoLogic integrations.",
-        "operationId": "list_17",
+        "operationId": "list_18",
         "responses": {
           "200": {
             "content": {
@@ -25617,7 +26067,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to SumoLogic.",
-        "operationId": "create_16",
+        "operationId": "create_17",
         "requestBody": {
           "content": {
             "application/json": {
@@ -25703,7 +26153,7 @@
       },
       "get": {
         "description": "Get an integration to connect to SumoLogic.",
-        "operationId": "get_17",
+        "operationId": "get_18",
         "parameters": [
           {
             "in": "path",
@@ -25747,7 +26197,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to SumoLogic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_15",
+        "operationId": "update_16",
         "parameters": [
           {
             "in": "path",
@@ -25853,7 +26303,7 @@
     "/v1/integrations/webhooks": {
       "get": {
         "description": "Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.",
-        "operationId": "list_18",
+        "operationId": "list_19",
         "parameters": [
           {
             "description": "Only return integrations targeting this agent.",
@@ -25894,7 +26344,7 @@
       },
       "post": {
         "description": "Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).",
-        "operationId": "create_17",
+        "operationId": "create_18",
         "requestBody": {
           "content": {
             "application/json": {
@@ -25973,7 +26423,7 @@
       },
       "get": {
         "description": "Get a webhook integration by ID.",
-        "operationId": "get_18",
+        "operationId": "get_19",
         "parameters": [
           {
             "in": "path",
@@ -26017,7 +26467,7 @@
       },
       "put": {
         "description": "Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_16",
+        "operationId": "update_17",
         "parameters": [
           {
             "in": "path",
@@ -28526,6 +28976,163 @@
         ]
       }
     },
+    "/v1/skills": {
+      "get": {
+        "operationId": "list_3",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SkillView"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Skills retrieved successfully"
+          }
+        },
+        "summary": "List skills"
+      },
+      "post": {
+        "operationId": "create_2",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSkillRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillView"
+                }
+              }
+            },
+            "description": "Skill created successfully"
+          }
+        },
+        "summary": "Create an organization skill"
+      }
+    },
+    "/v1/skills/{id}": {
+      "delete": {
+        "operationId": "archive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expectedRevision",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {}
+            },
+            "description": "default response"
+          }
+        },
+        "summary": "Archive an organization skill"
+      },
+      "get": {
+        "operationId": "get_3",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillView"
+                }
+              }
+            },
+            "description": "Skill retrieved successfully"
+          }
+        },
+        "summary": "Get a skill"
+      },
+      "put": {
+        "operationId": "update_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSkillRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillView"
+                }
+              }
+            },
+            "description": "Skill updated successfully"
+          }
+        },
+        "summary": "Update an organization skill"
+      }
+    },
     "/v1/sso-claim-mapping": {
       "get": {
         "description": "Returns all configured SSO claim-to-role mappings for the organization",
@@ -29458,7 +30065,7 @@
     "/v1/users": {
       "get": {
         "description": "Get all users in the system.",
-        "operationId": "list_19",
+        "operationId": "list_20",
         "parameters": [
           {
             "in": "query",
