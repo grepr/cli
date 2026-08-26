@@ -179,7 +179,7 @@ The `grepr_pipeline` resource supports these attributes:
 | `tags`             | Map of Strings | No       | Custom tags for the pipeline.                                                                                |
 | `wait_for_state`   | Boolean        | No       | Wait for the pipeline to reach the desired state. Defaults to `true`.                                        |
 | `state_timeout`    | Number         | No       | Timeout in seconds for state transitions. Defaults to `600`.                                                 |
-| `rollback_enabled` | Boolean        | No       | Enable automatic rollback on update failures. Defaults to `false`.                                           |
+| `rollback_enabled` | Boolean        | No       | Roll the pipeline back to its last stable configuration when an update fails. Defaults to `true`.            |
 
 ### Read-only attributes
 
