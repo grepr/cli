@@ -21,7 +21,18 @@ import type { SignalSourceInputs } from './lib/signal-source.js';
 
 export type AuthMethod = 'oauth' | 'client-credentials' | 'none';
 
-export type QueryEngine = 'athena' | 'flink';
+export type QueryEngine = 'athena' | 'flink' | 'trino';
+
+/**
+ * The concrete query engine a query will execute against, resolved from an
+ * explicit `queryEngine` option or discovered from the org's feature flags
+ * and configured integrations. `buildQueryJobDefinition` is pure over this
+ * value — it does no discovery itself.
+ */
+export type ResolvedQueryEngine =
+  | { kind: 'athena' }
+  | { kind: 'flink' }
+  | { kind: 'trino'; queryEngineIntegrationId: string };
 
 export interface CliOptions {
   orgName: string;

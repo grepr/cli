@@ -613,6 +613,10 @@
             "format": "int64",
             "type": "integer"
           },
+          "investigationsQueued": {
+            "format": "int32",
+            "type": "integer"
+          },
           "reservation": {
             "format": "int64",
             "type": "integer"
@@ -5512,34 +5516,10 @@
             "format": "date-time",
             "type": "string"
           },
-          "hasError": {
-            "description": "Filter by error status",
-            "example": true,
-            "type": "boolean"
-          },
-          "isRootSpan": {
-            "description": "Filter by parent span ID (null for root spans only)",
-            "example": true,
-            "type": "boolean"
-          },
           "limit": {
             "default": 2500,
             "description": "The maximum number of rows to process",
             "format": "int32",
-            "type": "integer"
-          },
-          "maxDuration": {
-            "description": "Filter by maximum duration in nanoseconds",
-            "example": 5000000000,
-            "format": "int64",
-            "minimum": 0,
-            "type": "integer"
-          },
-          "minDuration": {
-            "description": "Filter by minimum duration in nanoseconds",
-            "example": 1000000000,
-            "format": "int64",
-            "minimum": 0,
             "type": "integer"
           },
           "name": {
@@ -5554,36 +5534,8 @@
             "minimum": 0,
             "type": "integer"
           },
-          "operationNames": {
-            "default": [],
-            "description": "Filter by operation names (exact match)",
-            "example": [
-              "process-payment",
-              "validate-user"
-            ],
-            "items": {
-              "description": "Filter by operation names (exact match)",
-              "example": "[\"process-payment\",\"validate-user\"]",
-              "type": "string"
-            },
-            "type": "array"
-          },
           "query": {
             "$ref": "#/components/schemas/query"
-          },
-          "serviceNames": {
-            "default": [],
-            "description": "Filter by service names (exact match)",
-            "example": [
-              "checkout-service",
-              "user-service"
-            ],
-            "items": {
-              "description": "Filter by service names (exact match)",
-              "example": "[\"checkout-service\",\"user-service\"]",
-              "type": "string"
-            },
-            "type": "array"
           },
           "sortOrder": {
             "default": "ASCENDING",
@@ -5600,47 +5552,6 @@
             "example": "2023-01-01T00:00:00Z",
             "format": "date-time",
             "type": "string"
-          },
-          "traceIds": {
-            "default": [],
-            "description": "Filter by trace IDs (32-character hex format)",
-            "example": [
-              "6a33267c000000001001119764423b8d"
-            ],
-            "items": {
-              "description": "Filter by trace IDs (32-character hex format)",
-              "example": "[\"6a33267c000000001001119764423b8d\"]",
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "traceSignatureIds": {
-            "default": [],
-            "description": "Filter by trace signature ids (exact match)",
-            "example": [
-              "3f2a9c1b7d4e5061829304a5b6c7d8e9",
-              "a1b2c3d4e5f60718293a4b5c6d7e8f90"
-            ],
-            "items": {
-              "description": "Filter by trace signature ids (exact match)",
-              "example": "[\"3f2a9c1b7d4e5061829304a5b6c7d8e9\",\"a1b2c3d4e5f60718293a4b5c6d7e8f90\"]",
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "traceSignatures": {
-            "default": [],
-            "description": "Filter by trace signature text (supports wildcards with *)",
-            "example": [
-              "user-login-*",
-              "checkout-*"
-            ],
-            "items": {
-              "description": "Filter by trace signature text (supports wildcards with *)",
-              "example": "[\"user-login-*\",\"checkout-*\"]",
-              "type": "string"
-            },
-            "type": "array"
           },
           "type": {
             "description": "Reads spans using Grepr\u0027s internal query system out of an Iceberg Table for processing.",
@@ -6484,6 +6395,10 @@
           "resumable": {
             "type": "boolean"
           },
+          "startedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
           "status": {
             "enum": [
               "QUEUED",
@@ -6528,6 +6443,10 @@
             "type": "string"
           },
           "investigationId": {
+            "type": "string"
+          },
+          "startedAt": {
+            "format": "date-time",
             "type": "string"
           },
           "status": {
@@ -6844,6 +6763,18 @@
             "default": [],
             "items": {
               "$ref": "#/components/schemas/ReadSumo"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "ItemsCollectionReadTrinoQueryEngine": {
+        "properties": {
+          "items": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ReadTrinoQueryEngine"
             },
             "type": "array"
           }
@@ -7461,6 +7392,39 @@
         "required": [
           "integrationId"
         ],
+        "type": "object"
+      },
+      "LlmUsageWindow": {
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "investigationsQueued": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "investigationsRunning": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "tokensLimit": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "tokensReserved": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "tokensUsed": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
         "type": "object"
       },
       "LlmWorkflowConfig": {
@@ -10422,6 +10386,10 @@
             "trace-sampler": "#/components/schemas/TraceSampler",
             "traces-iceberg-table-source": "#/components/schemas/TracesIcebergTableSource",
             "trigger-action": "#/components/schemas/TriggerActionOp",
+            "trino-llm-prompt-results-source": "#/components/schemas/TrinoLlmPromptResultsSource",
+            "trino-raw-log-source": "#/components/schemas/TrinoRawLogsSource",
+            "trino-raw-span-source": "#/components/schemas/TrinoRawSpanSource",
+            "trino-reducer-log-source": "#/components/schemas/TrinoReducerLogSource",
             "variant-sync-sink": "#/components/schemas/VariantSynchronousSink",
             "vendorlog-event-dedup-iceberg-table-sink": "#/components/schemas/VendorLogEventDedupIcebergTableSink"
           },
@@ -10614,6 +10582,18 @@
           },
           {
             "$ref": "#/components/schemas/GreprLlmPromptResultsSource"
+          },
+          {
+            "$ref": "#/components/schemas/TrinoReducerLogSource"
+          },
+          {
+            "$ref": "#/components/schemas/TrinoRawLogsSource"
+          },
+          {
+            "$ref": "#/components/schemas/TrinoRawSpanSource"
+          },
+          {
+            "$ref": "#/components/schemas/TrinoLlmPromptResultsSource"
           },
           {
             "$ref": "#/components/schemas/SplunkLogAgentSource"
@@ -12107,6 +12087,7 @@
                 "SEARCH_ICEBERG_SOURCE",
                 "QUERY_JOBS",
                 "AUTH0_SSO_CONNECTION",
+                "TRINO_QUERY_ENGINE",
                 "UNKNOWN"
               ],
               "type": "string"
@@ -13027,6 +13008,11 @@
             "format": "int32",
             "minimum": 1,
             "type": "integer"
+          },
+          "maxTrinoQueryEngineIntegrations": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
           }
         },
         "type": "object"
@@ -13651,6 +13637,83 @@
           "leaderRoleId",
           "memberRoleId",
           "name"
+        ],
+        "type": "object"
+      },
+      "ReadTrinoQueryEngine": {
+        "properties": {
+          "createdAt": {
+            "description": "Timestamp when the integration was created.",
+            "format": "date-time",
+            "readOnly": true,
+            "type": "string"
+          },
+          "id": {
+            "description": "The integration id",
+            "type": "string"
+          },
+          "jobIds": {
+            "description": "List of job IDs associated with the integration.",
+            "items": {
+              "description": "List of job IDs associated with the integration.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "name": {
+            "description": "Name of the integration.",
+            "example": "my_integration",
+            "pattern": "[a-zA-Z0-9 _-]{1,128}",
+            "type": "string"
+          },
+          "organizationId": {
+            "description": "Organization ID of the integration.",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/TrinoQueryEngine"
+          },
+          "teamIds": {
+            "description": "The team IDs that this integration is associated with.",
+            "items": {
+              "description": "The team IDs that this integration is associated with.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "type": {
+            "description": "The type of the integration. This is used to determine the payload type.",
+            "enum": [
+              "trino-query-engine"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "Timestamp when the integration was last updated.",
+            "format": "date-time",
+            "readOnly": true,
+            "type": "string"
+          },
+          "version": {
+            "description": "Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
+            "example": 0,
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "jobIds",
+          "name",
+          "organizationId",
+          "payload",
+          "type",
+          "updatedAt",
+          "version"
         ],
         "type": "object"
       },
@@ -16222,7 +16285,7 @@
           },
           "incompleteSamplingRate": {
             "default": 0.5,
-            "description": "Sampling rate for incomplete/partial traces. Partial traces occur when some spans are missing or when an assembly span/byte bound forces a buffered segment to emit. Applied before quantile-based sampling.",
+            "description": "Sampling rate for incomplete/partial traces. Partial traces occur when some spans are missing, which can indicate data loss or system issues. Applied before quantile-based sampling.",
             "example": 0.5,
             "exclusiveMaximum": false,
             "exclusiveMinimum": false,
@@ -16316,7 +16379,7 @@
           },
           "maxTraceDelay": {
             "default": "PT20S",
-            "description": "Idle gap after which an in-memory trace assembly session is considered complete. Each accepted span pushes the processing-time deadline forward by this duration. Larger values retain inactive sessions longer and delay emission, while the per-subtask byte bound still caps buffered span bytes.",
+            "description": "The maximum time to wait for all spans of a trace to arrive before assembling the trace. This determines the size of the tumbling window used for trace assembly. Traces that span longer than this duration may be assembled as partial traces. Should be set based on the expected maximum trace duration in your system. Large values may lead to memory issues if traces are too long and will delay sending traces to the sink by that amount. The pipeline may also fail if configured too high.",
             "example": "PT20.345S",
             "format": "ISO-8601",
             "type": "string"
@@ -17726,6 +17789,10 @@
       },
       "TranscriptMessage": {
         "properties": {
+          "durationNanos": {
+            "format": "int64",
+            "type": "integer"
+          },
           "id": {
             "type": "string"
           },
@@ -17737,6 +17804,10 @@
               "ASSISTANT",
               "TOOL_RESULT"
             ],
+            "type": "string"
+          },
+          "startedAt": {
+            "format": "date-time",
             "type": "string"
           },
           "text": {
@@ -17926,6 +17997,447 @@
           }
         },
         "type": "object"
+      },
+      "TrinoConnectionTestResult": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "TrinoLlmPromptResultsSource": {
+        "properties": {
+          "datasetId": {
+            "description": "The ID of the dataset to read data from.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of time interval to query data for.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "default": 2500,
+            "description": "The maximum number of rows to process",
+            "format": "int32",
+            "type": "integer"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Offset on the number of rows to process",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "query": {
+            "$ref": "#/components/schemas/query"
+          },
+          "queryEngineIntegrationId": {
+            "description": "Trino query engine integration to execute this query against.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "sortOrder": {
+            "default": "ASCENDING",
+            "description": "The order in which the rows should be sorted by",
+            "enum": [
+              "ASCENDING",
+              "DESCENDING",
+              "UNSORTED"
+            ],
+            "type": "string"
+          },
+          "start": {
+            "description": "Start of time interval to query data for.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Reads LLM prompt result events out of an Iceberg Table, executed against a Trino query engine.",
+            "enum": [
+              "trino-llm-prompt-results-source"
+            ],
+            "type": "string"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables that can be used to modify the query while parsed",
+            "example": {
+              "__application": "app1",
+              "__service": "service1"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "queryEngineIntegrationId",
+          "start",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
+      },
+      "TrinoQueryEngine": {
+        "description": "The payload containing integration data.",
+        "properties": {
+          "catalog": {
+            "description": "Trino catalog backed by the dataset\u0027s Iceberg warehouse.",
+            "example": "lakehouse",
+            "type": "string"
+          },
+          "extraProperties": {
+            "additionalProperties": {
+              "description": "Additional Trino JDBC connection properties, restricted to a fixed allowlist: applicationNamePrefix, clientTags, clientInfo, sessionProperties, roles, locale, disableCompression, explicitPrepare, assumeNullCatalogMeansCurrentCatalog, httpLoggingLevel, SSLVerification, SSLTrustStoreType, SSLUseSystemTrustStore",
+              "example": "{\"sessionProperties\":\"query_max_run_time:30m\"}",
+              "type": "string"
+            },
+            "default": {},
+            "description": "Additional Trino JDBC connection properties, restricted to a fixed allowlist: applicationNamePrefix, clientTags, clientInfo, sessionProperties, roles, locale, disableCompression, explicitPrepare, assumeNullCatalogMeansCurrentCatalog, httpLoggingLevel, SSLVerification, SSLTrustStoreType, SSLUseSystemTrustStore",
+            "example": {
+              "sessionProperties": "query_max_run_time:30m"
+            },
+            "type": "object"
+          },
+          "host": {
+            "description": "Hostname or IP literal of the Trino coordinator. Must not include a scheme, path, userinfo, or \u0027@\u0027.",
+            "example": "trino.internal.example.com",
+            "type": "string"
+          },
+          "password": {
+            "description": "Masked password for the configured user.",
+            "example": "**************ey",
+            "readOnly": true,
+            "type": "string"
+          },
+          "port": {
+            "default": 443,
+            "description": "Trino coordinator port.",
+            "example": 443,
+            "format": "int32",
+            "type": "integer"
+          },
+          "ssl": {
+            "default": true,
+            "description": "Whether to connect to Trino over SSL/TLS.",
+            "type": "boolean"
+          },
+          "user": {
+            "description": "Username to authenticate with. Required: Trino rejects any request without a user identity, even on clusters that do not require a password.",
+            "example": "grepr",
+            "type": "string"
+          }
+        },
+        "required": [
+          "catalog",
+          "host",
+          "user"
+        ],
+        "type": "object",
+        "x-type": {
+          "type": "trino-query-engine"
+        }
+      },
+      "TrinoRawLogsSource": {
+        "properties": {
+          "datasetId": {
+            "description": "The ID of the dataset to read data from.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of time interval to query data for.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "default": 2500,
+            "description": "The maximum number of rows to process",
+            "format": "int32",
+            "type": "integer"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Offset on the number of rows to process",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "query": {
+            "$ref": "#/components/schemas/query"
+          },
+          "queryEngineIntegrationId": {
+            "description": "Trino query engine integration to execute this query against.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "sortOrder": {
+            "default": "ASCENDING",
+            "description": "The order in which the rows should be sorted by",
+            "enum": [
+              "ASCENDING",
+              "DESCENDING",
+              "UNSORTED"
+            ],
+            "type": "string"
+          },
+          "start": {
+            "description": "Start of time interval to query data for.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Reads raw log events out of an Iceberg Table without pattern enrichment, executed against a Trino query engine.",
+            "enum": [
+              "trino-raw-log-source"
+            ],
+            "type": "string"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables that can be used to modify the query while parsed",
+            "example": {
+              "__application": "app1",
+              "__service": "service1"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "queryEngineIntegrationId",
+          "start",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
+      },
+      "TrinoRawSpanSource": {
+        "properties": {
+          "datasetId": {
+            "description": "The ID of the dataset to read data from.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of time interval to query data for.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "default": 2500,
+            "description": "The maximum number of rows to process",
+            "format": "int32",
+            "type": "integer"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Offset on the number of rows to process",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "query": {
+            "$ref": "#/components/schemas/query"
+          },
+          "queryEngineIntegrationId": {
+            "description": "Trino query engine integration to execute this query against.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "sortOrder": {
+            "default": "ASCENDING",
+            "description": "The order in which the rows should be sorted by",
+            "enum": [
+              "ASCENDING",
+              "DESCENDING",
+              "UNSORTED"
+            ],
+            "type": "string"
+          },
+          "start": {
+            "description": "Start of time interval to query data for.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Reads spans using Grepr\u0027s internal query system out of an Iceberg Table for processing, executed against a Trino query engine.",
+            "enum": [
+              "trino-raw-span-source"
+            ],
+            "type": "string"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables that can be used to modify the query while parsed",
+            "example": {
+              "__application": "app1",
+              "__service": "service1"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "queryEngineIntegrationId",
+          "start",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
+      },
+      "TrinoReducerLogSource": {
+        "properties": {
+          "datasetId": {
+            "description": "The ID of the dataset to read data from.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of time interval to query data for.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "default": 2500,
+            "description": "The maximum number of rows to process",
+            "format": "int32",
+            "type": "integer"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Offset on the number of rows to process",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "processedLogsTableName": {
+            "description": "The name of the table containing processed logs.",
+            "example": "\"processed_logs\"",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/query"
+          },
+          "queryEngineIntegrationId": {
+            "description": "Trino query engine integration to execute this query against.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "reductionInterval": {
+            "default": "PT2M",
+            "description": "The interval used by the Log Reducer for the query. Uses ISO 8601 format for intervals.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "sortOrder": {
+            "default": "ASCENDING",
+            "description": "The order in which the rows should be sorted by",
+            "enum": [
+              "ASCENDING",
+              "DESCENDING",
+              "UNSORTED"
+            ],
+            "type": "string"
+          },
+          "start": {
+            "description": "Start of time interval to query data for.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Reads events using Grepr\u0027s internal query system out of an Iceberg Table for processing, executed against a Trino query engine.",
+            "enum": [
+              "trino-reducer-log-source"
+            ],
+            "type": "string"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables that can be used to modify the query while parsed",
+            "example": {
+              "__application": "app1",
+              "__service": "service1"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "queryEngineIntegrationId",
+          "reductionInterval",
+          "start",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
       },
       "TypeInformationAny": {
         "properties": {
@@ -19225,6 +19737,50 @@
             "description": "The type of the integration. This is used to determine the payload type.",
             "enum": [
               "sumo"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "description": "Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
+            "example": 0,
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "payload",
+          "type",
+          "version"
+        ],
+        "type": "object"
+      },
+      "WriteTrinoQueryEngine": {
+        "properties": {
+          "name": {
+            "description": "Name of the integration.",
+            "example": "my_integration",
+            "pattern": "[a-zA-Z0-9 _-]{1,128}",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/TrinoQueryEngine"
+          },
+          "teamIds": {
+            "default": [],
+            "description": "The team IDs that this integration is associated with.",
+            "items": {
+              "description": "The team IDs that this integration is associated with.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "type": {
+            "description": "The type of the integration. This is used to determine the payload type.",
+            "enum": [
+              "trino-query-engine"
             ],
             "type": "string"
           },
@@ -25153,7 +25709,7 @@
     "/v1/integrations/s3-vector-index": {
       "get": {
         "description": "Retrieves all S3 Vector Index integrations for the organization.",
-        "operationId": "list_16",
+        "operationId": "list_17",
         "responses": {
           "200": {
             "content": {
@@ -25184,7 +25740,7 @@
       },
       "post": {
         "description": "Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.",
-        "operationId": "create_15",
+        "operationId": "create_16",
         "requestBody": {
           "content": {
             "application/json": {
@@ -25229,7 +25785,7 @@
     "/v1/integrations/s3-vector-index/{id}": {
       "delete": {
         "description": "Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn\u0027t exist.",
-        "operationId": "delete_14",
+        "operationId": "delete_15",
         "parameters": [
           {
             "in": "path",
@@ -25263,7 +25819,7 @@
       },
       "get": {
         "description": "Retrieves an S3 Vector Index integration.",
-        "operationId": "get_16",
+        "operationId": "get_17",
         "parameters": [
           {
             "in": "path",
@@ -25307,7 +25863,7 @@
       },
       "put": {
         "description": "Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.",
-        "operationId": "update_14",
+        "operationId": "update_15",
         "parameters": [
           {
             "in": "path",
@@ -25629,7 +26185,7 @@
     "/v1/integrations/splunk": {
       "get": {
         "description": "Get all Splunk integrations for your organization. This will contain masked keys if present.",
-        "operationId": "list_17",
+        "operationId": "list_18",
         "responses": {
           "200": {
             "content": {
@@ -25657,7 +26213,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Splunk.",
-        "operationId": "create_16",
+        "operationId": "create_17",
         "requestBody": {
           "content": {
             "application/json": {
@@ -25706,7 +26262,7 @@
     "/v1/integrations/splunk/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to Splunk. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_15",
+        "operationId": "delete_16",
         "parameters": [
           {
             "in": "path",
@@ -25737,7 +26293,7 @@
       },
       "get": {
         "description": "Get an integration to connect to Splunk.",
-        "operationId": "get_17",
+        "operationId": "get_18",
         "parameters": [
           {
             "in": "path",
@@ -25778,7 +26334,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to Splunk. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_15",
+        "operationId": "update_16",
         "parameters": [
           {
             "in": "path",
@@ -26036,7 +26592,7 @@
     "/v1/integrations/sumo": {
       "get": {
         "description": "Get all SumoLogic integrations.",
-        "operationId": "list_18",
+        "operationId": "list_19",
         "responses": {
           "200": {
             "content": {
@@ -26067,7 +26623,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to SumoLogic.",
-        "operationId": "create_17",
+        "operationId": "create_18",
         "requestBody": {
           "content": {
             "application/json": {
@@ -26119,7 +26675,7 @@
     "/v1/integrations/sumo/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to SumoLogic. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_16",
+        "operationId": "delete_17",
         "parameters": [
           {
             "in": "path",
@@ -26153,7 +26709,7 @@
       },
       "get": {
         "description": "Get an integration to connect to SumoLogic.",
-        "operationId": "get_18",
+        "operationId": "get_19",
         "parameters": [
           {
             "in": "path",
@@ -26197,7 +26753,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to SumoLogic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_16",
+        "operationId": "update_17",
         "parameters": [
           {
             "in": "path",
@@ -26300,10 +26856,316 @@
         ]
       }
     },
+    "/v1/integrations/trino-query-engine": {
+      "get": {
+        "description": "Retrieves all Trino query engine integrations for the organization.",
+        "operationId": "list_16",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsCollectionReadTrinoQueryEngine"
+                }
+              }
+            },
+            "description": "Trino query engine integrations retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "List all Trino query engine integrations",
+        "tags": [
+          "Trino Query Engine Integration"
+        ]
+      },
+      "post": {
+        "description": "Creates a new Trino query engine integration.",
+        "operationId": "create_15",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteTrinoQueryEngine"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadTrinoQueryEngine"
+                }
+              }
+            },
+            "description": "Trino query engine integration created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Integration already exists"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Create a Trino query engine integration",
+        "tags": [
+          "Trino Query Engine Integration"
+        ]
+      }
+    },
+    "/v1/integrations/trino-query-engine/{id}": {
+      "delete": {
+        "description": "Deletes a Trino query engine integration and its stored password, if any. No-op if already deleted.",
+        "operationId": "delete_14",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trino query engine integration deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Delete a Trino query engine integration",
+        "tags": [
+          "Trino Query Engine Integration"
+        ]
+      },
+      "get": {
+        "description": "Retrieves a Trino query engine integration.",
+        "operationId": "get_16",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadTrinoQueryEngine"
+                }
+              }
+            },
+            "description": "Trino query engine integration retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get a Trino query engine integration",
+        "tags": [
+          "Trino Query Engine Integration"
+        ]
+      },
+      "put": {
+        "description": "Updates an existing Trino query engine integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
+        "operationId": "update_14",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteTrinoQueryEngine"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadTrinoQueryEngine"
+                }
+              }
+            },
+            "description": "Trino query engine integration updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          },
+          "409": {
+            "description": "Integration was modified or deleted concurrently."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Update a Trino query engine integration",
+        "tags": [
+          "Trino Query Engine Integration"
+        ]
+      }
+    },
+    "/v1/integrations/trino-query-engine/{id}/password": {
+      "put": {
+        "description": "Creates or updates the password used to authenticate with the Trino cluster. Requires the integration\u0027s \u0027user\u0027 to already be configured.",
+        "operationId": "upsertPassword",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecretApi"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Password upserted successfully."
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Creates or updates a Trino query engine integration password",
+        "tags": [
+          "Trino Query Engine Integration"
+        ]
+      }
+    },
+    "/v1/integrations/trino-query-engine/{id}/test": {
+      "post": {
+        "description": "Executes a trivial query against the configured Trino cluster.",
+        "operationId": "test_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrinoConnectionTestResult"
+                }
+              }
+            },
+            "description": "Connection test completed successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Test a Trino query engine integration\u0027s connection",
+        "tags": [
+          "Trino Query Engine Integration"
+        ]
+      }
+    },
     "/v1/integrations/webhooks": {
       "get": {
         "description": "Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.",
-        "operationId": "list_19",
+        "operationId": "list_20",
         "parameters": [
           {
             "description": "Only return integrations targeting this agent.",
@@ -26344,7 +27206,7 @@
       },
       "post": {
         "description": "Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).",
-        "operationId": "create_18",
+        "operationId": "create_19",
         "requestBody": {
           "content": {
             "application/json": {
@@ -26389,7 +27251,7 @@
     "/v1/integrations/webhooks/{id}": {
       "delete": {
         "description": "Deletes a webhook integration. No-op if already deleted.",
-        "operationId": "delete_17",
+        "operationId": "delete_18",
         "parameters": [
           {
             "in": "path",
@@ -26423,7 +27285,7 @@
       },
       "get": {
         "description": "Get a webhook integration by ID.",
-        "operationId": "get_19",
+        "operationId": "get_20",
         "parameters": [
           {
             "in": "path",
@@ -26467,7 +27329,7 @@
       },
       "put": {
         "description": "Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_17",
+        "operationId": "update_18",
         "parameters": [
           {
             "in": "path",
@@ -27683,6 +28545,34 @@
         "tags": [
           "Jobs"
         ]
+      }
+    },
+    "/v1/llm-usage/{integrationId}": {
+      "get": {
+        "operationId": "currentWindow",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "integrationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmUsageWindow"
+                }
+              }
+            },
+            "description": "Current window retrieved"
+          }
+        },
+        "summary": "Get the current maxTokens window of one LLM integration"
       }
     },
     "/v1/manifest": {
@@ -30065,7 +30955,7 @@
     "/v1/users": {
       "get": {
         "description": "Get all users in the system.",
-        "operationId": "list_20",
+        "operationId": "list_21",
         "parameters": [
           {
             "in": "query",

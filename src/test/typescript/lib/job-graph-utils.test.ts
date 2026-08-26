@@ -7,11 +7,60 @@
 
 import { describe, expect, it } from 'bun:test'
 import {
+  canLimit,
   generateUUID,
   parseEdge
 } from '@/lib/job-graph-utils.js'
+import {
+  GreprRawLogsSourceType,
+  GreprRawSpanSourceType,
+  GreprReducerLogSourceType,
+  TrinoLlmPromptResultsSourceType,
+  TrinoRawLogsSourceType,
+  TrinoRawSpanSourceType,
+  TrinoReducerLogSourceType,
+  type SchemaOperation
+} from '@/openapi/openApiTypes.js'
+
+function vertexOfType(type: string): SchemaOperation {
+  return { type, name: 'source' } as SchemaOperation;
+}
 
 describe('job-graph-utils', () => {
+  describe('canLimit', () => {
+    it('test_canLimit_trinoRawLogSource_returnsTrue', () => {
+      expect(canLimit(vertexOfType(TrinoRawLogsSourceType.trino_raw_log_source))).toBe(true);
+    });
+
+    it('test_canLimit_trinoReducerLogSource_returnsTrue', () => {
+      expect(canLimit(vertexOfType(TrinoReducerLogSourceType.trino_reducer_log_source))).toBe(true);
+    });
+
+    it('test_canLimit_trinoRawSpanSource_returnsFalse', () => {
+      // Truncating a span source mid-trace produces broken traces, so Trino
+      // spans must not gain a truncation behavior Athena's span source avoids.
+      expect(canLimit(vertexOfType(TrinoRawSpanSourceType.trino_raw_span_source))).toBe(false);
+    });
+
+    it('test_canLimit_trinoLlmPromptResultsSource_returnsFalse', () => {
+      expect(canLimit(vertexOfType(TrinoLlmPromptResultsSourceType.trino_llm_prompt_results_source))).toBe(false);
+    });
+
+    it('test_canLimit_greprRawLogSource_returnsTrue', () => {
+      // The Athena counterpart of trino-raw-log-source stays limitable too.
+      expect(canLimit(vertexOfType(GreprRawLogsSourceType.grepr_raw_log_source))).toBe(true);
+    });
+
+    it('test_canLimit_greprReducerLogSource_returnsTrue', () => {
+      expect(canLimit(vertexOfType(GreprReducerLogSourceType.grepr_reducer_log_source))).toBe(true);
+    });
+
+    it('test_canLimit_greprRawSpanSource_returnsFalse', () => {
+      // The pre-existing Athena span exclusion this ticket mirrors for Trino.
+      expect(canLimit(vertexOfType(GreprRawSpanSourceType.grepr_raw_span_source))).toBe(false);
+    });
+  });
+
   describe('parseEdge', () => {
     it('test_parseEdge_simpleEdge_shouldReturnSourceAndTargetWithDefaultPorts', () => {
       const result = parseEdge('source -> target');

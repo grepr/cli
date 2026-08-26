@@ -6,9 +6,9 @@ import {
   MessageLengthPredicateType,
   NewRelicQueryPredicateType,
   type SchemaEventPredicate,
-  type SchemaGreprRawSpanSource,
   type SchemaMessageLengthPredicate,
-  type SchemaQuery
+  type SchemaQuery,
+  type SchemaTracesIcebergTableSource
 } from '../openapi/openApiTypes.js';
 import type { SignalDataType } from './signal-source.js';
 
@@ -31,7 +31,7 @@ export interface SignalPredicateOptions extends SourcePredicateOptions {
 }
 
 export type SpanQueryFilters = Pick<
-  SchemaGreprRawSpanSource,
+  SchemaTracesIcebergTableSource,
   | 'serviceNames'
   | 'operationNames'
   | 'traceSignatures'

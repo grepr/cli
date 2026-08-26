@@ -1,0 +1,233 @@
+---
+description: Learn how to configure a Trino query engine integration so Grepr queries run against your own Trino cluster instead of the default Athena engine.
+---
+
+{/*
+  WITHHELD — not published. The parent folder's leading underscore makes this a Next.js private
+  folder, so the page is not routed, built, or indexed by Pagefind, and it has no nav entry in
+  app/layout.tsx.
+
+  Two things must land before publishing, not just the TRINO_QUERY_ENGINE flag:
+
+  1. A customer cannot yet point their own Trino cluster at their Grepr Iceberg data, because we
+     have no supported way to give a customer-run cluster access to the Glue catalog. The
+     "Requirements" section below asks for exactly that, so the page currently describes a setup
+     no customer can complete.
+  2. The flag has to actually be grantable to that customer's org.
+
+  To publish: rename the folder to trino-query-engine and restore the nav entry in app/layout.tsx.
+*/}
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Query the Grepr data lake through your own Trino cluster
+
+By default, Grepr uses Amazon Athena to run the queries behind Log Explorer, Trace Explorer, AI Actions, and the Grepr CLI's `query` command against your Grepr data lake. If you already operate a Trino cluster, you can configure a Trino query engine integration so these queries run against your Trino cluster instead. The Iceberg catalog and the SQL Grepr generates stay the same. Only the JDBC endpoint that executes the query changes.
+
+You can use the Grepr UI or REST API to create a Trino query engine integration. To use the REST API, see the [Trino Query Engine Integration specification](/apis/api-spec#tag/Trino-Query-Engine-Integration).
+
+## Requirements [#trino-requirements]
+
+To use the Trino query engine integration, you need:
+
+- The `TRINO_QUERY_ENGINE` feature enabled for your organization. This feature isn't enabled by default. Contact [support@grepr.ai](mailto:support@grepr.ai) to request it.
+- A Trino cluster that Grepr can reach over the network, with a catalog configured against your organization's Grepr Iceberg data. To learn more about the Grepr data lake, see [The Grepr data lake](/grepr-platform/data-lake).
+
+## Create a Trino query engine integration [#create-trino-integration]
+
+To create a Trino query engine integration in the Grepr UI:
+
+1. Go to the **Integrations** page in the Grepr UI and click **Add new** next to **Query Engines**.
+1. In the **Add Trino Query Engine** dialog:
+   - In the **Name** field, enter a name for the integration.
+   - In the **Host** field, enter the hostname or IP address of your Trino coordinator. Don't include a scheme, such as `https://`, a path, or userinfo, such as `user@`.
+   - In the **Port** field, enter the port for your Trino coordinator, a number from `1` to `65535`. The default port is `443`.
+   - In the **Catalog** field, enter the name of the Trino catalog that's configured against your organization's Grepr Iceberg data. The catalog name can contain only letters, numbers, underscores, and hyphens, and must be 128 characters or fewer.
+   - Use the **Connect over SSL/TLS** checkbox to turn SSL/TLS on or off when Grepr connects to your Trino cluster. This setting is on by default.
+   - In the **User** field, enter the username to connect as. A username is always required, because Trino rejects any request that doesn't identify a user, even when your cluster doesn't require a password.
+   - Optional: If your Trino cluster requires a password, enter it in the **Password** field. See [Set or update the integration password](#configure-password).
+   - Optional: To pass additional Trino JDBC connection properties, click the plus icon (+) under **Extra properties**, then select a property and enter its value. See [Configure extra Trino connection properties](#extra-properties).
+1. Click **Create**.
+
+### Query engine integrations are limited to one per organization [#one-per-organization]
+
+Unlike other integrations, a Trino query engine integration is global to your organization: it can't be scoped to a team, and your organization can have only one. Because every person in your organization must resolve the same query engine, scoping a Trino integration to a team, or allowing more than one, would let different people in your organization run the same query against different engines without knowing it. Keeping the integration global to the organization and limited to one keeps the choice of query engine unambiguous for everyone.
+
+### Who can see and manage a Trino query engine integration [#visibility]
+
+Because a Trino query engine integration is always organization-scoped, everyone in your organization can view it, regardless of team membership. You need edit permission on integrations at the organization level to create, update, or delete a Trino query engine integration, or to set its password. The stored password is never returned when the integration is read, regardless of permissions; it's always masked. See [Permissions in the Grepr platform](/grepr-platform/permissions).
+
+## Set or update the integration password [#configure-password]
+
+A Trino query engine integration's password is write-only. Grepr never returns the stored password: when you read the integration, the **Password** field is masked, showing only its last two characters so you can tell which credential is stored. Because a Trino query engine integration is visible to everyone in your organization, those two characters are visible to them as well.
+
+In the Grepr UI, enter the password in the **Password** field when you create or edit the integration, and click **Create** or **Save**. When you edit an existing integration, leave the **Password** field blank to keep the current password unchanged.
+
+If you're using the REST API, you can't set the password in the request body when you create or update the integration. Instead, set it with a dedicated endpoint:
+
+```console
+PUT /v1/integrations/trino-query-engine/{id}/password
+```
+
+Every Trino query engine integration has a `user` value, because `user` is required when you create or update one. To change the account a stored password belongs to, update the integration with a different `user` value. To remove the stored password entirely, delete the integration.
+
+## Configure extra Trino connection properties [#extra-properties]
+
+`extraProperties` is a set of additional Trino JDBC connection properties that Grepr passes to the driver unmodified. Grepr accepts only a fixed set of properties, and rejects an integration that includes any other property. Several other Trino JDBC properties can redirect the connection to a different host or supply credentials, such as an access token or a keystore path, and Grepr excludes those on purpose so that a data-lake configuration change can't silently change what the connection dials or authenticates with.
+
+The following properties are allowed:
+
+- `applicationNamePrefix`
+- `clientTags`
+- `clientInfo`
+- `sessionProperties`
+- `roles`
+- `locale`
+- `disableCompression`
+- `explicitPrepare`
+- `assumeNullCatalogMeansCurrentCatalog`
+- `httpLoggingLevel`
+- `SSLVerification`, restricted to `FULL` or `CA`
+- `SSLTrustStoreType`, works only when paired with `SSLUseSystemTrustStore`
+- `SSLUseSystemTrustStore`
+
+<Callout type="warning">
+  If you set `sessionProperties`, use the Trino JDBC driver's own format: a semicolon-separated list of `key:value` pairs, for example, `query_max_run_time:30m;query_priority:2`. This property uses a colon between the key and value, not an equal sign. Setting it with an equal sign, such as `query_max_run_time=30m`, produces an opaque connection error from the driver.
+</Callout>
+
+<Callout type="warning">
+  `SSLVerification` accepts only `FULL` or `CA`. The Trino JDBC driver also supports `NONE`, but Grepr rejects it because the connection carries the integration's stored password, and turning off certificate verification would expose that password to a network attacker. If your Trino cluster's certificate doesn't match the hostname you connect with, for example, because you connect by IP address or through internal DNS, set `SSLVerification` to `CA` instead. `CA` still validates the certificate chain and only skips hostname matching.
+</Callout>
+
+<Callout type="warning">
+  `SSLTrustStoreType` doesn't work on its own. The Trino JDBC driver only accepts a `SSLTrustStoreType` value when either `SSLTrustStorePath` or `SSLUseSystemTrustStore` is also set, and Grepr doesn't allow `SSLTrustStorePath`, because a trust store file path can redirect what the connection trusts. To trust an internal or private certificate authority, set `SSLUseSystemTrustStore` to `true`, and set `SSLTrustStoreType` only if your system trust store's format requires it. Supplying a trust store file isn't supported.
+</Callout>
+
+## Test the connection [#test-connection]
+
+After you create a Trino query engine integration, you can test that Grepr can connect to your Trino cluster with the settings you configured.
+
+In the Grepr UI, edit the integration and click **Test connection**. This button tests the currently saved connection, so save any changes before you click it.
+
+To test the connection using the REST API, send a request to the following endpoint:
+
+```console
+POST /v1/integrations/trino-query-engine/{id}/test
+```
+
+This runs a trivial query against your configured Trino cluster and returns whether the connection succeeded, along with a message.
+
+## How Grepr chooses a query engine [#query-engine-selection]
+
+Athena is the default query engine for Log Explorer, Trace Explorer, AI Actions, and CLI queries. When the `TRINO_QUERY_ENGINE` feature is enabled for your organization and your organization has exactly one Trino query engine integration, Grepr automatically routes these queries to that integration instead. If your organization has no Trino query engine integration, Grepr continues to use Athena.
+
+If Grepr can't determine how many Trino query engine integrations your organization has, or if your organization somehow has more than one, queries fail with an error instead of falling back to Athena. Grepr fails this way on purpose: silently falling back to Athena would run your query against an engine you didn't choose, which could return different results depending on how each engine is configured.
+
+### Override the query engine from the CLI [#cli-query-engine]
+
+The Grepr CLI selects the query engine for the `query` command using the `GREPR_QUERY_ENGINE` environment variable, which accepts `athena`, `flink`, or `trino`.
+
+An explicit value always wins over automatic discovery:
+
+- Setting `GREPR_QUERY_ENGINE=athena` runs your query against Athena, even if your organization has a Trino query engine integration configured.
+- Setting `GREPR_QUERY_ENGINE=trino` requires your organization to have exactly one Trino query engine integration. If it doesn't, the command fails.
+
+<Callout type="info">
+  There is no command-line option for selecting the query engine. Use the `GREPR_QUERY_ENGINE` environment variable instead.
+</Callout>
+
+If you don't set `GREPR_QUERY_ENGINE`, the CLI discovers the query engine the same way Log Explorer, Trace Explorer, and AI Actions do: it uses Trino when the `TRINO_QUERY_ENGINE` feature is enabled and your organization has exactly one Trino query engine integration, and uses Athena otherwise. As with the UI, a failed lookup or more than one Trino query engine integration causes the command to fail rather than fall back to Athena.
+
+To set the environment variable for a single command:
+
+```console copy
+GREPR_QUERY_ENGINE=trino grepr query \
+  --dataset-id <dataset-id> \
+  --start 2026-02-26T00:00:00Z \
+  --end 2026-02-26T23:59:00Z \
+  --query "level:ERROR"
+```
+
+To learn more about the Grepr CLI, see [The Grepr CLI](/cli).
+
+## Limitations
+
+- Your organization can have only one Trino query engine integration, and it can't be scoped to a team. See [Query engine integrations are limited to one per organization](#one-per-organization).
+- The Trino query engine integration authenticates to your Trino cluster with a username and password only. It doesn't support token-based, OAuth, or Kerberos authentication.
+- Grepr doesn't limit the amount of data a query can scan when it runs against a Trino query engine integration. A query timeout is the only limit. This differs from the default limits Grepr enforces for Athena queries. See [The Grepr data lake](/grepr-platform/data-lake).
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is the Trino query engine integration?",
+    a: "The Trino query engine integration lets you run Grepr's Log Explorer, Trace Explorer, AI Actions, and CLI queries against your own Trino cluster instead of the default Athena engine. The Iceberg catalog and generated SQL stay the same; only the JDBC endpoint that executes the query changes."
+  },
+  {
+    q: "What do I need before I can use a Trino query engine integration?",
+    a: "You need the TRINO_QUERY_ENGINE feature enabled for your organization, which isn't on by default, so contact support@grepr.ai to request it. You also need a Trino cluster reachable from Grepr with a catalog configured against your organization's Grepr Iceberg data."
+  },
+  {
+    q: "How many Trino query engine integrations can my organization have?",
+    a: "Only one. Trino query engine integrations are global to your organization rather than scoped to a team, so every person in your organization resolves the same query engine. This keeps the choice of query engine unambiguous for everyone."
+  },
+  {
+    q: "Can I scope a Trino query engine integration to a specific team?",
+    a: "No. Trino query engine integrations are always global to the organization. Creating or updating one with a non-empty team list is rejected."
+  },
+  {
+    q: "Who can see and manage a Trino query engine integration?",
+    a: "Because it's always organization-scoped, everyone in your organization can view a Trino query engine integration, regardless of team membership. You need edit permission on integrations at the organization level to create, update, or delete one, or to set its password."
+  },
+  {
+    q: "How do I set the password for a Trino query engine integration?",
+    a: "In the Grepr UI, enter it in the Password field when you create or edit the integration. Using the REST API, send a PUT request to /v1/integrations/trino-query-engine/{id}/password. You can't include the password in the create or update request body. Every integration already has a username, because a username is required when you create or update one."
+  },
+  {
+    q: "Why can't I see the password I configured for a Trino query engine integration?",
+    a: "The password is write-only. Grepr never returns the stored password, so reading the integration always shows a masked value, revealing only its last two characters so you can tell which credential is stored."
+  },
+  {
+    q: "What Trino JDBC connection properties can I configure with extraProperties?",
+    a: "Grepr accepts a fixed set of properties: applicationNamePrefix, clientTags, clientInfo, sessionProperties, roles, locale, disableCompression, explicitPrepare, assumeNullCatalogMeansCurrentCatalog, httpLoggingLevel, SSLVerification, SSLTrustStoreType, and SSLUseSystemTrustStore. Any other property is rejected because it could redirect the connection or supply credentials. SSLVerification is further restricted to FULL or CA, and SSLTrustStoreType only works when paired with SSLUseSystemTrustStore."
+  },
+  {
+    q: "Why does my sessionProperties value fail with a driver error?",
+    a: "The sessionProperties property uses the Trino JDBC driver's own format: a semicolon-separated list of key:value pairs, such as query_max_run_time:30m;query_priority:2. Using an equal sign instead of a colon, such as query_max_run_time=30m, produces an opaque connection error from the driver."
+  },
+  {
+    q: "Why is SSLVerification set to NONE rejected?",
+    a: "Because the Trino connection carries the integration's stored password, and NONE turns off certificate verification entirely, which would expose that password to a network attacker. Grepr accepts only FULL or CA for SSLVerification. If your Trino cluster's certificate doesn't match the hostname you connect with, use CA, which still validates the certificate chain but skips hostname matching."
+  },
+  {
+    q: "Why doesn't setting SSLTrustStoreType work by itself?",
+    a: "The Trino JDBC driver only accepts a SSLTrustStoreType value when either SSLTrustStorePath or SSLUseSystemTrustStore is also set, and Grepr doesn't allow SSLTrustStorePath because a trust store file path could redirect what the connection trusts. To trust an internal or private certificate authority, set SSLUseSystemTrustStore to true and set SSLTrustStoreType only if your system trust store's format requires it. Supplying a trust store file isn't supported."
+  },
+  {
+    q: "How do I test that Grepr can connect to my Trino cluster?",
+    a: "In the Grepr UI, edit the integration and click Test connection, after saving any changes. Using the REST API, send a POST request to /v1/integrations/trino-query-engine/{id}/test, which runs a trivial query against your Trino cluster and reports whether it succeeded."
+  },
+  {
+    q: "When does Grepr use Trino instead of Athena?",
+    a: "When the TRINO_QUERY_ENGINE feature is enabled for your organization and your organization has exactly one Trino query engine integration, Grepr automatically routes Log Explorer, Trace Explorer, AI Actions, and CLI queries to that integration. Otherwise, Grepr uses Athena."
+  },
+  {
+    q: "What happens if my organization has more than one Trino query engine integration?",
+    a: "Queries fail with an error instead of falling back to Athena. Grepr fails this way on purpose, because silently falling back could run your query against an engine you didn't choose."
+  },
+  {
+    q: "How do I choose a query engine from the Grepr CLI?",
+    a: "Set the GREPR_QUERY_ENGINE environment variable to athena, flink, or trino. An explicit value always wins over automatic discovery. There is no command-line option for this; the CLI does not have a --query-engine flag."
+  },
+  {
+    q: "What happens if I don't set GREPR_QUERY_ENGINE?",
+    a: "The CLI discovers the query engine the same way the Grepr UI does: it uses Trino when the TRINO_QUERY_ENGINE feature is enabled and your organization has exactly one Trino query engine integration, and uses Athena otherwise."
+  },
+  {
+    q: "What authentication methods does the Trino query engine integration support?",
+    a: "Only username and password authentication. Token-based, OAuth, and Kerberos authentication are not supported."
+  },
+  {
+    q: "Are Trino queries subject to the same data-scanned limit as Athena queries?",
+    a: "No. Grepr doesn't limit the amount of data a query can scan when it runs against a Trino query engine integration. A query timeout is the only limit, which differs from the default scanned-data limit Grepr enforces for Athena queries."
+  }
+]} />

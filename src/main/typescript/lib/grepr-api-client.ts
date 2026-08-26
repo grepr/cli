@@ -4,6 +4,7 @@ import {
   paths,
   ReadDatadogType,
   ReadDataWarehouseType,
+  ReadFeatureFlags,
   ReadNewRelicType,
   ReadOtlpType,
   ReadS3DataWarehouseType,
@@ -22,6 +23,7 @@ import {
   SchemaItemsCollectionReadS3DataWarehouse,
   SchemaItemsCollectionReadSplunk,
   SchemaItemsCollectionReadSumo,
+  SchemaItemsCollectionReadTrinoQueryEngine,
   SchemaItemsCollectionTemplate,
   SchemaReadDatadog,
   SchemaReadDataWarehouse,
@@ -29,9 +31,11 @@ import {
   SchemaReadNewRelic,
   SchemaParseQueryResponse,
   SchemaReadOtlp,
+  SchemaRead,
   SchemaReadS3DataWarehouse,
   SchemaReadSplunk,
   SchemaReadSumo,
+  SchemaReadTrinoQueryEngine,
   SchemaTemplate,
   SchemaUpdateJob
 } from '@/openapi/openApiTypes'
@@ -41,7 +45,9 @@ import {
   IntegrationTypeAndList,
   JobExecution,
   JobProcessing,
-  JobState
+  JobState,
+  type QueryEngine,
+  type ResolvedQueryEngine
 } from '../types.js'
 
 /**
@@ -134,6 +140,18 @@ export class GreprApiClient {
    */
   getClient(): ReturnType<typeof createClient<paths>> {
     return this.client;
+  }
+
+  // Organization Methods
+  /** Fetches the organization for the authenticated user, including its feature flags. */
+  async getOrganization(): Promise<SchemaRead | undefined> {
+    const { data, error } = await this.client.GET('/v1/organization');
+
+    if (error) {
+      throw new Error(`Failed to get organization: ${JSON.stringify(error)}`);
+    }
+
+    return data;
   }
 
   // Job Management Methods
@@ -533,6 +551,18 @@ export class GreprApiClient {
     return data;
   }
 
+  // Trino Query Engine Integration Methods
+  async listTrinoQueryEngineIntegrations(): Promise<SchemaItemsCollectionReadTrinoQueryEngine | undefined> {
+    // noinspection TypeScriptValidateTypes
+    const { data, error } = await this.client.GET('/v1/integrations/trino-query-engine');
+
+    if (error) {
+      throw new Error(`Failed to list Trino query engine integrations: ${JSON.stringify(error)}`);
+    }
+
+    return data;
+  }
+
   // Helper methods for generic integration operations
   async getAllIntegrations(): Promise<IntegrationTypeAndList<IntegrationReadType>[]> {
     return [
@@ -718,4 +748,109 @@ export class GreprApiClient {
 
     return nodeStream;
   }
+}
+
+/**
+ * Minimal client surface {@link resolveQueryEngine} needs, narrowed from
+ * {@link GreprApiClient} so tests can stub it directly instead of standing up
+ * a full client.
+ */
+export interface QueryEngineResolutionApiClient {
+  getOrganization(): Promise<SchemaRead | undefined>;
+  listTrinoQueryEngineIntegrations(): Promise<SchemaItemsCollectionReadTrinoQueryEngine | undefined>;
+}
+
+/**
+ * Resolves the query engine to run a query against, before any job graph is
+ * built. `buildQueryJobDefinition` stays pure over the result — it does no
+ * discovery itself.
+ *
+ * An explicit `queryEngine` always wins, bypassing both the feature flag and
+ * integration discovery: `athena`/`flink` resolve with no network call,
+ * `trino` requires exactly one `TrinoQueryEngine` integration to exist.
+ *
+ * When unset, the engine is discovered: the `TRINO_QUERY_ENGINE` feature flag
+ * must be on and the org must have exactly one Trino integration, otherwise
+ * today's default (Athena) is kept unchanged. A failed lookup or more than
+ * one Trino integration is always an error, never a silent fall-through to
+ * Athena — a customer's query must not silently run against an engine they
+ * did not choose.
+ */
+export async function resolveQueryEngine(
+  explicit: QueryEngine | undefined,
+  apiClient: QueryEngineResolutionApiClient
+): Promise<ResolvedQueryEngine> {
+  if (explicit === 'athena' || explicit === 'flink') {
+    return { kind: explicit };
+  }
+  if (explicit === 'trino') {
+    return { kind: 'trino', queryEngineIntegrationId: await resolveExplicitTrinoIntegrationId(apiClient) };
+  }
+
+  const organization = await apiClient.getOrganization();
+  if (organization === undefined) {
+    throw new Error(
+      'Failed to resolve query engine: GET /v1/organization returned no data, so the '
+      + 'TRINO_QUERY_ENGINE feature flag could not be checked.'
+    );
+  }
+  const trinoFlagOn = organization.featureFlags?.includes(ReadFeatureFlags.TRINO_QUERY_ENGINE) ?? false;
+  if (!trinoFlagOn) {
+    return { kind: 'athena' };
+  }
+
+  const integrations = await listTrinoIntegrationsOrThrow(apiClient);
+  if (integrations.length === 0) {
+    return { kind: 'athena' };
+  }
+  return { kind: 'trino', queryEngineIntegrationId: requireSingleTrinoIntegration(integrations).id };
+}
+
+/**
+ * Lists Trino integrations, failing closed when the response itself is
+ * absent (a 2xx with no body) rather than treating that as an empty list —
+ * an empty `items` array is a genuine "no integrations" answer, but a
+ * missing response body means the answer is unknown.
+ */
+async function listTrinoIntegrationsOrThrow(
+  apiClient: QueryEngineResolutionApiClient
+): Promise<SchemaReadTrinoQueryEngine[]> {
+  const collection = await apiClient.listTrinoQueryEngineIntegrations();
+  if (collection === undefined) {
+    throw new Error(
+      'Failed to resolve query engine: GET /v1/integrations/trino-query-engine returned no data.'
+    );
+  }
+  return collection.items ?? [];
+}
+
+async function resolveExplicitTrinoIntegrationId(apiClient: QueryEngineResolutionApiClient): Promise<string> {
+  const integrations = await listTrinoIntegrationsOrThrow(apiClient);
+  if (integrations.length === 0) {
+    throw new Error(
+      'No Trino query engine integration is configured for this organization. Create one, or set '
+      + 'GREPR_QUERY_ENGINE=athena (or unset it) to use the default engine.'
+    );
+  }
+  return requireSingleTrinoIntegration(integrations).id;
+}
+
+/**
+ * Fails closed on ambiguity: more than one Trino integration is an error, never
+ * an arbitrary pick — selecting `trino` cannot disambiguate which integration
+ * to use, so the only real remedies are fixing the data or picking a
+ * different engine. Callers only reach here after establishing `integrations`
+ * is non-empty; the `!integration` branch is an extra safety net, not a case
+ * expected to occur.
+ */
+function requireSingleTrinoIntegration(integrations: SchemaReadTrinoQueryEngine[]): SchemaReadTrinoQueryEngine {
+  const [integration, ...rest] = integrations;
+  if (!integration || rest.length > 0) {
+    throw new Error(
+      `This organization has ${integrations.length} Trino query engine integrations; the CLI will `
+      + 'not guess which one to use. Remove the extra integrations, or set GREPR_QUERY_ENGINE=athena '
+      + 'to select Athena explicitly.'
+    );
+  }
+  return integration;
 }

@@ -57,9 +57,9 @@ export function parseQueryEngine(engine?: string): QueryEngine | undefined {
   if (!engine) {
     return undefined;
   }
-  if (engine === 'athena' || engine === 'flink') {
+  if (engine === 'athena' || engine === 'flink' || engine === 'trino') {
     return engine;
   }
 
-  throw new Error(`Invalid query engine: ${engine}. Must be athena or flink`);
+  throw new Error(`Invalid query engine: ${engine}. Must be athena, flink, or trino`);
 }

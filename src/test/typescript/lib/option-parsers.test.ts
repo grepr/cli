@@ -70,6 +70,10 @@ describe('parseQueryEngine', () => {
     expect(parseQueryEngine('flink')).toBe('flink');
   });
 
+  it('test_parseQueryEngine_trino_shouldReturnTrino', () => {
+    expect(parseQueryEngine('trino')).toBe('trino');
+  });
+
   it('test_parseQueryEngine_undefined_shouldReturnUndefinedForCallerDefault', () => {
     expect(parseQueryEngine(undefined)).toBeUndefined();
   });
@@ -80,7 +84,7 @@ describe('parseQueryEngine', () => {
 
   it('test_parseQueryEngine_invalidValue_shouldThrow', () => {
     expect(() => parseQueryEngine('iceberg')).toThrow(
-      'Invalid query engine: iceberg. Must be athena or flink'
+      'Invalid query engine: iceberg. Must be athena, flink, or trino'
     );
   });
 });

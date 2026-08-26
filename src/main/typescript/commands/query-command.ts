@@ -2,6 +2,7 @@ import type { Command } from 'commander';
 import { BaseCommand } from './base-command.js';
 import type { ICommand } from '../lib/command-registry.js';
 import { createApiClient } from '../lib/api-client-factory.js';
+import { resolveQueryEngine } from '../lib/grepr-api-client.js';
 import { parseIntArg } from '../lib/option-parsers.js';
 import { validateOptionalTimestampRange } from '../lib/time-utils.js';
 import {
@@ -9,7 +10,8 @@ import {
   JobProcessing,
   type CommandOption,
   type MergeConfiguration,
-  type QueryCommandOptions
+  type QueryCommandOptions,
+  type ResolvedQueryEngine
 } from '../types.js';
 import {
   AgentSessionsIcebergTableSourceSortOrder,
@@ -21,6 +23,8 @@ import {
   LogsSynchronousSinkType,
   SpansSynchronousSinkType,
   TracesIcebergTableSourceType,
+  TrinoRawLogsSourceType,
+  TrinoRawSpanSourceType,
   type SchemaCreateJob,
   type SchemaEventPredicate,
   type SchemaGreprRawLogsSource,
@@ -28,7 +32,9 @@ import {
   type SchemaLogsIcebergTableSource,
   type SchemaOperation,
   type SchemaSpansSynchronousSink,
-  type SchemaTracesIcebergTableSource
+  type SchemaTracesIcebergTableSource,
+  type SchemaTrinoRawLogsSource,
+  type SchemaTrinoRawSpanSource
 } from '../openapi/openApiTypes.js';
 import {
   buildLanguageQueryPredicate,
@@ -37,7 +43,8 @@ import {
   buildSourcePredicate,
   deriveSpanQueryFilters,
   warnOnUnliftedSpanQuery,
-  type BuiltSignalPredicate
+  type BuiltSignalPredicate,
+  type SpanQueryFilters
 } from '../lib/query-predicate.js';
 import {
   parseSignalDataType,
@@ -68,6 +75,7 @@ export function validateQueryOptions(options: QueryCommandOptions): void {
 export function buildQueryJobDefinition(
   options: QueryCommandOptions,
   resolved: ResolvedSignalSource,
+  queryEngine: ResolvedQueryEngine,
   now = new Date()
 ): SchemaCreateJob {
   const predicate = buildSignalPredicate({
@@ -84,8 +92,8 @@ export function buildQueryJobDefinition(
   };
 
   const vertices: SchemaOperation[] = predicate.dataType === CreateLogsBackfillJobDataType.logs
-    ? buildLogsQueryVertices(options, common, predicate.query)
-    : buildSpansQueryVertices(options, common, predicate);
+    ? buildLogsQueryVertices(queryEngine, common, predicate.query)
+    : buildSpansQueryVertices(queryEngine, options, common, predicate);
 
   return {
     name: `query_tool_job_${now.getTime()}`,
@@ -110,19 +118,12 @@ interface QuerySourceCommonFields {
 }
 
 function buildLogsQueryVertices(
-  options: QueryCommandOptions,
+  queryEngine: ResolvedQueryEngine,
   common: QuerySourceCommonFields,
   query: SchemaEventPredicate
 ): SchemaOperation[] {
-  const source: SchemaGreprRawLogsSource | SchemaLogsIcebergTableSource = {
-    ...common,
-    type: options.queryEngine === 'flink'
-      ? LogsIcebergTableSourceType.logs_iceberg_table_source
-      : GreprRawLogsSourceType.grepr_raw_log_source,
-    query
-  };
   return [
-    source,
+    buildLogsSource(queryEngine, common, query),
     {
       type: LogsSynchronousSinkType.logs_sync_sink,
       name: 'sink'
@@ -130,7 +131,28 @@ function buildLogsQueryVertices(
   ];
 }
 
+function buildLogsSource(
+  queryEngine: ResolvedQueryEngine,
+  common: QuerySourceCommonFields,
+  query: SchemaEventPredicate
+): SchemaGreprRawLogsSource | SchemaLogsIcebergTableSource | SchemaTrinoRawLogsSource {
+  switch (queryEngine.kind) {
+    case 'flink':
+      return { ...common, type: LogsIcebergTableSourceType.logs_iceberg_table_source, query };
+    case 'trino':
+      return {
+        ...common,
+        type: TrinoRawLogsSourceType.trino_raw_log_source,
+        query,
+        queryEngineIntegrationId: queryEngine.queryEngineIntegrationId
+      };
+    case 'athena':
+      return { ...common, type: GreprRawLogsSourceType.grepr_raw_log_source, query };
+  }
+}
+
 function buildSpansQueryVertices(
+  queryEngine: ResolvedQueryEngine,
   options: QueryCommandOptions,
   common: QuerySourceCommonFields,
   predicate: Extract<
@@ -138,27 +160,37 @@ function buildSpansQueryVertices(
     { dataType: CreateSpansBackfillJobDataType.spans }
   >
 ): SchemaOperation[] {
-  const sourceFields = {
-    ...common,
-    query: predicate.query,
-    ...deriveSpanQueryFilters(options.query ?? '')
-  };
-  const source: SchemaGreprRawSpanSource | SchemaTracesIcebergTableSource =
-    options.queryEngine === 'flink'
-      ? {
-          ...sourceFields,
-          type: TracesIcebergTableSourceType.traces_iceberg_table_source
-        }
-      : {
-          ...sourceFields,
-          type: GreprRawSpanSourceType.grepr_raw_span_source
-        };
+  const sourceFields = { ...common, query: predicate.query };
+  const spanFilters = deriveSpanQueryFilters(options.query ?? '');
   const sink: SchemaSpansSynchronousSink = {
     type: SpansSynchronousSinkType.spans_sync_sink,
     name: 'sink'
   };
 
-  return [source, sink];
+  return [buildSpansSource(queryEngine, sourceFields, spanFilters), sink];
+}
+
+function buildSpansSource(
+  queryEngine: ResolvedQueryEngine,
+  sourceFields: QuerySourceCommonFields & { query: SchemaEventPredicate },
+  spanFilters: SpanQueryFilters
+): SchemaGreprRawSpanSource | SchemaTracesIcebergTableSource | SchemaTrinoRawSpanSource {
+  switch (queryEngine.kind) {
+    case 'flink':
+      return {
+        ...sourceFields,
+        ...spanFilters,
+        type: TracesIcebergTableSourceType.traces_iceberg_table_source
+      };
+    case 'trino':
+      return {
+        ...sourceFields,
+        type: TrinoRawSpanSourceType.trino_raw_span_source,
+        queryEngineIntegrationId: queryEngine.queryEngineIntegrationId
+      };
+    case 'athena':
+      return { ...sourceFields, type: GreprRawSpanSourceType.grepr_raw_span_source };
+  }
 }
 
 export class QueryCommand extends BaseCommand<QueryCommandOptions> implements ICommand {
@@ -281,12 +313,14 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
   async execute(options: QueryCommandOptions): Promise<void> {
     try {
       validateQueryOptions(options);
+      const apiClient = createApiClient(options);
+      const queryEngine = await resolveQueryEngine(options.queryEngine, apiClient);
       const resolved = await resolveSignalSource(
         options,
-        createApiClient(options),
+        apiClient,
         { includeTeamIds: false }
       );
-      const jobDefinition = buildQueryJobDefinition(options, resolved);
+      const jobDefinition = buildQueryJobDefinition(options, resolved, queryEngine);
       if (resolved.dataType === CreateSpansBackfillJobDataType.spans) {
         warnOnUnliftedSpanQuery(options.query ?? '');
       }
