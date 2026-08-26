@@ -6817,6 +6817,11 @@ export interface components {
     JsonLogEventMapper: Record<string, never>;
     JsonLogProcessor: {
       /**
+       * @description Object-valued JSON fields whose children are lifted into the containing parsed object. An empty list disables lifting. Lifting repeats recursively when a lifted object contains another configured field. Colliding maps are merged recursively. For leaf values and all other type combinations, the lifted child replaces the existing value; arrays are not combined. If multiple configured fields contain the same child, the later field wins according to these rules.
+       * @default []
+       */
+      liftFieldNames?: string[];
+      /**
        * Format: int32
        * @default 3
        */

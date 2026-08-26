@@ -6995,6 +6995,16 @@
             "description": "The processor tries to deserialize the string in the \u0027message\u0027 field as JSON, putting all values into the \u0027attributes\u0027 field. If this is enabled, the processor will keep the JSON string in \u0027message\u0027. When disabled, the string will be cleared.",
             "type": "boolean"
           },
+          "liftFieldNames": {
+            "default": [],
+            "description": "Object-valued JSON fields whose children are lifted into the containing parsed object. An empty list disables lifting. Lifting repeats recursively when a lifted object contains another configured field. Colliding maps are merged recursively. For leaf values and all other type combinations, the lifted child replaces the existing value; arrays are not combined. If multiple configured fields contain the same child, the later field wins according to these rules.",
+            "items": {
+              "default": "[]",
+              "description": "Object-valued JSON fields whose children are lifted into the containing parsed object. An empty list disables lifting. Lifting repeats recursively when a lifted object contains another configured field. Colliding maps are merged recursively. For leaf values and all other type combinations, the lifted child replaces the existing value; arrays are not combined. If multiple configured fields contain the same child, the later field wins according to these rules.",
+              "type": "string"
+            },
+            "type": "array"
+          },
           "resolveNestedJsonFields": {
             "default": [
               [
