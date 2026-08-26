@@ -8509,6 +8509,11 @@ export interface components {
        */
       readonly licenseKey?: string;
       /**
+       * @description Route logs to New Relic over AWS PrivateLink using the private log endpoint.
+       * @default false
+       */
+      privateLink?: boolean;
+      /**
        * @description New Relic API endpoint url base
        * @example newrelic.com
        */

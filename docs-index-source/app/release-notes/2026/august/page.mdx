@@ -6,6 +6,25 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in August 2026.
 
+## August 26, 2026
+
+{/* ENGT-5393 */}
+### Mask sensitive values on any log pipeline, and only where you need to
+
+You can now add a masking step to any log pipeline rather than only to pipelines built from a template, and give each mask an optional condition so that only the logs matching it are rewritten. A conditional mask leaves every other log untouched, which lets you redact a value that appears in one service's logs without rewriting the rest of the pipeline's traffic. Masking runs before logs reach the Grepr data lake and your vendor sinks, so the masked value is both what Grepr stores and what it forwards.
+
+{/* ENGT-5452 */}
+### A reorganized log reducer editor
+
+The **Edit Reducer** dialog is now three focused sections instead of one long form. **Basic** holds the reduction window, similarity threshold, and minimum samples. **Fields** holds one searchable table where you set grouping and merge strategy per field. **Advanced** holds masks, delimiters, sampling, and output switches. Each section opens on its own and fits on a single screen, so the settings you change most often are the ones you reach first. See [_](/transforms/reducer/configuration).
+
+### Other improvements and fixes
+
+- {/* ENGT-5446 */} Log Explorer now applies instant filtering to queries that filter on `status` or `level`, and a query it cannot filter in the browser reports that plainly instead of showing an internal translator error.
+- {/* ENGT-5431 */} Improved the performance of trace pipelines.
+- {/* ENGT-5481 */} Fixed an issue where a backfill to a dataset or vendor integration created before Grepr adopted its current identifier format was rejected as invalid, so the backfill never started.
+- {/* ENGT-5482 */} Fixed an issue where the actions menu on a field in the Log Explorer detail panel opened off the edge of the screen, and where choosing an item from it closed the detail panel.
+
 ## August 20, 2026
 
 {/* ENGT-4539 */}
