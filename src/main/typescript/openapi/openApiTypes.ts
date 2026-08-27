@@ -2553,6 +2553,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/masking/mask": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Apply masks to samples
+     * @description Applies a masking operator's masks to sample log events and returns the masked result for each, so the editor can preview a configuration without deploying it. The operator's predicate gates which logs are masked in production, not how, so it is ignored here and the masks are applied to every sample.
+     */
+    post: operations["mask"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/me/permissions": {
     parameters: {
       query?: never;
@@ -8052,6 +8072,36 @@ export interface components {
        */
       type: MaskingOperatorType;
     };
+    MaskingRequest: {
+      masking: components["schemas"]["MaskingOperator"];
+      /**
+       * @description The sample log events to apply the masks to.
+       * @default []
+       */
+      samples: components["schemas"]["MaskingSample"][];
+    };
+    MaskingResponse: {
+      /** @description The masked results, aligned by position with the request's samples. */
+      results: components["schemas"]["MaskingResult"][];
+    };
+    /** @description The masked results, aligned by position with the request's samples. */
+    MaskingResult: {
+      /** @description The sample attributes after masking, unchanged when no mask matched. */
+      maskedAttributes: {
+        [key: string]: components["schemas"]["Any"];
+      };
+      /**
+       * Format: int32
+       * @description The number of substrings replaced across the message and attributes; zero when nothing matched.
+       * @example 3
+       */
+      maskedCount?: number;
+      /**
+       * @description The sample message after masking, unchanged when no mask matched.
+       * @example user [email] signed in from [ip]
+       */
+      maskedMessage?: string;
+    };
     /** @description Masking rule that scrubs PII from log messages using regex patterns. */
     MaskingRuleConfig: Omit<
       components["schemas"]["PatternRuleConfig"],
@@ -8067,6 +8117,26 @@ export interface components {
        * @enum {string}
        */
       type: MaskingRuleConfigType;
+    };
+    /** @description The sample log events to apply the masks to. */
+    MaskingSample: {
+      /**
+       * @description Sample attributes the attribute masks are applied to.
+       * @default {}
+       * @example {
+       *       "user": {
+       *         "email": "alice@example.com"
+       *       }
+       *     }
+       */
+      attributes: {
+        [key: string]: Record<string, never>;
+      };
+      /**
+       * @description Sample log message the masks are applied to. May be omitted to test attribute masks alone.
+       * @example user alice@example.com signed in from 10.1.2.3
+       */
+      message?: string;
     };
     MatrixCell: {
       intent?: string;
@@ -14096,8 +14166,12 @@ export type SchemaManifest = components["schemas"]["Manifest"];
 export type SchemaMask = components["schemas"]["Mask"];
 export type SchemaMaskEntry = components["schemas"]["MaskEntry"];
 export type SchemaMaskingOperator = components["schemas"]["MaskingOperator"];
+export type SchemaMaskingRequest = components["schemas"]["MaskingRequest"];
+export type SchemaMaskingResponse = components["schemas"]["MaskingResponse"];
+export type SchemaMaskingResult = components["schemas"]["MaskingResult"];
 export type SchemaMaskingRuleConfig =
   components["schemas"]["MaskingRuleConfig"];
+export type SchemaMaskingSample = components["schemas"]["MaskingSample"];
 export type SchemaMatrixCell = components["schemas"]["MatrixCell"];
 export type SchemaMatrixData = components["schemas"]["MatrixData"];
 export type SchemaMatrixResult = components["schemas"]["MatrixResult"];
@@ -21283,6 +21357,44 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["Manifest"];
         };
+      };
+    };
+  };
+  mask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["MaskingRequest"];
+      };
+    };
+    responses: {
+      /** @description Sample masked successfully. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MaskingResponse"];
+        };
+      };
+      /** @description The masking configuration is invalid or could not be compiled. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };
