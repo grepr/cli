@@ -1,5 +1,5 @@
 ---
-description: Author a Flink-SQL transform on a Grepr log-reducer pipeline — reshape, enrich, or filter logs row-by-row, derive metric-shaped logs via windowed aggregation, or run arbitrary supported SQL. Emits a set-sql-transform patch into a template transform slot (pre-parser, pre-warehouse, pre-exceptions) and routes through test-pipeline-change. SQL transforms are TEMPLATE-BACKED ONLY. Use for "add a SQL transform", "transform/reshape logs with SQL", "logs to metrics", "aggregate logs with SQL". For masking/redacting sensitive data, use grepr:change-masking (the masking operator) instead of SQL.
+description: Author a Flink-SQL transform on a Grepr log-reducer pipeline — reshape, enrich, or filter logs row-by-row, derive metric-shaped logs via windowed aggregation, or run arbitrary supported SQL. Emits a set-sql-transform patch into a template transform slot (pre-parser, pre-warehouse, pre-exceptions) and routes through test-pipeline-change. SQL transforms are TEMPLATE-BACKED ONLY. Use for "add a SQL transform", "transform/reshape logs with SQL", "logs to metrics", "aggregate logs with SQL". For an ad-hoc GROUP BY, count distinct, or cardinality question about existing data, use grepr:sql-analytics instead - that is a read-only query, not a pipeline change. For masking/redacting sensitive data, use grepr:change-masking (the masking operator) instead of SQL.
 allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr sql:validate), Bash(grepr docs:search), Bash(grepr docs:get), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:plan), Bash(grepr --conf * job:draft), Bash(grepr --conf * sql:validate), Bash(grepr --conf * docs:search), Bash(grepr --conf * docs:get), Read, Write, AskUserQuestion, grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query, grepr:docs-commands
 ---
 
@@ -15,6 +15,14 @@ transform slot. You author and validate the SQL, then hand the patch to
 `grepr:test-pipeline-change` — production writes happen only there, after
 explicit approval. Resolve the org config (`--conf`) once and reuse it — see
 `grepr:cli`.
+
+**Answering a question is not this skill's job.** A patch here changes what a
+live pipeline emits and routes through a production write. To run an ad-hoc
+GROUP BY, count distinct values, or measure a cardinality over time, use
+`grepr:sql-analytics`, which submits a read-only batch job and changes nothing.
+Aggregation itself is not the dividing line: a windowed aggregation that must
+*emit into the pipeline* stays here (see `logs-to-metric.md`). Ask whether the
+result changes what the pipeline sends, or only answers the user.
 
 **Masking/redaction is not this skill's job.** To scrub sensitive substrings
 (PII, secrets, emails, card numbers), use `grepr:change-masking` — the masking
@@ -176,6 +184,7 @@ intend. For a safety/coverage change, a marker tag in the SELECT (`` 'v1' AS
 
 | Request | Where |
 |---------|-------|
+| **Answer a question about the data** (ad-hoc GROUP BY, COUNT DISTINCT, top-N) | **`grepr:sql-analytics`** - a read-only batch job, not a pipeline change |
 | Reshape / enrich / filter / categorize, row-by-row | inline above — it's `SELECT … AS <field>, *` with the right `mainStream` |
 | **Mask / redact sensitive data** | **`grepr:change-masking`** (the masking operator) — not SQL |
 | **Logs → metric-shaped logs** (windowed aggregation) | **`logs-to-metric.md`** |
