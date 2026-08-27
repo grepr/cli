@@ -35,6 +35,7 @@ import {
   LogReducerType,
   LogsEventSamplerType,
   GreprUploadedLogFileSourceType,
+  isSinkType,
 } from '@/openapi/openApiTypes';
 import {
   canLimit,
@@ -731,6 +732,9 @@ export function transformJobGraphToSourcePreservingDraft(
 
   const draftEdges = [...retainedEdges];
   for (const inbound of sinkInboundEdges) {
+    // A sink chained to another sink was itself stripped, so it cannot source a
+    // draft edge. Its records are already observed one hop upstream.
+    if (sinkNames.has(inbound.sourceVertex)) continue;
     // Tap-eligible sink-predecessors reach the sync sink through their tagger
     // below; adding a direct edge here too would deliver their records twice
     // (once untagged, once tagged), inflating counts the per-stage demux can't
@@ -789,7 +793,7 @@ function edgeTouchesAny(edge: string, names: ReadonlySet<string>): boolean {
 }
 
 function isProductionSinkOperation(operation: SchemaOperation): boolean {
-  return typeof operation.type === 'string' && operation.type.endsWith('-sink');
+  return typeof operation.type === 'string' && isSinkType(operation.type);
 }
 
 function makeOperation(

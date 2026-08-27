@@ -1567,7 +1567,7 @@ describe('job-graph-transformer', () => {
 });
 
 describe('transformJobGraphToSourcePreservingDraft', () => {
-  it('test_sourcePreservingDraft_onlyRemovesSuffixSinkTypes', () => {
+  it('test_sourcePreservingDraft_onlyRemovesKnownSinkTypes', () => {
     const job: SchemaCreateJob = {
       name: 'source-preserving',
       execution: JobExecution.ASYNCHRONOUS,
@@ -1609,7 +1609,7 @@ describe('transformJobGraphToSourcePreservingDraft', () => {
         vertices: [
           { type: LogsIcebergTableSourceType.logs_iceberg_table_source, name: 'src', datasetId: 'raw_ds_1' } as unknown as SchemaOperation,
           { type: 'log-reducer', name: 'log_reducer' } as unknown as SchemaOperation,
-          { type: 'pattern-data-sink', name: 'pattern_data_sink' } as unknown as SchemaOperation,
+          { type: 'pattern-lookup-iceberg-table-sink', name: 'pattern_data_sink' } as unknown as SchemaOperation,
         ],
         edges: ['src -> log_reducer', 'log_reducer -> pattern_data_sink'],
       },
@@ -1621,6 +1621,67 @@ describe('transformJobGraphToSourcePreservingDraft', () => {
     const intoSyncSink = edges.filter(edge => edge.endsWith('-> draft_source_preserving_sink'));
     expect(intoSyncSink).toEqual(['tap_log_reducer -> draft_source_preserving_sink']);
     expect(edges).not.toContain('log_reducer -> draft_source_preserving_sink');
+  });
+
+  it('test_sourcePreservingDraft_chainedSinks_noEdgeFromRemovedSink', () => {
+    // A vendor sink feeding a second sink: both are stripped, so neither may
+    // source a draft edge. The server rejects an edge from a missing vertex.
+    const job: SchemaCreateJob = {
+      name: 'chained-sinks',
+      execution: JobExecution.ASYNCHRONOUS,
+      processing: JobProcessing.STREAMING,
+      jobGraph: {
+        vertices: [
+          { type: LogsIcebergTableSourceType.logs_iceberg_table_source, name: 'src', datasetId: 'raw_ds_1' } as unknown as SchemaOperation,
+          { type: 'log-reducer', name: 'log_reducer' } as unknown as SchemaOperation,
+          { type: 'logs-filter', name: 'vendor_filter' } as unknown as SchemaOperation,
+          { type: 'datadog-log-sink', name: 'dd_sink' } as unknown as SchemaOperation,
+          { type: 'vendorlog-event-dedup-iceberg-table-sink', name: 'event_dedup_sink' } as unknown as SchemaOperation,
+        ],
+        edges: [
+          'src -> log_reducer',
+          'log_reducer -> vendor_filter',
+          'vendor_filter -> dd_sink',
+          'dd_sink -> event_dedup_sink',
+        ],
+      },
+    };
+
+    const draft = transformJobGraphToSourcePreservingDraft(job, { processing: JobProcessing.STREAMING });
+    const vertexNames = new Set((draft.jobGraph?.vertices ?? []).map(v => v.name));
+    const edges = draft.jobGraph?.edges ?? [];
+
+    expect(vertexNames.has('dd_sink')).toBe(false);
+    expect(vertexNames.has('event_dedup_sink')).toBe(false);
+    // Every edge endpoint resolves to a vertex that is still in the graph.
+    for (const edge of edges) {
+      const [source, target] = edge.split('->').map(part => part.trim().split(':')[0]);
+      expect(vertexNames, `edge '${edge}' has an unknown source vertex`).toContain(source);
+      expect(vertexNames, `edge '${edge}' has an unknown target vertex`).toContain(target);
+    }
+    // The last retained stage before the vendor sink still reaches the sync sink.
+    expect(edges).toContain('vendor_filter -> draft_source_preserving_sink');
+  });
+
+  it('test_sourcePreservingDraft_stripsSinkWhoseTypeLacksTheSinkSuffix', () => {
+    // Sink identity comes from the generated SINK_TYPES set, not the type name.
+    const job: SchemaCreateJob = {
+      name: 'unsuffixed-sink',
+      execution: JobExecution.ASYNCHRONOUS,
+      processing: JobProcessing.STREAMING,
+      jobGraph: {
+        vertices: [
+          { type: LogsIcebergTableSourceType.logs_iceberg_table_source, name: 'src', datasetId: 'raw_ds_1' } as unknown as SchemaOperation,
+          { type: 'logs-predicates-counter', name: 'counter' } as unknown as SchemaOperation,
+        ],
+        edges: ['src -> counter'],
+      },
+    };
+
+    const draft = transformJobGraphToSourcePreservingDraft(job, { processing: JobProcessing.STREAMING });
+    const vertexNames = (draft.jobGraph?.vertices ?? []).map(v => v.name);
+    expect(vertexNames).not.toContain('counter');
+    expect(draft.jobGraph?.edges ?? []).toContain('src -> draft_source_preserving_sink');
   });
 
   /** A job graph with `sourceCount` live sources each feeding a shared reducer, then a production sink. */
