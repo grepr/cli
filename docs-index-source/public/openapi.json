@@ -1078,6 +1078,89 @@
         ],
         "type": "object"
       },
+      "AgentSessionEventsIcebergTableSource": {
+        "properties": {
+          "datasetId": {
+            "description": "The ID of the dataset to read data from.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of time interval to query data for.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "default": 2500,
+            "description": "The maximum number of rows to process",
+            "format": "int32",
+            "type": "integer"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Offset on the number of rows to process",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "query": {
+            "$ref": "#/components/schemas/query"
+          },
+          "sortOrder": {
+            "default": "ASCENDING",
+            "description": "The order in which the rows should be sorted by",
+            "enum": [
+              "ASCENDING",
+              "DESCENDING",
+              "UNSORTED"
+            ],
+            "type": "string"
+          },
+          "start": {
+            "description": "Start of time interval to query data for.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Reads every event of the agent sessions whose events match the query.",
+            "enum": [
+              "agent-session-events-iceberg-table-source"
+            ],
+            "type": "string"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables that can be used to modify the query while parsed",
+            "example": {
+              "__application": "app1",
+              "__service": "service1"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "start",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
+      },
       "AgentSessionsIcebergTableSource": {
         "properties": {
           "datasetId": {
@@ -10322,6 +10405,7 @@
           "mapping": {
             "agent-log-processor": "#/components/schemas/AgentLogProcessor",
             "agent-session-analytics": "#/components/schemas/AgentSessionAnalytics",
+            "agent-session-events-iceberg-table-source": "#/components/schemas/AgentSessionEventsIcebergTableSource",
             "agent-sessions-iceberg-table-source": "#/components/schemas/AgentSessionsIcebergTableSource",
             "agent-sessions-sync-sink": "#/components/schemas/AgentSessionsSynchronousSink",
             "agent-span-processor": "#/components/schemas/AgentSpanProcessor",
@@ -10478,6 +10562,9 @@
           },
           {
             "$ref": "#/components/schemas/LogsIcebergTableSource"
+          },
+          {
+            "$ref": "#/components/schemas/AgentSessionEventsIcebergTableSource"
           },
           {
             "$ref": "#/components/schemas/AgentSessionsIcebergTableSource"

@@ -3753,6 +3753,59 @@ export interface components {
       start: string;
       warehouseIntegrationId: string;
     };
+    AgentSessionEventsIcebergTableSource: {
+      /** @description The ID of the dataset to read data from. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of time interval to query data for.
+       * @example 2023-01-01T01:00:00Z
+       */
+      end: string;
+      /**
+       * Format: int32
+       * @description The maximum number of rows to process
+       * @default 2500
+       */
+      limit?: number;
+      /** @example operation_name */
+      name: string;
+      /**
+       * Format: int32
+       * @description Offset on the number of rows to process
+       * @default 0
+       */
+      offset?: number;
+      query: components["schemas"]["query"];
+      /**
+       * @description The order in which the rows should be sorted by
+       * @default ASCENDING
+       * @enum {string}
+       */
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
+      /**
+       * Format: date-time
+       * @description Start of time interval to query data for.
+       * @example 2023-01-01T00:00:00Z
+       */
+      start: string;
+      /**
+       * @description Reads every event of the agent sessions whose events match the query. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: AgentSessionEventsIcebergTableSourceType;
+      /**
+       * @description Variables that can be used to modify the query while parsed
+       * @default {}
+       * @example {
+       *       "__application": "app1",
+       *       "__service": "service1"
+       *     }
+       */
+      variables?: {
+        [key: string]: components["schemas"]["Any"];
+      };
+    };
     AgentSessionSummary: {
       emitter: string;
       /** Format: int64 */
@@ -3812,7 +3865,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -4169,7 +4222,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -5992,7 +6045,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -6071,7 +6124,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -6124,7 +6177,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -6189,7 +6242,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -6432,7 +6485,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -7033,7 +7086,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -7650,7 +7703,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -7820,7 +7873,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -8425,7 +8478,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -8725,6 +8778,7 @@ export interface components {
       | components["schemas"]["SpansIcebergTableSink"]
       | components["schemas"]["LogsIcebergTableSource"]
       | components["schemas"]["AgentSessionsIcebergTableSource"]
+      | components["schemas"]["AgentSessionEventsIcebergTableSource"]
       | components["schemas"]["LlmPromptResultsIcebergTableSource"]
       | components["schemas"]["MetricsIcebergTableSource"]
       | components["schemas"]["TracesIcebergTableSource"]
@@ -10396,7 +10450,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -10981,7 +11035,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -12528,7 +12582,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -12718,7 +12772,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -12818,7 +12872,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -12873,7 +12927,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -12940,7 +12994,7 @@ export interface components {
        * @default ASCENDING
        * @enum {string}
        */
-      sortOrder?: AgentSessionsIcebergTableSourceSortOrder;
+      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
       /**
        * Format: date-time
        * @description Start of time interval to query data for.
@@ -13699,6 +13753,8 @@ export type SchemaAgentSessionAnalyticsPage =
   components["schemas"]["AgentSessionAnalyticsPage"];
 export type SchemaAgentSessionAnalyticsTemplateInput =
   components["schemas"]["AgentSessionAnalyticsTemplateInput"];
+export type SchemaAgentSessionEventsIcebergTableSource =
+  components["schemas"]["AgentSessionEventsIcebergTableSource"];
 export type SchemaAgentSessionSummary =
   components["schemas"]["AgentSessionSummary"];
 export type SchemaAgentSessionsEndpoint =
@@ -23540,13 +23596,16 @@ export enum AgentSessionAnalyticsJobState {
   FAILED = "FAILED",
   CANCELLED = "CANCELLED",
 }
-export enum AgentSessionSummaryType {
-  agent_session_summary = "agent-session-summary",
-}
-export enum AgentSessionsIcebergTableSourceSortOrder {
+export enum AgentSessionEventsIcebergTableSourceSortOrder {
   ASCENDING = "ASCENDING",
   DESCENDING = "DESCENDING",
   UNSORTED = "UNSORTED",
+}
+export enum AgentSessionEventsIcebergTableSourceType {
+  agent_session_events_iceberg_table_source = "agent-session-events-iceberg-table-source",
+}
+export enum AgentSessionSummaryType {
+  agent_session_summary = "agent-session-summary",
 }
 export enum AgentSessionsIcebergTableSourceType {
   agent_sessions_iceberg_table_source = "agent-sessions-iceberg-table-source",
@@ -24372,6 +24431,7 @@ export enum WindowBasedLogarithmicSamplingType {
 // =============================================================================
 
 export const SOURCE_TYPES = new Set<string>([
+  'agent-session-events-iceberg-table-source',
   'agent-sessions-iceberg-table-source',
   'athena-agent-sessions-source',
   'bounded-datadog-source',

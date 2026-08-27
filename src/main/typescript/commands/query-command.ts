@@ -14,7 +14,7 @@ import {
   type ResolvedQueryEngine
 } from '../types.js';
 import {
-  AgentSessionsIcebergTableSourceSortOrder,
+  AgentSessionEventsIcebergTableSourceSortOrder,
   CreateLogsBackfillJobDataType,
   CreateSpansBackfillJobDataType,
   GreprRawLogsSourceType,
@@ -87,7 +87,7 @@ export function buildQueryJobDefinition(
     datasetId: resolved.datasetId,
     start: options.start ?? new Date(now.getTime() - 10 * 60 * 1000).toISOString(),
     end: options.end ?? now.toISOString(),
-    sortOrder: options.sortOrder ?? AgentSessionsIcebergTableSourceSortOrder.UNSORTED,
+    sortOrder: options.sortOrder ?? AgentSessionEventsIcebergTableSourceSortOrder.UNSORTED,
     limit: options.limit ?? 100
   };
 
@@ -113,7 +113,7 @@ interface QuerySourceCommonFields {
   datasetId: string;
   start: string;
   end: string;
-  sortOrder: AgentSessionsIcebergTableSourceSortOrder;
+  sortOrder: AgentSessionEventsIcebergTableSourceSortOrder;
   limit: number;
 }
 
