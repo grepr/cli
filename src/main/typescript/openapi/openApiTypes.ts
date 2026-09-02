@@ -12433,6 +12433,11 @@ export interface components {
        */
       maxTraceIds: number;
       /**
+       * @description Specifies the sinks that should be used for the backfill job.
+       * @default []
+       */
+      sinkOperations: components["schemas"]["Operation"][];
+      /**
        * @description SQL predicate to filter spans that should trigger this action. Can reference any CompleteSpan field (e.g., 'hasError = true', 'percentileBucket IN ("very_slow", "slow")').
        * @example hasError = true
        */

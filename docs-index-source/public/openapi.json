@@ -1543,6 +1543,8 @@
             "items": {
               "$ref": "#/components/schemas/LlmPrompt"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "type": "array"
           },
           "llmResultsDatasetId": {
@@ -1626,6 +1628,8 @@
             "items": {
               "$ref": "#/components/schemas/EventPredicate"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "title": "Child predicates",
             "type": "array"
           },
@@ -2042,6 +2046,8 @@
               "example": "[\"user\",\"contact\"]",
               "type": "string"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "type": "array"
           }
         },
@@ -2775,6 +2781,8 @@
               "example": "[\"123456789012\",\"987654321098\"]",
               "type": "string"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "type": "array"
           },
           "fileReadingStrategy": {
@@ -2869,6 +2877,8 @@
               "example": "[\"us-east-1\",\"us-west-2\"]",
               "type": "string"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "type": "array"
           },
           "s3IntegrationId": {
@@ -3419,6 +3429,8 @@
             "items": {
               "$ref": "#/components/schemas/Operation"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "type": "array"
           },
           "start": {
@@ -3619,6 +3631,8 @@
             "items": {
               "$ref": "#/components/schemas/Operation"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "type": "array"
           },
           "sqlOperation": {
@@ -5833,6 +5847,8 @@
               "example": "john id:12345 connected on 11/08/2017 on server XYZ in production",
               "type": "string"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "type": "array"
           }
         },
@@ -6116,6 +6132,8 @@
               "description": "Datadog integration IDs that receive the reported host metadata.",
               "type": "string"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "type": "array",
             "uniqueItems": true
           },
@@ -6261,6 +6279,8 @@
             "items": {
               "$ref": "#/components/schemas/EventPredicate"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "type": "array"
           },
           "query": {
@@ -9724,6 +9744,8 @@
               "example": "[\"cpu.load\",\"cpu.utilization\"]",
               "type": "string"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "type": "array"
           },
           "query": {
@@ -10352,6 +10374,8 @@
               "example": "[\"resource.host.id\"]",
               "type": "string"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "type": "array",
             "uniqueItems": true
           },
@@ -14269,6 +14293,8 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "type": "array"
           }
         },
@@ -15644,6 +15670,8 @@
             "items": {
               "$ref": "#/components/schemas/SqlExecutable"
             },
+            "maxItems": 2147483647,
+            "minItems": 1,
             "type": "array"
           },
           "type": {
@@ -17425,6 +17453,17 @@
                 "minimum": 1,
                 "type": "integer"
               },
+              "sinkOperations": {
+                "default": [],
+                "description": "Specifies the sinks that should be used for the backfill job.",
+                "items": {
+                  "$ref": "#/components/schemas/Operation"
+                },
+                "maxItems": 2147483647,
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
               "sqlPredicate": {
                 "description": "SQL predicate to filter spans that should trigger this action. Can reference any CompleteSpan field (e.g., \u0027hasError \u003d true\u0027, \u0027percentileBucket IN (\"very_slow\", \"slow\")\u0027).",
                 "example": "hasError \u003d true",
@@ -17447,6 +17486,7 @@
           "backfillWindow",
           "datasetId",
           "maxTraceIds",
+          "sinkOperations",
           "sqlPredicate",
           "traceCollectionDuration"
         ],
