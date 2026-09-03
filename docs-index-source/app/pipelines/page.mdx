@@ -14,3 +14,7 @@ An example of a pipeline is a log or trace reduction pipeline that reduces the v
 ## Trace reduction pipelines
 
 Trace reduction pipelines process the APM data produced by your applications and agents by applying configured transformations, sampling to create representative subsets of the data, and forwarding the results to your observability platform. Grepr uses a novel approach to identify and sample every path through your system. Sampling reduces the volume and cost of data sent to your observability platform, while the complete set of raw traces is retained in a Grepr data lake. If you use Datadog, you can also derive and forward metrics from your trace data to track trends across your traces without forwarding every trace. See [_](/pipelines/trace-pipelines).
+
+## Agent sessions pipelines
+
+Agent sessions pipelines process the telemetry produced by coding agents such as Claude Code, Codex, and OpenCode. A coding agent reports its conversation as OpenTelemetry log events and its execution as OpenTelemetry spans, and neither signal is readable as a session on its own. An agent sessions pipeline reads both signals, reconstructs each run into a single session, and stores it in a Grepr data lake, so you can read the transcript, measure the tokens and cost the run consumed, and find the runs that failed. See [_](/pipelines/agent-sessions).

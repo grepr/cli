@@ -7,7 +7,7 @@ import { Callout } from 'nextra/components'
 import AddTeamAccess from '@/app/shared/add-team-access-to-integration.mdx'
 import IngestUrlConfig from '@/app/shared/configure-ingest-url.mdx'
 import IntegrationsInterchangeability from '@/app/shared/integrations-interchangeability.mdx'
-import { Tabs } from 'nextra/components'
+import { Tabs } from '@/components/LinkableTabs'
 import { HiddenFAQ } from '@/components/HiddenFAQ'
 
 # Configure connections to OpenTelemetry-compatible platforms
@@ -74,11 +74,13 @@ To add a source to your pipeline that uses the OpenTelemetry integration, select
 
 <IngestUrlConfig image_url='/images/integrations/ingestion-url-otel.png' url='https://<integration-id>-<org-id>.ingest.grepr.ai/otlp/<grepr-token>' />
 
-Replace `<grepr-token>` with the token generated when you created the OpenTelemetry integration in Step 1.
+Replace `<grepr-token>` with the token generated when you created the OpenTelemetry integration in Step 1. The token is part of the ingestion URL rather than a separate credential, so a collector or agent that sends to this URL needs no authentication header.
 
-To see configuration examples for sending data to Grepr, select the tab for your preferred collector:
+Some senders take the ingestion URL as it is and append the path for each signal themselves. Others need the full path for one signal. For example, if your ingestion URL is `https://YWNQbQSarRBsa-<org-id>.ingest.grepr.ai/otlp/uUasjYpMJdpQZ9cNlLEtthuXNRp6n3ND_xND80PVXNk=`, then the endpoint for log events is that URL followed by `/v1/logs`, and the endpoint for spans is the same URL followed by `/v1/traces`. Each tab below states which form its sender expects.
 
-<Tabs items={['OpenTelemetry Collector (logs)', 'OpenTelemetry Collector (traces)', 'Fluent Bit']}>
+To see configuration examples for sending data to Grepr, select the tab for your collector or coding agent:
+
+<Tabs items={['OTel Collector (logs)', 'OTel Collector (traces)', 'Fluent Bit', 'Claude Code', 'Codex', 'OpenCode']}>
   <Tabs.Tab>
 
     The OpenTelemetry Collector can send logs to Grepr using the `otlphttp` exporter. In the OpenTelemetry collector configuration, set the endpoint to the ingestion URL from your OpenTelemetry integration:
@@ -173,6 +175,125 @@ To see configuration examples for sending data to Grepr, select the tab for your
     ```
 
     To learn more about configuration settings for Fluent Bit, see the documentation for the [Fluent Bit OpenTelemetry output plugin](https://docs.fluentbit.io/manual/data-pipeline/outputs/opentelemetry).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    Claude Code exports its own telemetry over OTLP. It reports prompts, assistant responses, tool calls, token counts, and cost as OTLP log events, and reports each interaction, model request, and tool execution as OTLP spans. An agent sessions pipeline reads both signals, so set a logs endpoint and a traces endpoint.
+
+    - `CLAUDE_CODE_ENABLE_TELEMETRY` turns on telemetry and is required.
+    - `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA` turns on spans. Without it, Claude Code exports no traces, and a session has no execution spans and no timing waterfall.
+    - `OTEL_LOG_USER_PROMPTS`, `OTEL_LOG_ASSISTANT_RESPONSES`, and `OTEL_LOG_TOOL_DETAILS` record prompt text, response text, and tool arguments. Without them, Claude Code redacts the content and a transcript shows metadata only.
+    - `OTEL_LOG_TOOL_CONTENT` records what each tool returned. Claude Code reports tool output only on a span event, so this setting requires spans.
+    - `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` each take the full path for their signal, so append `/v1/logs` and `/v1/traces` to the ingestion URL.
+    - `OTEL_METRICS_EXPORTER` is set to `none` because an agent sessions pipeline reads logs and traces only.
+
+    The following example exports the settings and then starts Claude Code:
+
+    ```bash copy filename="claude-code-telemetry.sh"
+    export CLAUDE_CODE_ENABLE_TELEMETRY=1
+    export CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1
+    export OTEL_LOGS_EXPORTER=otlp
+    export OTEL_TRACES_EXPORTER=otlp
+    export OTEL_METRICS_EXPORTER=none
+    export OTEL_EXPORTER_OTLP_LOGS_PROTOCOL=http/protobuf
+    export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf
+    export OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=<ingestion-url>/v1/logs
+    export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=<ingestion-url>/v1/traces
+    export OTEL_LOG_USER_PROMPTS=1
+    export OTEL_LOG_ASSISTANT_RESPONSES=1
+    export OTEL_LOG_TOOL_DETAILS=1
+    export OTEL_LOG_TOOL_CONTENT=1
+
+    claude
+    ```
+
+    Replace `<ingestion-url>` with the ingestion URL from your OpenTelemetry integration.
+
+    <Callout type="info">
+      Claude Code truncates prompts, responses, and tool content at 60 KB. Grepr labels shortened content as a truncated capture in the transcript. To raise the limit, set `CLAUDE_CODE_OTEL_CONTENT_MAX_LENGTH` to a larger value.
+    </Callout>
+
+    To learn more about the settings Claude Code supports, see [Monitoring usage](https://code.claude.com/docs/en/monitoring-usage).
+
+    To learn what an agent session contains and how to build the pipeline that captures one, see [Capture and explore agent sessions](https://docs.grepr.ai/pipelines/agent-sessions).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    Codex exports its own telemetry over OTLP. It reports prompts, tool results, and token counts as OTLP log events named `codex.*`, and reports turns, model responses, and command executions as OTLP spans. Codex selects a separate exporter for each signal, so configure both.
+
+    - `otel.exporter` selects the exporter for log events.
+    - `otel.trace_exporter` selects the exporter for spans. Without it, Codex exports no spans, and a session has no execution spans and no timing waterfall.
+    - Each endpoint must include the path for its signal, `/v1/logs` for log events and `/v1/traces` for spans. Codex sends to the endpoint you configure without appending a path.
+    - `otel.metrics_exporter` is set to `none` because an agent sessions pipeline reads logs and traces only. The default sends metrics to Statsig.
+    - `otel.log_user_prompt` records prompt text. Without it, Codex omits the prompt and a transcript shows metadata only.
+
+    The following example is a snippet from the Codex configuration file, `~/.codex/config.toml`:
+
+    ```ini copy filename="config.toml"
+    [otel]
+    environment = "production"
+    log_user_prompt = true
+    metrics_exporter = "none"
+
+    [otel.exporter.otlp-http]
+    endpoint = "<ingestion-url>/v1/logs"
+    protocol = "binary"
+
+    [otel.trace_exporter.otlp-http]
+    endpoint = "<ingestion-url>/v1/traces"
+    protocol = "binary"
+    ```
+
+    Replace `<ingestion-url>` with the ingestion URL from your OpenTelemetry integration.
+
+    <Callout type="info">
+      Codex reports a different service name for each of its binaries, `codex_exec` when you run `codex exec` and `codex_cli_rs` when you run the interactive CLI. Grepr recognizes both, so sessions from either binary appear together.
+    </Callout>
+
+    To learn more about the settings Codex supports, see the [Codex configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference).
+
+    To learn what an agent session contains and how to build the pipeline that captures one, see [Capture and explore agent sessions](https://docs.grepr.ai/pipelines/agent-sessions).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    OpenCode reports agent activity through an OpenTelemetry plugin, which exports prompts, assistant responses, tool calls, tool results, token counts, and cost as OTLP spans. Register the plugin in your OpenCode configuration and then point it at your ingestion URL.
+
+    - The `plugin` array in your OpenCode configuration loads `@devtheops/opencode-plugin-otel`. Pin the version so a later release cannot change what the plugin reports.
+    - `OPENCODE_ENABLE_TELEMETRY` turns on the plugin's export and is required.
+    - `OPENCODE_OTLP_ENDPOINT` is the ingestion URL without a signal path. The plugin appends the path itself.
+    - `OPENCODE_DISABLE_LOGS` stops the plugin exporting log records. The plugin reports a whole session on spans, so its log records are not part of an agent session.
+    - Leave the standard `OTEL_` variables unset. They turn on OpenCode's built-in instrumentation, which reports internal runtime operations such as `sql.execute` rather than agent activity.
+
+    The following example registers the plugin, exports the settings, and then starts OpenCode:
+
+    ```bash copy filename="opencode-telemetry.sh"
+    cat > opencode.json <<'JSON'
+    {
+      "plugin": ["@devtheops/opencode-plugin-otel@1.4.0"]
+    }
+    JSON
+
+    export OPENCODE_ENABLE_TELEMETRY=1
+    export OPENCODE_OTLP_ENDPOINT=<ingestion-url>
+    export OPENCODE_OTLP_PROTOCOL=http/protobuf
+    export OPENCODE_DISABLE_LOGS=1
+
+    opencode
+    ```
+
+    Replace `<ingestion-url>` with the ingestion URL from your OpenTelemetry integration.
+
+    <Callout type="info">
+      The plugin also exports metrics, which an agent sessions pipeline does not read. To stop exporting them, set `OPENCODE_DISABLE_METRICS` to a comma-separated list of the metric names you want to disable. The setting matches each name exactly and has no single value that disables all of them.
+    </Callout>
+
+    To learn what an agent session contains and how to build the pipeline that captures one, see [Capture and explore agent sessions](https://docs.grepr.ai/pipelines/agent-sessions).
 
   </Tabs.Tab>
 </Tabs>

@@ -174,7 +174,7 @@ You can also configure passthrough estimation directly from a pipeline. On the p
 
 To have Grepr recompute impact percentages during the next impact estimation cycle, click the **⋯** menu and select **Reset estimations** to clear the cached impact percentages for the datasets configured as sinks for the pipeline. Use this when you've changed alert queries in your observability vendor and want updated estimates without waiting for the next scheduled refresh.
 
-## Limitations
+## Limitations [#limitations]
 
 Grepr might split log events over 900KB, causing them to lose their original structured format. Each split event includes a common `grepr.splitOriginId` attribute if you need to reconstruct the original message.
 

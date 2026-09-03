@@ -134,6 +134,12 @@ const pageMap = [
         type: "page",
         title: "Trace reduction pipelines for APM data",
       },
+      {
+        name: "agent-sessions",
+        route: "/pipelines/agent-sessions",
+        type: "page",
+        title: "Agent sessions for coding agents",
+      },
     ],
   },
   {
