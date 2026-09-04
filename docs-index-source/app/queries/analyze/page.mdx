@@ -1,0 +1,103 @@
+---
+description: Aggregate logs in the Grepr data lake with Analyze mode, using Grepr SQL expressions over log fields, tags, and parsed attributes.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Aggregate logs with Analyze mode
+
+Log Explorer's Analyze mode groups and aggregates the logs your search returns instead of listing them. You describe the analysis as a set of Grepr SQL expressions, and Grepr runs it against the logs in the data lake.
+
+## Create an analysis
+
+1. Go to Log Explorer and select a dataset and a time range.
+1. Enter a search query to filter the logs you want to analyze. Analyze mode accepts the same [Datadog-like syntax](/queries/datadog) and [New Relic log query-like syntax](/queries/new-relic) as searching.
+1. Open the menu on the **Search** button and select **Analyze**.
+1. Enter one or more expressions for the values to compute, and give each one a name. A value you don't name is named for you, after the field or function it computes.
+1. To group the results, enter the expressions whose distinct combinations you want as rows. Without a grouping expression, the analysis returns one row for the whole time range.
+1. To keep only some of the groups, enter a condition over the computed aggregates.
+1. To sort the results, enter the expressions to sort by and select ascending or descending for each one.
+1. Set the maximum number of rows to return. An analysis returns 2,500 rows by default, and Log Explorer accepts a limit of up to 10,000 rows.
+
+Grouping and sorting expressions can refer to a computed value by the name you gave it.
+
+## Log fields
+
+Expressions address the stored log columns by the following names:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `message` | VARCHAR | The log line. |
+| `severity` | INTEGER | The numeric severity level, where a higher number is more severe. |
+| `event_timestamp` | TIMESTAMP | When the event happened. |
+| `received_timestamp` | TIMESTAMP | When Grepr received the event. |
+| `id` | VARCHAR | The identifier of the event. |
+| `tags` | MAP | The tag values, keyed by tag name. |
+| `attributes` | VARIANT | The whole parsed attribute document. |
+
+<Callout type="info">
+These are the Grepr SQL column names, which use `snake_case`. They are not the camelCase field names of the log event JSON that the search and export APIs return.
+</Callout>
+
+A tag holds an array of values, so index the value you want:
+
+```sql
+tags['service'][1]
+```
+
+Address an attribute with the `@` form, which accepts dotted paths:
+
+```sql
+@http.status_code
+```
+
+## Expressions
+
+Expressions are Grepr SQL, so aggregates, `CASE`, `CAST`, and the scalar functions Grepr SQL supports are all available. Log Explorer suggests the functions your dataset accepts as you type. To learn more, see [SQL functions](/transforms/sql-transform/sql-functions).
+
+```sql
+-- Log count by service: one computed value, one grouping expression
+COUNT(*)
+tags['service'][1]
+
+-- 95th percentile request duration by endpoint
+APPROX_PERCENTILE(@duration_ms, 0.95)
+@http.route
+
+-- Severity buckets
+CASE WHEN severity >= 4 THEN 'error' ELSE 'ok' END
+```
+
+An attribute has no declared type, so Grepr infers its type from how you use it. `SUM(@duration_ms)` reads the attribute as a number, and `LOWER(@user)` reads it as a string. Cast the attribute when you need a specific type or precision:
+
+```sql
+CAST(@duration_ms AS BIGINT)
+MIN(CAST(@duration_ms AS DOUBLE))
+```
+
+## Results
+
+Each result row is a JSON object keyed by column name, so a column holds whatever the underlying attribute held, such as a number, a string, a boolean, or a nested object. Timestamps are returned as UTC ISO 8601 strings.
+
+## Limitations
+
+- An analysis reads one dataset at a time. Joins across datasets are not supported.
+- Sorting by an attribute that you have not cast sorts it by its stored text, so `100` sorts before `99`. Cast the attribute to sort numerically, as in `CAST(@http.status_code AS BIGINT)`.
+- An analysis can compute at most 128 values, group by at most 64 expressions, and sort by at most 64 expressions. Each expression can be at most 4,096 characters long.
+- Row, array, and map values are converted to nested JSON automatically. A column is rejected with an error that names it only if its value type has no JSON representation at all, or a constructed row has two fields with the same name.
+
+<HiddenFAQ faqs={[
+  {
+    q: "How do I aggregate logs in Grepr?",
+    a: "Go to Log Explorer, select a dataset and time range, enter a search query, then select Analyze from the menu on the Search button. Enter Grepr SQL expressions for the values to compute, the expressions to group by, and the sort order."
+  },
+  {
+    q: "What are the log field names in Grepr SQL?",
+    a: "message, severity, event_timestamp, received_timestamp, id, tags, and attributes. Index a tag as tags['service'][1], and address an attribute as @http.status_code."
+  },
+  {
+    q: "How many rows can an analysis return?",
+    a: "An analysis returns 2,500 rows by default. Log Explorer accepts a limit of up to 10,000 rows."
+  },
+]} />

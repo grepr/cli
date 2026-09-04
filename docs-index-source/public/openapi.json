@@ -1009,75 +1009,6 @@
         "title": "Inputs Schema",
         "type": "object"
       },
-      "AgentSessionSummary": {
-        "properties": {
-          "emitter": {
-            "type": "string"
-          },
-          "errorCount": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "firstActivityTimestamp": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "firstPrompt": {
-            "type": "string"
-          },
-          "identity": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object"
-          },
-          "lastActivityTimestamp": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "matchedPreview": {
-            "type": "string"
-          },
-          "model": {
-            "type": "string"
-          },
-          "sessionId": {
-            "type": "string"
-          },
-          "toolCallCount": {
-            "format": "int64",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "emitter",
-          "errorCount",
-          "firstActivityTimestamp",
-          "lastActivityTimestamp",
-          "sessionId",
-          "toolCallCount"
-        ],
-        "type": "object"
-      },
-      "AgentSessionsEndpoint": {
-        "description": "An OTLP integration attached as an Agent Sessions source or sink.",
-        "properties": {
-          "integrationId": {
-            "description": "OTLP integration carrying both agent event logs and execution spans.",
-            "type": "string"
-          },
-          "name": {
-            "description": "Base operation name; the generated logs and traces operations suffix it.",
-            "pattern": "^[a-z0-9_]+$",
-            "type": "string"
-          }
-        },
-        "required": [
-          "integrationId",
-          "name"
-        ],
-        "type": "object"
-      },
       "AgentSessionEventsIcebergTableSource": {
         "properties": {
           "datasetId": {
@@ -1160,6 +1091,75 @@
         "x-tags": [
           "Sources"
         ]
+      },
+      "AgentSessionSummary": {
+        "properties": {
+          "emitter": {
+            "type": "string"
+          },
+          "errorCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "firstActivityTimestamp": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "firstPrompt": {
+            "type": "string"
+          },
+          "identity": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "lastActivityTimestamp": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "matchedPreview": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "toolCallCount": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "emitter",
+          "errorCount",
+          "firstActivityTimestamp",
+          "lastActivityTimestamp",
+          "sessionId",
+          "toolCallCount"
+        ],
+        "type": "object"
+      },
+      "AgentSessionsEndpoint": {
+        "description": "An OTLP integration attached as an Agent Sessions source or sink.",
+        "properties": {
+          "integrationId": {
+            "description": "OTLP integration carrying both agent event logs and execution spans.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Base operation name; the generated logs and traces operations suffix it.",
+            "pattern": "^[a-z0-9_]+$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "integrationId",
+          "name"
+        ],
+        "type": "object"
       },
       "AgentSessionsIcebergTableSource": {
         "properties": {
@@ -1620,6 +1620,216 @@
         ],
         "type": "object"
       },
+      "AnalyticsCompletion": {
+        "description": "User-facing completion templates for this function.",
+        "properties": {
+          "caretFromEnd": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "insert": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AnalyticsField": {
+        "properties": {
+          "accessorTemplate": {
+            "description": "Format string for a nested key accessor, when applicable.",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "type": "object"
+      },
+      "AnalyticsFunction": {
+        "properties": {
+          "aggregate": {
+            "type": "boolean"
+          },
+          "category": {
+            "description": "Function family used to group completions.",
+            "type": "string"
+          },
+          "completions": {
+            "description": "User-facing completion templates for this function.",
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsCompletion"
+            },
+            "type": "array"
+          },
+          "help": {
+            "description": "Short user-facing explanation shown with completions.",
+            "type": "string"
+          },
+          "maxArgs": {
+            "description": "Null for variadic functions.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "minArgs": {
+            "description": "Null for variadic functions.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "help",
+          "name"
+        ],
+        "type": "object"
+      },
+      "AnalyticsOrderBy": {
+        "default": [],
+        "description": "Ordering applied to the analytical results.",
+        "properties": {
+          "direction": {
+            "default": "ASC",
+            "description": "Sort direction.",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "type": "string"
+          },
+          "expression": {
+            "description": "Grepr SQL expression or projection alias to order by.",
+            "maxLength": 4096,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "required": [
+          "expression"
+        ],
+        "type": "object"
+      },
+      "AnalyticsProjection": {
+        "description": "Expressions returned by the query.",
+        "properties": {
+          "alias": {
+            "description": "Optional result column name.",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "expression": {
+            "description": "Grepr SQL expression to project.",
+            "maxLength": 4096,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "required": [
+          "expression"
+        ],
+        "type": "object"
+      },
+      "AnalyticsQuery": {
+        "description": "Complete analytical query to execute.",
+        "discriminator": {
+          "mapping": {
+            "structured-analytics-query": "#/components/schemas/StructuredAnalyticsQuery"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/StructuredAnalyticsQuery"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "AnalyticsTableBinding": {
+        "description": "Dataset tables available to the query under logical aliases.",
+        "properties": {
+          "alias": {
+            "description": "Logical table name used by the analytical query.",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "datasetId": {
+            "description": "ID of the dataset that owns the table.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "table": {
+            "description": "Dataset-owned table exposed under the logical alias.",
+            "enum": [
+              "logs_raw",
+              "logs_dedup",
+              "logs_pattern_lookup",
+              "llm_prompt_results",
+              "metrics_raw",
+              "metricdata_raw",
+              "spans_raw",
+              "spans_dedup"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias",
+          "datasetId",
+          "table"
+        ],
+        "type": "object"
+      },
+      "AnalyticsVocabularyResponse": {
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsField"
+            },
+            "type": "array"
+          },
+          "functions": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsFunction"
+            },
+            "type": "array"
+          },
+          "promotedTagKeys": {
+            "description": "Promoted logs_raw tag keys for the requested dataset.",
+            "items": {
+              "description": "Promoted logs_raw tag keys for the requested dataset.",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "fields",
+          "functions"
+        ],
+        "type": "object"
+      },
       "AndEventPredicate": {
         "properties": {
           "queries": {
@@ -1944,6 +2154,51 @@
           "name",
           "query",
           "start",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
+      },
+      "AthenaAnalyticsSource": {
+        "properties": {
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/AnalyticsQuery"
+          },
+          "scanBudgetBytes": {
+            "default": 107374182400,
+            "description": "Maximum number of bytes this query may scan.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "tables": {
+            "description": "Dataset tables available to the query under logical aliases.",
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsTableBinding"
+            },
+            "maxItems": 2147483647,
+            "minItems": 1,
+            "type": "array"
+          },
+          "type": {
+            "description": "Executes an analytical query against dataset tables using Athena.",
+            "enum": [
+              "athena-analytics-source"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "query",
+          "tables",
           "type"
         ],
         "type": "object",
@@ -4940,6 +5195,7 @@
         ]
       },
       "EventPredicate": {
+        "description": "Predicate applied to rows before analytical aggregation.",
         "discriminator": {
           "mapping": {
             "and-predicate": "#/components/schemas/AndEventPredicate",
@@ -7073,6 +7329,16 @@
       },
       "JsonLogProcessor": {
         "properties": {
+          "liftFieldNames": {
+            "default": [],
+            "description": "Object-valued JSON fields whose children are lifted into the containing parsed object. An empty list disables lifting. Lifting repeats recursively when a lifted object contains another configured field. Colliding maps are merged recursively. For leaf values and all other type combinations, the lifted child replaces the existing value; arrays are not combined. If multiple configured fields contain the same child, the later field wins according to these rules.",
+            "items": {
+              "default": "[]",
+              "description": "Object-valued JSON fields whose children are lifted into the containing parsed object. An empty list disables lifting. Lifting repeats recursively when a lifted object contains another configured field. Colliding maps are merged recursively. For leaf values and all other type combinations, the lifted child replaces the existing value; arrays are not combined. If multiple configured fields contain the same child, the later field wins according to these rules.",
+              "type": "string"
+            },
+            "type": "array"
+          },
           "maxNestedDepthForFields": {
             "default": 3,
             "format": "int32",
@@ -7097,16 +7363,6 @@
             "default": false,
             "description": "The processor tries to deserialize the string in the \u0027message\u0027 field as JSON, putting all values into the \u0027attributes\u0027 field. If this is enabled, the processor will keep the JSON string in \u0027message\u0027. When disabled, the string will be cleared.",
             "type": "boolean"
-          },
-          "liftFieldNames": {
-            "default": [],
-            "description": "Object-valued JSON fields whose children are lifted into the containing parsed object. An empty list disables lifting. Lifting repeats recursively when a lifted object contains another configured field. Colliding maps are merged recursively. For leaf values and all other type combinations, the lifted child replaces the existing value; arrays are not combined. If multiple configured fields contain the same child, the later field wins according to these rules.",
-            "items": {
-              "default": "[]",
-              "description": "Object-valued JSON fields whose children are lifted into the containing parsed object. An empty list disables lifting. Lifting repeats recursively when a lifted object contains another configured field. Colliding maps are merged recursively. For leaf values and all other type combinations, the lifted child replaces the existing value; arrays are not combined. If multiple configured fields contain the same child, the later field wins according to these rules.",
-              "type": "string"
-            },
-            "type": "array"
           },
           "resolveNestedJsonFields": {
             "default": [
@@ -10174,6 +10430,11 @@
             "readOnly": true,
             "type": "string"
           },
+          "privateLink": {
+            "default": false,
+            "description": "Route logs to New Relic over AWS PrivateLink using the private log endpoint.",
+            "type": "boolean"
+          },
           "site": {
             "description": "New Relic API endpoint url base",
             "example": "newrelic.com",
@@ -10434,6 +10695,7 @@
             "agent-sessions-sync-sink": "#/components/schemas/AgentSessionsSynchronousSink",
             "agent-span-processor": "#/components/schemas/AgentSpanProcessor",
             "athena-agent-sessions-source": "#/components/schemas/AthenaAgentSessionsSource",
+            "athena-analytics-source": "#/components/schemas/AthenaAnalyticsSource",
             "cloudtrail-file-source": "#/components/schemas/CloudTrailLogsFileSource",
             "datadog-log-agent-source": "#/components/schemas/DatadogLogAgentSource",
             "datadog-log-cloud-source": "#/components/schemas/DatadogLogCloudSource",
@@ -10504,6 +10766,7 @@
             "trace-sampler": "#/components/schemas/TraceSampler",
             "traces-iceberg-table-source": "#/components/schemas/TracesIcebergTableSource",
             "trigger-action": "#/components/schemas/TriggerActionOp",
+            "trino-analytics-source": "#/components/schemas/TrinoAnalyticsSource",
             "trino-llm-prompt-results-source": "#/components/schemas/TrinoLlmPromptResultsSource",
             "trino-raw-log-source": "#/components/schemas/TrinoRawLogsSource",
             "trino-raw-span-source": "#/components/schemas/TrinoRawSpanSource",
@@ -10588,10 +10851,10 @@
             "$ref": "#/components/schemas/LogsIcebergTableSource"
           },
           {
-            "$ref": "#/components/schemas/AgentSessionEventsIcebergTableSource"
+            "$ref": "#/components/schemas/AgentSessionsIcebergTableSource"
           },
           {
-            "$ref": "#/components/schemas/AgentSessionsIcebergTableSource"
+            "$ref": "#/components/schemas/AgentSessionEventsIcebergTableSource"
           },
           {
             "$ref": "#/components/schemas/LlmPromptResultsIcebergTableSource"
@@ -10690,6 +10953,9 @@
             "$ref": "#/components/schemas/LegacyDatadogMetricsSink"
           },
           {
+            "$ref": "#/components/schemas/AthenaAnalyticsSource"
+          },
+          {
             "$ref": "#/components/schemas/GreprReducerLogSource"
           },
           {
@@ -10703,6 +10969,9 @@
           },
           {
             "$ref": "#/components/schemas/GreprLlmPromptResultsSource"
+          },
+          {
+            "$ref": "#/components/schemas/TrinoAnalyticsSource"
           },
           {
             "$ref": "#/components/schemas/TrinoReducerLogSource"
@@ -13962,7 +14231,8 @@
             "complete_span": "#/components/schemas/CompleteSpan",
             "double-datapoint": "#/components/schemas/DoubleDatapoint",
             "log": "#/components/schemas/LogEvent",
-            "metricdata": "#/components/schemas/MetricData"
+            "metricdata": "#/components/schemas/MetricData",
+            "variant_event": "#/components/schemas/VariantEvent"
           },
           "propertyName": "type"
         },
@@ -13978,6 +14248,9 @@
           },
           {
             "$ref": "#/components/schemas/MetricData"
+          },
+          {
+            "$ref": "#/components/schemas/VariantEvent"
           },
           {
             "$ref": "#/components/schemas/AgentSessionSummary"
@@ -15929,6 +16202,90 @@
             },
             "type": "object"
           }
+        ],
+        "type": "object"
+      },
+      "StructuredAnalyticsQuery": {
+        "properties": {
+          "end": {
+            "description": "End of the time interval to query.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "from": {
+            "description": "Logical table alias to query.",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "groupBy": {
+            "default": [],
+            "description": "Grepr SQL expressions or projection aliases used for grouping.",
+            "items": {
+              "default": "[]",
+              "description": "Grepr SQL expressions or projection aliases used for grouping.",
+              "maxLength": 4096,
+              "minLength": 0,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 0,
+            "type": "array"
+          },
+          "having": {
+            "description": "Optional Grepr SQL expression applied after aggregation.",
+            "maxLength": 4096,
+            "minLength": 0,
+            "type": "string"
+          },
+          "limit": {
+            "default": 2500,
+            "description": "Maximum number of result rows.",
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "orderBy": {
+            "default": [],
+            "description": "Ordering applied to the analytical results.",
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsOrderBy"
+            },
+            "maxItems": 64,
+            "minItems": 0,
+            "type": "array"
+          },
+          "predicate": {
+            "$ref": "#/components/schemas/EventPredicate"
+          },
+          "select": {
+            "description": "Expressions returned by the query.",
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsProjection"
+            },
+            "maxItems": 128,
+            "minItems": 1,
+            "type": "array"
+          },
+          "start": {
+            "description": "Start of the time interval to query.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "default": {},
+            "description": "Variables available while parsing the predicate.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "end",
+          "from",
+          "predicate",
+          "select",
+          "start"
         ],
         "type": "object"
       },
@@ -18135,6 +18492,57 @@
         },
         "type": "object"
       },
+      "TrinoAnalyticsSource": {
+        "properties": {
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/AnalyticsQuery"
+          },
+          "queryEngineIntegrationId": {
+            "description": "Trino query engine integration to execute this query against.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "scanBudgetBytes": {
+            "default": 107374182400,
+            "description": "Maximum number of bytes this query may process.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "tables": {
+            "description": "Dataset tables available to the query under logical aliases.",
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsTableBinding"
+            },
+            "maxItems": 2147483647,
+            "minItems": 1,
+            "type": "array"
+          },
+          "type": {
+            "description": "Executes an analytical query using a Trino query engine.",
+            "enum": [
+              "trino-analytics-source"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "query",
+          "queryEngineIntegrationId",
+          "tables",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
+      },
       "TrinoConnectionTestResult": {
         "properties": {
           "message": {
@@ -18979,6 +19387,30 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "VariantEvent": {
+        "description": "Represents arbitrary structured query result data.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Variant"
+          },
+          "eventTimestamp": {
+            "description": "When the event happened, in milliseconds since the epoch.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "receivedTimestamp": {
+            "description": "When the event was received, in milliseconds since the epoch.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "data",
+          "eventTimestamp",
+          "receivedTimestamp"
+        ],
         "type": "object"
       },
       "VariantSynchronousSink": {
@@ -29378,6 +29810,49 @@
         "summary": "Get integration exception impacts for a pipeline",
         "tags": [
           "Pipeline Exceptions"
+        ]
+      }
+    },
+    "/v1/query/analytics-vocabulary": {
+      "get": {
+        "description": "Returns parser-approved expression functions and logical log fields. With a dataset, includes that dataset\u0027s promoted logs_raw tag keys.",
+        "operationId": "getAnalyticsVocabulary",
+        "parameters": [
+          {
+            "description": "Dataset whose promoted logs_raw tags should be included.",
+            "in": "query",
+            "name": "datasetId",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsVocabularyResponse"
+                }
+              }
+            },
+            "description": "Analytics vocabulary returned successfully."
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get analytics expression vocabulary",
+        "tags": [
+          "Query Parsing"
         ]
       }
     },

@@ -383,6 +383,12 @@ const pageMap = [
         type: "page",
         title: "Search logs using a New Relic log query-like syntax",
       },
+      {
+        name: "analyze",
+        route: "/queries/analyze",
+        type: "page",
+        title: "Aggregate logs with Analyze mode",
+      },
     ],
   },
   {

@@ -2825,6 +2825,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/query/analytics-vocabulary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get analytics expression vocabulary
+     * @description Returns parser-approved expression functions and logical log fields. With a dataset, includes that dataset's promoted logs_raw tag keys.
+     */
+    get: operations["getAnalyticsVocabulary"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/query/parse": {
     parameters: {
       query?: never;
@@ -4052,6 +4072,83 @@ export interface components {
        */
       type: AllQueryNodeType;
     };
+    /** @description User-facing completion templates for this function. */
+    AnalyticsCompletion: {
+      /** Format: int32 */
+      caretFromEnd?: number;
+      detail?: string;
+      insert?: string;
+      label?: string;
+    };
+    AnalyticsField: {
+      /** @description Format string for a nested key accessor, when applicable. */
+      accessorTemplate?: string;
+      name: string;
+      type: string;
+    };
+    AnalyticsFunction: {
+      aggregate?: boolean;
+      /** @description Function family used to group completions. */
+      category?: string;
+      /** @description User-facing completion templates for this function. */
+      completions?: components["schemas"]["AnalyticsCompletion"][];
+      /** @description Short user-facing explanation shown with completions. */
+      help: string;
+      /**
+       * Format: int32
+       * @description Null for variadic functions.
+       */
+      maxArgs?: number;
+      /**
+       * Format: int32
+       * @description Null for variadic functions.
+       */
+      minArgs?: number;
+      name: string;
+    };
+    /**
+     * @description Ordering applied to the analytical results.
+     * @default []
+     */
+    AnalyticsOrderBy: {
+      /**
+       * @description Sort direction.
+       * @default ASC
+       * @enum {string}
+       */
+      direction?: AnalyticsOrderByDirection;
+      /** @description Grepr SQL expression or projection alias to order by. */
+      expression: string;
+    };
+    /** @description Expressions returned by the query. */
+    AnalyticsProjection: {
+      /** @description Optional result column name. */
+      alias?: string;
+      /** @description Grepr SQL expression to project. */
+      expression: string;
+    };
+    /** @description Complete analytical query to execute. */
+    AnalyticsQuery: {
+      type: string;
+    } & components["schemas"]["StructuredAnalyticsQuery"];
+    /** @description Dataset tables available to the query under logical aliases. */
+    AnalyticsTableBinding: {
+      /** @description Logical table name used by the analytical query. */
+      alias: string;
+      /** @description ID of the dataset that owns the table. */
+      datasetId: string;
+      /**
+       * @description Dataset-owned table exposed under the logical alias.
+       * @enum {string}
+       */
+      table: AnalyticsTableBindingTable;
+    };
+    AnalyticsVocabularyResponse: {
+      fields: components["schemas"]["AnalyticsField"][];
+      functions: components["schemas"]["AnalyticsFunction"][];
+      /** @description Promoted logs_raw tag keys for the requested dataset. */
+      promotedTagKeys?: string[];
+    };
     AndEventPredicate: {
       /**
        * Child predicates
@@ -4265,6 +4362,24 @@ export interface components {
       variables?: {
         [key: string]: components["schemas"]["Any"];
       };
+    };
+    AthenaAnalyticsSource: {
+      /** @example operation_name */
+      name: string;
+      query: components["schemas"]["AnalyticsQuery"];
+      /**
+       * Format: int64
+       * @description Maximum number of bytes this query may scan.
+       * @default 107374182400
+       */
+      scanBudgetBytes?: number;
+      /** @description Dataset tables available to the query under logical aliases. */
+      tables: components["schemas"]["AnalyticsTableBinding"][];
+      /**
+       * @description Executes an analytical query against dataset tables using Athena. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: AthenaAnalyticsSourceType;
     };
     /**
      * @description Maps a log event attribute path to an HTTP header name
@@ -5812,6 +5927,7 @@ export interface components {
       type: EventDedupIcebergTableSinkType;
       vendorSinkId: string;
     };
+    /** @description Predicate applied to rows before analytical aggregation. */
     EventPredicate: {
       query?: string;
       type: string;
@@ -8881,11 +8997,13 @@ export interface components {
       | components["schemas"]["DiscardingSink"]
       | components["schemas"]["DatadogMetricsSink"]
       | components["schemas"]["LegacyDatadogMetricsSink"]
+      | components["schemas"]["AthenaAnalyticsSource"]
       | components["schemas"]["GreprReducerLogSource"]
       | components["schemas"]["AthenaAgentSessionsSource"]
       | components["schemas"]["GreprRawLogsSource"]
       | components["schemas"]["GreprRawSpanSource"]
       | components["schemas"]["GreprLlmPromptResultsSource"]
+      | components["schemas"]["TrinoAnalyticsSource"]
       | components["schemas"]["TrinoReducerLogSource"]
       | components["schemas"]["TrinoRawLogsSource"]
       | components["schemas"]["TrinoRawSpanSource"]
@@ -10477,6 +10595,7 @@ export interface components {
       | components["schemas"]["DoubleDatapoint"]
       | components["schemas"]["CompleteSpan"]
       | components["schemas"]["MetricData"]
+      | components["schemas"]["VariantEvent"]
       | components["schemas"]["AgentSessionSummary"]
     );
     ReducerLogsQuerySource: {
@@ -10895,7 +11014,7 @@ export interface components {
        * @default ASC
        * @enum {string}
        */
-      direction?: SortFieldConfigDirection;
+      direction?: AnalyticsOrderByDirection;
     };
     /** @description A distributed tracing span. */
     Span: {
@@ -11525,6 +11644,53 @@ export interface components {
     } & (Omit<components["schemas"]["Data"], "resultType"> & {
       result?: Record<string, never>[];
     });
+    StructuredAnalyticsQuery: {
+      /**
+       * Format: date-time
+       * @description End of the time interval to query.
+       */
+      end: string;
+      /** @description Logical table alias to query. */
+      from: string;
+      /**
+       * @description Grepr SQL expressions or projection aliases used for grouping.
+       * @default []
+       */
+      groupBy?: string[];
+      /** @description Optional Grepr SQL expression applied after aggregation. */
+      having?: string;
+      /**
+       * Format: int32
+       * @description Maximum number of result rows.
+       * @default 2500
+       */
+      limit?: number;
+      /**
+       * @description Ordering applied to the analytical results.
+       * @default []
+       */
+      orderBy?: components["schemas"]["AnalyticsOrderBy"][];
+      predicate: components["schemas"]["EventPredicate"];
+      /** @description Expressions returned by the query. */
+      select: components["schemas"]["AnalyticsProjection"][];
+      /**
+       * Format: date-time
+       * @description Start of the time interval to query.
+       */
+      start: string;
+      /**
+       * @description Variables available while parsing the predicate.
+       * @default {}
+       */
+      variables?: {
+        [key: string]: components["schemas"]["Any"];
+      };
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: StructuredAnalyticsQueryType;
+    };
     SumAttributesMergeStrategy: {
       /**
        * @description SumAttributesMergeStrategy: Sums numeric attribute values. (enum property replaced by openapi-typescript)
@@ -12812,6 +12978,26 @@ export interface components {
       source?: string;
       type?: string;
     };
+    TrinoAnalyticsSource: {
+      /** @example operation_name */
+      name: string;
+      query: components["schemas"]["AnalyticsQuery"];
+      /** @description Trino query engine integration to execute this query against. */
+      queryEngineIntegrationId: string;
+      /**
+       * Format: int64
+       * @description Maximum number of bytes this query may process.
+       * @default 107374182400
+       */
+      scanBudgetBytes?: number;
+      /** @description Dataset tables available to the query under logical aliases. */
+      tables: components["schemas"]["AnalyticsTableBinding"][];
+      /**
+       * @description Executes an analytical query using a Trino query engine. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: TrinoAnalyticsSourceType;
+    };
     TrinoConnectionTestResult: {
       message?: string;
       success?: boolean;
@@ -13239,6 +13425,25 @@ export interface components {
       string?: string;
       /** @enum {string} */
       type?: VariantType;
+    };
+    /** @description Represents arbitrary structured query result data. */
+    VariantEvent: {
+      data: components["schemas"]["Variant"];
+      /**
+       * Format: int64
+       * @description When the event happened, in milliseconds since the epoch.
+       */
+      eventTimestamp: number;
+      /**
+       * Format: int64
+       * @description When the event was received, in milliseconds since the epoch.
+       */
+      receivedTimestamp: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: VariantEventType;
     };
     VariantSynchronousSink: {
       /** @example operation_name */
@@ -13856,6 +14061,19 @@ export type SchemaAggregationDecl = components["schemas"]["AggregationDecl"];
 export type SchemaAiPipelineTemplateInput =
   components["schemas"]["AiPipelineTemplateInput"];
 export type SchemaAllQueryNode = components["schemas"]["AllQueryNode"];
+export type SchemaAnalyticsCompletion =
+  components["schemas"]["AnalyticsCompletion"];
+export type SchemaAnalyticsField = components["schemas"]["AnalyticsField"];
+export type SchemaAnalyticsFunction =
+  components["schemas"]["AnalyticsFunction"];
+export type SchemaAnalyticsOrderBy = components["schemas"]["AnalyticsOrderBy"];
+export type SchemaAnalyticsProjection =
+  components["schemas"]["AnalyticsProjection"];
+export type SchemaAnalyticsQuery = components["schemas"]["AnalyticsQuery"];
+export type SchemaAnalyticsTableBinding =
+  components["schemas"]["AnalyticsTableBinding"];
+export type SchemaAnalyticsVocabularyResponse =
+  components["schemas"]["AnalyticsVocabularyResponse"];
 export type SchemaAndEventPredicate =
   components["schemas"]["AndEventPredicate"];
 export type SchemaAndQueryNode = components["schemas"]["AndQueryNode"];
@@ -13873,6 +14091,8 @@ export type SchemaApiKey = components["schemas"]["ApiKey"];
 export type SchemaArrayData = components["schemas"]["ArrayData"];
 export type SchemaAthenaAgentSessionsSource =
   components["schemas"]["AthenaAgentSessionsSource"];
+export type SchemaAthenaAnalyticsSource =
+  components["schemas"]["AthenaAnalyticsSource"];
 export type SchemaAttributeHeaderMapping =
   components["schemas"]["AttributeHeaderMapping"];
 export type SchemaAttributeKeyTermNode =
@@ -14416,6 +14636,8 @@ export type SchemaStartInvestigationResponse =
 export type SchemaStatus = components["schemas"]["Status"];
 export type SchemaStreamFormatAny = components["schemas"]["StreamFormatAny"];
 export type SchemaStringData = components["schemas"]["StringData"];
+export type SchemaStructuredAnalyticsQuery =
+  components["schemas"]["StructuredAnalyticsQuery"];
 export type SchemaSumAttributesMergeStrategy =
   components["schemas"]["SumAttributesMergeStrategy"];
 export type SchemaSumo = components["schemas"]["Sumo"];
@@ -14498,6 +14720,8 @@ export type SchemaTriggerActionConfig =
   components["schemas"]["TriggerActionConfig"];
 export type SchemaTriggerActionOp = components["schemas"]["TriggerActionOp"];
 export type SchemaTriggerSignal = components["schemas"]["TriggerSignal"];
+export type SchemaTrinoAnalyticsSource =
+  components["schemas"]["TrinoAnalyticsSource"];
 export type SchemaTrinoConnectionTestResult =
   components["schemas"]["TrinoConnectionTestResult"];
 export type SchemaTrinoLlmPromptResultsSource =
@@ -14528,6 +14752,7 @@ export type SchemaUserProvisionInfo =
 export type SchemaUsersListInfos = components["schemas"]["UsersListInfos"];
 export type SchemaUsersUpdate = components["schemas"]["UsersUpdate"];
 export type SchemaVariant = components["schemas"]["Variant"];
+export type SchemaVariantEvent = components["schemas"]["VariantEvent"];
 export type SchemaVariantSynchronousSink =
   components["schemas"]["VariantSynchronousSink"];
 export type SchemaVectorData = components["schemas"]["VectorData"];
@@ -21949,6 +22174,36 @@ export interface operations {
       };
     };
   };
+  getAnalyticsVocabulary: {
+    parameters: {
+      query?: {
+        /** @description Dataset whose promoted logs_raw tags should be included. */
+        datasetId?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Analytics vocabulary returned successfully. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AnalyticsVocabularyResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   parse_2: {
     parameters: {
       query?: never;
@@ -23751,6 +24006,20 @@ export enum AggregationAccumulatorAccumulatorType {
 export enum AllQueryNodeType {
   all_query_node = "all-query-node",
 }
+export enum AnalyticsOrderByDirection {
+  ASC = "ASC",
+  DESC = "DESC",
+}
+export enum AnalyticsTableBindingTable {
+  logs_raw = "logs_raw",
+  logs_dedup = "logs_dedup",
+  logs_pattern_lookup = "logs_pattern_lookup",
+  llm_prompt_results = "llm_prompt_results",
+  metrics_raw = "metrics_raw",
+  metricdata_raw = "metricdata_raw",
+  spans_raw = "spans_raw",
+  spans_dedup = "spans_dedup",
+}
 export enum AndEventPredicateType {
   and_predicate = "and-predicate",
 }
@@ -23768,6 +24037,9 @@ export enum AnnualSaasPreCommitmentSummaryType {
 }
 export enum AthenaAgentSessionsSourceType {
   athena_agent_sessions_source = "athena-agent-sessions-source",
+}
+export enum AthenaAnalyticsSourceType {
+  athena_analytics_source = "athena-analytics-source",
 }
 export enum AttributeKeyTermNodeType {
   attribute_key_term_node = "attribute-key-term-node",
@@ -24320,10 +24592,6 @@ export enum SkillViewScope {
 export enum SocialUserInfoType {
   SOCIAL = "SOCIAL",
 }
-export enum SortFieldConfigDirection {
-  ASC = "ASC",
-  DESC = "DESC",
-}
 export enum SpanSpanKind {
   UNSPECIFIED = "UNSPECIFIED",
   INTERNAL = "INTERNAL",
@@ -24390,6 +24658,9 @@ export enum StatusCode {
   OK = "OK",
   ERROR = "ERROR",
   UNRECOGNIZED = "UNRECOGNIZED",
+}
+export enum StructuredAnalyticsQueryType {
+  structured_analytics_query = "structured-analytics-query",
 }
 export enum SumAttributesMergeStrategyType {
   sum = "sum",
@@ -24493,6 +24764,9 @@ export enum TranscriptMessageRole {
 export enum TriggerActionOpType {
   trigger_action = "trigger-action",
 }
+export enum TrinoAnalyticsSourceType {
+  trino_analytics_source = "trino-analytics-source",
+}
 export enum TrinoLlmPromptResultsSourceType {
   trino_llm_prompt_results_source = "trino-llm-prompt-results-source",
 }
@@ -24523,6 +24797,9 @@ export enum VariantType {
   TIMESTAMP_LTZ = "TIMESTAMP_LTZ",
   BYTES = "BYTES",
 }
+export enum VariantEventType {
+  variant_event = "variant_event",
+}
 export enum VariantSynchronousSinkType {
   variant_sync_sink = "variant-sync-sink",
 }
@@ -24551,6 +24828,7 @@ export const SOURCE_TYPES = new Set<string>([
   'agent-session-events-iceberg-table-source',
   'agent-sessions-iceberg-table-source',
   'athena-agent-sessions-source',
+  'athena-analytics-source',
   'bounded-datadog-source',
   'cloudtrail-file-source',
   'datadog-log-agent-source',
@@ -24581,6 +24859,7 @@ export const SOURCE_TYPES = new Set<string>([
   'splunk-log-http-source',
   'sumologic-log-agent-source',
   'traces-iceberg-table-source',
+  'trino-analytics-source',
   'trino-llm-prompt-results-source',
   'trino-raw-log-source',
   'trino-raw-span-source',
