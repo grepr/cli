@@ -1801,6 +1801,45 @@
         ],
         "type": "object"
       },
+      "AnalyticsTimeWindow": {
+        "description": "Optional time window that buckets the results. Adds leading \u0027window_start\u0027 and \u0027window_end\u0027 result columns, which are always grouped.",
+        "properties": {
+          "kind": {
+            "description": "Window layout: TUMBLING windows do not overlap; SLIDING windows start every \u0027slide\u0027.",
+            "enum": [
+              "TUMBLING",
+              "SLIDING"
+            ],
+            "type": "string"
+          },
+          "size": {
+            "description": "Window length as an ISO-8601 duration, a whole number of milliseconds.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "slide": {
+            "description": "Distance between consecutive SLIDING window starts as an ISO-8601 duration, a whole number of milliseconds dividing \u0027size\u0027. Absent for TUMBLING windows.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "timestamp": {
+            "default": "EVENT_TIMESTAMP",
+            "description": "Which timestamp the windows bucket by.",
+            "enum": [
+              "EVENT_TIMESTAMP",
+              "RECEIVED_TIMESTAMP"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "size"
+        ],
+        "type": "object"
+      },
       "AnalyticsVocabularyResponse": {
         "properties": {
           "fields": {
@@ -9409,6 +9448,70 @@
           "Transforms"
         ]
       },
+      "MaskingRequest": {
+        "properties": {
+          "masking": {
+            "$ref": "#/components/schemas/MaskingOperator"
+          },
+          "samples": {
+            "default": [],
+            "description": "The sample log events to apply the masks to.",
+            "items": {
+              "$ref": "#/components/schemas/MaskingSample"
+            },
+            "maxItems": 20,
+            "minItems": 0,
+            "type": "array"
+          }
+        },
+        "required": [
+          "masking",
+          "samples"
+        ],
+        "type": "object"
+      },
+      "MaskingResponse": {
+        "properties": {
+          "results": {
+            "description": "The masked results, aligned by position with the request\u0027s samples.",
+            "items": {
+              "$ref": "#/components/schemas/MaskingResult"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "type": "object"
+      },
+      "MaskingResult": {
+        "description": "The masked results, aligned by position with the request\u0027s samples.",
+        "properties": {
+          "maskedAttributes": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Any"
+            },
+            "description": "The sample attributes after masking, unchanged when no mask matched.",
+            "type": "object"
+          },
+          "maskedCount": {
+            "description": "The number of substrings replaced across the message and attributes; zero when nothing matched.",
+            "example": 3,
+            "format": "int32",
+            "type": "integer"
+          },
+          "maskedMessage": {
+            "description": "The sample message after masking, unchanged when no mask matched.",
+            "example": "user [email] signed in from [ip]",
+            "type": "string"
+          }
+        },
+        "required": [
+          "maskedAttributes"
+        ],
+        "type": "object"
+      },
       "MaskingRuleConfig": {
         "allOf": [
           {
@@ -9434,6 +9537,41 @@
         "description": "Masking rule that scrubs PII from log messages using regex patterns.",
         "required": [
           "masks"
+        ],
+        "type": "object"
+      },
+      "MaskingSample": {
+        "description": "The sample log events to apply the masks to.",
+        "properties": {
+          "attributes": {
+            "additionalProperties": {
+              "description": "Sample attributes the attribute masks are applied to.",
+              "example": {
+                "user": {
+                  "email": "alice@example.com"
+                }
+              },
+              "type": "object"
+            },
+            "default": {},
+            "description": "Sample attributes the attribute masks are applied to.",
+            "example": {
+              "user": {
+                "email": "alice@example.com"
+              }
+            },
+            "type": "object"
+          },
+          "message": {
+            "description": "Sample log message the masks are applied to. May be omitted to test attribute masks alone.",
+            "example": "user alice@example.com signed in from 10.1.2.3",
+            "maxLength": 100000,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "required": [
+          "attributes"
         ],
         "type": "object"
       },
@@ -16278,6 +16416,9 @@
             "default": {},
             "description": "Variables available while parsing the predicate.",
             "type": "object"
+          },
+          "window": {
+            "$ref": "#/components/schemas/AnalyticsTimeWindow"
           }
         },
         "required": [
@@ -29163,6 +29304,51 @@
         "summary": "Get application manifest",
         "tags": [
           "Manifest"
+        ]
+      }
+    },
+    "/v1/masking/mask": {
+      "post": {
+        "description": "Applies a masking operator\u0027s masks to sample log events and returns the masked result for each, so the editor can preview a configuration without deploying it. The operator\u0027s predicate gates which logs are masked in production, not how, so it is ignored here and the masks are applied to every sample.",
+        "operationId": "mask",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaskingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaskingResponse"
+                }
+              }
+            },
+            "description": "Sample masked successfully."
+          },
+          "400": {
+            "description": "The masking configuration is invalid or could not be compiled."
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Apply masks to samples",
+        "tags": [
+          "Masking"
         ]
       }
     },

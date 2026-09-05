@@ -4143,6 +4143,32 @@ export interface components {
        */
       table: AnalyticsTableBindingTable;
     };
+    /** @description Optional time window that buckets the results. Adds leading 'window_start' and 'window_end' result columns, which are always grouped. */
+    AnalyticsTimeWindow: {
+      /**
+       * @description Window layout: TUMBLING windows do not overlap; SLIDING windows start every 'slide'.
+       * @enum {string}
+       */
+      kind: AnalyticsTimeWindowKind;
+      /**
+       * Format: ISO-8601
+       * @description Window length as an ISO-8601 duration, a whole number of milliseconds.
+       * @example PT20.345S
+       */
+      size: string;
+      /**
+       * Format: ISO-8601
+       * @description Distance between consecutive SLIDING window starts as an ISO-8601 duration, a whole number of milliseconds dividing 'size'. Absent for TUMBLING windows.
+       * @example PT20.345S
+       */
+      slide?: string;
+      /**
+       * @description Which timestamp the windows bucket by.
+       * @default EVENT_TIMESTAMP
+       * @enum {string}
+       */
+      timestamp?: AnalyticsTimeWindowTimestamp;
+    };
     AnalyticsVocabularyResponse: {
       fields: components["schemas"]["AnalyticsField"][];
       functions: components["schemas"]["AnalyticsFunction"][];
@@ -11685,6 +11711,7 @@ export interface components {
       variables?: {
         [key: string]: components["schemas"]["Any"];
       };
+      window?: components["schemas"]["AnalyticsTimeWindow"];
       /**
        * @description discriminator enum property added by openapi-typescript
        * @enum {string}
@@ -14072,6 +14099,8 @@ export type SchemaAnalyticsProjection =
 export type SchemaAnalyticsQuery = components["schemas"]["AnalyticsQuery"];
 export type SchemaAnalyticsTableBinding =
   components["schemas"]["AnalyticsTableBinding"];
+export type SchemaAnalyticsTimeWindow =
+  components["schemas"]["AnalyticsTimeWindow"];
 export type SchemaAnalyticsVocabularyResponse =
   components["schemas"]["AnalyticsVocabularyResponse"];
 export type SchemaAndEventPredicate =
@@ -24019,6 +24048,14 @@ export enum AnalyticsTableBindingTable {
   metricdata_raw = "metricdata_raw",
   spans_raw = "spans_raw",
   spans_dedup = "spans_dedup",
+}
+export enum AnalyticsTimeWindowKind {
+  TUMBLING = "TUMBLING",
+  SLIDING = "SLIDING",
+}
+export enum AnalyticsTimeWindowTimestamp {
+  EVENT_TIMESTAMP = "EVENT_TIMESTAMP",
+  RECEIVED_TIMESTAMP = "RECEIVED_TIMESTAMP",
 }
 export enum AndEventPredicateType {
   and_predicate = "and-predicate",
