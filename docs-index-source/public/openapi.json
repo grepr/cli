@@ -1639,6 +1639,24 @@
         },
         "type": "object"
       },
+      "AnalyticsExample": {
+        "description": "Example calls demonstrating the function.",
+        "properties": {
+          "explanation": {
+            "description": "One sentence on what this call does.",
+            "type": "string"
+          },
+          "expression": {
+            "description": "The call, in the analytics source language.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "explanation",
+          "expression"
+        ],
+        "type": "object"
+      },
       "AnalyticsField": {
         "properties": {
           "accessorTemplate": {
@@ -1674,9 +1692,20 @@
             },
             "type": "array"
           },
+          "examples": {
+            "description": "Example calls demonstrating the function.",
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsExample"
+            },
+            "type": "array"
+          },
           "help": {
             "description": "Short user-facing explanation shown with completions.",
             "type": "string"
+          },
+          "keywordSyntax": {
+            "description": "True when the call is written with SQL keywords rather than a comma-separated argument list, e.g. CAST(value AS type) or EXTRACT(field FROM timestamp). Show the examples rather than a signature synthesized from parameters.",
+            "type": "boolean"
           },
           "maxArgs": {
             "description": "Null for variadic functions.",
@@ -1690,6 +1719,13 @@
           },
           "name": {
             "type": "string"
+          },
+          "parameters": {
+            "description": "The function\u0027s arguments in call order, for rendering a signature. Required arguments precede optional ones.",
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsParameter"
+            },
+            "type": "array"
           }
         },
         "required": [
@@ -1720,6 +1756,43 @@
         },
         "required": [
           "expression"
+        ],
+        "type": "object"
+      },
+      "AnalyticsParameter": {
+        "description": "The function\u0027s arguments in call order, for rendering a signature. Required arguments precede optional ones.",
+        "properties": {
+          "name": {
+            "description": "What the argument means, e.g. \"fraction\" for a percentile\u0027s rank.",
+            "type": "string"
+          },
+          "optional": {
+            "description": "Whether a call may omit this argument.",
+            "type": "boolean"
+          },
+          "repeating": {
+            "description": "Whether this argument may be supplied more than once.",
+            "type": "boolean"
+          },
+          "type": {
+            "description": "What the argument accepts.",
+            "enum": [
+              "ANY",
+              "NUMBER",
+              "TEXT",
+              "BOOLEAN",
+              "TIMESTAMP",
+              "ARRAY",
+              "MAP",
+              "TYPE_NAME",
+              "TIME_UNIT"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
         ],
         "type": "object"
       },

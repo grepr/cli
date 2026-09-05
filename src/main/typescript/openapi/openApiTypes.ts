@@ -4080,6 +4080,13 @@ export interface components {
       insert?: string;
       label?: string;
     };
+    /** @description Example calls demonstrating the function. */
+    AnalyticsExample: {
+      /** @description One sentence on what this call does. */
+      explanation: string;
+      /** @description The call, in the analytics source language. */
+      expression: string;
+    };
     AnalyticsField: {
       /** @description Format string for a nested key accessor, when applicable. */
       accessorTemplate?: string;
@@ -4092,8 +4099,12 @@ export interface components {
       category?: string;
       /** @description User-facing completion templates for this function. */
       completions?: components["schemas"]["AnalyticsCompletion"][];
+      /** @description Example calls demonstrating the function. */
+      examples?: components["schemas"]["AnalyticsExample"][];
       /** @description Short user-facing explanation shown with completions. */
       help: string;
+      /** @description True when the call is written with SQL keywords rather than a comma-separated argument list, e.g. CAST(value AS type) or EXTRACT(field FROM timestamp). Show the examples rather than a signature synthesized from parameters. */
+      keywordSyntax?: boolean;
       /**
        * Format: int32
        * @description Null for variadic functions.
@@ -4105,6 +4116,8 @@ export interface components {
        */
       minArgs?: number;
       name: string;
+      /** @description The function's arguments in call order, for rendering a signature. Required arguments precede optional ones. */
+      parameters?: components["schemas"]["AnalyticsParameter"][];
     };
     /**
      * @description Ordering applied to the analytical results.
@@ -4119,6 +4132,20 @@ export interface components {
       direction?: AnalyticsOrderByDirection;
       /** @description Grepr SQL expression or projection alias to order by. */
       expression: string;
+    };
+    /** @description The function's arguments in call order, for rendering a signature. Required arguments precede optional ones. */
+    AnalyticsParameter: {
+      /** @description What the argument means, e.g. "fraction" for a percentile's rank. */
+      name: string;
+      /** @description Whether a call may omit this argument. */
+      optional?: boolean;
+      /** @description Whether this argument may be supplied more than once. */
+      repeating?: boolean;
+      /**
+       * @description What the argument accepts.
+       * @enum {string}
+       */
+      type: AnalyticsParameterType;
     };
     /** @description Expressions returned by the query. */
     AnalyticsProjection: {
@@ -14095,10 +14122,13 @@ export type SchemaAiPipelineTemplateInput =
 export type SchemaAllQueryNode = components["schemas"]["AllQueryNode"];
 export type SchemaAnalyticsCompletion =
   components["schemas"]["AnalyticsCompletion"];
+export type SchemaAnalyticsExample = components["schemas"]["AnalyticsExample"];
 export type SchemaAnalyticsField = components["schemas"]["AnalyticsField"];
 export type SchemaAnalyticsFunction =
   components["schemas"]["AnalyticsFunction"];
 export type SchemaAnalyticsOrderBy = components["schemas"]["AnalyticsOrderBy"];
+export type SchemaAnalyticsParameter =
+  components["schemas"]["AnalyticsParameter"];
 export type SchemaAnalyticsProjection =
   components["schemas"]["AnalyticsProjection"];
 export type SchemaAnalyticsQuery = components["schemas"]["AnalyticsQuery"];
@@ -24043,6 +24073,17 @@ export enum AllQueryNodeType {
 export enum AnalyticsOrderByDirection {
   ASC = "ASC",
   DESC = "DESC",
+}
+export enum AnalyticsParameterType {
+  ANY = "ANY",
+  NUMBER = "NUMBER",
+  TEXT = "TEXT",
+  BOOLEAN = "BOOLEAN",
+  TIMESTAMP = "TIMESTAMP",
+  ARRAY = "ARRAY",
+  MAP = "MAP",
+  TYPE_NAME = "TYPE_NAME",
+  TIME_UNIT = "TIME_UNIT",
 }
 export enum AnalyticsTableBindingTable {
   logs_raw = "logs_raw",
