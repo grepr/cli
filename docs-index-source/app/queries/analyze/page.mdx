@@ -76,6 +76,25 @@ CAST(@duration_ms AS BIGINT)
 MIN(CAST(@duration_ms AS DOUBLE))
 ```
 
+## Window by time
+
+To see how an aggregate changes over time, add a time window under the grouping expressions. Every result row then carries a `window_start` and a `window_end` column, and the other grouping keys and aggregates are computed per window. Sort by `window_start` to read the results in time order.
+
+| Kind | Meaning |
+| --- | --- |
+| Tumbling | Fixed windows that do not overlap. A 5 minute window puts each log in exactly one bucket. |
+| Sliding | Windows of one size that start every *slide*. A 5 minute window sliding every 1 minute counts each log in five overlapping windows. The size must be a whole multiple of the slide, and a window can cover at most 100 slides. |
+
+Each duration is a whole number of milliseconds, seconds, minutes, hours, or days. Windows bucket by event time by default; choose receive time to bucket by when Grepr received each log instead. The time range you searched selects logs by event time either way.
+
+Windows are aligned to the clock rather than to the start of your time range, so the first and last windows of a range can be partial.
+
+In the API, the window is the `window` object of the structured analytics query, with ISO-8601 durations:
+
+```json
+{ "kind": "SLIDING", "timestamp": "EVENT_TIMESTAMP", "size": "PT5M", "slide": "PT1M" }
+```
+
 ## Results
 
 Each result row is a JSON object keyed by column name, so a column holds whatever the underlying attribute held, such as a number, a string, a boolean, or a nested object. Timestamps are returned as UTC ISO 8601 strings.
@@ -85,6 +104,7 @@ Each result row is a JSON object keyed by column name, so a column holds whateve
 - An analysis reads one dataset at a time. Joins across datasets are not supported.
 - Sorting by an attribute that you have not cast sorts it by its stored text, so `100` sorts before `99`. Cast the attribute to sort numerically, as in `CAST(@http.status_code AS BIGINT)`.
 - An analysis can compute at most 128 values, group by at most 64 expressions, and sort by at most 64 expressions. Each expression can be at most 4,096 characters long.
+- A time window's size and slide are whole milliseconds, and a sliding window covers at most 100 slides. `window_start` and `window_end` cannot be used as result names while a window is set.
 - Row, array, and map values are converted to nested JSON automatically. A column is rejected with an error that names it only if its value type has no JSON representation at all, or a constructed row has two fields with the same name.
 
 <HiddenFAQ faqs={[
@@ -95,6 +115,10 @@ Each result row is a JSON object keyed by column name, so a column holds whateve
   {
     q: "What are the log field names in Grepr SQL?",
     a: "message, severity, event_timestamp, received_timestamp, id, tags, and attributes. Index a tag as tags['service'][1], and address an attribute as @http.status_code."
+  },
+  {
+    q: "How do I bucket an analysis by time?",
+    a: "Add a time window under the grouping expressions in Analyze mode. Choose tumbling or sliding, a size, and for sliding windows a slide. Results gain window_start and window_end columns."
   },
   {
     q: "How many rows can an analysis return?",
