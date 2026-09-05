@@ -1854,6 +1854,11 @@
             },
             "type": "array"
           },
+          "maxScanBudgetBytes": {
+            "description": "Largest scan budget, in bytes, an Athena analytics query over this dataset may request. Absent when no ceiling applies. Queries routed to a Trino query engine are not subject to it.",
+            "format": "int64",
+            "type": "integer"
+          },
           "promotedTagKeys": {
             "description": "Promoted logs_raw tag keys for the requested dataset.",
             "items": {

@@ -4172,6 +4172,11 @@ export interface components {
     AnalyticsVocabularyResponse: {
       fields: components["schemas"]["AnalyticsField"][];
       functions: components["schemas"]["AnalyticsFunction"][];
+      /**
+       * Format: int64
+       * @description Largest scan budget, in bytes, an Athena analytics query over this dataset may request. Absent when no ceiling applies. Queries routed to a Trino query engine are not subject to it.
+       */
+      maxScanBudgetBytes?: number;
       /** @description Promoted logs_raw tag keys for the requested dataset. */
       promotedTagKeys?: string[];
     };
