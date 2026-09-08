@@ -7245,18 +7245,6 @@
         },
         "type": "object"
       },
-      "ItemsCollectionReadTrinoQueryEngine": {
-        "properties": {
-          "items": {
-            "default": [],
-            "items": {
-              "$ref": "#/components/schemas/ReadTrinoQueryEngine"
-            },
-            "type": "array"
-          }
-        },
-        "type": "object"
-      },
       "ItemsCollectionReadUser": {
         "properties": {
           "items": {
@@ -13614,11 +13602,6 @@
             "format": "int32",
             "minimum": 1,
             "type": "integer"
-          },
-          "maxTrinoQueryEngineIntegrations": {
-            "format": "int32",
-            "minimum": 1,
-            "type": "integer"
           }
         },
         "type": "object"
@@ -14243,83 +14226,6 @@
           "leaderRoleId",
           "memberRoleId",
           "name"
-        ],
-        "type": "object"
-      },
-      "ReadTrinoQueryEngine": {
-        "properties": {
-          "createdAt": {
-            "description": "Timestamp when the integration was created.",
-            "format": "date-time",
-            "readOnly": true,
-            "type": "string"
-          },
-          "id": {
-            "description": "The integration id",
-            "type": "string"
-          },
-          "jobIds": {
-            "description": "List of job IDs associated with the integration.",
-            "items": {
-              "description": "List of job IDs associated with the integration.",
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "name": {
-            "description": "Name of the integration.",
-            "example": "my_integration",
-            "pattern": "[a-zA-Z0-9 _-]{1,128}",
-            "type": "string"
-          },
-          "organizationId": {
-            "description": "Organization ID of the integration.",
-            "type": "string"
-          },
-          "payload": {
-            "$ref": "#/components/schemas/TrinoQueryEngine"
-          },
-          "teamIds": {
-            "description": "The team IDs that this integration is associated with.",
-            "items": {
-              "description": "The team IDs that this integration is associated with.",
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "type": {
-            "description": "The type of the integration. This is used to determine the payload type.",
-            "enum": [
-              "trino-query-engine"
-            ],
-            "type": "string"
-          },
-          "updatedAt": {
-            "description": "Timestamp when the integration was last updated.",
-            "format": "date-time",
-            "readOnly": true,
-            "type": "string"
-          },
-          "version": {
-            "description": "Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-            "example": 0,
-            "format": "int32",
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "createdAt",
-          "id",
-          "jobIds",
-          "name",
-          "organizationId",
-          "payload",
-          "type",
-          "updatedAt",
-          "version"
         ],
         "type": "object"
       },
@@ -18721,11 +18627,6 @@
           "query": {
             "$ref": "#/components/schemas/AnalyticsQuery"
           },
-          "queryEngineIntegrationId": {
-            "description": "Trino query engine integration to execute this query against.",
-            "pattern": "[a-z0-9]{1,13}",
-            "type": "string"
-          },
           "scanBudgetBytes": {
             "default": 107374182400,
             "description": "Maximum number of bytes this query may process.",
@@ -18753,7 +18654,6 @@
         "required": [
           "name",
           "query",
-          "queryEngineIntegrationId",
           "tables",
           "type"
         ],
@@ -18761,17 +18661,6 @@
         "x-tags": [
           "Sources"
         ]
-      },
-      "TrinoConnectionTestResult": {
-        "properties": {
-          "message": {
-            "type": "string"
-          },
-          "success": {
-            "type": "boolean"
-          }
-        },
-        "type": "object"
       },
       "TrinoLlmPromptResultsSource": {
         "properties": {
@@ -18806,11 +18695,6 @@
           },
           "query": {
             "$ref": "#/components/schemas/query"
-          },
-          "queryEngineIntegrationId": {
-            "description": "Trino query engine integration to execute this query against.",
-            "pattern": "[a-z0-9]{1,13}",
-            "type": "string"
           },
           "sortOrder": {
             "default": "ASCENDING",
@@ -18853,7 +18737,6 @@
           "end",
           "name",
           "query",
-          "queryEngineIntegrationId",
           "start",
           "type"
         ],
@@ -18861,66 +18744,6 @@
         "x-tags": [
           "Sources"
         ]
-      },
-      "TrinoQueryEngine": {
-        "description": "The payload containing integration data.",
-        "properties": {
-          "catalog": {
-            "description": "Trino catalog backed by the dataset\u0027s Iceberg warehouse.",
-            "example": "lakehouse",
-            "type": "string"
-          },
-          "extraProperties": {
-            "additionalProperties": {
-              "description": "Additional Trino JDBC connection properties, restricted to a fixed allowlist: applicationNamePrefix, clientTags, clientInfo, sessionProperties, roles, locale, disableCompression, explicitPrepare, assumeNullCatalogMeansCurrentCatalog, httpLoggingLevel, SSLVerification, SSLTrustStoreType, SSLUseSystemTrustStore",
-              "example": "{\"sessionProperties\":\"query_max_run_time:30m\"}",
-              "type": "string"
-            },
-            "default": {},
-            "description": "Additional Trino JDBC connection properties, restricted to a fixed allowlist: applicationNamePrefix, clientTags, clientInfo, sessionProperties, roles, locale, disableCompression, explicitPrepare, assumeNullCatalogMeansCurrentCatalog, httpLoggingLevel, SSLVerification, SSLTrustStoreType, SSLUseSystemTrustStore",
-            "example": {
-              "sessionProperties": "query_max_run_time:30m"
-            },
-            "type": "object"
-          },
-          "host": {
-            "description": "Hostname or IP literal of the Trino coordinator. Must not include a scheme, path, userinfo, or \u0027@\u0027.",
-            "example": "trino.internal.example.com",
-            "type": "string"
-          },
-          "password": {
-            "description": "Masked password for the configured user.",
-            "example": "**************ey",
-            "readOnly": true,
-            "type": "string"
-          },
-          "port": {
-            "default": 443,
-            "description": "Trino coordinator port.",
-            "example": 443,
-            "format": "int32",
-            "type": "integer"
-          },
-          "ssl": {
-            "default": true,
-            "description": "Whether to connect to Trino over SSL/TLS.",
-            "type": "boolean"
-          },
-          "user": {
-            "description": "Username to authenticate with. Required: Trino rejects any request without a user identity, even on clusters that do not require a password.",
-            "example": "grepr",
-            "type": "string"
-          }
-        },
-        "required": [
-          "catalog",
-          "host",
-          "user"
-        ],
-        "type": "object",
-        "x-type": {
-          "type": "trino-query-engine"
-        }
       },
       "TrinoRawLogsSource": {
         "properties": {
@@ -18955,11 +18778,6 @@
           },
           "query": {
             "$ref": "#/components/schemas/query"
-          },
-          "queryEngineIntegrationId": {
-            "description": "Trino query engine integration to execute this query against.",
-            "pattern": "[a-z0-9]{1,13}",
-            "type": "string"
           },
           "sortOrder": {
             "default": "ASCENDING",
@@ -19002,7 +18820,6 @@
           "end",
           "name",
           "query",
-          "queryEngineIntegrationId",
           "start",
           "type"
         ],
@@ -19045,11 +18862,6 @@
           "query": {
             "$ref": "#/components/schemas/query"
           },
-          "queryEngineIntegrationId": {
-            "description": "Trino query engine integration to execute this query against.",
-            "pattern": "[a-z0-9]{1,13}",
-            "type": "string"
-          },
           "sortOrder": {
             "default": "ASCENDING",
             "description": "The order in which the rows should be sorted by",
@@ -19091,7 +18903,6 @@
           "end",
           "name",
           "query",
-          "queryEngineIntegrationId",
           "start",
           "type"
         ],
@@ -19139,11 +18950,6 @@
           },
           "query": {
             "$ref": "#/components/schemas/query"
-          },
-          "queryEngineIntegrationId": {
-            "description": "Trino query engine integration to execute this query against.",
-            "pattern": "[a-z0-9]{1,13}",
-            "type": "string"
           },
           "reductionInterval": {
             "default": "PT2M",
@@ -19193,7 +18999,6 @@
           "end",
           "name",
           "query",
-          "queryEngineIntegrationId",
           "reductionInterval",
           "start",
           "type"
@@ -20525,50 +20330,6 @@
             "description": "The type of the integration. This is used to determine the payload type.",
             "enum": [
               "sumo"
-            ],
-            "type": "string"
-          },
-          "version": {
-            "description": "Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-            "example": 0,
-            "format": "int32",
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "name",
-          "payload",
-          "type",
-          "version"
-        ],
-        "type": "object"
-      },
-      "WriteTrinoQueryEngine": {
-        "properties": {
-          "name": {
-            "description": "Name of the integration.",
-            "example": "my_integration",
-            "pattern": "[a-zA-Z0-9 _-]{1,128}",
-            "type": "string"
-          },
-          "payload": {
-            "$ref": "#/components/schemas/TrinoQueryEngine"
-          },
-          "teamIds": {
-            "default": [],
-            "description": "The team IDs that this integration is associated with.",
-            "items": {
-              "description": "The team IDs that this integration is associated with.",
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "type": {
-            "description": "The type of the integration. This is used to determine the payload type.",
-            "enum": [
-              "trino-query-engine"
             ],
             "type": "string"
           },
@@ -26497,7 +26258,7 @@
     "/v1/integrations/s3-vector-index": {
       "get": {
         "description": "Retrieves all S3 Vector Index integrations for the organization.",
-        "operationId": "list_17",
+        "operationId": "list_16",
         "responses": {
           "200": {
             "content": {
@@ -26528,7 +26289,7 @@
       },
       "post": {
         "description": "Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.",
-        "operationId": "create_16",
+        "operationId": "create_15",
         "requestBody": {
           "content": {
             "application/json": {
@@ -26573,7 +26334,7 @@
     "/v1/integrations/s3-vector-index/{id}": {
       "delete": {
         "description": "Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn\u0027t exist.",
-        "operationId": "delete_15",
+        "operationId": "delete_14",
         "parameters": [
           {
             "in": "path",
@@ -26607,7 +26368,7 @@
       },
       "get": {
         "description": "Retrieves an S3 Vector Index integration.",
-        "operationId": "get_17",
+        "operationId": "get_16",
         "parameters": [
           {
             "in": "path",
@@ -26651,7 +26412,7 @@
       },
       "put": {
         "description": "Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.",
-        "operationId": "update_15",
+        "operationId": "update_14",
         "parameters": [
           {
             "in": "path",
@@ -26973,7 +26734,7 @@
     "/v1/integrations/splunk": {
       "get": {
         "description": "Get all Splunk integrations for your organization. This will contain masked keys if present.",
-        "operationId": "list_18",
+        "operationId": "list_17",
         "responses": {
           "200": {
             "content": {
@@ -27001,7 +26762,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Splunk.",
-        "operationId": "create_17",
+        "operationId": "create_16",
         "requestBody": {
           "content": {
             "application/json": {
@@ -27050,7 +26811,7 @@
     "/v1/integrations/splunk/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to Splunk. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_16",
+        "operationId": "delete_15",
         "parameters": [
           {
             "in": "path",
@@ -27081,7 +26842,7 @@
       },
       "get": {
         "description": "Get an integration to connect to Splunk.",
-        "operationId": "get_18",
+        "operationId": "get_17",
         "parameters": [
           {
             "in": "path",
@@ -27122,7 +26883,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to Splunk. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_16",
+        "operationId": "update_15",
         "parameters": [
           {
             "in": "path",
@@ -27380,7 +27141,7 @@
     "/v1/integrations/sumo": {
       "get": {
         "description": "Get all SumoLogic integrations.",
-        "operationId": "list_19",
+        "operationId": "list_18",
         "responses": {
           "200": {
             "content": {
@@ -27411,7 +27172,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to SumoLogic.",
-        "operationId": "create_18",
+        "operationId": "create_17",
         "requestBody": {
           "content": {
             "application/json": {
@@ -27463,7 +27224,7 @@
     "/v1/integrations/sumo/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to SumoLogic. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_17",
+        "operationId": "delete_16",
         "parameters": [
           {
             "in": "path",
@@ -27497,7 +27258,7 @@
       },
       "get": {
         "description": "Get an integration to connect to SumoLogic.",
-        "operationId": "get_19",
+        "operationId": "get_18",
         "parameters": [
           {
             "in": "path",
@@ -27541,7 +27302,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to SumoLogic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_17",
+        "operationId": "update_16",
         "parameters": [
           {
             "in": "path",
@@ -27644,316 +27405,10 @@
         ]
       }
     },
-    "/v1/integrations/trino-query-engine": {
-      "get": {
-        "description": "Retrieves all Trino query engine integrations for the organization.",
-        "operationId": "list_16",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ItemsCollectionReadTrinoQueryEngine"
-                }
-              }
-            },
-            "description": "Trino query engine integrations retrieved successfully"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "List all Trino query engine integrations",
-        "tags": [
-          "Trino Query Engine Integration"
-        ]
-      },
-      "post": {
-        "description": "Creates a new Trino query engine integration.",
-        "operationId": "create_15",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WriteTrinoQueryEngine"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReadTrinoQueryEngine"
-                }
-              }
-            },
-            "description": "Trino query engine integration created successfully"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "409": {
-            "description": "Integration already exists"
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "Create a Trino query engine integration",
-        "tags": [
-          "Trino Query Engine Integration"
-        ]
-      }
-    },
-    "/v1/integrations/trino-query-engine/{id}": {
-      "delete": {
-        "description": "Deletes a Trino query engine integration and its stored password, if any. No-op if already deleted.",
-        "operationId": "delete_14",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Trino query engine integration deleted successfully"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "Delete a Trino query engine integration",
-        "tags": [
-          "Trino Query Engine Integration"
-        ]
-      },
-      "get": {
-        "description": "Retrieves a Trino query engine integration.",
-        "operationId": "get_16",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReadTrinoQueryEngine"
-                }
-              }
-            },
-            "description": "Trino query engine integration retrieved successfully"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Integration not found."
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "Get a Trino query engine integration",
-        "tags": [
-          "Trino Query Engine Integration"
-        ]
-      },
-      "put": {
-        "description": "Updates an existing Trino query engine integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_14",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WriteTrinoQueryEngine"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReadTrinoQueryEngine"
-                }
-              }
-            },
-            "description": "Trino query engine integration updated successfully"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Integration not found."
-          },
-          "409": {
-            "description": "Integration was modified or deleted concurrently."
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "Update a Trino query engine integration",
-        "tags": [
-          "Trino Query Engine Integration"
-        ]
-      }
-    },
-    "/v1/integrations/trino-query-engine/{id}/password": {
-      "put": {
-        "description": "Creates or updates the password used to authenticate with the Trino cluster. Requires the integration\u0027s \u0027user\u0027 to already be configured.",
-        "operationId": "upsertPassword",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SecretApi"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "Password upserted successfully."
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Integration not found."
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "Creates or updates a Trino query engine integration password",
-        "tags": [
-          "Trino Query Engine Integration"
-        ]
-      }
-    },
-    "/v1/integrations/trino-query-engine/{id}/test": {
-      "post": {
-        "description": "Executes a trivial query against the configured Trino cluster.",
-        "operationId": "test_1",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TrinoConnectionTestResult"
-                }
-              }
-            },
-            "description": "Connection test completed successfully"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Integration not found."
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "Test a Trino query engine integration\u0027s connection",
-        "tags": [
-          "Trino Query Engine Integration"
-        ]
-      }
-    },
     "/v1/integrations/webhooks": {
       "get": {
         "description": "Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.",
-        "operationId": "list_20",
+        "operationId": "list_19",
         "parameters": [
           {
             "description": "Only return integrations targeting this agent.",
@@ -27994,7 +27449,7 @@
       },
       "post": {
         "description": "Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).",
-        "operationId": "create_19",
+        "operationId": "create_18",
         "requestBody": {
           "content": {
             "application/json": {
@@ -28039,7 +27494,7 @@
     "/v1/integrations/webhooks/{id}": {
       "delete": {
         "description": "Deletes a webhook integration. No-op if already deleted.",
-        "operationId": "delete_18",
+        "operationId": "delete_17",
         "parameters": [
           {
             "in": "path",
@@ -28073,7 +27528,7 @@
       },
       "get": {
         "description": "Get a webhook integration by ID.",
-        "operationId": "get_20",
+        "operationId": "get_19",
         "parameters": [
           {
             "in": "path",
@@ -28117,7 +27572,7 @@
       },
       "put": {
         "description": "Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_18",
+        "operationId": "update_17",
         "parameters": [
           {
             "in": "path",
@@ -31831,7 +31286,7 @@
     "/v1/users": {
       "get": {
         "description": "Get all users in the system.",
-        "operationId": "list_21",
+        "operationId": "list_20",
         "parameters": [
           {
             "in": "query",

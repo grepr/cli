@@ -2,7 +2,6 @@ import type { Command } from 'commander';
 import { BaseCommand } from './base-command.js';
 import type { ICommand } from '../lib/command-registry.js';
 import { createApiClient } from '../lib/api-client-factory.js';
-import { resolveQueryEngine } from '../lib/grepr-api-client.js';
 import { parseIntArg } from '../lib/option-parsers.js';
 import { validateOptionalTimestampRange } from '../lib/time-utils.js';
 import {
@@ -10,6 +9,7 @@ import {
   JobProcessing,
   type CommandOption,
   type MergeConfiguration,
+  type QueryEngine,
   type QueryCommandOptions,
   type ResolvedQueryEngine
 } from '../types.js';
@@ -59,6 +59,19 @@ export {
   buildSignalPredicate,
   buildSourcePredicate
 };
+
+/** Resolve the configured engine locally, retaining Athena as the default. */
+export function resolveQueryEngine(queryEngine?: QueryEngine): ResolvedQueryEngine {
+  switch (queryEngine) {
+    case 'flink':
+      return { kind: 'flink' };
+    case 'trino':
+      return { kind: 'trino' };
+    case 'athena':
+    default:
+      return { kind: 'athena' };
+  }
+}
 
 export function validateQueryOptions(options: QueryCommandOptions): void {
   validateSignalSourceInputs(options);
@@ -143,8 +156,7 @@ function buildLogsSource(
       return {
         ...common,
         type: TrinoRawLogsSourceType.trino_raw_log_source,
-        query,
-        queryEngineIntegrationId: queryEngine.queryEngineIntegrationId
+        query
       };
     case 'athena':
       return { ...common, type: GreprRawLogsSourceType.grepr_raw_log_source, query };
@@ -185,8 +197,7 @@ function buildSpansSource(
     case 'trino':
       return {
         ...sourceFields,
-        type: TrinoRawSpanSourceType.trino_raw_span_source,
-        queryEngineIntegrationId: queryEngine.queryEngineIntegrationId
+        type: TrinoRawSpanSourceType.trino_raw_span_source
       };
     case 'athena':
       return { ...sourceFields, type: GreprRawSpanSourceType.grepr_raw_span_source };
@@ -314,7 +325,7 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
     try {
       validateQueryOptions(options);
       const apiClient = createApiClient(options);
-      const queryEngine = await resolveQueryEngine(options.queryEngine, apiClient);
+      const queryEngine = resolveQueryEngine(options.queryEngine);
       const resolved = await resolveSignalSource(
         options,
         apiClient,

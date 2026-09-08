@@ -1663,13 +1663,13 @@ export interface paths {
      * List all S3 Vector Index integrations
      * @description Retrieves all S3 Vector Index integrations for the organization.
      */
-    get: operations["list_17"];
+    get: operations["list_16"];
     put?: never;
     /**
      * Create an S3 Vector Index integration
      * @description Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.
      */
-    post: operations["create_16"];
+    post: operations["create_15"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1687,18 +1687,18 @@ export interface paths {
      * Get an S3 Vector Index integration
      * @description Retrieves an S3 Vector Index integration.
      */
-    get: operations["get_17"];
+    get: operations["get_16"];
     /**
      * Update an S3 Vector Index integration
      * @description Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.
      */
-    put: operations["update_15"];
+    put: operations["update_14"];
     post?: never;
     /**
      * Delete an S3 Vector Index integration
      * @description Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn't exist.
      */
-    delete: operations["delete_15"];
+    delete: operations["delete_14"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1787,13 +1787,13 @@ export interface paths {
      * List all Splunk integrations
      * @description Get all Splunk integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_18"];
+    get: operations["list_17"];
     put?: never;
     /**
      * Create a Splunk integration
      * @description Creates an integration to connect to Splunk.
      */
-    post: operations["create_17"];
+    post: operations["create_16"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1811,18 +1811,18 @@ export interface paths {
      * Get a Splunk integration
      * @description Get an integration to connect to Splunk.
      */
-    get: operations["get_18"];
+    get: operations["get_17"];
     /**
      * Update a Splunk integration.
      * @description Updates an integration to connect to Splunk. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_16"];
+    put: operations["update_15"];
     post?: never;
     /**
      * Delete a Splunk integration
      * @description Deletes an integration to connect to Splunk. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_16"];
+    delete: operations["delete_15"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1919,13 +1919,13 @@ export interface paths {
      * List all SumoLogic integrations
      * @description Get all SumoLogic integrations.
      */
-    get: operations["list_19"];
+    get: operations["list_18"];
     put?: never;
     /**
      * Create a SumoLogic integration
      * @description Creates an integration to connect to SumoLogic.
      */
-    post: operations["create_18"];
+    post: operations["create_17"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1943,18 +1943,18 @@ export interface paths {
      * Get a SumoLogic integration
      * @description Get an integration to connect to SumoLogic.
      */
-    get: operations["get_19"];
+    get: operations["get_18"];
     /**
      * Update a SumoLogic integration.
      * @description Updates an integration to connect to SumoLogic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_17"];
+    put: operations["update_16"];
     post?: never;
     /**
      * Delete a SumoLogic integration
      * @description Deletes an integration to connect to SumoLogic. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_17"];
+    delete: operations["delete_16"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1980,98 +1980,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/integrations/trino-query-engine": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List all Trino query engine integrations
-     * @description Retrieves all Trino query engine integrations for the organization.
-     */
-    get: operations["list_16"];
-    put?: never;
-    /**
-     * Create a Trino query engine integration
-     * @description Creates a new Trino query engine integration.
-     */
-    post: operations["create_15"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/integrations/trino-query-engine/{id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Get a Trino query engine integration
-     * @description Retrieves a Trino query engine integration.
-     */
-    get: operations["get_16"];
-    /**
-     * Update a Trino query engine integration
-     * @description Updates an existing Trino query engine integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
-     */
-    put: operations["update_14"];
-    post?: never;
-    /**
-     * Delete a Trino query engine integration
-     * @description Deletes a Trino query engine integration and its stored password, if any. No-op if already deleted.
-     */
-    delete: operations["delete_14"];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/integrations/trino-query-engine/{id}/password": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    /**
-     * Creates or updates a Trino query engine integration password
-     * @description Creates or updates the password used to authenticate with the Trino cluster. Requires the integration's 'user' to already be configured.
-     */
-    put: operations["upsertPassword"];
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/integrations/trino-query-engine/{id}/test": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Test a Trino query engine integration's connection
-     * @description Executes a trivial query against the configured Trino cluster.
-     */
-    post: operations["test_1"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/integrations/webhooks": {
     parameters: {
       query?: never;
@@ -2083,13 +1991,13 @@ export interface paths {
      * List webhook integrations
      * @description Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.
      */
-    get: operations["list_20"];
+    get: operations["list_19"];
     put?: never;
     /**
      * Create a webhook integration
      * @description Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).
      */
-    post: operations["create_19"];
+    post: operations["create_18"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2107,18 +2015,18 @@ export interface paths {
      * Get a webhook integration
      * @description Get a webhook integration by ID.
      */
-    get: operations["get_20"];
+    get: operations["get_19"];
     /**
      * Update a webhook integration
      * @description Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_18"];
+    put: operations["update_17"];
     post?: never;
     /**
      * Delete a webhook integration
      * @description Deletes a webhook integration. No-op if already deleted.
      */
-    delete: operations["delete_18"];
+    delete: operations["delete_17"];
     options?: never;
     head?: never;
     patch?: never;
@@ -3326,7 +3234,7 @@ export interface paths {
      * List all users
      * @description Get all users in the system.
      */
-    get: operations["list_21"];
+    get: operations["list_20"];
     put?: never;
     /**
      * Create a new user
@@ -6985,10 +6893,6 @@ export interface components {
       /** @default [] */
       items?: components["schemas"]["ReadSumo"][];
     };
-    ItemsCollectionReadTrinoQueryEngine: {
-      /** @default [] */
-      items?: components["schemas"]["ReadTrinoQueryEngine"][];
-    };
     ItemsCollectionReadUser: {
       /** @default [] */
       items?: components["schemas"]["ReadUser"][];
@@ -10247,8 +10151,6 @@ export interface components {
       maxSplunkIntegrations?: number;
       /** Format: int32 */
       maxSumoIntegrations?: number;
-      /** Format: int32 */
-      maxTrinoQueryEngineIntegrations?: number;
     };
     ReadOtlp: {
       /**
@@ -10555,43 +10457,6 @@ export interface components {
       name: string;
       /** Format: int32 */
       userCount?: number;
-    };
-    ReadTrinoQueryEngine: {
-      /**
-       * Format: date-time
-       * @description Timestamp when the integration was created.
-       */
-      readonly createdAt: string;
-      /** @description The integration id */
-      id: string;
-      /** @description List of job IDs associated with the integration. */
-      jobIds: string[];
-      /**
-       * @description Name of the integration.
-       * @example my_integration
-       */
-      name: string;
-      /** @description Organization ID of the integration. */
-      organizationId: string;
-      payload: components["schemas"]["TrinoQueryEngine"];
-      /** @description The team IDs that this integration is associated with. */
-      teamIds?: string[];
-      /**
-       * @description The type of the integration. This is used to determine the payload type.
-       * @enum {string}
-       */
-      type: ReadTrinoQueryEngineType;
-      /**
-       * Format: date-time
-       * @description Timestamp when the integration was last updated.
-       */
-      readonly updatedAt: string;
-      /**
-       * Format: int32
-       * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
-       * @example 0
-       */
-      version: number;
     };
     ReadUser: {
       /** @description The email associated with the user. */
@@ -13041,8 +12906,6 @@ export interface components {
       /** @example operation_name */
       name: string;
       query: components["schemas"]["AnalyticsQuery"];
-      /** @description Trino query engine integration to execute this query against. */
-      queryEngineIntegrationId: string;
       /**
        * Format: int64
        * @description Maximum number of bytes this query may process.
@@ -13056,10 +12919,6 @@ export interface components {
        * @enum {string}
        */
       type: TrinoAnalyticsSourceType;
-    };
-    TrinoConnectionTestResult: {
-      message?: string;
-      success?: boolean;
     };
     TrinoLlmPromptResultsSource: {
       /** @description The ID of the dataset to read data from. */
@@ -13085,8 +12944,6 @@ export interface components {
        */
       offset?: number;
       query: components["schemas"]["query"];
-      /** @description Trino query engine integration to execute this query against. */
-      queryEngineIntegrationId: string;
       /**
        * @description The order in which the rows should be sorted by
        * @default ASCENDING
@@ -13116,51 +12973,6 @@ export interface components {
         [key: string]: components["schemas"]["Any"];
       };
     };
-    /** @description The payload containing integration data. */
-    TrinoQueryEngine: {
-      /**
-       * @description Trino catalog backed by the dataset's Iceberg warehouse.
-       * @example lakehouse
-       */
-      catalog: string;
-      /**
-       * @description Additional Trino JDBC connection properties, restricted to a fixed allowlist: applicationNamePrefix, clientTags, clientInfo, sessionProperties, roles, locale, disableCompression, explicitPrepare, assumeNullCatalogMeansCurrentCatalog, httpLoggingLevel, SSLVerification, SSLTrustStoreType, SSLUseSystemTrustStore
-       * @default {}
-       * @example {
-       *       "sessionProperties": "query_max_run_time:30m"
-       *     }
-       */
-      extraProperties?: {
-        [key: string]: string;
-      };
-      /**
-       * @description Hostname or IP literal of the Trino coordinator. Must not include a scheme, path, userinfo, or '@'.
-       * @example trino.internal.example.com
-       */
-      host: string;
-      /**
-       * @description Masked password for the configured user.
-       * @example **************ey
-       */
-      readonly password?: string;
-      /**
-       * Format: int32
-       * @description Trino coordinator port.
-       * @default 443
-       * @example 443
-       */
-      port?: number;
-      /**
-       * @description Whether to connect to Trino over SSL/TLS.
-       * @default true
-       */
-      ssl?: boolean;
-      /**
-       * @description Username to authenticate with. Required: Trino rejects any request without a user identity, even on clusters that do not require a password.
-       * @example grepr
-       */
-      user: string;
-    };
     TrinoRawLogsSource: {
       /** @description The ID of the dataset to read data from. */
       datasetId: string;
@@ -13185,8 +12997,6 @@ export interface components {
        */
       offset?: number;
       query: components["schemas"]["query"];
-      /** @description Trino query engine integration to execute this query against. */
-      queryEngineIntegrationId: string;
       /**
        * @description The order in which the rows should be sorted by
        * @default ASCENDING
@@ -13240,8 +13050,6 @@ export interface components {
        */
       offset?: number;
       query: components["schemas"]["query"];
-      /** @description Trino query engine integration to execute this query against. */
-      queryEngineIntegrationId: string;
       /**
        * @description The order in which the rows should be sorted by
        * @default ASCENDING
@@ -13300,8 +13108,6 @@ export interface components {
        */
       processedLogsTableName?: string;
       query: components["schemas"]["query"];
-      /** @description Trino query engine integration to execute this query against. */
-      queryEngineIntegrationId: string;
       /**
        * Format: ISO-8601
        * @description The interval used by the Log Reducer for the query. Uses ISO 8601 format for intervals.
@@ -13952,30 +13758,6 @@ export interface components {
        */
       version: number;
     };
-    WriteTrinoQueryEngine: {
-      /**
-       * @description Name of the integration.
-       * @example my_integration
-       */
-      name: string;
-      payload: components["schemas"]["TrinoQueryEngine"];
-      /**
-       * @description The team IDs that this integration is associated with.
-       * @default []
-       */
-      teamIds?: string[];
-      /**
-       * @description The type of the integration. This is used to determine the payload type.
-       * @enum {string}
-       */
-      type: ReadTrinoQueryEngineType;
-      /**
-       * Format: int32
-       * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
-       * @example 0
-       */
-      version: number;
-    };
     WriteUser: {
       /** @description The email associated with the user. */
       email?: string;
@@ -14390,8 +14172,6 @@ export type SchemaItemsCollectionReadSplunk =
   components["schemas"]["ItemsCollectionReadSplunk"];
 export type SchemaItemsCollectionReadSumo =
   components["schemas"]["ItemsCollectionReadSumo"];
-export type SchemaItemsCollectionReadTrinoQueryEngine =
-  components["schemas"]["ItemsCollectionReadTrinoQueryEngine"];
 export type SchemaItemsCollectionReadUser =
   components["schemas"]["ItemsCollectionReadUser"];
 export type SchemaItemsCollectionReadWebhookIntegration =
@@ -14607,8 +14387,6 @@ export type SchemaReadSsoClaimMapping =
   components["schemas"]["ReadSsoClaimMapping"];
 export type SchemaReadSumo = components["schemas"]["ReadSumo"];
 export type SchemaReadTeam = components["schemas"]["ReadTeam"];
-export type SchemaReadTrinoQueryEngine =
-  components["schemas"]["ReadTrinoQueryEngine"];
 export type SchemaReadUser = components["schemas"]["ReadUser"];
 export type SchemaReadWebhookIntegration =
   components["schemas"]["ReadWebhookIntegration"];
@@ -14786,11 +14564,8 @@ export type SchemaTriggerActionOp = components["schemas"]["TriggerActionOp"];
 export type SchemaTriggerSignal = components["schemas"]["TriggerSignal"];
 export type SchemaTrinoAnalyticsSource =
   components["schemas"]["TrinoAnalyticsSource"];
-export type SchemaTrinoConnectionTestResult =
-  components["schemas"]["TrinoConnectionTestResult"];
 export type SchemaTrinoLlmPromptResultsSource =
   components["schemas"]["TrinoLlmPromptResultsSource"];
-export type SchemaTrinoQueryEngine = components["schemas"]["TrinoQueryEngine"];
 export type SchemaTrinoRawLogsSource =
   components["schemas"]["TrinoRawLogsSource"];
 export type SchemaTrinoRawSpanSource =
@@ -14852,8 +14627,6 @@ export type SchemaWriteSplunk = components["schemas"]["WriteSplunk"];
 export type SchemaWriteSsoClaimMapping =
   components["schemas"]["WriteSsoClaimMapping"];
 export type SchemaWriteSumo = components["schemas"]["WriteSumo"];
-export type SchemaWriteTrinoQueryEngine =
-  components["schemas"]["WriteTrinoQueryEngine"];
 export type SchemaWriteUser = components["schemas"]["WriteUser"];
 export type SchemaWriteWebhookIntegration =
   components["schemas"]["WriteWebhookIntegration"];
@@ -19359,7 +19132,7 @@ export interface operations {
       };
     };
   };
-  list_17: {
+  list_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -19386,7 +19159,7 @@ export interface operations {
       };
     };
   };
-  create_16: {
+  create_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -19424,7 +19197,7 @@ export interface operations {
       };
     };
   };
-  get_17: {
+  get_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -19460,7 +19233,7 @@ export interface operations {
       };
     };
   };
-  update_15: {
+  update_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -19500,7 +19273,7 @@ export interface operations {
       };
     };
   };
-  delete_15: {
+  delete_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -19742,7 +19515,7 @@ export interface operations {
       };
     };
   };
-  list_18: {
+  list_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -19769,7 +19542,7 @@ export interface operations {
       };
     };
   };
-  create_17: {
+  create_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -19809,7 +19582,7 @@ export interface operations {
       };
     };
   };
-  get_18: {
+  get_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -19845,7 +19618,7 @@ export interface operations {
       };
     };
   };
-  update_16: {
+  update_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -19892,7 +19665,7 @@ export interface operations {
       };
     };
   };
-  delete_16: {
+  delete_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -20080,7 +19853,7 @@ export interface operations {
       };
     };
   };
-  list_19: {
+  list_18: {
     parameters: {
       query?: never;
       header?: never;
@@ -20107,7 +19880,7 @@ export interface operations {
       };
     };
   };
-  create_18: {
+  create_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -20147,7 +19920,7 @@ export interface operations {
       };
     };
   };
-  get_19: {
+  get_18: {
     parameters: {
       query?: never;
       header?: never;
@@ -20183,7 +19956,7 @@ export interface operations {
       };
     };
   };
-  update_17: {
+  update_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -20230,7 +20003,7 @@ export interface operations {
       };
     };
   };
-  delete_17: {
+  delete_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -20295,256 +20068,7 @@ export interface operations {
       };
     };
   };
-  list_16: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Trino query engine integrations retrieved successfully */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ItemsCollectionReadTrinoQueryEngine"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  create_15: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["WriteTrinoQueryEngine"];
-      };
-    };
-    responses: {
-      /** @description Trino query engine integration created successfully */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ReadTrinoQueryEngine"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Integration already exists */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  get_16: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Trino query engine integration retrieved successfully */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ReadTrinoQueryEngine"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Integration not found. */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  update_14: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["WriteTrinoQueryEngine"];
-      };
-    };
-    responses: {
-      /** @description Trino query engine integration updated successfully */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ReadTrinoQueryEngine"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Integration not found. */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Integration was modified or deleted concurrently. */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  delete_14: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Trino query engine integration deleted successfully */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  upsertPassword: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["SecretApi"];
-      };
-    };
-    responses: {
-      /** @description Password upserted successfully. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Integration not found. */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  test_1: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Connection test completed successfully */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TrinoConnectionTestResult"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Integration not found. */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  list_20: {
+  list_19: {
     parameters: {
       query?: {
         /** @description Only return integrations targeting this agent. */
@@ -20574,7 +20098,7 @@ export interface operations {
       };
     };
   };
-  create_19: {
+  create_18: {
     parameters: {
       query?: never;
       header?: never;
@@ -20612,7 +20136,7 @@ export interface operations {
       };
     };
   };
-  get_20: {
+  get_19: {
     parameters: {
       query?: never;
       header?: never;
@@ -20648,7 +20172,7 @@ export interface operations {
       };
     };
   };
-  update_18: {
+  update_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -20695,7 +20219,7 @@ export interface operations {
       };
     };
   };
-  delete_18: {
+  delete_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -23710,7 +23234,7 @@ export interface operations {
       };
     };
   };
-  list_21: {
+  list_20: {
     parameters: {
       query?: {
         page?: number;
@@ -24631,9 +24155,6 @@ export enum ReadSplunkType {
 }
 export enum ReadSumoType {
   sumo = "sumo",
-}
-export enum ReadTrinoQueryEngineType {
-  trino_query_engine = "trino-query-engine",
 }
 export enum ReadWebhookIntegrationType {
   webhook = "webhook",

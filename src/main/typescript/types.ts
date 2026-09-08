@@ -24,15 +24,13 @@ export type AuthMethod = 'oauth' | 'client-credentials' | 'none';
 export type QueryEngine = 'athena' | 'flink' | 'trino';
 
 /**
- * The concrete query engine a query will execute against, resolved from an
- * explicit `queryEngine` option or discovered from the org's feature flags
- * and configured integrations. `buildQueryJobDefinition` is pure over this
- * value — it does no discovery itself.
+ * The concrete query engine a query will execute against, resolved locally from the explicit
+ * `queryEngine` option with Athena as the default.
  */
 export type ResolvedQueryEngine =
   | { kind: 'athena' }
   | { kind: 'flink' }
-  | { kind: 'trino'; queryEngineIntegrationId: string };
+  | { kind: 'trino' };
 
 export interface CliOptions {
   orgName: string;

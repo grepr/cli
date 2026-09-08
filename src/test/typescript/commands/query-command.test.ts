@@ -1,14 +1,11 @@
 import { describe, it, expect, vi } from 'bun:test';
 
 // Mock the global fetch function and the auth classes before query-command.js
-// is first imported: it pulls in grepr-api-client.js (for resolveQueryEngine),
-// which constructs GreprAuth/ClientCredentialsAuth/NoAuth from auth.js. Static
-// imports are hoisted ahead of these calls, so query-command.js must be
-// imported dynamically, after the mocks are registered (same pattern as
+// is first imported: it pulls in grepr-api-client.js, which constructs
+// GreprAuth/ClientCredentialsAuth/NoAuth from auth.js. Static imports are
+// hoisted ahead of these calls, so query-command.js must be imported
+// dynamically, after the mocks are registered (same pattern as
 // grepr-api-client.test.ts).
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
-
 interface MockAuthConfig {
   [key: string]: string | boolean | number | undefined;
 }
@@ -29,6 +26,7 @@ vi.mock('../../../main/typescript/lib/auth.js', () => ({
 
 const {
   buildQueryJobDefinition,
+  resolveQueryEngine,
   validateQueryOptions,
   QueryCommand
 } = await import('../../../main/typescript/commands/query-command.js');
@@ -40,7 +38,6 @@ import {
   GreprRawSpanSourceType,
   LogsIcebergTableSourceType,
   LogsSynchronousSinkType,
-  ReadTrinoQueryEngineType,
   SpansSynchronousSinkType,
   TracesIcebergTableSourceType,
   TrinoRawLogsSourceType,
@@ -66,9 +63,19 @@ const baseOptions: QueryCommandOptions = {
   browser: false
 };
 
-const TRINO_INTEGRATION_ID = 'qe_trino_1';
-
 describe('query-command', () => {
+  describe('resolveQueryEngine', () => {
+    it('test_resolveQueryEngine_unset_defaultsToAthena', () => {
+      expect(resolveQueryEngine()).toEqual({ kind: 'athena' });
+    });
+
+    for (const engine of ['athena', 'flink', 'trino'] as const) {
+      it(`test_resolveQueryEngine_${engine}_returnsExplicitEngine`, () => {
+        expect(resolveQueryEngine(engine)).toEqual({ kind: engine });
+      });
+    }
+  });
+
   describe('buildQueryJobDefinition', () => {
     for (const {
       dataType,
@@ -90,7 +97,7 @@ describe('query-command', () => {
       },
       {
         dataType: CreateLogsBackfillJobDataType.logs,
-        resolvedEngine: { kind: 'trino', queryEngineIntegrationId: TRINO_INTEGRATION_ID },
+        resolvedEngine: { kind: 'trino' },
         sourceType: TrinoRawLogsSourceType.trino_raw_log_source,
         sinkType: LogsSynchronousSinkType.logs_sync_sink
       },
@@ -108,7 +115,7 @@ describe('query-command', () => {
       },
       {
         dataType: CreateSpansBackfillJobDataType.spans,
-        resolvedEngine: { kind: 'trino', queryEngineIntegrationId: TRINO_INTEGRATION_ID },
+        resolvedEngine: { kind: 'trino' },
         sourceType: TrinoRawSpanSourceType.trino_raw_span_source,
         sinkType: SpansSynchronousSinkType.spans_sync_sink
       }
@@ -137,13 +144,6 @@ describe('query-command', () => {
         ]);
         expect(job.teamIds).toEqual(['team_alpha']);
         expect(job.jobGraph.edges).toEqual(['source -> sink']);
-        if (resolvedEngine.kind === 'trino') {
-          expect(job.jobGraph.vertices[0]).toMatchObject({
-            queryEngineIntegrationId: resolvedEngine.queryEngineIntegrationId
-          });
-        } else {
-          expect('queryEngineIntegrationId' in job.jobGraph.vertices[0]).toBe(false);
-        }
         if (dataType === CreateSpansBackfillJobDataType.spans) {
           expect(job.jobGraph.vertices[0]).toMatchObject({
             query: {
@@ -160,29 +160,6 @@ describe('query-command', () => {
       });
     }
 
-    it('test_buildQueryJobDefinition_resolvedEnginePassedIn_isPureWithNoNetworkCall', () => {
-      // buildQueryJobDefinition takes an already-resolved engine and returns
-      // synchronously: no integration lookup or feature-flag check happens
-      // inside it, unlike the async resolveQueryEngine that produces this value.
-      const job = buildQueryJobDefinition({
-        ...baseOptions,
-        datasetId: 'ds_raw',
-        dataType: CreateLogsBackfillJobDataType.logs,
-        query: 'service:web'
-      }, {
-        dataType: CreateLogsBackfillJobDataType.logs,
-        datasetId: 'ds_raw',
-        teamIds: [],
-        sinkOperations: [],
-        postReducerSqlOperations: []
-      }, { kind: 'trino', queryEngineIntegrationId: TRINO_INTEGRATION_ID });
-
-      expect(job).not.toBeInstanceOf(Promise);
-      expect(job.jobGraph.vertices[0]).toMatchObject({
-        type: TrinoRawLogsSourceType.trino_raw_log_source,
-        queryEngineIntegrationId: TRINO_INTEGRATION_ID
-      });
-    });
   });
 
   describe('validateQueryOptions', () => {
@@ -213,32 +190,7 @@ describe('query-command', () => {
       }
     }
 
-    it('test_execute_explicitTrino_propagatesResolvedIntegrationIdIntoSubmittedJob', async () => {
-      mockFetch.mockClear();
-      mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({
-        items: [{
-          id: TRINO_INTEGRATION_ID,
-          name: 'trino-prod',
-          organizationId: 'org_1',
-          jobIds: [],
-          teamIds: [],
-          type: ReadTrinoQueryEngineType.trino_query_engine,
-          payload: {
-            host: 'trino.internal.example.com',
-            port: 443,
-            catalog: 'lakehouse',
-            ssl: true,
-            user: 'grepr'
-          },
-          createdAt: '2026-01-01T00:00:00Z',
-          updatedAt: '2026-01-01T00:00:00Z',
-          version: 1
-        }]
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      }));
-
+    it('test_execute_explicitTrino_submitsTrinoSource', async () => {
       const command = new TestableQueryCommand();
       await command.execute({
         ...baseOptions,
@@ -251,12 +203,8 @@ describe('query-command', () => {
         quiet: true
       });
 
-      // resolveQueryEngine only produced the id (see the resolver tests in
-      // grepr-api-client.test.ts) — this asserts it actually reaches the
-      // source vertex of the job that would be submitted to the API.
       expect(command.capturedJob?.jobGraph.vertices[0]).toMatchObject({
-        type: TrinoRawLogsSourceType.trino_raw_log_source,
-        queryEngineIntegrationId: TRINO_INTEGRATION_ID
+        type: TrinoRawLogsSourceType.trino_raw_log_source
       });
     });
   });
