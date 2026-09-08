@@ -1748,7 +1748,7 @@
             "type": "string"
           },
           "expression": {
-            "description": "Grepr SQL expression or projection alias to order by.",
+            "description": "Grepr SQL expression or projection alias to order by. The expression may reference projection aliases.",
             "maxLength": 4096,
             "minLength": 0,
             "type": "string"
@@ -1936,6 +1936,14 @@
             "description": "Promoted logs_raw tag keys for the requested dataset.",
             "items": {
               "description": "Promoted logs_raw tag keys for the requested dataset.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "reservedWords": {
+            "description": "Words the analytics SQL grammar reserves; they cannot be used as result aliases.",
+            "items": {
+              "description": "Words the analytics SQL grammar reserves; they cannot be used as result aliases.",
               "type": "string"
             },
             "type": "array"
@@ -16341,10 +16349,10 @@
           },
           "groupBy": {
             "default": [],
-            "description": "Grepr SQL expressions or projection aliases used for grouping.",
+            "description": "Grepr SQL expressions or projection aliases used for grouping. An expression may reference projection aliases.",
             "items": {
               "default": "[]",
-              "description": "Grepr SQL expressions or projection aliases used for grouping.",
+              "description": "Grepr SQL expressions or projection aliases used for grouping. An expression may reference projection aliases.",
               "maxLength": 4096,
               "minLength": 0,
               "type": "string"
@@ -16354,7 +16362,7 @@
             "type": "array"
           },
           "having": {
-            "description": "Optional Grepr SQL expression applied after aggregation.",
+            "description": "Optional Grepr SQL expression applied after aggregation. The expression may reference projection aliases.",
             "maxLength": 4096,
             "minLength": 0,
             "type": "string"

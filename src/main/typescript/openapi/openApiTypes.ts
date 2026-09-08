@@ -4038,7 +4038,7 @@ export interface components {
        * @enum {string}
        */
       direction?: AnalyticsOrderByDirection;
-      /** @description Grepr SQL expression or projection alias to order by. */
+      /** @description Grepr SQL expression or projection alias to order by. The expression may reference projection aliases. */
       expression: string;
     };
     /** @description The function's arguments in call order, for rendering a signature. Required arguments precede optional ones. */
@@ -4114,6 +4114,8 @@ export interface components {
       maxScanBudgetBytes?: number;
       /** @description Promoted logs_raw tag keys for the requested dataset. */
       promotedTagKeys?: string[];
+      /** @description Words the analytics SQL grammar reserves; they cannot be used as result aliases. */
+      reservedWords?: string[];
     };
     AndEventPredicate: {
       /**
@@ -11576,11 +11578,11 @@ export interface components {
       /** @description Logical table alias to query. */
       from: string;
       /**
-       * @description Grepr SQL expressions or projection aliases used for grouping.
+       * @description Grepr SQL expressions or projection aliases used for grouping. An expression may reference projection aliases.
        * @default []
        */
       groupBy?: string[];
-      /** @description Optional Grepr SQL expression applied after aggregation. */
+      /** @description Optional Grepr SQL expression applied after aggregation. The expression may reference projection aliases. */
       having?: string;
       /**
        * Format: int32
