@@ -386,8 +386,22 @@ const pageMap = [
       {
         name: "analyze",
         route: "/queries/analyze",
-        type: "page",
+        type: "folder",
         title: "Aggregate logs with Analyze mode",
+        children: [
+          {
+            name: "index",
+            route: "/queries/analyze",
+            type: "page",
+            title: "Overview",
+          },
+          {
+            name: "functions",
+            route: "/queries/analyze/functions",
+            type: "page",
+            title: "Function reference",
+          },
+        ],
       },
     ],
   },

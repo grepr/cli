@@ -14,13 +14,18 @@ Log Explorer's Analyze mode groups and aggregates the logs your search returns i
 1. Go to Log Explorer and select a dataset and a time range.
 1. Enter a search query to filter the logs you want to analyze. Analyze mode accepts the same [Datadog-like syntax](/queries/datadog) and [New Relic log query-like syntax](/queries/new-relic) as searching.
 1. Open the **Analyze...** drawer under the search controls.
-1. Enter one or more expressions for the values to compute, and give each one a name. A value you don't name is named for you, after the field or function it computes.
-1. To group the results, enter the expressions whose distinct combinations you want as rows. Without a grouping expression, the analysis returns one row for the whole time range.
-1. To keep only some of the groups, enter a condition over the computed aggregates.
-1. To sort the results, enter the expressions to sort by and select ascending or descending for each one.
-1. Set the maximum number of rows to return. An analysis returns 2,500 rows by default, and Log Explorer accepts a limit of up to 10,000 rows.
+1. Under **SELECT**, enter one expression per result column, and name it in the **Alias** field beside it. An alias is optional; a column you leave unnamed is named for you, after the field or function it computes.
+1. Under **GROUP BY**, add the expressions whose distinct combinations you want as rows. Each one becomes a result column on its own, so it does not have to be repeated under SELECT. Without a grouping expression, an analysis made only of aggregates returns a single row.
+1. Under **HAVING**, enter a condition over the aggregates to keep only some of the groups. Leave it empty to keep every group.
+1. Under **ORDER BY**, add the expressions to sort by and pick ascending or descending for each one.
+1. Set **Row limit**, the maximum number of rows to return. An analysis returns 2,500 rows by default, and Log Explorer accepts a limit of up to 10,000 rows.
+1. Set **Scan budget** to cap how much of the lake the query may read, then run the analysis.
 
-Grouping and sorting expressions can refer to a computed value by the name you gave it.
+The drawer's clauses are the SQL ones, so an analysis reads the way the query does: SELECT computes,
+GROUP BY collapses, HAVING filters the groups, ORDER BY and the row limit choose which of them you
+see. HAVING and ORDER BY can refer to a result by its alias.
+
+![The Analyze drawer with a count and a 95th-percentile duration grouped by service, and the result rows below it.](/images/queries/analyze/analyze-drawer.png)
 
 ## Log fields
 
@@ -46,35 +51,130 @@ A tag holds an array of values, so index the value you want:
 tags['service'][1]
 ```
 
-Address an attribute with the `@` form, which accepts dotted paths:
+## Attribute values
+
+Grepr parses structured logs into an attribute document. Address a single attribute with the `@`
+form, which takes a dotted path through that document:
 
 ```sql
+@duration_ms
 @http.status_code
+@kubernetes.labels.app
 ```
+
+The shorthand reads one value out of the parsed document. The `attributes` column is the whole
+document, so use `@` when you want a field and `attributes` when you want the object itself.
+
+An attribute has no declared type, because two logs in the same dataset can carry different types
+under the same name. Grepr infers a type from how you use the value, so `SUM(@duration_ms)` reads it
+as a number and `LOWER(@user.email)` reads it as a string.
+
+Cast the attribute when you need a specific type or precision, and when you sort:
+
+```sql
+-- Read the attribute as a whole number
+CAST(@duration_ms AS BIGINT)
+
+-- Or aggregate the cast value
+MIN(CAST(@duration_ms AS DOUBLE))
+```
+
+<Callout type="warning">
+Sorting by an attribute you have not cast sorts it as text, so `100` sorts before `99`. Cast it to
+sort numerically.
+</Callout>
+
+A path segment is a name or a number, and the segments are separated by dots. An `@` with nothing
+after it, or a segment that starts with a digit, is a syntax error, and Log Explorer reports it
+against the expression you typed.
 
 ## Expressions
 
-Expressions are Grepr SQL, so aggregates, `CASE`, `CAST`, and the scalar functions Grepr SQL supports are all available. Log Explorer suggests the functions your dataset accepts as you type. To learn more, see [SQL functions](/transforms/sql-transform/sql-functions).
+Expressions are Grepr SQL, so aggregates, `CASE`, `CAST` and scalar functions are all available.
+
+Every function an analysis can call is listed in the
+[Analyze function reference](/queries/analyze/functions), with its arguments and a worked example.
+Log Explorer offers the same set from the expression box: focus it and start typing, and it suggests
+every function, field, tag and attribute your dataset accepts.
+
+<Callout type="warning">
+The [SQL transform function reference](/transforms/sql-transform/sql-functions) does **not** describe
+Analyze. A SQL transform runs inside a pipeline on Flink SQL; an analysis runs on the query engine
+over the data lake. The two support different functions, so a function listed there may not exist
+here, and the autocomplete offers functions that page does not list.
+</Callout>
 
 ```sql
--- Log count by service: one computed value, one grouping expression
+-- Log count by service: the first line goes under SELECT, the second under GROUP BY
 COUNT(*)
 tags['service'][1]
 
--- 95th percentile request duration by endpoint
+-- 95th percentile request duration by endpoint, the same way
 APPROX_PERCENTILE(@duration_ms, 0.95)
 @http.route
 
--- Severity buckets
+-- A SELECT column that buckets rather than aggregates
 CASE WHEN severity >= 4 THEN 'error' ELSE 'ok' END
 ```
 
-An attribute has no declared type, so Grepr infers its type from how you use it. `SUM(@duration_ms)` reads the attribute as a number, and `LOWER(@user)` reads it as a string. Cast the attribute when you need a specific type or precision:
+`SEVERITY_TEXT` names the OpenTelemetry severity bucket a severity number falls in: `TRACE`,
+`DEBUG`, `INFO`, `WARN`, `ERROR` or `FATAL`, and nothing for a log with no severity. It takes a whole
+number, so text and fractional operands are errors rather than values Grepr will quietly convert.
+Grouping by it is the usual way to count logs per level:
 
 ```sql
-CAST(@duration_ms AS BIGINT)
-MIN(CAST(@duration_ms AS DOUBLE))
+-- Under SELECT
+COUNT(*)
+
+-- Under GROUP BY
+SEVERITY_TEXT(severity)
 ```
+
+![An analysis grouping by SEVERITY_TEXT(severity), whose result rows are named FATAL, ERROR, WARN, INFO and DEBUG.](/images/queries/analyze/analyze-severity-text.png)
+
+## Name the results
+
+Every SELECT column and every GROUP BY expression takes an optional alias, entered in the **Alias**
+field beside the expression. The alias becomes the result column's name. Leave it empty and Grepr
+names the column after the field or function the expression computes:
+
+| Expression | Alias you enter | Result column |
+| --- | --- | --- |
+| `COUNT(*)` | empty | `count0` |
+| `APPROX_PERCENTILE(@duration_ms, 0.95)` | `p95` | `p95` |
+| `tags['service'][1]` | empty | `service` |
+| `@http.route` | `route` | `route` |
+
+An alias can then be referred to under HAVING or ORDER BY, anywhere inside that expression rather
+than only as the whole of it:
+
+```sql
+-- Under HAVING
+count0 > 100
+
+-- Under ORDER BY
+p95 / 1000
+```
+
+Aliases are lowercase, made of letters, digits and underscores, up to 128 characters, and a
+reference has to match exactly.
+
+<Callout type="warning">
+The alias goes in its own field, not in the expression: writing `AS p95` inside an expression is
+rejected. An alias is available to HAVING and ORDER BY, not to the other SELECT columns.
+</Callout>
+
+Reserved SQL words cannot be aliases, because the query engine would read them as syntax. Log
+Explorer refuses one and suggests an alternative, which is why the default first column is `count0`
+rather than `count`. The same rule applies to an alias Grepr derives for you: a derived name that
+lands on a reserved word gains a `0`.
+
+<Callout type="info">
+`count`, `max`, `min`, `sum`, `value`, `date` and `year` are reserved. Ordinary field names such as
+`level`, `name`, `type`, `path`, `service`, `host` and `user` are not.
+</Callout>
+
+![The analysis refused with the message: Alias "count" is a reserved SQL word. Use "count0" or another name.](/images/queries/analyze/analyze-reserved-alias.png)
 
 ## Window by time
 
@@ -89,13 +189,54 @@ Each duration is a whole number of milliseconds, seconds, minutes, hours, or day
 
 Windows are aligned to the clock rather than to the start of your time range, so the first and last windows of a range can be partial.
 
+Setting a window puts `window_start` and `window_end` first among the result columns and sorts the
+analysis by `window_start` ascending, so the rows read in time order without any further setup. Both
+are yours to change: drag the columns elsewhere, or edit the sort. Removing the window removes the
+bound columns and drops the sorts that referred to them.
+
+![A tumbling 5 minute window over event time, with window_start and window_end leading the result columns.](/images/queries/analyze/analyze-time-window.png)
+
 In the API, the window is the `window` object of the structured analytics query, with ISO-8601 durations:
 
 ```json
 { "kind": "SLIDING", "timestamp": "EVENT_TIMESTAMP", "size": "PT5M", "slide": "PT1M" }
 ```
 
-## Results
+## Read the results table
+
+The results table sorts and arranges itself, and both are part of the analysis rather than a local
+view setting.
+
+Click a column header to sort by that column. Each click cycles it through descending, ascending and
+unsorted, and the header shows which way it is sorting. Shift-click a second header to sort by it as
+well instead of replacing the first sort; headers then carry a number showing which sort takes
+priority. Clicking a header edits the sort expressions in the builder, so the two never disagree.
+
+A sort takes effect on the next run, because the query engine does the sorting. Until then the table
+says the sort no longer matches the rows it is showing.
+
+![Result headers sorting by count0 first and p95 second, each carrying its priority number, with a note that the sort changed and Analyze has to be run to apply it.](/images/queries/analyze/analyze-header-sort.png)
+
+Drag a header by its handle to move a column. From the keyboard, focus the handle, press Space to
+pick the column up, move it with the arrow keys, and press Space again to drop it. The order you
+arrange survives a re-run, a new column appears without disturbing it, and the CSV download follows
+the order you see rather than the order the query returned.
+
+## Share an analysis
+
+The whole analysis lives in the page URL, so copying the link from the address bar is enough to share
+it. The link carries the dataset, the time range, the search query, every SELECT and GROUP BY
+expression with its alias, the HAVING condition, the sort, the time window, the row limit, the scan
+budget and the column order you arranged.
+
+Opening such a link seats every control and runs the analysis once, so the recipient sees the rows
+rather than a filled-in form waiting for a click. Back and Forward move between analyses you have
+already run, restoring the controls without re-running and spending scan budget again.
+
+An analysis long enough to overflow the address bar cannot be carried, and Log Explorer says so
+rather than sharing a link that silently restores something different.
+
+## Result values
 
 Each result row is a JSON object keyed by column name, so a column holds whatever the underlying attribute held, such as a number, a string, a boolean, or a nested object. Timestamps are returned as UTC ISO 8601 strings.
 
@@ -103,14 +244,17 @@ Each result row is a JSON object keyed by column name, so a column holds whateve
 
 - An analysis reads one dataset at a time. Joins across datasets are not supported.
 - Sorting by an attribute that you have not cast sorts it by its stored text, so `100` sorts before `99`. Cast the attribute to sort numerically, as in `CAST(@http.status_code AS BIGINT)`.
+- A result alias cannot be a reserved SQL word, and a reference to one has to match its lowercase spelling exactly.
+- A sort you set from the result headers applies on the next run, since the query engine sorts the rows.
+- An analysis too long to fit in the address bar cannot be shared as a link.
 - An analysis can compute at most 128 values, group by at most 64 expressions, and sort by at most 64 expressions. Each expression can be at most 4,096 characters long.
-- A time window's size and slide are whole milliseconds, and a sliding window covers at most 100 slides. `window_start` and `window_end` cannot be used as result names while a window is set.
+- A time window's size and slide are whole milliseconds, and a sliding window covers at most 100 slides. `window_start` and `window_end` cannot be used as result aliases while a window is set.
 - Row, array, and map values are converted to nested JSON automatically. A column is rejected with an error that names it only if its value type has no JSON representation at all, or a constructed row has two fields with the same name.
 
 <HiddenFAQ faqs={[
   {
     q: "How do I aggregate logs in Grepr?",
-    a: "Go to Log Explorer, select a dataset and time range, enter a search query, then open the Analyze... drawer under the search controls. Enter Grepr SQL expressions for the values to compute, the expressions to group by, and the sort order."
+    a: "Go to Log Explorer, select a dataset and time range, enter a search query, then open the Analyze... drawer under the search controls. Enter Grepr SQL expressions under SELECT for the result columns, under GROUP BY for the grouping keys, and under ORDER BY for the sort."
   },
   {
     q: "What are the log field names in Grepr SQL?",
@@ -123,5 +267,21 @@ Each result row is a JSON object keyed by column name, so a column holds whateve
   {
     q: "How many rows can an analysis return?",
     a: "An analysis returns 2,500 rows by default. Log Explorer accepts a limit of up to 10,000 rows."
+  },
+  {
+    q: "How do I share a Grepr analysis?",
+    a: "Copy the page URL. The link carries the dataset, time range, query, every expression and alias, the window, the row limit, the scan budget and the column order, and opening it runs the analysis once."
+  },
+  {
+    q: "Why can't I name a result column count?",
+    a: "count is a reserved SQL word, so the query engine would read it as syntax rather than as an alias. Log Explorer suggests count0 instead, which is also why the default first column is named count0."
+  },
+  {
+    q: "How do I turn severity numbers into names in Grepr?",
+    a: "Use SEVERITY_TEXT(severity), which names the OpenTelemetry bucket: TRACE, DEBUG, INFO, WARN, ERROR or FATAL. It takes a whole number, so cast an attribute before passing it."
+  },
+  {
+    q: "How do I sort an analysis by a result column?",
+    a: "Click the column header in the results table. Each click cycles descending, ascending and unsorted, and Shift-click adds a second column to the sort. The sort applies on the next run."
   },
 ]} />

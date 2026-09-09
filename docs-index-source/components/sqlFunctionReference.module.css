@@ -1,0 +1,90 @@
+/*
+ * Colours are inherited rather than set, and rules are drawn from a translucent
+ * currentColor, so the table reads correctly in both the light and the dark
+ * theme without knowing which one is active.
+ */
+
+.scroll {
+  overflow-x: auto;
+  margin-top: 0.75rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5rem 0.75rem 0.5rem 0;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.table th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table code {
+  white-space: nowrap;
+}
+
+.args code {
+  white-space: normal;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+
+.example + .example {
+  margin-top: 0.5rem;
+}
+
+.explanation {
+  margin-top: 0.15rem;
+  opacity: 0.75;
+}
+
+/* The theme styles headings it renders from Markdown, not raw elements, so a
+ * section heading here has to describe itself. */
+.heading {
+  margin-top: 2.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+}
+
+/* The theme underlines anchors it renders from Markdown, so these say so
+ * themselves. The colour is inherited rather than set, which keeps the link
+ * legible in both themes without naming a brand colour. */
+.jump a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  opacity: 0.85;
+}
+
+.jump a:hover {
+  opacity: 1;
+}

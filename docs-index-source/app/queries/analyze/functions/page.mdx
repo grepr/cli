@@ -1,0 +1,41 @@
+---
+description: Every function an Analyze expression can call in Grepr SQL, with its arguments, what it does, and a worked example.
+---
+
+import { Callout } from 'nextra/components'
+import { SqlFunctionReference } from '@/components/SqlFunctionReference'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Analyze function reference
+
+These are the functions an [Analyze](/queries/analyze) expression can call. Log Explorer suggests the
+same set from the expression box as you type.
+
+An argument's type says what you may pass, not what the engine derives. `NUMBER` covers every numeric
+type, because an attribute read with `@` has no declared type and is read as a number on demand — see
+[attribute values](/queries/analyze#attribute-values). An argument in square brackets may be omitted,
+and a trailing `…` means the argument may be repeated.
+
+<Callout type="warning">
+Analyze is not the SQL transform. A [SQL transform](/transforms/sql-transform) runs inside a pipeline
+on Flink SQL and supports a different function library, listed in
+[its own reference](/transforms/sql-transform/sql-functions). A function on that page may not exist
+here, and the functions below are not all available there.
+</Callout>
+
+<SqlFunctionReference />
+
+<HiddenFAQ faqs={[
+  {
+    q: "What SQL functions can I use in a Grepr analysis?",
+    a: "Aggregates such as COUNT, SUM, MIN, MAX, AVG, APPROX_PERCENTILE and APPROX_COUNT_DISTINCT, plus string, date and time, numeric, conditional, type-conversion, array and map, variant and bitwise functions. Log Explorer's expression box suggests the same set as you type."
+  },
+  {
+    q: "Are the SQL transform functions the same as the Analyze functions?",
+    a: "No. A SQL transform runs inside a pipeline on Flink SQL; an analysis runs on the query engine over the data lake. The two support different function libraries, so a function documented for the SQL transform may not exist in an analysis."
+  },
+  {
+    q: "How do I compute a percentile in Grepr?",
+    a: "Use APPROX_PERCENTILE(value, fraction), as in APPROX_PERCENTILE(@duration_ms, 0.95) for a 95th percentile. It takes a numeric value and a fraction between 0 and 1, and always returns a DOUBLE."
+  },
+]} />
