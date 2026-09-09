@@ -13,7 +13,7 @@ Log Explorer's Analyze mode groups and aggregates the logs your search returns i
 
 1. Go to Log Explorer and select a dataset and a time range.
 1. Enter a search query to filter the logs you want to analyze. Analyze mode accepts the same [Datadog-like syntax](/queries/datadog) and [New Relic log query-like syntax](/queries/new-relic) as searching.
-1. Open the menu on the **Search** button and select **Analyze**.
+1. Open the **Analyze...** drawer under the search controls.
 1. Enter one or more expressions for the values to compute, and give each one a name. A value you don't name is named for you, after the field or function it computes.
 1. To group the results, enter the expressions whose distinct combinations you want as rows. Without a grouping expression, the analysis returns one row for the whole time range.
 1. To keep only some of the groups, enter a condition over the computed aggregates.
@@ -110,7 +110,7 @@ Each result row is a JSON object keyed by column name, so a column holds whateve
 <HiddenFAQ faqs={[
   {
     q: "How do I aggregate logs in Grepr?",
-    a: "Go to Log Explorer, select a dataset and time range, enter a search query, then select Analyze from the menu on the Search button. Enter Grepr SQL expressions for the values to compute, the expressions to group by, and the sort order."
+    a: "Go to Log Explorer, select a dataset and time range, enter a search query, then open the Analyze... drawer under the search controls. Enter Grepr SQL expressions for the values to compute, the expressions to group by, and the sort order."
   },
   {
     q: "What are the log field names in Grepr SQL?",
