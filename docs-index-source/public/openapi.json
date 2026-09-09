@@ -2854,6 +2854,39 @@
           "Job Actions"
         ]
       },
+      "BatchCancelInvestigationsRequest": {
+        "properties": {
+          "investigationIds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "investigationIds"
+        ],
+        "type": "object"
+      },
+      "BatchCancelInvestigationsResponse": {
+        "properties": {
+          "cancelling": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedInvestigation"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "BillingPeriodsResponse": {
         "description": "Static customer header data for the billing page: display name + selectable reporting periods.",
         "properties": {
@@ -6887,6 +6920,8 @@
             "enum": [
               "QUEUED",
               "RUNNING",
+              "STOPPING",
+              "CANCELLING",
               "STOPPED",
               "COMPLETED",
               "FAILED",
@@ -6937,6 +6972,8 @@
             "enum": [
               "QUEUED",
               "RUNNING",
+              "STOPPING",
+              "CANCELLING",
               "STOPPED",
               "COMPLETED",
               "FAILED",
@@ -15151,6 +15188,21 @@
           },
           "updatedAt": {
             "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SkippedInvestigation": {
+        "properties": {
+          "investigationId": {
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "NOT_FOUND",
+              "ALREADY_FINISHED"
+            ],
             "type": "string"
           }
         },
@@ -27793,9 +27845,54 @@
         ]
       }
     },
+    "/v1/investigations/cancel": {
+      "post": {
+        "description": "Marks eligible investigations as CANCELLING in one organization-scoped request. Cancellation is completed asynchronously.",
+        "operationId": "batchCancelInvestigations",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchCancelInvestigationsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchCancelInvestigationsResponse"
+                }
+              }
+            },
+            "description": "Cancellation requests recorded"
+          },
+          "400": {
+            "description": "The request is empty or contains more than 500 ids"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Cancel multiple investigations",
+        "tags": [
+          "Investigations"
+        ]
+      }
+    },
     "/v1/investigations/{investigationId}/cancel": {
       "post": {
-        "description": "Aborts an investigation for good (running or paused). It pauses at the next turn boundary if running, then finalizes as CANCELLED.",
+        "description": "Durably marks an eligible investigation as CANCELLING and returns 202. An asynchronous reconciler cancels its workflow, if one exists, and it then finalizes as CANCELLED.",
         "operationId": "cancel",
         "parameters": [
           {
@@ -27888,7 +27985,7 @@
     },
     "/v1/investigations/{investigationId}/stop": {
       "post": {
-        "description": "Requests a running investigation pause at its next turn boundary. It can then be resumed with a message. Returns 202; the status flips to STOPPED shortly after.",
+        "description": "Durably marks a running investigation as STOPPING and returns 202. An asynchronous reconciler signals the workflow, which pauses at its next turn boundary and records STOPPED; it can then be resumed with a message.",
         "operationId": "stop",
         "parameters": [
           {

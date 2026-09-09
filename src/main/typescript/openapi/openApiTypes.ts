@@ -2092,6 +2092,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/investigations/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cancel multiple investigations
+     * @description Marks eligible investigations as CANCELLING in one organization-scoped request. Cancellation is completed asynchronously.
+     */
+    post: operations["batchCancelInvestigations"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/investigations/{investigationId}/cancel": {
     parameters: {
       query?: never;
@@ -2103,7 +2123,7 @@ export interface paths {
     put?: never;
     /**
      * Cancel an investigation
-     * @description Aborts an investigation for good (running or paused). It pauses at the next turn boundary if running, then finalizes as CANCELLED.
+     * @description Durably marks an eligible investigation as CANCELLING and returns 202. An asynchronous reconciler cancels its workflow, if one exists, and it then finalizes as CANCELLED.
      */
     post: operations["cancel"];
     delete?: never;
@@ -2143,7 +2163,7 @@ export interface paths {
     put?: never;
     /**
      * Stop a running investigation
-     * @description Requests a running investigation pause at its next turn boundary. It can then be resumed with a message. Returns 202; the status flips to STOPPED shortly after.
+     * @description Durably marks a running investigation as STOPPING and returns 202. An asynchronous reconciler signals the workflow, which pauses at its next turn boundary and records STOPPED; it can then be resumed with a message.
      */
     post: operations["stop"];
     delete?: never;
@@ -4654,6 +4674,13 @@ export interface components {
        * @enum {string}
        */
       type: BackfillJobActionType;
+    };
+    BatchCancelInvestigationsRequest: {
+      investigationIds: string[];
+    };
+    BatchCancelInvestigationsResponse: {
+      cancelling?: string[];
+      skipped?: components["schemas"]["SkippedInvestigation"][];
     };
     /** @description Static customer header data for the billing page: display name + selectable reporting periods. */
     BillingPeriodsResponse: {
@@ -10906,6 +10933,11 @@ export interface components {
       /** Format: date-time */
       updatedAt?: string;
     };
+    SkippedInvestigation: {
+      investigationId?: string;
+      /** @enum {string} */
+      reason?: SkippedInvestigationReason;
+    };
     /** @description The payload containing integration data. */
     SlackMcp: {
       /** @description Masked API key for the MCP server. */
@@ -13967,6 +13999,10 @@ export type SchemaAverageAttributesMergeStrategy =
   components["schemas"]["AverageAttributesMergeStrategy"];
 export type SchemaBackfillJobAction =
   components["schemas"]["BackfillJobAction"];
+export type SchemaBatchCancelInvestigationsRequest =
+  components["schemas"]["BatchCancelInvestigationsRequest"];
+export type SchemaBatchCancelInvestigationsResponse =
+  components["schemas"]["BatchCancelInvestigationsResponse"];
 export type SchemaBillingPeriodsResponse =
   components["schemas"]["BillingPeriodsResponse"];
 export type SchemaBillingSummary = components["schemas"]["BillingSummary"];
@@ -14429,6 +14465,8 @@ export type SchemaSignupRequest = components["schemas"]["SignupRequest"];
 export type SchemaSimple = components["schemas"]["Simple"];
 export type SchemaSkillFile = components["schemas"]["SkillFile"];
 export type SchemaSkillView = components["schemas"]["SkillView"];
+export type SchemaSkippedInvestigation =
+  components["schemas"]["SkippedInvestigation"];
 export type SchemaSlackMcp = components["schemas"]["SlackMcp"];
 export type SchemaSocialUserInfo = components["schemas"]["SocialUserInfo"];
 export type SchemaSortFieldConfig = components["schemas"]["SortFieldConfig"];
@@ -20388,6 +20426,44 @@ export interface operations {
       };
     };
   };
+  batchCancelInvestigations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["BatchCancelInvestigationsRequest"];
+      };
+    };
+    responses: {
+      /** @description Cancellation requests recorded */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BatchCancelInvestigationsResponse"];
+        };
+      };
+      /** @description The request is empty or contains more than 500 ids */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   cancel: {
     parameters: {
       query?: never;
@@ -23871,6 +23947,8 @@ export enum IgnoreAttributesMergeStrategyType {
 export enum InvestigationSummaryStatus {
   QUEUED = "QUEUED",
   RUNNING = "RUNNING",
+  STOPPING = "STOPPING",
+  CANCELLING = "CANCELLING",
   STOPPED = "STOPPED",
   COMPLETED = "COMPLETED",
   FAILED = "FAILED",
@@ -24194,6 +24272,10 @@ export enum SimpleType {
 export enum SkillViewScope {
   PLATFORM = "PLATFORM",
   ORGANIZATION = "ORGANIZATION",
+}
+export enum SkippedInvestigationReason {
+  NOT_FOUND = "NOT_FOUND",
+  ALREADY_FINISHED = "ALREADY_FINISHED",
 }
 export enum SocialUserInfoType {
   SOCIAL = "SOCIAL",
