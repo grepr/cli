@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'bun:test';
 import {
   buildMessageLengthPredicate,
+  messageLengthBoundsError,
+  messageLengthNrql,
   buildSignalPredicate,
   buildSourcePredicate,
   deriveSpanQueryFilters,
@@ -11,7 +13,7 @@ import {
   CreateLogsBackfillJobDataType,
   CreateSpansBackfillJobDataType,
   DatadogQueryPredicateType,
-  MessageLengthPredicateType,
+  NrqlQueryPredicateType,
   NewRelicQueryPredicateType
 } from '../../../main/typescript/openapi/openApiTypes.js';
 
@@ -214,15 +216,79 @@ describe('deriveSpanQueryFilters', () => {
   });
 });
 
+/**
+ * The exact strings the server converts a stored `message-length` predicate into. They are pinned
+ * byte for byte here, and identically in the backend's LegacyMessageLengthPredicateTest and the
+ * frontend's predicateBuilders.test.ts, because the three producers must agree on one wire form.
+ */
+const BOTH_BOUNDS_NRQL =
+  'SELECT * FROM Log WHERE if(message IS NULL, 0, char_length(message)) >= 0' +
+  ' AND if(message IS NULL, 0, char_length(message)) <= 32768';
+const MIN_ONLY_NRQL =
+  'SELECT * FROM Log WHERE if(message IS NULL, 0, char_length(message)) >= 500';
+const MAX_ONLY_NRQL =
+  'SELECT * FROM Log WHERE if(message IS NULL, 0, char_length(message)) <= 200';
+const CLAMPED_MIN_NRQL =
+  'SELECT * FROM Log WHERE if(message IS NULL, 0, char_length(message)) > 2147483647';
+
+const BEYOND_INT_LENGTH = 2147483648;
+
+const NEGATIVE_MIN_ERROR = '--message-length-min must not be negative';
+const NEGATIVE_MAX_ERROR = '--message-length-max must not be negative';
+const REVERSED_RANGE_ERROR =
+  '--message-length-min (100) must not be greater than --message-length-max (10)';
+
 describe('log predicate builders', () => {
+  it('test_messageLengthNrql_noBounds_returnsUndefined', () => {
+    expect(messageLengthNrql(undefined, undefined)).toBeUndefined();
+  });
+
+  it('test_messageLengthBoundsError_validRange_returnsUndefined', () => {
+    expect(messageLengthBoundsError(0, 100)).toBeUndefined();
+    expect(messageLengthBoundsError(undefined, undefined)).toBeUndefined();
+    expect(messageLengthBoundsError(100, 100)).toBeUndefined();
+  });
+
+  it('test_messageLengthNrql_negativeMin_throwsBeforeClamping', () => {
+    expect(() => messageLengthNrql(-1, undefined)).toThrow(NEGATIVE_MIN_ERROR);
+  });
+
+  it('test_messageLengthNrql_negativeMax_throwsBeforeClamping', () => {
+    expect(() => messageLengthNrql(undefined, -1)).toThrow(NEGATIVE_MAX_ERROR);
+  });
+
+  it('test_messageLengthNrql_reversedRange_throwsBeforeClamping', () => {
+    expect(() => messageLengthNrql(100, 10)).toThrow(REVERSED_RANGE_ERROR);
+  });
+
+  it('test_buildMessageLengthPredicate_negativeMin_throwsRangeError', () => {
+    expect(() => buildMessageLengthPredicate({ messageLengthMin: -1 }))
+      .toThrow(new RangeError(NEGATIVE_MIN_ERROR));
+  });
+
+  it('test_buildMessageLengthPredicate_reversedRange_throwsRangeError', () => {
+    expect(() => buildMessageLengthPredicate({
+      messageLengthMin: 100,
+      messageLengthMax: 10
+    })).toThrow(new RangeError(REVERSED_RANGE_ERROR));
+  });
+
+  it('test_messageLengthNrql_minBeyondIntRange_clampsToAnUnreachableBound', () => {
+    expect(messageLengthNrql(BEYOND_INT_LENGTH, undefined)).toBe(CLAMPED_MIN_NRQL);
+  });
+
+  it('test_messageLengthNrql_maxBeyondIntRange_dropsTheBound', () => {
+    expect(messageLengthNrql(undefined, BEYOND_INT_LENGTH)).toBeUndefined();
+  });
+
   it('test_buildMessageLengthPredicate_bothBounds_preservesZero', () => {
     expect(buildMessageLengthPredicate({
       messageLengthMin: 0,
       messageLengthMax: 32768
     })).toEqual({
-      type: MessageLengthPredicateType.message_length,
-      minLength: 0,
-      maxLength: 32768
+      type: NrqlQueryPredicateType.nrql_query,
+      query: BOTH_BOUNDS_NRQL,
+      strict: true
     });
   });
 
@@ -238,8 +304,9 @@ describe('log predicate builders', () => {
           query: 'service:web'
         },
         {
-          type: MessageLengthPredicateType.message_length,
-          maxLength: 200
+          type: NrqlQueryPredicateType.nrql_query,
+          query: MAX_ONLY_NRQL,
+          strict: true
         }
       ]
     });
@@ -250,8 +317,9 @@ describe('log predicate builders', () => {
       query: '   ',
       messageLengthMin: 500
     })).toEqual({
-      type: MessageLengthPredicateType.message_length,
-      minLength: 500
+      type: NrqlQueryPredicateType.nrql_query,
+      query: MIN_ONLY_NRQL,
+      strict: true
     });
   });
 });

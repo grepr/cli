@@ -5358,7 +5358,6 @@
           "mapping": {
             "and-predicate": "#/components/schemas/AndEventPredicate",
             "datadog-query": "#/components/schemas/DatadogQueryPredicate",
-            "message-length": "#/components/schemas/MessageLengthPredicate",
             "metric-predicate": "#/components/schemas/MetricEventPredicate",
             "newrelic-query": "#/components/schemas/NewRelicQueryPredicate",
             "nrql-query": "#/components/schemas/NrqlQueryPredicate"
@@ -5371,9 +5370,6 @@
           },
           {
             "$ref": "#/components/schemas/DatadogQueryPredicate"
-          },
-          {
-            "$ref": "#/components/schemas/MessageLengthPredicate"
           },
           {
             "$ref": "#/components/schemas/MetricEventPredicate"
@@ -9873,35 +9869,6 @@
             "description": "A node representing a message-length filter in a parsed query.",
             "enum": [
               "message-length-node"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "type"
-        ],
-        "type": "object"
-      },
-      "MessageLengthPredicate": {
-        "properties": {
-          "maxLength": {
-            "description": "Inclusive maximum message length in characters. Null means no upper bound.",
-            "example": 32768,
-            "format": "int64",
-            "minimum": 0,
-            "type": "integer"
-          },
-          "minLength": {
-            "description": "Inclusive minimum message length in characters. Null means no lower bound.",
-            "example": 0,
-            "format": "int64",
-            "minimum": 0,
-            "type": "integer"
-          },
-          "type": {
-            "description": "A predicate that matches by message character length.",
-            "enum": [
-              "message-length"
             ],
             "type": "string"
           }
@@ -15807,9 +15774,6 @@
             "example": "8088",
             "type": "string"
           },
-          "queryParserBinding": {
-            "type": "string"
-          },
           "restAuthToken": {
             "description": "Masked Splunk REST Auth token for Splunk used for search",
             "example": "**************ey",
@@ -20489,7 +20453,6 @@
           "mapping": {
             "and-predicate": "#/components/schemas/AndEventPredicate",
             "datadog-query": "#/components/schemas/DatadogQueryPredicate",
-            "message-length": "#/components/schemas/MessageLengthPredicate",
             "metric-predicate": "#/components/schemas/MetricEventPredicate",
             "newrelic-query": "#/components/schemas/NewRelicQueryPredicate",
             "nrql-query": "#/components/schemas/NrqlQueryPredicate"
@@ -20506,9 +20469,6 @@
           },
           {
             "$ref": "#/components/schemas/DatadogQueryPredicate"
-          },
-          {
-            "$ref": "#/components/schemas/MessageLengthPredicate"
           },
           {
             "$ref": "#/components/schemas/MetricEventPredicate"
@@ -20539,7 +20499,6 @@
           "mapping": {
             "and-predicate": "#/components/schemas/AndEventPredicate",
             "datadog-query": "#/components/schemas/DatadogQueryPredicate",
-            "message-length": "#/components/schemas/MessageLengthPredicate",
             "metric-predicate": "#/components/schemas/MetricEventPredicate",
             "newrelic-query": "#/components/schemas/NewRelicQueryPredicate",
             "nrql-query": "#/components/schemas/NrqlQueryPredicate"
@@ -20555,9 +20514,6 @@
           },
           {
             "$ref": "#/components/schemas/DatadogQueryPredicate"
-          },
-          {
-            "$ref": "#/components/schemas/MessageLengthPredicate"
           },
           {
             "$ref": "#/components/schemas/MetricEventPredicate"

@@ -176,6 +176,30 @@ describe('query-command', () => {
         jobId: 'job_1'
       })).not.toThrow();
     });
+
+    // The message-length flags become an NRQL predicate the server accepts
+    // whatever the bounds, so an unusable range would come back as zero rows
+    // rather than an error. Validation runs before any request is made.
+    it('test_validateQueryOptions_negativeMessageLengthMin_shouldFailNamingTheFlag', () => {
+      expect(() => validateQueryOptions({
+        ...baseOptions,
+        datasetId: 'ds_raw',
+        dataType: CreateLogsBackfillJobDataType.logs,
+        messageLengthMin: -1
+      })).toThrow('--message-length-min must not be negative');
+    });
+
+    it('test_validateQueryOptions_reversedMessageLengthRange_shouldFailNamingBothFlags', () => {
+      expect(() => validateQueryOptions({
+        ...baseOptions,
+        datasetId: 'ds_raw',
+        dataType: CreateLogsBackfillJobDataType.logs,
+        messageLengthMin: 100,
+        messageLengthMax: 10
+      })).toThrow(
+        '--message-length-min (100) must not be greater than --message-length-max (10)'
+      );
+    });
   });
 
   describe('QueryCommand.execute', () => {

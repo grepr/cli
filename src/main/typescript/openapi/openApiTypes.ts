@@ -6031,7 +6031,6 @@ export interface components {
     } & (
       | components["schemas"]["AndEventPredicate"]
       | components["schemas"]["DatadogQueryPredicate"]
-      | components["schemas"]["MessageLengthPredicate"]
       | components["schemas"]["MetricEventPredicate"]
       | components["schemas"]["NewRelicQueryPredicate"]
       | components["schemas"]["NrqlQueryPredicate"]
@@ -8481,25 +8480,6 @@ export interface components {
        * @enum {string}
        */
       type: MessageLengthNodeType;
-    };
-    MessageLengthPredicate: {
-      /**
-       * Format: int64
-       * @description Inclusive maximum message length in characters. Null means no upper bound.
-       * @example 32768
-       */
-      maxLength?: number;
-      /**
-       * Format: int64
-       * @description Inclusive minimum message length in characters. Null means no lower bound.
-       * @example 0
-       */
-      minLength?: number;
-      /**
-       * @description A predicate that matches by message character length. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: MessageLengthPredicateType;
     };
     MessageNode: {
       /**
@@ -11483,7 +11463,6 @@ export interface components {
        * @example 8088
        */
       ingestPort?: string;
-      queryParserBinding?: string;
       /**
        * @description Masked Splunk REST Auth token for Splunk used for search
        * @example **************ey
@@ -14047,7 +14026,6 @@ export interface components {
     } & (
       | components["schemas"]["AndEventPredicate"]
       | components["schemas"]["DatadogQueryPredicate"]
-      | components["schemas"]["MessageLengthPredicate"]
       | components["schemas"]["MetricEventPredicate"]
       | components["schemas"]["NewRelicQueryPredicate"]
       | components["schemas"]["NrqlQueryPredicate"]
@@ -14064,7 +14042,6 @@ export interface components {
     } & (
       | components["schemas"]["AndEventPredicate"]
       | components["schemas"]["DatadogQueryPredicate"]
-      | components["schemas"]["MessageLengthPredicate"]
       | components["schemas"]["MetricEventPredicate"]
       | components["schemas"]["NewRelicQueryPredicate"]
       | components["schemas"]["NrqlQueryPredicate"]
@@ -14502,8 +14479,6 @@ export type SchemaMessageExactMatchNode =
   components["schemas"]["MessageExactMatchNode"];
 export type SchemaMessageLengthNode =
   components["schemas"]["MessageLengthNode"];
-export type SchemaMessageLengthPredicate =
-  components["schemas"]["MessageLengthPredicate"];
 export type SchemaMessageNode = components["schemas"]["MessageNode"];
 export type SchemaMessagePrefixNode =
   components["schemas"]["MessagePrefixNode"];
@@ -24542,9 +24517,6 @@ export enum MessageExactMatchNodeType {
 }
 export enum MessageLengthNodeType {
   message_length_node = "message-length-node",
-}
-export enum MessageLengthPredicateType {
-  message_length = "message-length",
 }
 export enum MessageNodeType {
   message_node = "message-node",

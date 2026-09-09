@@ -27,7 +27,9 @@ Invoke `grepr:query-predicate` with the user's intent and resolved signal. Use
 its `query` and `queryType` unchanged. Omit `--query` when it returns an empty
 predicate.
 
-`--message-length-min` and `--message-length-max` apply only to logs.
+`--message-length-min` and `--message-length-max` apply only to logs. They are sent as an
+NRQL predicate over `char_length(message)`, ANDed with `--query` when both are given; a null
+message counts as length zero.
 
 ## 3. Bound and run once
 

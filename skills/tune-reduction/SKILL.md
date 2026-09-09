@@ -49,8 +49,8 @@ together rather than serial cycles.
 
 ## Step 3: Empty messages
 
-Sample the raw dataset (logs before the reducer); null messages count as
-length zero:
+Sample the raw dataset (logs before the reducer). The length flags become an NRQL predicate
+over `char_length(message)` in which a null message counts as length zero:
 
 ```bash
 grepr query --dataset-id <RAW_DS> --message-length-min 0 --message-length-max 0 \

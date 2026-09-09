@@ -3,10 +3,10 @@ import {
   CreateLogsBackfillJobDataType,
   CreateSpansBackfillJobDataType,
   DatadogQueryPredicateType,
-  MessageLengthPredicateType,
   NewRelicQueryPredicateType,
+  NrqlQueryPredicateType,
   type SchemaEventPredicate,
-  type SchemaMessageLengthPredicate,
+  type SchemaNrqlQueryPredicate,
   type SchemaQuery,
   type SchemaTracesIcebergTableSource
 } from '../openapi/openApiTypes.js';
@@ -72,26 +72,86 @@ export function buildLanguageQueryPredicate(options: LanguageQueryOptions): Sche
   }
 }
 
-export function buildMessageLengthPredicate(
-  options: SourcePredicateOptions
-): SchemaMessageLengthPredicate | undefined {
-  const min = options.messageLengthMin;
-  const max = options.messageLengthMax;
-  const minIsNumber = typeof min === 'number' && !Number.isNaN(min);
-  const maxIsNumber = typeof max === 'number' && !Number.isNaN(max);
-  if (!minIsNumber && !maxIsNumber) {
+/**
+ * A message length is a Java `String` length on the server, so it is an `int`.
+ * Bounds outside that range have exact int-range equivalents.
+ */
+const INT_MAX_LENGTH = 2147483647;
+
+/**
+ * The message length as NRQL reads it. `char_length(NULL)` is NULL, which would make both bound
+ * comparisons unknown; the conditional is what keeps a null message reading as length zero.
+ */
+const MESSAGE_LENGTH = 'if(message IS NULL, 0, char_length(message))';
+
+/**
+ * The reason a message-length range is unusable, or undefined when it is fine. A negative bound is
+ * not a length, and a reversed range can never match. The removed structured predicate rejected
+ * both with a 400; the NRQL replacement would instead be accepted and quietly return no rows.
+ */
+export function messageLengthBoundsError(min?: number, max?: number): string | undefined {
+  if (isBound(min) && min < 0) {
+    return '--message-length-min must not be negative';
+  }
+  if (isBound(max) && max < 0) {
+    return '--message-length-max must not be negative';
+  }
+  if (isBound(min) && isBound(max) && min > max) {
+    return `--message-length-min (${min}) must not be greater than --message-length-max (${max})`;
+  }
+  return undefined;
+}
+
+/**
+ * Builds the NRQL a message-length range is expressed as, or undefined when no bound constrains
+ * anything. This text must stay byte-identical to what the server converts a stored
+ * `message-length` predicate into.
+ *
+ * Bounds outside int range clamp to their exact equivalents: every message satisfies an upper
+ * bound at or above INT_MAX_LENGTH, so it is dropped, and no message satisfies a lower bound above
+ * it, so it becomes a bound no length can meet. Clamping would hide an unusable range, so the
+ * bounds are validated first.
+ *
+ * @throws RangeError when messageLengthBoundsError rejects the bounds
+ */
+export function messageLengthNrql(min?: number, max?: number): string | undefined {
+  const boundsError = messageLengthBoundsError(min, max);
+  if (boundsError !== undefined) {
+    throw new RangeError(boundsError);
+  }
+  const bounds: string[] = [];
+  if (isBound(min)) {
+    bounds.push(
+      min > INT_MAX_LENGTH
+        ? `${MESSAGE_LENGTH} > ${INT_MAX_LENGTH}`
+        : `${MESSAGE_LENGTH} >= ${min}`
+    );
+  }
+  if (isBound(max) && max < INT_MAX_LENGTH) {
+    bounds.push(`${MESSAGE_LENGTH} <= ${max}`);
+  }
+  if (bounds.length === 0) {
     return undefined;
   }
-  const predicate: SchemaMessageLengthPredicate = {
-    type: MessageLengthPredicateType.message_length
+  return `SELECT * FROM Log WHERE ${bounds.join(' AND ')}`;
+}
+
+export function buildMessageLengthPredicate(
+  options: SourcePredicateOptions
+): SchemaNrqlQueryPredicate | undefined {
+  const query = messageLengthNrql(options.messageLengthMin, options.messageLengthMax);
+  if (query === undefined) {
+    return undefined;
+  }
+  return {
+    type: NrqlQueryPredicateType.nrql_query,
+    query,
+    strict: true
   };
-  if (minIsNumber) {
-    predicate.minLength = min;
-  }
-  if (maxIsNumber) {
-    predicate.maxLength = max;
-  }
-  return predicate;
+}
+
+function isBound(value: number | undefined): value is number {
+  return typeof value === 'number' && !Number.isNaN(value);
 }
 
 export function buildSourcePredicate(options: SourcePredicateOptions): SchemaEventPredicate {
