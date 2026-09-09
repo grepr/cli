@@ -15,6 +15,16 @@ Grepr released these feature updates, improvements, and bug fixes in August 2026
 
 You can now add a masking step to any log pipeline rather than only to pipelines built from a template, and give each mask an optional condition so that only the logs matching it are rewritten. A conditional mask leaves every other log untouched, which lets you redact a value that appears in one service's logs without rewriting the rest of the pipeline's traffic. Masking runs before logs reach the Grepr data lake and your vendor sinks, so the masked value is both what Grepr stores and what it forwards.
 
+{/* ENGT-5488 */}
+### Lift nested JSON fields to the top level in the parser
+
+The JSON parser can now lift the contents of object-valued fields to the top level of the log event, so values nested inside JSON become first-class fields you can search and transform without extra grok. In the parser dialog you list the fields to lift in precedence order, and Grepr raises their children into the containing object recursively, with later names winning when two fields collide. Lifting defaults to the `message` envelope and preserves the Datadog `service`, `hostname`, and `status` attributes, and a pipeline that lists no fields to lift is unchanged.
+
+{/* ENGT-5504 */}
+### Manage existing pipelines with the Grepr Terraform provider
+
+The `grepr_pipeline` resource can now manage pipelines that already exist, not just ones Terraform created. It detects drift against the live pipeline, so edits made in the Grepr UI appear in a plan instead of staying hidden, imports an existing pipeline into Terraform state, and keeps tags in sync. Combining a graph edit with a start or stop in the same apply is still rejected. See [_](/admin/terraform-provider).
+
 {/* ENGT-5452 */}
 ### A reorganized log reducer editor
 
@@ -23,9 +33,11 @@ The **Edit Reducer** dialog is now three focused sections instead of one long fo
 ### Other improvements and fixes
 
 - {/* ENGT-5446 */} Log Explorer now applies instant filtering to queries that filter on `status` or `level`, and a query it cannot filter in the browser reports that plainly instead of showing an internal translator error.
+- {/* ENGT-5517 */} Log and span searches no longer cap their results at 150,000 rows, so a high-volume search returns every matching record instead of a truncated set.
 - {/* ENGT-5431 */} Improved the performance of trace pipelines.
 - {/* ENGT-5481 */} Fixed an issue where a backfill to a dataset or vendor integration created before Grepr adopted its current identifier format was rejected as invalid, so the backfill never started.
 - {/* ENGT-5482 */} Fixed an issue where the actions menu on a field in the Log Explorer detail panel opened off the edge of the screen, and where choosing an item from it closed the detail panel.
+- {/* ENGT-5518 */} Fixed an issue where a trace pipeline could stop with an error while tagging the sampling type on certain spans.
 
 ## August 20, 2026
 

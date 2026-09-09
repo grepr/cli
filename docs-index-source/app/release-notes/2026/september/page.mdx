@@ -1,0 +1,34 @@
+---
+description: Release notes for new features, improvements, and bug fixes to the Grepr platform released in September 2026.
+---
+
+# Release notes for September 2026
+
+Grepr released these feature updates, improvements, and bug fixes in September 2026.
+
+## September 6, 2026
+
+{/* ENGT-5465, ENGT-5590, ENGT-5592, ENGT-5587 */}
+### Aggregate your logs with Analyze mode in Log Explorer
+
+You can now run aggregation queries over your logs directly in Log Explorer. Open the menu on the **Search** button and select **Analyze**, then describe what to compute as Grepr SQL expressions, such as counts, sums, and percentiles, and group the results by any field. You can bucket the results into time windows to see how the aggregates change over the time range, and the builder autocompletes function names and shows their signatures and examples as you type. See [_](/queries/analyze).
+
+{/* ENGT-5197 */}
+### Reach Grepr support from inside the app
+
+You can now start a conversation with Grepr support from any page in the app using the in-app messenger. Your messages are tied to your organization account, so support has the context to help you.
+
+### Other improvements and fixes
+
+- {/* ENGT-5455 */} You can now preview how a masking step transforms sample log lines before you apply it to a pipeline.
+- {/* ENGT-5527 */} Managing exceptions in a logs pipeline is easier, with search, ID-column filtering, and bulk selection that applies only to the rows your search returned.
+- {/* ENGT-5535 */} You can now add a field shown in the Log Explorer details panel as a column in the results table using the **Add as column** option.
+- {/* ENGT-5538 */} You can now download a pipeline's draft job graph as a JSON file from the pipeline editor without applying it.
+- {/* ENGT-5507 */} The Grepr plugin now includes a sql-analytics skill for running read-only analytical SQL queries over a dataset, available after you update the plugin.
+- {/* ENGT-5253 */} Improved the performance and memory usage of trace pipelines that forward to Datadog.
+- {/* ENGT-5567, ENGT-5555 */} The data lake step for agent session pipelines now shows the dataset name with quick links to open it in the explorer or edit its settings, matching the log and trace steps.
+- {/* ENGT-5521 */} The data explorer button on an agent session pipeline now opens the agent sessions page with the matching dataset and time range.
+- {/* ENGT-5526 */} Fixed an issue where the pipeline details page showed default reducer settings instead of your saved reduction window, new-pattern signal, and nested group-by settings.
+- {/* ENGT-5505 */} Fixed an issue where setting up a pipeline could hang instead of completing when the underlying cluster was slow to schedule its health checks.
+- {/* ENGT-5503 */} Fixed an issue where the CLI `job:draft` command failed on pipelines whose vendor sink feeds another sink.
+- {/* ENGT-5565 */} Fixed an issue where importing a Datadog dashboard failed to parse when a template variable defined an out-of-range bound.
