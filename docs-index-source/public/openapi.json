@@ -2146,6 +2146,11 @@
             "minimum": 1,
             "type": "integer"
           },
+          "supportsEmbedding": {
+            "description": "Whether this provider offers an embeddings API and can back agent investigation memory.",
+            "readOnly": true,
+            "type": "boolean"
+          },
           "validateKeysOnSave": {
             "default": true,
             "description": "Indicates whether to validate the API key when saving.",
@@ -5675,6 +5680,11 @@
             "maximum": 24,
             "minimum": 1,
             "type": "integer"
+          },
+          "supportsEmbedding": {
+            "description": "Whether this provider offers an embeddings API and can back agent investigation memory.",
+            "readOnly": true,
+            "type": "boolean"
           },
           "validateKeysOnSave": {
             "default": true,
@@ -10887,6 +10897,11 @@
             "example": "**************ey",
             "readOnly": true,
             "type": "string"
+          },
+          "supportsEmbedding": {
+            "description": "Whether this provider offers an embeddings API and can back agent investigation memory.",
+            "readOnly": true,
+            "type": "boolean"
           },
           "validateKeysOnSave": {
             "default": true,

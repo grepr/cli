@@ -24,6 +24,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/agent-memory/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Search past investigation memories for the closest CANDIDATES — for the agent to judge for itself, not a ranked answer */
+    post: operations["search"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agent-memory/{investigationId}/link/{memoryId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Record that this investigation is another occurrence of a memory you already found, instead of recording a second copy of it. Counts a recurrence against that memory and fills in anything it was missing; it must belong to the same agent. */
+    post: operations["link"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agent-memory/{investigationId}/record": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Record what this investigation concluded. Writes only this investigation's own memory, and may be called again to correct or extend it — a field you leave out keeps what was already recorded, so a later call cannot lose an earlier finding. */
+    post: operations["record"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/agent-session-analytics/jobs": {
     parameters: {
       query?: never;
@@ -188,6 +239,26 @@ export interface paths {
      * @description Returns the tools the MCP server publishes, so an agent's allowed-tools list can name them exactly. Read live from the server with the integration's credentials, and cached briefly.
      */
     get: operations["mcpIntegrationTools"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agents/roster": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List the agent roster
+     * @description Returns every agent configured for your organization, projected to just id and name — enough to decide whose recorded memory is worth searching.
+     */
+    get: operations["roster"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3577,6 +3648,7 @@ export interface components {
       maxTokens?: number;
       /** Format: int32 */
       maxTurns?: number;
+      memoryConfiguration?: components["schemas"]["AgentMemoryConfiguration"];
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       name: string;
       serviceAccountId: string;
@@ -3600,6 +3672,7 @@ export interface components {
       maxTokens?: number;
       /** Format: int32 */
       maxTurns?: number;
+      memoryConfiguration?: components["schemas"]["AgentMemoryConfiguration"];
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       serviceAccountId: string;
       systemPrompt: string;
@@ -3622,6 +3695,7 @@ export interface components {
       maxTokens?: number;
       /** Format: int32 */
       maxTurns?: number;
+      memoryConfiguration?: components["schemas"]["AgentMemoryConfiguration"];
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       name: string;
       serviceAccountId: string;
@@ -3680,11 +3754,27 @@ export interface components {
       allowedTools?: string[];
       integrationId: string;
     };
+    AgentMemoryConfiguration: {
+      embeddingIntegrationId?: string;
+      embeddingModel?: string;
+      enabled?: boolean;
+      searchTool?: boolean;
+      signalTagMappings?: {
+        [key: string]: {
+          [key: string]: string[];
+        };
+      };
+      vectorIndexIntegrationId?: string;
+    };
     AgentRecentHealth: {
       /** Format: int32 */
       completed?: number;
       /** Format: int32 */
       failed?: number;
+    };
+    AgentRosterEntry: {
+      id?: string;
+      name?: string;
     };
     AgentSessionAnalytics: {
       analysisJobId: string;
@@ -4362,6 +4452,8 @@ export interface components {
        * @example 24
        */
       maxTokensWindowHours?: number;
+      /** @description Whether this provider offers an embeddings API and can back agent investigation memory. */
+      readonly supportsEmbedding?: boolean;
       /**
        * @description Indicates whether to validate the API key when saving.
        * @default true
@@ -6188,6 +6280,8 @@ export interface components {
        * @example 24
        */
       maxTokensWindowHours?: number;
+      /** @description Whether this provider offers an embeddings API and can back agent investigation memory. */
+      readonly supportsEmbedding?: boolean;
       /**
        * @description Indicates whether to validate the API key when saving.
        * @default true
@@ -7183,6 +7277,14 @@ export interface components {
        * @enum {string}
        */
       type: LegacyDatadogMetricsSinkType;
+    };
+    LinkMemoryRequest: {
+      resolution?: string;
+      rootCause?: string;
+      /** @enum {string} */
+      rootCauseConfidence?: LinkMemoryRequestRootCauseConfidence;
+      ruledOut?: string;
+      symptoms?: string;
     };
     /** @description The payload containing integration data. */
     LiteLlm: {
@@ -8422,6 +8524,65 @@ export interface components {
       required?: boolean;
       type?: string;
     };
+    MemorySearchRequest: {
+      agentId?: string;
+      /** @default {} */
+      entityTags?: {
+        [key: string]: string;
+      };
+      /**
+       * Format: int32
+       * @default 10
+       */
+      limit?: number;
+      /**
+       * @default SEMANTIC
+       * @enum {string}
+       */
+      mode: MemorySearchRequestMode;
+      query?: string;
+      /** Format: date-time */
+      recordedAfter?: string;
+      /** @enum {string} */
+      significance?: MemorySearchRequestSignificance;
+    };
+    MemorySearchResponse: {
+      entityTagVocabulary?: {
+        [key: string]: string[];
+      };
+      note?: string;
+      preamble?: string;
+      results?: components["schemas"]["MemorySearchResult"][];
+      semanticSearchUnavailable?: boolean;
+    };
+    MemorySearchResult: {
+      /** Format: int64 */
+      ageDays?: number;
+      agentId?: string;
+      investigationId?: string;
+      /** Format: int64 */
+      lastSeenDays?: number;
+      /** @enum {string} */
+      matchedOn?: MemorySearchRequestMode;
+      /** @enum {string} */
+      recencyLabel?: MemorySearchResultRecencyLabel;
+      /** Format: date-time */
+      recordedAt?: string;
+      /** Format: int32 */
+      recurrenceCount?: number;
+      resolution?: string;
+      rootCause?: string;
+      /** @enum {string} */
+      rootCauseConfidence?: LinkMemoryRequestRootCauseConfidence;
+      ruledOut?: string;
+      /** @enum {string} */
+      significance?: MemorySearchRequestSignificance;
+      symptoms?: string;
+      tags?: {
+        [key: string]: string;
+      };
+      title?: string;
+    };
     MergeMapAttributeAction: {
       /**
        * Format: int32
@@ -9023,6 +9184,8 @@ export interface components {
        * @example **************ey
        */
       readonly apiKey?: string;
+      /** @description Whether this provider offers an embeddings API and can back agent investigation memory. */
+      readonly supportsEmbedding?: boolean;
       /**
        * @description Indicates whether to validate the API key when saving.
        * @default true
@@ -10710,6 +10873,28 @@ export interface components {
       | components["schemas"]["VariantEvent"]
       | components["schemas"]["AgentSessionSummary"]
     );
+    RecordMemoryRequest: {
+      clear?: RecordMemoryRequestClear[];
+      entityTags?: {
+        [key: string]: string;
+      };
+      resolution?: string;
+      rootCause?: string;
+      /** @enum {string} */
+      rootCauseConfidence?: LinkMemoryRequestRootCauseConfidence;
+      ruledOut?: string;
+      /** @enum {string} */
+      significance: MemorySearchRequestSignificance;
+      symptoms?: string;
+      title: string;
+    };
+    RecordMemoryResponse: {
+      alreadyRecorded?: boolean;
+      memoryId?: string;
+      nearestMemoryId?: string;
+      /** Format: double */
+      nearestSimilarity?: number;
+    };
     ReducerLogsQuerySource: {
       /** @description The ID of the dataset to read data from. */
       datasetId: string;
@@ -14077,8 +14262,11 @@ export type SchemaAgentMaxTokensStatus =
   components["schemas"]["AgentMaxTokensStatus"];
 export type SchemaAgentMcpIntegrations =
   components["schemas"]["AgentMcpIntegrations"];
+export type SchemaAgentMemoryConfiguration =
+  components["schemas"]["AgentMemoryConfiguration"];
 export type SchemaAgentRecentHealth =
   components["schemas"]["AgentRecentHealth"];
+export type SchemaAgentRosterEntry = components["schemas"]["AgentRosterEntry"];
 export type SchemaAgentSessionAnalytics =
   components["schemas"]["AgentSessionAnalytics"];
 export type SchemaAgentSessionAnalyticsDownload =
@@ -14418,6 +14606,8 @@ export type SchemaLatestReadingStrategy =
   components["schemas"]["LatestReadingStrategy"];
 export type SchemaLegacyDatadogMetricsSink =
   components["schemas"]["LegacyDatadogMetricsSink"];
+export type SchemaLinkMemoryRequest =
+  components["schemas"]["LinkMemoryRequest"];
 export type SchemaLiteLlm = components["schemas"]["LiteLlm"];
 export type SchemaLlmConfig = components["schemas"]["LlmConfig"];
 export type SchemaLlmPrompt = components["schemas"]["LlmPrompt"];
@@ -14473,6 +14663,12 @@ export type SchemaMaxAttributesMergeStrategy =
 export type SchemaMcpToolDescriptor =
   components["schemas"]["McpToolDescriptor"];
 export type SchemaMcpToolParameter = components["schemas"]["McpToolParameter"];
+export type SchemaMemorySearchRequest =
+  components["schemas"]["MemorySearchRequest"];
+export type SchemaMemorySearchResponse =
+  components["schemas"]["MemorySearchResponse"];
+export type SchemaMemorySearchResult =
+  components["schemas"]["MemorySearchResult"];
 export type SchemaMergeMapAttributeAction =
   components["schemas"]["MergeMapAttributeAction"];
 export type SchemaMessageExactMatchNode =
@@ -14614,6 +14810,10 @@ export type SchemaReadUser = components["schemas"]["ReadUser"];
 export type SchemaReadWebhookIntegration =
   components["schemas"]["ReadWebhookIntegration"];
 export type SchemaReadableData = components["schemas"]["ReadableData"];
+export type SchemaRecordMemoryRequest =
+  components["schemas"]["RecordMemoryRequest"];
+export type SchemaRecordMemoryResponse =
+  components["schemas"]["RecordMemoryResponse"];
 export type SchemaReducerLogsQuerySource =
   components["schemas"]["ReducerLogsQuerySource"];
 export type SchemaRemoveKeyAttributeAction =
@@ -14889,6 +15089,81 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  search: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["MemorySearchRequest"];
+      };
+    };
+    responses: {
+      /** @description Search results */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MemorySearchResponse"];
+        };
+      };
+    };
+  };
+  link: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        investigationId: string;
+        memoryId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["LinkMemoryRequest"];
+      };
+    };
+    responses: {
+      /** @description The link was applied */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  record: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        investigationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["RecordMemoryRequest"];
+      };
+    };
+    responses: {
+      /** @description The recorded memory's id and a nearest-neighbour hint */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordMemoryResponse"];
+        };
       };
     };
   };
@@ -15269,6 +15544,33 @@ export interface operations {
       };
       /** @description The MCP server could not be reached, or refused the request */
       502: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  roster: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Roster retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentRosterEntry"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
         headers: {
           [name: string]: unknown;
         };
@@ -24445,6 +24747,11 @@ export enum JsonLogProcessorType {
 export enum LegacyDatadogMetricsSinkType {
   legacy_datadog_metrics_sink = "legacy-datadog-metrics-sink",
 }
+export enum LinkMemoryRequestRootCauseConfidence {
+  CONFIRMED = "CONFIRMED",
+  SUSPECTED = "SUSPECTED",
+  UNKNOWN = "UNKNOWN",
+}
 export enum LlmPromptOutputActions {
   FORWARD_TO_SINKS = "FORWARD_TO_SINKS",
 }
@@ -24508,6 +24815,22 @@ export enum MaskingRuleConfigType {
 }
 export enum MaxAttributesMergeStrategyType {
   max = "max",
+}
+export enum MemorySearchRequestMode {
+  SEMANTIC = "SEMANTIC",
+  TEXT = "TEXT",
+  TIMELINE = "TIMELINE",
+}
+export enum MemorySearchRequestSignificance {
+  INCIDENT = "INCIDENT",
+  OBSERVATION = "OBSERVATION",
+  INCONCLUSIVE = "INCONCLUSIVE",
+  BENIGN = "BENIGN",
+}
+export enum MemorySearchResultRecencyLabel {
+  ACTIVE = "ACTIVE",
+  RECENT = "RECENT",
+  HISTORICAL = "HISTORICAL",
 }
 export enum MergeMapAttributeActionType {
   attribute_merge_action = "attribute-merge-action",
@@ -24720,6 +25043,13 @@ export enum ReadSumoType {
 }
 export enum ReadWebhookIntegrationType {
   webhook = "webhook",
+}
+export enum RecordMemoryRequestClear {
+  SYMPTOMS = "SYMPTOMS",
+  ROOT_CAUSE = "ROOT_CAUSE",
+  RULED_OUT = "RULED_OUT",
+  RESOLUTION = "RESOLUTION",
+  ENTITY_TAGS = "ENTITY_TAGS",
 }
 export enum ReducerLogsQuerySourceType {
   reducer_logs_iceberg_table_source = "reducer-logs-iceberg-table-source",
