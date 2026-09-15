@@ -7571,7 +7571,8 @@ export interface components {
        *       "message",
        *       "msg",
        *       "log",
-       *       "M"
+       *       "M",
+       *       "Message"
        *     ]
        */
       messageReservedAttributes?: string[];

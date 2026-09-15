@@ -320,6 +320,9 @@
             "minimum": 1,
             "type": "integer"
           },
+          "memoryConfiguration": {
+            "$ref": "#/components/schemas/AgentMemoryConfiguration"
+          },
           "modelConfiguration": {
             "$ref": "#/components/schemas/ModelConfiguration"
           },
@@ -407,6 +410,9 @@
             "minimum": 1,
             "type": "integer"
           },
+          "memoryConfiguration": {
+            "$ref": "#/components/schemas/AgentMemoryConfiguration"
+          },
           "modelConfiguration": {
             "$ref": "#/components/schemas/ModelConfiguration"
           },
@@ -489,6 +495,9 @@
             "format": "int32",
             "minimum": 1,
             "type": "integer"
+          },
+          "memoryConfiguration": {
+            "$ref": "#/components/schemas/AgentMemoryConfiguration"
           },
           "modelConfiguration": {
             "$ref": "#/components/schemas/ModelConfiguration"
@@ -646,6 +655,38 @@
         ],
         "type": "object"
       },
+      "AgentMemoryConfiguration": {
+        "properties": {
+          "embeddingIntegrationId": {
+            "type": "string"
+          },
+          "embeddingModel": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "searchTool": {
+            "type": "boolean"
+          },
+          "signalTagMappings": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "object"
+            },
+            "type": "object"
+          },
+          "vectorIndexIntegrationId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "AgentRecentHealth": {
         "properties": {
           "completed": {
@@ -655,6 +696,17 @@
           "failed": {
             "format": "int32",
             "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "AgentRosterEntry": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
           }
         },
         "type": "object"
@@ -7188,6 +7240,18 @@
         },
         "type": "object"
       },
+      "ItemsCollectionReadLiteLlm": {
+        "properties": {
+          "items": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ReadLiteLlm"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "ItemsCollectionReadNewRelic": {
         "properties": {
           "items": {
@@ -7326,6 +7390,18 @@
             "default": [],
             "items": {
               "$ref": "#/components/schemas/ServiceAccountRead"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "ItemsCollectionString": {
+        "properties": {
+          "items": {
+            "default": [],
+            "items": {
+              "type": "string"
             },
             "type": "array"
           }
@@ -7645,6 +7721,75 @@
         "x-tags": [
           "Sinks"
         ]
+      },
+      "LinkMemoryRequest": {
+        "properties": {
+          "resolution": {
+            "type": "string"
+          },
+          "rootCause": {
+            "type": "string"
+          },
+          "rootCauseConfidence": {
+            "enum": [
+              "CONFIRMED",
+              "SUSPECTED",
+              "UNKNOWN"
+            ],
+            "type": "string"
+          },
+          "ruledOut": {
+            "type": "string"
+          },
+          "symptoms": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "LiteLlm": {
+        "description": "The payload containing integration data.",
+        "properties": {
+          "apiKey": {
+            "description": "Masked API key for LiteLLM",
+            "example": "**************ey",
+            "readOnly": true,
+            "type": "string"
+          },
+          "baseUrl": {
+            "description": "Base URL of the LiteLLM proxy.",
+            "example": "https://litellm.example.com/team-a",
+            "type": "string"
+          },
+          "integrationMaxTokens": {
+            "description": "Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 20,000,000.",
+            "example": 20000000,
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxTokensWindowHours": {
+            "description": "Length in hours of the UTC-aligned max tokens window; must be a divisor of 24. Null uses the default of 1.",
+            "example": 24,
+            "format": "int32",
+            "maximum": 24,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "validateKeysOnSave": {
+            "default": true,
+            "description": "Indicates whether to validate the API key when saving.",
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "baseUrl"
+        ],
+        "type": "object",
+        "x-type": {
+          "type": "litellm"
+        }
       },
       "LlmConfig": {
         "description": "Configuration for the LLM provider and model.",
@@ -8078,11 +8223,12 @@
               "message",
               "msg",
               "log",
-              "M"
+              "M",
+              "Message"
             ],
             "description": "Attributes to search for message values. The used attribute will be removed once remapped.",
             "items": {
-              "default": "[\"message\",\"msg\",\"log\",\"M\"]",
+              "default": "[\"message\",\"msg\",\"log\",\"M\",\"Message\"]",
               "description": "Attributes to search for message values. The used attribute will be removed once remapped.",
               "type": "string"
             },
@@ -9801,6 +9947,166 @@
         },
         "type": "object"
       },
+      "MemorySearchRequest": {
+        "properties": {
+          "agentId": {
+            "type": "string"
+          },
+          "entityTags": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "type": "object"
+          },
+          "limit": {
+            "default": 10,
+            "format": "int32",
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "mode": {
+            "default": "SEMANTIC",
+            "enum": [
+              "SEMANTIC",
+              "TEXT",
+              "TIMELINE"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "recordedAfter": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "significance": {
+            "enum": [
+              "INCIDENT",
+              "OBSERVATION",
+              "INCONCLUSIVE",
+              "BENIGN"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "type": "object"
+      },
+      "MemorySearchResponse": {
+        "properties": {
+          "entityTagVocabulary": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "note": {
+            "type": "string"
+          },
+          "preamble": {
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/MemorySearchResult"
+            },
+            "type": "array"
+          },
+          "semanticSearchUnavailable": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "MemorySearchResult": {
+        "properties": {
+          "ageDays": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "investigationId": {
+            "type": "string"
+          },
+          "lastSeenDays": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "matchedOn": {
+            "enum": [
+              "SEMANTIC",
+              "TEXT",
+              "TIMELINE"
+            ],
+            "type": "string"
+          },
+          "recencyLabel": {
+            "enum": [
+              "ACTIVE",
+              "RECENT",
+              "HISTORICAL"
+            ],
+            "type": "string"
+          },
+          "recordedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "recurrenceCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "rootCause": {
+            "type": "string"
+          },
+          "rootCauseConfidence": {
+            "enum": [
+              "CONFIRMED",
+              "SUSPECTED",
+              "UNKNOWN"
+            ],
+            "type": "string"
+          },
+          "ruledOut": {
+            "type": "string"
+          },
+          "significance": {
+            "enum": [
+              "INCIDENT",
+              "OBSERVATION",
+              "INCONCLUSIVE",
+              "BENIGN"
+            ],
+            "type": "string"
+          },
+          "symptoms": {
+            "type": "string"
+          },
+          "tags": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "MergeMapAttributeAction": {
         "properties": {
           "order": {
@@ -10531,7 +10837,8 @@
           "provider": {
             "enum": [
               "ANTHROPIC",
-              "GEMINI"
+              "GEMINI",
+              "LITELLM"
             ],
             "type": "string"
           }
@@ -13404,6 +13711,83 @@
         ],
         "type": "object"
       },
+      "ReadLiteLlm": {
+        "properties": {
+          "createdAt": {
+            "description": "Timestamp when the integration was created.",
+            "format": "date-time",
+            "readOnly": true,
+            "type": "string"
+          },
+          "id": {
+            "description": "The integration id",
+            "type": "string"
+          },
+          "jobIds": {
+            "description": "List of job IDs associated with the integration.",
+            "items": {
+              "description": "List of job IDs associated with the integration.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "name": {
+            "description": "Name of the integration.",
+            "example": "my_integration",
+            "pattern": "[a-zA-Z0-9 _-]{1,128}",
+            "type": "string"
+          },
+          "organizationId": {
+            "description": "Organization ID of the integration.",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/LiteLlm"
+          },
+          "teamIds": {
+            "description": "The team IDs that this integration is associated with.",
+            "items": {
+              "description": "The team IDs that this integration is associated with.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "type": {
+            "description": "The type of the integration. This is used to determine the payload type.",
+            "enum": [
+              "litellm"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "Timestamp when the integration was last updated.",
+            "format": "date-time",
+            "readOnly": true,
+            "type": "string"
+          },
+          "version": {
+            "description": "Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
+            "example": 0,
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "jobIds",
+          "name",
+          "organizationId",
+          "payload",
+          "type",
+          "updatedAt",
+          "version"
+        ],
+        "type": "object"
+      },
       "ReadNewRelic": {
         "properties": {
           "createdAt": {
@@ -13581,6 +13965,11 @@
             "type": "integer"
           },
           "maxGeminiIntegrations": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxLiteLlmIntegrations": {
             "format": "int32",
             "minimum": 1,
             "type": "integer"
@@ -14413,6 +14802,86 @@
         "required": [
           "type"
         ],
+        "type": "object"
+      },
+      "RecordMemoryRequest": {
+        "properties": {
+          "clear": {
+            "items": {
+              "description": "A previously recorded field to retract, leaving it empty.",
+              "enum": [
+                "SYMPTOMS",
+                "ROOT_CAUSE",
+                "RULED_OUT",
+                "RESOLUTION",
+                "ENTITY_TAGS"
+              ],
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "entityTags": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "rootCause": {
+            "type": "string"
+          },
+          "rootCauseConfidence": {
+            "enum": [
+              "CONFIRMED",
+              "SUSPECTED",
+              "UNKNOWN"
+            ],
+            "type": "string"
+          },
+          "ruledOut": {
+            "type": "string"
+          },
+          "significance": {
+            "enum": [
+              "INCIDENT",
+              "OBSERVATION",
+              "INCONCLUSIVE",
+              "BENIGN"
+            ],
+            "type": "string"
+          },
+          "symptoms": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "significance",
+          "title"
+        ],
+        "type": "object"
+      },
+      "RecordMemoryResponse": {
+        "properties": {
+          "alreadyRecorded": {
+            "type": "boolean"
+          },
+          "memoryId": {
+            "type": "string"
+          },
+          "nearestMemoryId": {
+            "type": "string"
+          },
+          "nearestSimilarity": {
+            "format": "double",
+            "type": "number"
+          }
+        },
         "type": "object"
       },
       "ReducerLogsQuerySource": {
@@ -19955,6 +20424,50 @@
         ],
         "type": "object"
       },
+      "WriteLiteLlm": {
+        "properties": {
+          "name": {
+            "description": "Name of the integration.",
+            "example": "my_integration",
+            "pattern": "[a-zA-Z0-9 _-]{1,128}",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/LiteLlm"
+          },
+          "teamIds": {
+            "default": [],
+            "description": "The team IDs that this integration is associated with.",
+            "items": {
+              "description": "The team IDs that this integration is associated with.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "type": {
+            "description": "The type of the integration. This is used to determine the payload type.",
+            "enum": [
+              "litellm"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "description": "Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
+            "example": 0,
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "payload",
+          "type",
+          "version"
+        ],
+        "type": "object"
+      },
       "WriteNewRelic": {
         "properties": {
           "name": {
@@ -20618,6 +21131,117 @@
         ]
       }
     },
+    "/v1/agent-memory/search": {
+      "post": {
+        "operationId": "search",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemorySearchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemorySearchResponse"
+                }
+              }
+            },
+            "description": "Search results"
+          }
+        },
+        "summary": "Search past investigation memories for the closest CANDIDATES — for the agent to judge for itself, not a ranked answer",
+        "tags": [
+          "Agent Memory"
+        ]
+      }
+    },
+    "/v1/agent-memory/{investigationId}/link/{memoryId}": {
+      "post": {
+        "operationId": "link",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "memoryId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkMemoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The link was applied"
+          }
+        },
+        "summary": "Record that this investigation is another occurrence of a memory you already found, instead of recording a second copy of it. Counts a recurrence against that memory and fills in anything it was missing; it must belong to the same agent.",
+        "tags": [
+          "Agent Memory"
+        ]
+      }
+    },
+    "/v1/agent-memory/{investigationId}/record": {
+      "post": {
+        "operationId": "record",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordMemoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordMemoryResponse"
+                }
+              }
+            },
+            "description": "The recorded memory\u0027s id and a nearest-neighbour hint"
+          }
+        },
+        "summary": "Record what this investigation concluded. Writes only this investigation\u0027s own memory, and may be called again to correct or extend it — a field you leave out keeps what was already recorded, so a later call cannot lose an earlier finding.",
+        "tags": [
+          "Agent Memory"
+        ]
+      }
+    },
     "/v1/agent-session-analytics/jobs": {
       "get": {
         "operationId": "list",
@@ -21177,6 +21801,42 @@
           }
         ],
         "summary": "List an MCP integration\u0027s tools",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
+    "/v1/agents/roster": {
+      "get": {
+        "description": "Returns every agent configured for your organization, projected to just id and name — enough to decide whose recorded memory is worth searching.",
+        "operationId": "roster",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AgentRosterEntry"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Roster retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "List the agent roster",
         "tags": [
           "Agents"
         ]
@@ -22852,6 +23512,44 @@
         ]
       }
     },
+    "/v1/integrations/anthropic/{id}/models": {
+      "get": {
+        "operationId": "models",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsCollectionString"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "tags": [
+          "Anthropic Integration"
+        ]
+      }
+    },
     "/v1/integrations/data-warehouse": {
       "get": {
         "description": "Retrieves all Data Warehouse integrations for the organization.",
@@ -23147,7 +23845,7 @@
     "/v1/integrations/datadog-mcp": {
       "get": {
         "description": "Get all Datadog MCP server integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_9",
+        "operationId": "list_10",
         "responses": {
           "200": {
             "content": {
@@ -23178,7 +23876,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a Datadog MCP server.",
-        "operationId": "create_8",
+        "operationId": "create_9",
         "requestBody": {
           "content": {
             "application/json": {
@@ -23230,7 +23928,7 @@
     "/v1/integrations/datadog-mcp/{id}": {
       "delete": {
         "description": "Deletes a Datadog MCP integration. This will delete the associated API keys as well. No-op if already deleted.",
-        "operationId": "delete_7",
+        "operationId": "delete_8",
         "parameters": [
           {
             "in": "path",
@@ -23264,7 +23962,7 @@
       },
       "get": {
         "description": "Get a Datadog MCP integration by ID.",
-        "operationId": "get_9",
+        "operationId": "get_10",
         "parameters": [
           {
             "in": "path",
@@ -23308,7 +24006,7 @@
       },
       "put": {
         "description": "Updates a Datadog MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_7",
+        "operationId": "update_8",
         "parameters": [
           {
             "in": "path",
@@ -23366,7 +24064,7 @@
     "/v1/integrations/datadog-mcp/{id}/api-key": {
       "put": {
         "description": "Creates the DD-API-KEY for a Datadog MCP integration if it doesn\u0027t exist and updates it otherwise.",
-        "operationId": "upsertApiKey_3",
+        "operationId": "upsertApiKey_4",
         "parameters": [
           {
             "in": "path",
@@ -24299,10 +24997,48 @@
         ]
       }
     },
+    "/v1/integrations/gemini/{id}/models": {
+      "get": {
+        "operationId": "models_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsCollectionString"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "tags": [
+          "Gemini Integration"
+        ]
+      }
+    },
     "/v1/integrations/github-mcp": {
       "get": {
         "description": "Get all GitHub MCP server integrations for your organization. This will contain masked tokens if present.",
-        "operationId": "list_10",
+        "operationId": "list_11",
         "responses": {
           "200": {
             "content": {
@@ -24333,7 +25069,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a GitHub MCP server.",
-        "operationId": "create_9",
+        "operationId": "create_10",
         "requestBody": {
           "content": {
             "application/json": {
@@ -24385,7 +25121,7 @@
     "/v1/integrations/github-mcp/{id}": {
       "delete": {
         "description": "Deletes a GitHub MCP integration. This will delete the associated token as well. No-op if already deleted.",
-        "operationId": "delete_8",
+        "operationId": "delete_9",
         "parameters": [
           {
             "in": "path",
@@ -24419,7 +25155,7 @@
       },
       "get": {
         "description": "Get a GitHub MCP integration by ID.",
-        "operationId": "get_10",
+        "operationId": "get_11",
         "parameters": [
           {
             "in": "path",
@@ -24463,7 +25199,7 @@
       },
       "put": {
         "description": "Updates a GitHub MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_8",
+        "operationId": "update_9",
         "parameters": [
           {
             "in": "path",
@@ -24521,7 +25257,7 @@
     "/v1/integrations/github-mcp/{id}/api-key": {
       "put": {
         "description": "Creates a token for a GitHub MCP integration if it doesn\u0027t exist and updates it otherwise. If the token is updated while the integration is being used by a pipeline, the new token will be picked at pipeline restart, rescaling or an update.",
-        "operationId": "upsertApiKey_4",
+        "operationId": "upsertApiKey_5",
         "parameters": [
           {
             "in": "path",
@@ -24566,10 +25302,315 @@
         ]
       }
     },
+    "/v1/integrations/litellm": {
+      "get": {
+        "operationId": "list_9",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsCollectionReadLiteLlm"
+                }
+              }
+            },
+            "description": "Integrations retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "List all LiteLLM integrations",
+        "tags": [
+          "LiteLLM Integration"
+        ]
+      },
+      "post": {
+        "operationId": "create_8",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteLiteLlm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadLiteLlm"
+                }
+              }
+            },
+            "description": "Integration created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadLiteLlm"
+                }
+              }
+            },
+            "description": "Integration already exists."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Create a LiteLLM integration",
+        "tags": [
+          "LiteLLM Integration"
+        ]
+      }
+    },
+    "/v1/integrations/litellm/{id}": {
+      "delete": {
+        "operationId": "delete_7",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Integration deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Delete a LiteLLM integration",
+        "tags": [
+          "LiteLLM Integration"
+        ]
+      },
+      "get": {
+        "operationId": "get_9",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadLiteLlm"
+                }
+              }
+            },
+            "description": "Integration retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get a LiteLLM integration",
+        "tags": [
+          "LiteLLM Integration"
+        ]
+      },
+      "put": {
+        "operationId": "update_7",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteLiteLlm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadLiteLlm"
+                }
+              }
+            },
+            "description": "Integration updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          },
+          "409": {
+            "description": "Integration was modified or deleted concurrently."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Update a LiteLLM integration",
+        "tags": [
+          "LiteLLM Integration"
+        ]
+      }
+    },
+    "/v1/integrations/litellm/{id}/api-key": {
+      "put": {
+        "operationId": "upsertApiKey_3",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecretApi"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "API key upserted successfully."
+          },
+          "400": {
+            "description": "Invalid API key."
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          },
+          "503": {
+            "description": "LiteLLM is rate-limiting or unavailable; retry later."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Creates or updates a LiteLLM integration API key",
+        "tags": [
+          "LiteLLM Integration"
+        ]
+      }
+    },
+    "/v1/integrations/litellm/{id}/models": {
+      "get": {
+        "operationId": "models_2",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsCollectionString"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "tags": [
+          "LiteLLM Integration"
+        ]
+      }
+    },
     "/v1/integrations/newrelic": {
       "get": {
         "description": "Get all NewRelic integrations.",
-        "operationId": "list_13",
+        "operationId": "list_14",
         "responses": {
           "200": {
             "content": {
@@ -24600,7 +25641,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to NewRelic.",
-        "operationId": "create_12",
+        "operationId": "create_13",
         "requestBody": {
           "content": {
             "application/json": {
@@ -24688,7 +25729,7 @@
     "/v1/integrations/newrelic/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to NewRelic. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_11",
+        "operationId": "delete_12",
         "parameters": [
           {
             "in": "path",
@@ -24722,7 +25763,7 @@
       },
       "get": {
         "description": "Get an integration to connect to NewRelic.",
-        "operationId": "get_13",
+        "operationId": "get_14",
         "parameters": [
           {
             "in": "path",
@@ -24766,7 +25807,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to NewRelic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_11",
+        "operationId": "update_12",
         "parameters": [
           {
             "in": "path",
@@ -24824,7 +25865,7 @@
     "/v1/integrations/newrelic/{id}/api-key": {
       "put": {
         "description": "Creates a NewRelic API key for a NewRelic integration if a key doesn\u0027t exist, and updates it otherwise. If the api key is updated while the integration is being used by a pipeline, the  new key is used at pipeline restart, rescaling, or an update.  This key is used for the NewRelic API to retrieve the dashboards and alerts.",
-        "operationId": "upsertApiKey_7",
+        "operationId": "upsertApiKey_8",
         "parameters": [
           {
             "in": "path",
@@ -25039,7 +26080,7 @@
     "/v1/integrations/openai": {
       "get": {
         "description": "Get all OpenAI integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_14",
+        "operationId": "list_15",
         "responses": {
           "200": {
             "content": {
@@ -25070,7 +26111,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to OpenAI.",
-        "operationId": "create_13",
+        "operationId": "create_14",
         "requestBody": {
           "content": {
             "application/json": {
@@ -25122,7 +26163,7 @@
     "/v1/integrations/openai/{id}": {
       "delete": {
         "description": "Deletes an OpenAI integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_12",
+        "operationId": "delete_13",
         "parameters": [
           {
             "in": "path",
@@ -25156,7 +26197,7 @@
       },
       "get": {
         "description": "Get an OpenAI integration by ID.",
-        "operationId": "get_14",
+        "operationId": "get_15",
         "parameters": [
           {
             "in": "path",
@@ -25200,7 +26241,7 @@
       },
       "put": {
         "description": "Updates an OpenAI integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_12",
+        "operationId": "update_13",
         "parameters": [
           {
             "in": "path",
@@ -25258,7 +26299,7 @@
     "/v1/integrations/openai/{id}/api-key": {
       "put": {
         "description": "Creates an API key for an OpenAI integration if it doesn\u0027t exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update.",
-        "operationId": "upsertApiKey_8",
+        "operationId": "upsertApiKey_9",
         "parameters": [
           {
             "in": "path",
@@ -25306,7 +26347,7 @@
     "/v1/integrations/otlp": {
       "get": {
         "description": "Get all OTLP integrations.",
-        "operationId": "list_15",
+        "operationId": "list_16",
         "responses": {
           "200": {
             "content": {
@@ -25337,7 +26378,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to OTLP.",
-        "operationId": "create_14",
+        "operationId": "create_15",
         "requestBody": {
           "content": {
             "application/json": {
@@ -25389,7 +26430,7 @@
     "/v1/integrations/otlp/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to OTLP. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_13",
+        "operationId": "delete_14",
         "parameters": [
           {
             "in": "path",
@@ -25423,7 +26464,7 @@
       },
       "get": {
         "description": "Get an integration to connect to OTLP.",
-        "operationId": "get_15",
+        "operationId": "get_16",
         "parameters": [
           {
             "in": "path",
@@ -25467,7 +26508,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to OTLP. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_13",
+        "operationId": "update_14",
         "parameters": [
           {
             "in": "path",
@@ -25675,7 +26716,7 @@
     "/v1/integrations/pagerduty-mcp": {
       "get": {
         "description": "Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_11",
+        "operationId": "list_12",
         "responses": {
           "200": {
             "content": {
@@ -25706,7 +26747,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a PagerDuty MCP server.",
-        "operationId": "create_10",
+        "operationId": "create_11",
         "requestBody": {
           "content": {
             "application/json": {
@@ -25758,7 +26799,7 @@
     "/v1/integrations/pagerduty-mcp/{id}": {
       "delete": {
         "description": "Deletes a PagerDuty MCP integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_9",
+        "operationId": "delete_10",
         "parameters": [
           {
             "in": "path",
@@ -25792,7 +26833,7 @@
       },
       "get": {
         "description": "Get a PagerDuty MCP integration by ID.",
-        "operationId": "get_11",
+        "operationId": "get_12",
         "parameters": [
           {
             "in": "path",
@@ -25836,7 +26877,7 @@
       },
       "put": {
         "description": "Updates a PagerDuty MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_9",
+        "operationId": "update_10",
         "parameters": [
           {
             "in": "path",
@@ -25894,7 +26935,7 @@
     "/v1/integrations/pagerduty-mcp/{id}/api-key": {
       "put": {
         "description": "Creates an API key for a PagerDuty MCP integration if it doesn\u0027t exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update.",
-        "operationId": "upsertApiKey_5",
+        "operationId": "upsertApiKey_6",
         "parameters": [
           {
             "in": "path",
@@ -26289,7 +27330,7 @@
     "/v1/integrations/s3-vector-index": {
       "get": {
         "description": "Retrieves all S3 Vector Index integrations for the organization.",
-        "operationId": "list_16",
+        "operationId": "list_17",
         "responses": {
           "200": {
             "content": {
@@ -26320,7 +27361,7 @@
       },
       "post": {
         "description": "Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.",
-        "operationId": "create_15",
+        "operationId": "create_16",
         "requestBody": {
           "content": {
             "application/json": {
@@ -26365,7 +27406,7 @@
     "/v1/integrations/s3-vector-index/{id}": {
       "delete": {
         "description": "Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn\u0027t exist.",
-        "operationId": "delete_14",
+        "operationId": "delete_15",
         "parameters": [
           {
             "in": "path",
@@ -26399,7 +27440,7 @@
       },
       "get": {
         "description": "Retrieves an S3 Vector Index integration.",
-        "operationId": "get_16",
+        "operationId": "get_17",
         "parameters": [
           {
             "in": "path",
@@ -26443,7 +27484,7 @@
       },
       "put": {
         "description": "Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.",
-        "operationId": "update_14",
+        "operationId": "update_15",
         "parameters": [
           {
             "in": "path",
@@ -26498,7 +27539,7 @@
     "/v1/integrations/slack-mcp": {
       "get": {
         "description": "Get all Slack MCP server integrations for your organization. This will contain masked tokens if present.",
-        "operationId": "list_12",
+        "operationId": "list_13",
         "responses": {
           "200": {
             "content": {
@@ -26529,7 +27570,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a Slack MCP server.",
-        "operationId": "create_11",
+        "operationId": "create_12",
         "requestBody": {
           "content": {
             "application/json": {
@@ -26581,7 +27622,7 @@
     "/v1/integrations/slack-mcp/{id}": {
       "delete": {
         "description": "Deletes a Slack MCP integration. This will delete the associated token as well. No-op if already deleted.",
-        "operationId": "delete_10",
+        "operationId": "delete_11",
         "parameters": [
           {
             "in": "path",
@@ -26615,7 +27656,7 @@
       },
       "get": {
         "description": "Get a Slack MCP integration by ID.",
-        "operationId": "get_12",
+        "operationId": "get_13",
         "parameters": [
           {
             "in": "path",
@@ -26659,7 +27700,7 @@
       },
       "put": {
         "description": "Updates a Slack MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_10",
+        "operationId": "update_11",
         "parameters": [
           {
             "in": "path",
@@ -26717,7 +27758,7 @@
     "/v1/integrations/slack-mcp/{id}/api-key": {
       "put": {
         "description": "Creates a token for a Slack MCP integration if it doesn\u0027t exist and updates it otherwise. If the token is updated while the integration is being used by a pipeline, the new token will be picked at pipeline restart, rescaling or an update.",
-        "operationId": "upsertApiKey_6",
+        "operationId": "upsertApiKey_7",
         "parameters": [
           {
             "in": "path",
@@ -26765,7 +27806,7 @@
     "/v1/integrations/splunk": {
       "get": {
         "description": "Get all Splunk integrations for your organization. This will contain masked keys if present.",
-        "operationId": "list_17",
+        "operationId": "list_18",
         "responses": {
           "200": {
             "content": {
@@ -26793,7 +27834,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Splunk.",
-        "operationId": "create_16",
+        "operationId": "create_17",
         "requestBody": {
           "content": {
             "application/json": {
@@ -26842,7 +27883,7 @@
     "/v1/integrations/splunk/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to Splunk. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_15",
+        "operationId": "delete_16",
         "parameters": [
           {
             "in": "path",
@@ -26873,7 +27914,7 @@
       },
       "get": {
         "description": "Get an integration to connect to Splunk.",
-        "operationId": "get_17",
+        "operationId": "get_18",
         "parameters": [
           {
             "in": "path",
@@ -26914,7 +27955,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to Splunk. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_15",
+        "operationId": "update_16",
         "parameters": [
           {
             "in": "path",
@@ -27172,7 +28213,7 @@
     "/v1/integrations/sumo": {
       "get": {
         "description": "Get all SumoLogic integrations.",
-        "operationId": "list_18",
+        "operationId": "list_19",
         "responses": {
           "200": {
             "content": {
@@ -27203,7 +28244,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to SumoLogic.",
-        "operationId": "create_17",
+        "operationId": "create_18",
         "requestBody": {
           "content": {
             "application/json": {
@@ -27255,7 +28296,7 @@
     "/v1/integrations/sumo/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to SumoLogic. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_16",
+        "operationId": "delete_17",
         "parameters": [
           {
             "in": "path",
@@ -27289,7 +28330,7 @@
       },
       "get": {
         "description": "Get an integration to connect to SumoLogic.",
-        "operationId": "get_18",
+        "operationId": "get_19",
         "parameters": [
           {
             "in": "path",
@@ -27333,7 +28374,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to SumoLogic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_16",
+        "operationId": "update_17",
         "parameters": [
           {
             "in": "path",
@@ -27439,7 +28480,7 @@
     "/v1/integrations/webhooks": {
       "get": {
         "description": "Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.",
-        "operationId": "list_19",
+        "operationId": "list_20",
         "parameters": [
           {
             "description": "Only return integrations targeting this agent.",
@@ -27480,7 +28521,7 @@
       },
       "post": {
         "description": "Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).",
-        "operationId": "create_18",
+        "operationId": "create_19",
         "requestBody": {
           "content": {
             "application/json": {
@@ -27525,7 +28566,7 @@
     "/v1/integrations/webhooks/{id}": {
       "delete": {
         "description": "Deletes a webhook integration. No-op if already deleted.",
-        "operationId": "delete_17",
+        "operationId": "delete_18",
         "parameters": [
           {
             "in": "path",
@@ -27559,7 +28600,7 @@
       },
       "get": {
         "description": "Get a webhook integration by ID.",
-        "operationId": "get_19",
+        "operationId": "get_20",
         "parameters": [
           {
             "in": "path",
@@ -27603,7 +28644,7 @@
       },
       "put": {
         "description": "Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_17",
+        "operationId": "update_18",
         "parameters": [
           {
             "in": "path",
@@ -31362,7 +32403,7 @@
     "/v1/users": {
       "get": {
         "description": "Get all users in the system.",
-        "operationId": "list_20",
+        "operationId": "list_21",
         "parameters": [
           {
             "in": "query",
