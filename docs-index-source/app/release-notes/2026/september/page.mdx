@@ -6,6 +6,24 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in September 2026.
 
+## September 15, 2026
+
+{/* ENGT-5598, ENGT-5593 */}
+### Improvements to Analyze mode in Log Explorer
+
+Analyze mode now opens from the **Analyze...** drawer under the search controls rather than from the menu on the **Search** button, and the drawer spans the width of the page so a long analysis stays readable. The analysis you build is held in the page URL, so you can copy a link to share it and use browser Back and Forward to move between the analyses you built. You can give a grouping expression an alias and reuse that name in conditions and sort order, sort a column by clicking its header, and drag result columns into the order you want, which the CSV export follows. When an expression cannot be computed, the message names your clause and the text you wrote instead of internal column names. See [_](/queries/analyze) and [_](/queries/analyze/functions).
+
+### Other improvements and fixes
+
+- {/* ENGT-5574 */} Log Explorer now shows an advisory under the search box when a query scans more data than it needs to, such as a search across every log field or a search with no service or host filter.
+- {/* ENGT-5583 */} Exceptions suggested from your Datadog dashboards now include the log queries in issue stream, log stream, split and grouped, and legacy top list widgets.
+- {/* ENGT-5640 */} You can now copy a pipeline's JSON configuration to your clipboard or download it as a file from the **Pipeline JSON** menu.
+- {/* ENGT-5604 */} Fixed an issue where moving a pipeline between Quickstart and Advanced Configuration lost the data lake dataset, leaving the pipeline unsaveable and reporting that the data warehouse was not found.
+- {/* ENGT-5533 */} Fixed an issue where the SQL draft preview showed none of the filters for a pipeline built from a raw job graph.
+- {/* ENGT-5603 */} Fixed an issue where a Datadog-like or New Relic log query-like query that used a quoted field name, such as `"AcmeStoreId":87971`, failed to parse in Log Explorer, in pipeline filters, and when importing exceptions from a Datadog dashboard.
+- {/* ENGT-5562 */} Fixed an issue where importing exceptions from New Relic failed for a monitor or dashboard whose query combined `FACET`, `SINCE`, and a trailing `LIMIT`.
+- {/* ENGT-5641 */} Fixed an issue where reopening the settings for a pipeline step showed blank or stale values instead of your saved configuration.
+
 ## September 6, 2026
 
 {/* ENGT-5465, ENGT-5590, ENGT-5592, ENGT-5587 */}
