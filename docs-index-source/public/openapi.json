@@ -1691,6 +1691,63 @@
         },
         "type": "object"
       },
+      "AnalyticsDiagnostic": {
+        "description": "Request constraints, followed by the first SQL failure when the request is complete, at most one per field. Empty means no draft errors were found; execution still validates the query against its actual table and engine.",
+        "properties": {
+          "message": {
+            "description": "What is wrong, as a finished sentence to show the person editing the query.",
+            "example": "Result aliases must be unique.",
+            "type": "string"
+          },
+          "path": {
+            "description": "Where the rule was broken, as a path into the request: \u0027select\u0027, \u0027select[1].expression\u0027, \u0027select[1].alias\u0027, \u0027groupBy[0]\u0027, \u0027window.size\u0027, \u0027window.slide\u0027, \u0027having\u0027, \u0027orderBy[2].expression\u0027, \u0027limit\u0027, \u0027scanBudgetBytes\u0027, \u0027predicate\u0027, or \u0027query\u0027 for a failure that names no single item.",
+            "example": "select[1].alias",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "path"
+        ],
+        "type": "object"
+      },
+      "AnalyticsDraftRequest": {
+        "properties": {
+          "datasetId": {
+            "description": "Dataset the query reads. Supplying it checks the scan budget against that dataset\u0027s ceiling and requires VIEW permission on it.",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/StructuredAnalyticsQuery"
+          },
+          "scanBudgetBytes": {
+            "description": "Bytes the run may scan, checked against the organization\u0027s ceiling. Zero stands for a budget field left empty and is reported as a diagnostic.",
+            "example": 107374182400,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query",
+          "scanBudgetBytes"
+        ],
+        "type": "object"
+      },
+      "AnalyticsDraftResponse": {
+        "properties": {
+          "diagnostics": {
+            "description": "Request constraints, followed by the first SQL failure when the request is complete, at most one per field. Empty means no draft errors were found; execution still validates the query against its actual table and engine.",
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsDiagnostic"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "diagnostics"
+        ],
+        "type": "object"
+      },
       "AnalyticsExample": {
         "description": "Example calls demonstrating the function.",
         "properties": {
@@ -1849,7 +1906,6 @@
         "type": "object"
       },
       "AnalyticsProjection": {
-        "description": "Expressions returned by the query.",
         "properties": {
           "alias": {
             "description": "Optional result column name.",
@@ -1979,6 +2035,11 @@
             },
             "type": "array"
           },
+          "maxRowLimit": {
+            "description": "Largest number of result rows an analytics query may ask for. A builder uses it to bound its input; the server refuses a larger request whether or not the caller did.",
+            "format": "int32",
+            "type": "integer"
+          },
           "maxScanBudgetBytes": {
             "description": "Largest scan budget, in bytes, an Athena analytics query over this dataset may request. Absent when no ceiling applies. Queries routed to a Trino query engine are not subject to it.",
             "format": "int64",
@@ -2003,7 +2064,8 @@
         },
         "required": [
           "fields",
-          "functions"
+          "functions",
+          "maxRowLimit"
         ],
         "type": "object"
       },
@@ -30646,6 +30708,54 @@
         "summary": "Get integration exception impacts for a pipeline",
         "tags": [
           "Pipeline Exceptions"
+        ]
+      }
+    },
+    "/v1/query/analytics-draft": {
+      "post": {
+        "description": "Checks request constraints and server limits for an analytics draft. When those pass, translates the whole query once and reports its first SQL failure. Diagnostics name the field when it is known, or the query as a whole. Draft feedback is advisory; submission still validates against the actual table and engine. The query is deliberately not bean-validated on the way in, so incomplete drafts receive diagnostics rather than a rejected request.",
+        "operationId": "checkAnalyticsDraft",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyticsDraftRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsDraftResponse"
+                }
+              }
+            },
+            "description": "Diagnostics for the analytics draft."
+          },
+          "400": {
+            "description": "The query is missing."
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "The caller cannot view the requested dataset."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Check an analytics query being written",
+        "tags": [
+          "Query Parsing"
         ]
       }
     },

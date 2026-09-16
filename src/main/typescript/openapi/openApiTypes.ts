@@ -2926,6 +2926,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/query/analytics-draft": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Check an analytics query being written
+     * @description Checks request constraints and server limits for an analytics draft. When those pass, translates the whole query once and reports its first SQL failure. Diagnostics name the field when it is known, or the query as a whole. Draft feedback is advisory; submission still validates against the actual table and engine. The query is deliberately not bean-validated on the way in, so incomplete drafts receive diagnostics rather than a rejected request.
+     */
+    post: operations["checkAnalyticsDraft"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/query/analytics-vocabulary": {
     parameters: {
       query?: never;
@@ -4200,6 +4220,34 @@ export interface components {
       insert?: string;
       label?: string;
     };
+    /** @description Request constraints, followed by the first SQL failure when the request is complete, at most one per field. Empty means no draft errors were found; execution still validates the query against its actual table and engine. */
+    AnalyticsDiagnostic: {
+      /**
+       * @description What is wrong, as a finished sentence to show the person editing the query.
+       * @example Result aliases must be unique.
+       */
+      message: string;
+      /**
+       * @description Where the rule was broken, as a path into the request: 'select', 'select[1].expression', 'select[1].alias', 'groupBy[0]', 'window.size', 'window.slide', 'having', 'orderBy[2].expression', 'limit', 'scanBudgetBytes', 'predicate', or 'query' for a failure that names no single item.
+       * @example select[1].alias
+       */
+      path: string;
+    };
+    AnalyticsDraftRequest: {
+      /** @description Dataset the query reads. Supplying it checks the scan budget against that dataset's ceiling and requires VIEW permission on it. */
+      datasetId?: string;
+      query: components["schemas"]["StructuredAnalyticsQuery"];
+      /**
+       * Format: int64
+       * @description Bytes the run may scan, checked against the organization's ceiling. Zero stands for a budget field left empty and is reported as a diagnostic.
+       * @example 107374182400
+       */
+      scanBudgetBytes: number;
+    };
+    AnalyticsDraftResponse: {
+      /** @description Request constraints, followed by the first SQL failure when the request is complete, at most one per field. Empty means no draft errors were found; execution still validates the query against its actual table and engine. */
+      diagnostics: components["schemas"]["AnalyticsDiagnostic"][];
+    };
     /** @description Example calls demonstrating the function. */
     AnalyticsExample: {
       /** @description One sentence on what this call does. */
@@ -4267,7 +4315,6 @@ export interface components {
        */
       type: AnalyticsParameterType;
     };
-    /** @description Expressions returned by the query. */
     AnalyticsProjection: {
       /** @description Optional result column name. */
       alias?: string;
@@ -4319,6 +4366,11 @@ export interface components {
     AnalyticsVocabularyResponse: {
       fields: components["schemas"]["AnalyticsField"][];
       functions: components["schemas"]["AnalyticsFunction"][];
+      /**
+       * Format: int32
+       * @description Largest number of result rows an analytics query may ask for. A builder uses it to bound its input; the server refuses a larger request whether or not the caller did.
+       */
+      maxRowLimit: number;
       /**
        * Format: int64
        * @description Largest scan budget, in bytes, an Athena analytics query over this dataset may request. Absent when no ceiling applies. Queries routed to a Trino query engine are not subject to it.
@@ -14310,6 +14362,12 @@ export type SchemaAiPipelineTemplateInput =
 export type SchemaAllQueryNode = components["schemas"]["AllQueryNode"];
 export type SchemaAnalyticsCompletion =
   components["schemas"]["AnalyticsCompletion"];
+export type SchemaAnalyticsDiagnostic =
+  components["schemas"]["AnalyticsDiagnostic"];
+export type SchemaAnalyticsDraftRequest =
+  components["schemas"]["AnalyticsDraftRequest"];
+export type SchemaAnalyticsDraftResponse =
+  components["schemas"]["AnalyticsDraftResponse"];
 export type SchemaAnalyticsExample = components["schemas"]["AnalyticsExample"];
 export type SchemaAnalyticsField = components["schemas"]["AnalyticsField"];
 export type SchemaAnalyticsFunction =
@@ -22619,6 +22677,51 @@ export interface operations {
       };
       /** @description Not Found - Pipeline not found. */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  checkAnalyticsDraft: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AnalyticsDraftRequest"];
+      };
+    };
+    responses: {
+      /** @description Diagnostics for the analytics draft. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AnalyticsDraftResponse"];
+        };
+      };
+      /** @description The query is missing. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The caller cannot view the requested dataset. */
+      403: {
         headers: {
           [name: string]: unknown;
         };

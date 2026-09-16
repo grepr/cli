@@ -15,17 +15,15 @@ Log Explorer's Analyze mode groups and aggregates the logs your search returns i
 1. Enter a search query to filter the logs you want to analyze. Analyze mode accepts the same [Datadog-like syntax](/queries/datadog) and [New Relic log query-like syntax](/queries/new-relic) as searching.
 1. Open the **Analyze...** drawer under the search controls.
 1. Under **SELECT**, enter one expression per result column, and name it in the **Alias** field beside it. An alias is optional; a column you leave unnamed is named for you, after the field or function it computes.
-1. Under **GROUP BY**, add the expressions whose distinct combinations you want as rows. Each one becomes a result column on its own, so it does not have to be repeated under SELECT. Without a grouping expression, an analysis made only of aggregates returns a single row.
+1. Under **GROUP BY**, add the expressions whose distinct combinations you want as rows. When you finish a new grouping expression, the builder adds a SELECT row for it and groups by that row's alias, so the expression is written once. Renaming the alias renames the grouping with it, and removing the column puts the expression back under GROUP BY. A GROUP BY row can name any SELECT alias. Without a grouping expression, an analysis made only of aggregates returns a single row.
 1. Under **HAVING**, enter a condition over the aggregates to keep only some of the groups. Leave it empty to keep every group.
 1. Under **ORDER BY**, add the expressions to sort by and pick ascending or descending for each one.
-1. Set **Row limit**, the maximum number of rows to return. An analysis returns 2,500 rows by default, and Log Explorer accepts a limit of up to 10,000 rows.
+1. Set **Row limit**, the maximum number of rows to return. An analysis returns 2,500 rows by default. The field stops at the largest limit your deployment allows, and a larger one is refused with a message naming that maximum.
 1. Set **Scan budget** to cap how much of the lake the query may read, then run the analysis.
 
 The drawer's clauses are the SQL ones, so an analysis reads the way the query does: SELECT computes,
 GROUP BY collapses, HAVING filters the groups, ORDER BY and the row limit choose which of them you
-see. HAVING and ORDER BY can refer to a result by its alias.
-
-![The Analyze drawer with a count and a 95th-percentile duration grouped by service, and the result rows below it.](/images/queries/analyze/analyze-drawer.png)
+see. GROUP BY, HAVING and ORDER BY can refer to a result by its alias.
 
 ## Log fields
 
@@ -94,8 +92,9 @@ Expressions are Grepr SQL, so aggregates, `CASE`, `CAST` and scalar functions ar
 
 Every function an analysis can call is listed in the
 [Analyze function reference](/queries/analyze/functions), with its arguments and a worked example.
-Log Explorer offers the same set from the expression box: focus it and start typing, and it suggests
-every function, field, tag and attribute your dataset accepts.
+Focus an expression box or start typing to find fields, functions, sampled tag and attribute keys,
+and result aliases. Suggestions match the text you type; they do not check whether each option fits
+the surrounding SQL. Typing a space closes the menu. Press the Down arrow key to open it again.
 
 <Callout type="warning">
 The [SQL transform function reference](/transforms/sql-transform/sql-functions) does **not** describe
@@ -130,12 +129,9 @@ COUNT(*)
 SEVERITY_TEXT(severity)
 ```
 
-![An analysis grouping by SEVERITY_TEXT(severity), whose result rows are named FATAL, ERROR, WARN, INFO and DEBUG.](/images/queries/analyze/analyze-severity-text.png)
-
 ## Name the results
 
-Every SELECT column and every GROUP BY expression takes an optional alias, entered in the **Alias**
-field beside the expression. The alias becomes the result column's name. Leave it empty and Grepr
+Every SELECT column takes an optional alias, entered in the **Alias** field beside the expression. The alias becomes the result column's name. Leave it empty and Grepr
 names the column after the field or function the expression computes:
 
 | Expression | Alias you enter | Result column |
@@ -145,7 +141,7 @@ names the column after the field or function the expression computes:
 | `tags['service'][1]` | empty | `service` |
 | `@http.route` | `route` | `route` |
 
-An alias can then be referred to under HAVING or ORDER BY, anywhere inside that expression rather
+An alias can then be referred to under GROUP BY, HAVING or ORDER BY, anywhere inside that expression rather
 than only as the whole of it:
 
 ```sql
@@ -161,7 +157,7 @@ reference has to match exactly.
 
 <Callout type="warning">
 The alias goes in its own field, not in the expression: writing `AS p95` inside an expression is
-rejected. An alias is available to HAVING and ORDER BY, not to the other SELECT columns.
+rejected. An alias is available to GROUP BY, HAVING and ORDER BY, and to the SELECT columns after the one that defines it.
 </Callout>
 
 Reserved SQL words cannot be aliases, because the query engine would read them as syntax. Log
@@ -174,11 +170,9 @@ lands on a reserved word gains a `0`.
 `level`, `name`, `type`, `path`, `service`, `host` and `user` are not.
 </Callout>
 
-![The analysis refused with the message: Alias "count" is a reserved SQL word. Use "count0" or another name.](/images/queries/analyze/analyze-reserved-alias.png)
-
 ## Window by time
 
-To see how an aggregate changes over time, add a time window under the grouping expressions. Every result row then carries a `window_start` and a `window_end` column, and the other grouping keys and aggregates are computed per window. Sort by `window_start` to read the results in time order.
+To see how an aggregate changes over time, add a time window under the grouping expressions. Every result row then carries a `window_start` and a `window_end` column, and the other grouping keys and aggregates are computed per window. The analysis is sorted by `window_start` descending, so the newest window leads.
 
 | Kind | Meaning |
 | --- | --- |
@@ -190,11 +184,9 @@ Each duration is a whole number of milliseconds, seconds, minutes, hours, or day
 Windows are aligned to the clock rather than to the start of your time range, so the first and last windows of a range can be partial.
 
 Setting a window puts `window_start` and `window_end` first among the result columns and sorts the
-analysis by `window_start` ascending, so the rows read in time order without any further setup. Both
+analysis by `window_start` descending, so the newest window leads without any further setup. Both
 are yours to change: drag the columns elsewhere, or edit the sort. Removing the window removes the
 bound columns and drops the sorts that referred to them.
-
-![A tumbling 5 minute window over event time, with window_start and window_end leading the result columns.](/images/queries/analyze/analyze-time-window.png)
 
 In the API, the window is the `window` object of the structured analytics query, with ISO-8601 durations:
 
@@ -225,8 +217,8 @@ the order you see rather than the order the query returned.
 ## Share an analysis
 
 The whole analysis lives in the page URL, so copying the link from the address bar is enough to share
-it. The link carries the dataset, the time range, the search query, every SELECT and GROUP BY
-expression with its alias, the HAVING condition, the sort, the time window, the row limit, the scan
+it. The link carries the dataset, the time range, the search query, every SELECT expression and its alias, every GROUP BY
+expression, the HAVING condition, the sort, the time window, the row limit, the scan
 budget and the column order you arranged.
 
 Opening such a link seats every control and runs the analysis once, so the recipient sees the rows
@@ -266,7 +258,7 @@ Each result row is a JSON object keyed by column name, so a column holds whateve
   },
   {
     q: "How many rows can an analysis return?",
-    a: "An analysis returns 2,500 rows by default. Log Explorer accepts a limit of up to 10,000 rows."
+    a: "An analysis returns 2,500 rows by default. The largest limit you can ask for is set by your deployment; asking for more is refused with a message naming the maximum."
   },
   {
     q: "How do I share a Grepr analysis?",
