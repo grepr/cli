@@ -65,9 +65,9 @@ To add a source to your pipeline that uses the OpenTelemetry integration:
 
 ### Step 3: Configure log forwarding to Grepr
 
-<IngestUrlConfig url="https://<integration-id>-<org-id>.ingest.grepr.ai/otlp/<grepr-token>" image_url="/images/integrations/grafana_source.png" />
+<IngestUrlConfig url="https://<integration-id>-<org-id>.ingest.grepr.ai/otlp" image_url="/images/integrations/grafana_source.png" />
 
-Replace `<grepr-token>` with the token you saved after creating the OpenTelemetry integration in Step 1.
+Authenticate by sending the Grepr token in the `x-grepr-token` header. Replace `<grepr-token>` in the examples below with the token you saved after creating the OpenTelemetry integration in Step 1.
 
 To see more information and configuration examples, select the tab for your preferred log collector:
 
@@ -84,6 +84,9 @@ To see more information and configuration examples, select the tab for your pref
     otelcol.exporter.otlphttp "grepr" {
       client {
         endpoint = "<ingestion-url>"
+        headers = {
+          "x-grepr-token" = "<grepr-token>"
+        }
       }
     }
 
@@ -97,7 +100,7 @@ To see more information and configuration examples, select the tab for your pref
     }
     ```
 
-    Replace `<ingestion-url>` with the full ingestion URL provided by the Grepr UI.
+    Replace `<ingestion-url>` with the full ingestion URL provided by the Grepr UI, and `<grepr-token>` with your Grepr token.
 
     To configure dual shipping, create two exporters:
 
@@ -105,6 +108,9 @@ To see more information and configuration examples, select the tab for your pref
     otelcol.exporter.otlphttp "grepr" {
       client {
         endpoint = "<ingestion-url>"
+        headers = {
+          "x-grepr-token" = "<grepr-token>"
+        }
       }
     }
 
@@ -146,6 +152,8 @@ To see more information and configuration examples, select the tab for your pref
     exporters:
       otlphttp:
         endpoint: <ingestion-url>
+        headers:
+          x-grepr-token: <grepr-token>
 
     service:
       pipelines:
@@ -155,7 +163,7 @@ To see more information and configuration examples, select the tab for your pref
           exporters: [otlphttp]
     ```
 
-    Replace `<ingestion-url>` with the full ingestion URL provided by the Grepr UI.
+    Replace `<ingestion-url>` with the full ingestion URL provided by the Grepr UI, and `<grepr-token>` with your Grepr token.
 
     To configure dual shipping:
 
@@ -163,6 +171,8 @@ To see more information and configuration examples, select the tab for your pref
     exporters:
       otlphttp/grepr:
         endpoint: <ingestion-url>
+        headers:
+          x-grepr-token: <grepr-token>
 
       otlphttp/grafana:
         endpoint: <your-grafana-otlp-endpoint>
@@ -199,9 +209,15 @@ To see more information and configuration examples, select the tab for your pref
         - name: default
           clients:
             - url: <ingestion-url>
+              headers:
+                x-grepr-token: <grepr-token>
     ```
 
-    Replace `<ingestion-url>` with the full ingestion URL provided by the Grepr UI.
+    Replace `<ingestion-url>` with the full ingestion URL provided by the Grepr UI, and `<grepr-token>` with your Grepr token.
+
+    <Callout type="info">
+      Grafana Agent's static log client supports fewer options than Alloy's OTLP exporter. If your agent version cannot set a request header, migrate to Grafana Alloy.
+    </Callout>
 
   </Tabs.Tab>
 </Tabs>
@@ -226,7 +242,7 @@ For advanced use cases, you can use the **Advanced** mode in the Grepr UI to spe
   faqs={[
     {
       q: "How do I connect Grepr to Grafana Cloud?",
-      a: "Create an OpenTelemetry integration in Grepr with your Grafana Cloud OTLP endpoint and configure an Authorization header with your Grafana Cloud Access Policy token. The ingestion URL format is https://<integration-id>-<org-id>.ingest.grepr.ai/otlp/<grepr-token>. Configure your collector to send logs to this URL."
+      a: "Create an OpenTelemetry integration in Grepr with your Grafana Cloud OTLP endpoint and configure an Authorization header with your Grafana Cloud Access Policy token. The ingestion URL format is https://<integration-id>-<org-id>.ingest.grepr.ai/otlp. Configure your collector to send logs to this URL with your Grepr token in the x-grepr-token header."
     },
     {
       q: "What is required to set up Grafana Cloud integration with Grepr?",

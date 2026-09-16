@@ -82,9 +82,9 @@ To add a source to your pipeline that uses the OpenTelemetry integration:
 
 ### Step 3: Configure log forwarding to Grepr
 
-<IngestUrlConfig image_url='/images/integrations/ingestion-url-otel.png'  url="https://<integration-id>-<org-id>.ingest.grepr.ai/otlp/<grepr-token>" />
+<IngestUrlConfig image_url='/images/integrations/ingestion-url-otel.png'  url="https://<integration-id>-<org-id>.ingest.grepr.ai/otlp" />
 
-Replace `<grepr-token>` with the token you saved after creating the OpenTelemetry integration in Step 1.
+Authenticate by sending the Grepr token in the `x-grepr-token` header. Replace `<grepr-token>` in the examples below with the token you saved after creating the OpenTelemetry integration in Step 1.
 
 To see more information and configuration examples, select the tab for your preferred log collector:
 
@@ -99,6 +99,8 @@ To see more information and configuration examples, select the tab for your pref
     exporters:
       otlphttp:
         endpoint: <ingestion-url>
+        headers:
+          x-grepr-token: <grepr-token>
 
     service:
       pipelines:
@@ -108,7 +110,7 @@ To see more information and configuration examples, select the tab for your pref
           exporters: [otlphttp]
     ```
 
-    Replace `<ingestion-url>` with the full ingestion URL provided by the Grepr UI.
+    Replace `<ingestion-url>` with the full ingestion URL provided by the Grepr UI, and `<grepr-token>` with your Grepr token.
 
     To learn more about OpenTelemetry Collector configuration, see the [OpenTelemetry Collector documentation](https://opentelemetry.io/docs/collector/).
 
@@ -120,6 +122,7 @@ To see more information and configuration examples, select the tab for your pref
 
     - Set the `host` value using only the hostname of the ingestion URL from your OpenTelemetry integration, omitting the `https://` prefix and the path value.
     - Set the `logs_uri` value to the ingestion URL path and append `/v1/logs`.
+    - Add a `header` entry that sends the Grepr token as `x-grepr-token`.
 
     The following is an example `OUTPUT` configuration for the OpenTelemetry plugin from a Fluent Bit configuration file (`fluent-bit.conf`):
 
@@ -129,7 +132,8 @@ To see more information and configuration examples, select the tab for your pref
       match                *
       host                 <integration-id>-<organization-id>.ingest.grepr.ai
       port                 443
-      logs_uri             /otlp/<grepr-token>/v1/logs
+      logs_uri             /otlp/v1/logs
+      header               x-grepr-token <grepr-token>
       tls                  On
       tls.verify           On
     ```
