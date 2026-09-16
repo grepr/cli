@@ -6256,8 +6256,10 @@ export interface components {
     };
     FrontendConfig: {
       appBaseUrl?: string;
+      billingEnabled?: boolean;
       flinkBaseUrl?: string;
       gtmContainerId?: string;
+      intercomEnabled?: boolean;
       kafkaToolkitClusterName?: string;
       region?: string;
     };
