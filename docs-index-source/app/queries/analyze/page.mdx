@@ -43,7 +43,15 @@ Expressions address the stored log columns by the following names:
 These are the Grepr SQL column names, which use `snake_case`. They are not the camelCase field names of the log event JSON that the search and export APIs return.
 </Callout>
 
-A tag holds an array of values, so index the value you want:
+A tag holds an array of values, so the suggestion for a tag key groups by the sorted, comma-joined
+set of its values — two events tagged with the same values in a different order land in one group.
+The suggestion shows this expression beside the key, so you can see what picking the key inserts:
+
+```sql
+ARRAY_TO_STRING(SORT_ARRAY(tags['service']), ',')
+```
+
+Index a single value with `[1]` when you want only the first:
 
 ```sql
 tags['service'][1]
@@ -106,7 +114,7 @@ here, and the autocomplete offers functions that page does not list.
 ```sql
 -- Log count by service: the first line goes under SELECT, the second under GROUP BY
 COUNT(*)
-tags['service'][1]
+ARRAY_TO_STRING(SORT_ARRAY(tags['service']), ',')
 
 -- 95th percentile request duration by endpoint, the same way
 APPROX_PERCENTILE(@duration_ms, 0.95)
@@ -131,14 +139,17 @@ SEVERITY_TEXT(severity)
 
 ## Name the results
 
-Every SELECT column takes an optional alias, entered in the **Alias** field beside the expression. The alias becomes the result column's name. Leave it empty and Grepr
-names the column after the field or function the expression computes:
+Every SELECT column takes an optional alias, entered in the **Alias** field beside the expression.
+The alias becomes the result column's name. Pick a tag from the suggestions and the alias is
+filled in with the tag's own key, since the expression that reads a tag is a call wrapped around
+it. Leave the alias empty and Grepr names the column after the expression itself:
 
-| Expression | Alias you enter | Result column |
+| Expression | Alias | Result column |
 | --- | --- | --- |
 | `COUNT(*)` | empty | `count0` |
 | `APPROX_PERCENTILE(@duration_ms, 0.95)` | `p95` | `p95` |
-| `tags['service'][1]` | empty | `service` |
+| `ARRAY_TO_STRING(SORT_ARRAY(tags['service']), ',')` | `service`, filled in for you | `service` |
+| `severity` | empty | `severity` |
 | `@http.route` | `route` | `route` |
 
 An alias can then be referred to under GROUP BY, HAVING or ORDER BY, anywhere inside that expression rather
@@ -250,7 +261,7 @@ Each result row is a JSON object keyed by column name, so a column holds whateve
   },
   {
     q: "What are the log field names in Grepr SQL?",
-    a: "message, severity, event_timestamp, received_timestamp, id, tags, and attributes. Index a tag as tags['service'][1], and address an attribute as @http.status_code."
+    a: "message, severity, event_timestamp, received_timestamp, id, tags, and attributes. Read the whole set of a tag's values as ARRAY_TO_STRING(SORT_ARRAY(tags['service']), ','), index a single value as tags['service'][1], and address an attribute as @http.status_code."
   },
   {
     q: "How do I bucket an analysis by time?",
