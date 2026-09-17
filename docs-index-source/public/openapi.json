@@ -4260,6 +4260,30 @@
         ],
         "type": "object"
       },
+      "CreateVendorEstimationRunRequest": {
+        "properties": {
+          "scopeQuery": {
+            "description": "Vendor query limiting the estimate to part of the customer\u0027s traffic. Applied to both the matched count and the total. Leave empty for all logs.",
+            "example": "service:broker-* AND env:prod",
+            "type": "string"
+          },
+          "windowEnd": {
+            "description": "Absolute end of the window to count over; must be after the start",
+            "format": "date-time",
+            "type": "string"
+          },
+          "windowStart": {
+            "description": "Absolute start of the window to count over",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "windowEnd",
+          "windowStart"
+        ],
+        "type": "object"
+      },
       "CriticalPathAnalysisConfig": {
         "description": "Opt-in critical-path analysis settings. Computed during trace assembly; requires tail sampling. The maxSpans and sampleRate levers bound the per-trace cost.",
         "properties": {
@@ -19634,6 +19658,26 @@
         },
         "type": "object"
       },
+      "UnparseableException": {
+        "description": "Exceptions whose query could not be parsed at import and so cannot be counted, each with the parse error",
+        "properties": {
+          "exceptionId": {
+            "description": "Composite exception id",
+            "example": "0q841q0j81m2q:mon-123:DATADOG_MONITOR",
+            "type": "string"
+          },
+          "message": {
+            "description": "The parse error recorded when the exception was imported",
+            "example": "unbalanced parenthesis at position 14",
+            "type": "string"
+          }
+        },
+        "required": [
+          "exceptionId",
+          "message"
+        ],
+        "type": "object"
+      },
       "Update": {
         "properties": {
           "name": {
@@ -20065,6 +20109,269 @@
             "type": "array"
           }
         },
+        "type": "object"
+      },
+      "VendorEstimate": {
+        "description": "What a run says about one exception. The type field selects the variant.",
+        "discriminator": {
+          "mapping": {
+            "COUNTED": "#/components/schemas/VendorEstimateCounted",
+            "ERROR": "#/components/schemas/VendorEstimateError",
+            "PENDING": "#/components/schemas/VendorEstimatePending",
+            "UNPARSEABLE": "#/components/schemas/VendorEstimateUnparseable"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/VendorEstimateCounted"
+          },
+          {
+            "$ref": "#/components/schemas/VendorEstimatePending"
+          },
+          {
+            "$ref": "#/components/schemas/VendorEstimateUnparseable"
+          },
+          {
+            "$ref": "#/components/schemas/VendorEstimateError"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "VendorEstimateCounted": {
+        "description": "The vendor counted this query over the run\u0027s scope and window.",
+        "properties": {
+          "impactPercentage": {
+            "description": "Share of the scope\u0027s indexed logs this query matched, as a percentage of the run\u0027s scope total",
+            "example": 6.2,
+            "format": "double",
+            "type": "number"
+          },
+          "matchedCount": {
+            "description": "Events the query matched over the run\u0027s window",
+            "example": 12874,
+            "format": "int64",
+            "type": "integer"
+          },
+          "type": {
+            "enum": [
+              "COUNTED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "impactPercentage",
+          "matchedCount",
+          "type"
+        ],
+        "type": "object"
+      },
+      "VendorEstimateError": {
+        "description": "The count was attempted for this exception and failed.",
+        "properties": {
+          "message": {
+            "description": "The vendor\u0027s rejection, or the failure the call ended on",
+            "example": "query is too complex",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "ERROR"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "type"
+        ],
+        "type": "object"
+      },
+      "VendorEstimatePending": {
+        "description": "This exception is in the run but has not been counted yet.",
+        "properties": {
+          "type": {
+            "enum": [
+              "PENDING"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "VendorEstimateUnparseable": {
+        "description": "The exception\u0027s query could not be parsed, so it was never counted.",
+        "properties": {
+          "message": {
+            "description": "The parse error recorded when the exception was imported",
+            "example": "unbalanced parenthesis at position 14",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "UNPARSEABLE"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "type"
+        ],
+        "type": "object"
+      },
+      "VendorEstimationRun": {
+        "properties": {
+          "createdAt": {
+            "description": "When the run was created",
+            "format": "date-time",
+            "type": "string"
+          },
+          "failureReason": {
+            "description": "Why a FAILED run failed",
+            "type": "string"
+          },
+          "id": {
+            "description": "Run id",
+            "example": "0q841q0j81m2q",
+            "type": "string"
+          },
+          "integrationId": {
+            "description": "Integration whose imported exceptions this run estimates",
+            "example": "0q841q0j81m2q",
+            "type": "string"
+          },
+          "predicatesDone": {
+            "description": "Predicates that have reached a non-pending status",
+            "format": "int32",
+            "type": "integer"
+          },
+          "predicatesTotal": {
+            "description": "Distinct predicates in the run, fixed at creation",
+            "format": "int32",
+            "type": "integer"
+          },
+          "queuedAhead": {
+            "description": "Number of older runs still waiting for an active slot ahead of this one. Present only while the run is QUEUED.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "requestedBy": {
+            "description": "Id of the user who started the run",
+            "example": "user-1",
+            "type": "string"
+          },
+          "resumeAfter": {
+            "description": "When a throttled run\u0027s next slice is scheduled to fire",
+            "format": "date-time",
+            "type": "string"
+          },
+          "scopeQuery": {
+            "description": "Vendor query limiting the estimate to part of the customer\u0027s traffic, applied to both the matched count and the total. Empty means all logs.",
+            "example": "service:broker-* AND env:prod",
+            "type": "string"
+          },
+          "scopeTotalCount": {
+            "description": "Total events the scope matched over the window, the denominator",
+            "format": "int64",
+            "type": "integer"
+          },
+          "state": {
+            "description": "Current run state",
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "THROTTLED",
+              "COMPLETE",
+              "PARTIAL",
+              "FAILED"
+            ],
+            "type": "string"
+          },
+          "stopReason": {
+            "description": "Why a PARTIAL run stopped early",
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "When the run was last written to",
+            "format": "date-time",
+            "type": "string"
+          },
+          "vendor": {
+            "description": "Vendor whose index the counts were made against",
+            "enum": [
+              "DATADOG"
+            ],
+            "type": "string"
+          },
+          "windowEnd": {
+            "description": "Absolute end of the counted window, resolved at creation",
+            "format": "date-time",
+            "type": "string"
+          },
+          "windowStart": {
+            "description": "Absolute start of the counted window, resolved at creation",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "integrationId",
+          "predicatesDone",
+          "predicatesTotal",
+          "scopeQuery",
+          "state",
+          "updatedAt",
+          "vendor",
+          "windowEnd",
+          "windowStart"
+        ],
+        "type": "object"
+      },
+      "VendorEstimationRunPreview": {
+        "properties": {
+          "distinctQueries": {
+            "description": "Distinct countable predicates among those exceptions, and so the number of vendor calls the run would make. Smaller than the exception count wherever several exceptions carry the same query.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "exceptions": {
+            "description": "Exceptions the run would cover: every one the integration has imported",
+            "format": "int32",
+            "type": "integer"
+          },
+          "queuedAhead": {
+            "description": "Runs that would start before this one if it were created now. Absent when a slot is free.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "unparseable": {
+            "description": "Exceptions whose query could not be parsed at import and so cannot be counted, each with the parse error",
+            "items": {
+              "$ref": "#/components/schemas/UnparseableException"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "distinctQueries",
+          "exceptions",
+          "unparseable"
+        ],
         "type": "object"
       },
       "VendorImportedException": {
@@ -28859,6 +29166,425 @@
           }
         ],
         "summary": "List estimation-eligible datasets for an integration",
+        "tags": [
+          "Integration Exceptions"
+        ]
+      }
+    },
+    "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs": {
+      "get": {
+        "description": "Returns the integration\u0027s estimation runs newest first, including failed and stopped ones. Scope and window identify a run: numbers from runs over different scopes or windows are not comparable.",
+        "operationId": "listVendorEstimationRuns",
+        "parameters": [
+          {
+            "description": "Integration id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "integrationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum runs to return",
+            "example": 20,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VendorEstimationRun"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Runs retrieved"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found - Integration not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "List vendor estimation runs for an integration",
+        "tags": [
+          "Integration Exceptions"
+        ]
+      },
+      "post": {
+        "description": "Creates a run over the given scope and window covering every exception the integration has imported, with one result row per distinct predicate, and queues its first slice. One non-terminal run per organization: starting a second returns 409 while the first is still in flight.",
+        "operationId": "createVendorEstimationRun",
+        "parameters": [
+          {
+            "description": "Integration id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "integrationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVendorEstimationRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorEstimationRun"
+                }
+              }
+            },
+            "description": "Run created"
+          },
+          "400": {
+            "description": "Bad Request - Window is inverted or scope is invalid."
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found - Integration not found."
+          },
+          "409": {
+            "description": "Conflict - The organization already has a run that has not finished."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Start a vendor estimation run",
+        "tags": [
+          "Integration Exceptions"
+        ]
+      }
+    },
+    "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/preview": {
+      "post": {
+        "description": "Classifies the exceptions a run would cover — every one the integration has imported — and returns how many distinct queries it would send to the vendor and which exceptions cannot be counted because their query never parsed. Writes nothing.",
+        "operationId": "previewVendorEstimationRun",
+        "parameters": [
+          {
+            "description": "Integration id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "integrationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVendorEstimationRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorEstimationRunPreview"
+                }
+              }
+            },
+            "description": "Preview computed"
+          },
+          "400": {
+            "description": "Bad Request - Window is inverted or scope is invalid."
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found - Integration not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Preview a vendor estimation run",
+        "tags": [
+          "Integration Exceptions"
+        ]
+      }
+    },
+    "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/{runId}": {
+      "delete": {
+        "description": "Stops the run and keeps every count it has already made. The run ends partial, with a stop reason recording that a person stopped it. No rows are deleted; calling this on a run that has already finished is a no-op.",
+        "operationId": "stopVendorEstimationRun",
+        "parameters": [
+          {
+            "description": "Integration id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "integrationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Run id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorEstimationRun"
+                }
+              }
+            },
+            "description": "Run stopped"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found - Integration or run not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Stop a vendor estimation run",
+        "tags": [
+          "Integration Exceptions"
+        ]
+      },
+      "get": {
+        "description": "Returns the run\u0027s current state and progress. Poll this while the run is non-terminal; results land incrementally and are readable throughout.",
+        "operationId": "getVendorEstimationRun",
+        "parameters": [
+          {
+            "description": "Integration id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "integrationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Run id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorEstimationRun"
+                }
+              }
+            },
+            "description": "Run retrieved"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found - Integration or run not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get a vendor estimation run",
+        "tags": [
+          "Integration Exceptions"
+        ]
+      }
+    },
+    "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/{runId}/results": {
+      "get": {
+        "description": "Returns the run\u0027s per-exception estimates keyed by composite exception id. Each entry is one of four variants selected by its type field, because an estimate can be pending, unparseable or failed as well as counted. An exception missing from the response was not in this run, which is not the same as matching nothing.",
+        "operationId": "getVendorEstimationRunResults",
+        "parameters": [
+          {
+            "description": "Integration id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "integrationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Run id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/VendorEstimate"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Results retrieved"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found - Integration or run not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get vendor estimation results for a run",
+        "tags": [
+          "Integration Exceptions"
+        ]
+      }
+    },
+    "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/{runId}/resume": {
+      "post": {
+        "description": "Triggers another slice for a run that has been running without progress for longer than the configured stale threshold. Returns 409 for a run that is progressing normally, parked on a rate limit, or already finished.",
+        "operationId": "resumeVendorEstimationRun",
+        "parameters": [
+          {
+            "description": "Integration id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "integrationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Run id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorEstimationRun"
+                }
+              }
+            },
+            "description": "Slice triggered"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found - Integration or run not found."
+          },
+          "409": {
+            "description": "Conflict - The run is not eligible to be resumed."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Resume a stalled vendor estimation run",
         "tags": [
           "Integration Exceptions"
         ]

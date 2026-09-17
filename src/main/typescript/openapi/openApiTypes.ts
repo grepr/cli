@@ -2245,6 +2245,114 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List vendor estimation runs for an integration
+     * @description Returns the integration's estimation runs newest first, including failed and stopped ones. Scope and window identify a run: numbers from runs over different scopes or windows are not comparable.
+     */
+    get: operations["listVendorEstimationRuns"];
+    put?: never;
+    /**
+     * Start a vendor estimation run
+     * @description Creates a run over the given scope and window covering every exception the integration has imported, with one result row per distinct predicate, and queues its first slice. One non-terminal run per organization: starting a second returns 409 while the first is still in flight.
+     */
+    post: operations["createVendorEstimationRun"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Preview a vendor estimation run
+     * @description Classifies the exceptions a run would cover — every one the integration has imported — and returns how many distinct queries it would send to the vendor and which exceptions cannot be counted because their query never parsed. Writes nothing.
+     */
+    post: operations["previewVendorEstimationRun"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/{runId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get a vendor estimation run
+     * @description Returns the run's current state and progress. Poll this while the run is non-terminal; results land incrementally and are readable throughout.
+     */
+    get: operations["getVendorEstimationRun"];
+    put?: never;
+    post?: never;
+    /**
+     * Stop a vendor estimation run
+     * @description Stops the run and keeps every count it has already made. The run ends partial, with a stop reason recording that a person stopped it. No rows are deleted; calling this on a run that has already finished is a no-op.
+     */
+    delete: operations["stopVendorEstimationRun"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/{runId}/results": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get vendor estimation results for a run
+     * @description Returns the run's per-exception estimates keyed by composite exception id. Each entry is one of four variants selected by its type field, because an estimate can be pending, unparseable or failed as well as counted. An exception missing from the response was not in this run, which is not the same as matching nothing.
+     */
+    get: operations["getVendorEstimationRunResults"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/{runId}/resume": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Resume a stalled vendor estimation run
+     * @description Triggers another slice for a run that has been running without progress for longer than the configured stale threshold. Returns 409 for a run that is progressing normally, parked on a rate limit, or already finished.
+     */
+    post: operations["resumeVendorEstimationRun"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/investigations": {
     parameters: {
       query?: never;
@@ -5535,6 +5643,23 @@ export interface components {
        *     ]
        */
       roleIds: string[];
+    };
+    CreateVendorEstimationRunRequest: {
+      /**
+       * @description Vendor query limiting the estimate to part of the customer's traffic. Applied to both the matched count and the total. Leave empty for all logs.
+       * @example service:broker-* AND env:prod
+       */
+      scopeQuery?: string;
+      /**
+       * Format: date-time
+       * @description Absolute end of the window to count over; must be after the start
+       */
+      windowEnd: string;
+      /**
+       * Format: date-time
+       * @description Absolute start of the window to count over
+       */
+      windowStart: string;
     };
     /**
      * Critical Path Analysis
@@ -13600,6 +13725,19 @@ export interface components {
       totalFields?: number;
       tupleType?: boolean;
     };
+    /** @description Exceptions whose query could not be parsed at import and so cannot be counted, each with the parse error */
+    UnparseableException: {
+      /**
+       * @description Composite exception id
+       * @example 0q841q0j81m2q:mon-123:DATADOG_MONITOR
+       */
+      exceptionId: string;
+      /**
+       * @description The parse error recorded when the exception was imported
+       * @example unbalanced parenthesis at position 14
+       */
+      message: string;
+    };
     Update: {
       name: string;
     };
@@ -13762,6 +13900,169 @@ export interface components {
         [key: string]: string;
       };
       value?: Record<string, never>[];
+    };
+    /** @description What a run says about one exception. The type field selects the variant. */
+    VendorEstimate: {
+      type: string;
+    } & (
+      | components["schemas"]["VendorEstimateCounted"]
+      | components["schemas"]["VendorEstimatePending"]
+      | components["schemas"]["VendorEstimateUnparseable"]
+      | components["schemas"]["VendorEstimateError"]
+    );
+    /** @description The vendor counted this query over the run's scope and window. */
+    VendorEstimateCounted: {
+      /**
+       * Format: double
+       * @description Share of the scope's indexed logs this query matched, as a percentage of the run's scope total
+       * @example 6.2
+       */
+      impactPercentage: number;
+      /**
+       * Format: int64
+       * @description Events the query matched over the run's window
+       * @example 12874
+       */
+      matchedCount: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: VendorEstimateCountedType;
+    };
+    /** @description The count was attempted for this exception and failed. */
+    VendorEstimateError: {
+      /**
+       * @description The vendor's rejection, or the failure the call ended on
+       * @example query is too complex
+       */
+      message: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: VendorEstimateErrorType;
+    };
+    /** @description This exception is in the run but has not been counted yet. */
+    VendorEstimatePending: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: VendorEstimatePendingType;
+    };
+    /** @description The exception's query could not be parsed, so it was never counted. */
+    VendorEstimateUnparseable: {
+      /**
+       * @description The parse error recorded when the exception was imported
+       * @example unbalanced parenthesis at position 14
+       */
+      message: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: VendorEstimateUnparseableType;
+    };
+    VendorEstimationRun: {
+      /**
+       * Format: date-time
+       * @description When the run was created
+       */
+      createdAt: string;
+      /** @description Why a FAILED run failed */
+      failureReason?: string;
+      /**
+       * @description Run id
+       * @example 0q841q0j81m2q
+       */
+      id: string;
+      /**
+       * @description Integration whose imported exceptions this run estimates
+       * @example 0q841q0j81m2q
+       */
+      integrationId: string;
+      /**
+       * Format: int32
+       * @description Predicates that have reached a non-pending status
+       */
+      predicatesDone: number;
+      /**
+       * Format: int32
+       * @description Distinct predicates in the run, fixed at creation
+       */
+      predicatesTotal: number;
+      /**
+       * Format: int32
+       * @description Number of older runs still waiting for an active slot ahead of this one. Present only while the run is QUEUED.
+       */
+      queuedAhead?: number;
+      /**
+       * @description Id of the user who started the run
+       * @example user-1
+       */
+      requestedBy?: string;
+      /**
+       * Format: date-time
+       * @description When a throttled run's next slice is scheduled to fire
+       */
+      resumeAfter?: string;
+      /**
+       * @description Vendor query limiting the estimate to part of the customer's traffic, applied to both the matched count and the total. Empty means all logs.
+       * @example service:broker-* AND env:prod
+       */
+      scopeQuery: string;
+      /**
+       * Format: int64
+       * @description Total events the scope matched over the window, the denominator
+       */
+      scopeTotalCount?: number;
+      /**
+       * @description Current run state
+       * @enum {string}
+       */
+      state: VendorEstimationRunState;
+      /** @description Why a PARTIAL run stopped early */
+      stopReason?: string;
+      /**
+       * Format: date-time
+       * @description When the run was last written to
+       */
+      updatedAt: string;
+      /**
+       * @description Vendor whose index the counts were made against
+       * @enum {string}
+       */
+      vendor: VendorEstimationRunVendor;
+      /**
+       * Format: date-time
+       * @description Absolute end of the counted window, resolved at creation
+       */
+      windowEnd: string;
+      /**
+       * Format: date-time
+       * @description Absolute start of the counted window, resolved at creation
+       */
+      windowStart: string;
+    };
+    VendorEstimationRunPreview: {
+      /**
+       * Format: int32
+       * @description Distinct countable predicates among those exceptions, and so the number of vendor calls the run would make. Smaller than the exception count wherever several exceptions carry the same query.
+       */
+      distinctQueries: number;
+      /**
+       * Format: int32
+       * @description Exceptions the run would cover: every one the integration has imported
+       */
+      exceptions: number;
+      /**
+       * Format: int32
+       * @description Runs that would start before this one if it were created now. Absent when a slot is free.
+       */
+      queuedAhead?: number;
+      /** @description Exceptions whose query could not be parsed at import and so cannot be counted, each with the parse error */
+      unparseable: components["schemas"]["UnparseableException"][];
     };
     /** @description Exception that was imported from a vendor integration like Datadog, Splunk etc. */
     VendorImportedException: {
@@ -14479,6 +14780,8 @@ export type SchemaCreateSkillRequest =
 export type SchemaCreateSpansBackfillJob =
   components["schemas"]["CreateSpansBackfillJob"];
 export type SchemaCreateUser = components["schemas"]["CreateUser"];
+export type SchemaCreateVendorEstimationRunRequest =
+  components["schemas"]["CreateVendorEstimationRunRequest"];
 export type SchemaCriticalPathAnalysisConfig =
   components["schemas"]["CriticalPathAnalysisConfig"];
 export type SchemaDailyTable = components["schemas"]["DailyTable"];
@@ -15062,6 +15365,8 @@ export type SchemaTypeInformationAny =
   components["schemas"]["TypeInformationAny"];
 export type SchemaTypeInformationObject =
   components["schemas"]["TypeInformationObject"];
+export type SchemaUnparseableException =
+  components["schemas"]["UnparseableException"];
 export type SchemaUpdate = components["schemas"]["Update"];
 export type SchemaUpdateJob = components["schemas"]["UpdateJob"];
 export type SchemaUpdateRole = components["schemas"]["UpdateRole"];
@@ -15082,6 +15387,19 @@ export type SchemaVariantSynchronousSink =
   components["schemas"]["VariantSynchronousSink"];
 export type SchemaVectorData = components["schemas"]["VectorData"];
 export type SchemaVectorResult = components["schemas"]["VectorResult"];
+export type SchemaVendorEstimate = components["schemas"]["VendorEstimate"];
+export type SchemaVendorEstimateCounted =
+  components["schemas"]["VendorEstimateCounted"];
+export type SchemaVendorEstimateError =
+  components["schemas"]["VendorEstimateError"];
+export type SchemaVendorEstimatePending =
+  components["schemas"]["VendorEstimatePending"];
+export type SchemaVendorEstimateUnparseable =
+  components["schemas"]["VendorEstimateUnparseable"];
+export type SchemaVendorEstimationRun =
+  components["schemas"]["VendorEstimationRun"];
+export type SchemaVendorEstimationRunPreview =
+  components["schemas"]["VendorEstimationRunPreview"];
 export type SchemaVendorImportedException =
   components["schemas"]["VendorImportedException"];
 export type SchemaVendorLogEventDedupIcebergTableSink =
@@ -21223,6 +21541,350 @@ export interface operations {
       };
     };
   };
+  listVendorEstimationRuns: {
+    parameters: {
+      query?: {
+        /**
+         * @description Maximum runs to return
+         * @example 20
+         */
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        /**
+         * @description Integration id
+         * @example 0q841q0j81m2q
+         */
+        integrationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Runs retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VendorEstimationRun"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  createVendorEstimationRun: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Integration id
+         * @example 0q841q0j81m2q
+         */
+        integrationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["CreateVendorEstimationRunRequest"];
+      };
+    };
+    responses: {
+      /** @description Run created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VendorEstimationRun"];
+        };
+      };
+      /** @description Bad Request - Window is inverted or scope is invalid. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Conflict - The organization already has a run that has not finished. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  previewVendorEstimationRun: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Integration id
+         * @example 0q841q0j81m2q
+         */
+        integrationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["CreateVendorEstimationRunRequest"];
+      };
+    };
+    responses: {
+      /** @description Preview computed */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VendorEstimationRunPreview"];
+        };
+      };
+      /** @description Bad Request - Window is inverted or scope is invalid. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getVendorEstimationRun: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Integration id
+         * @example 0q841q0j81m2q
+         */
+        integrationId: string;
+        /**
+         * @description Run id
+         * @example 0q841q0j81m2q
+         */
+        runId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Run retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VendorEstimationRun"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Integration or run not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  stopVendorEstimationRun: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Integration id
+         * @example 0q841q0j81m2q
+         */
+        integrationId: string;
+        /**
+         * @description Run id
+         * @example 0q841q0j81m2q
+         */
+        runId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Run stopped */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VendorEstimationRun"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Integration or run not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getVendorEstimationRunResults: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Integration id
+         * @example 0q841q0j81m2q
+         */
+        integrationId: string;
+        /**
+         * @description Run id
+         * @example 0q841q0j81m2q
+         */
+        runId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Results retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: components["schemas"]["VendorEstimate"];
+          };
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Integration or run not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  resumeVendorEstimationRun: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Integration id
+         * @example 0q841q0j81m2q
+         */
+        integrationId: string;
+        /**
+         * @description Run id
+         * @example 0q841q0j81m2q
+         */
+        runId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Slice triggered */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VendorEstimationRun"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Integration or run not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Conflict - The run is not eligible to be resumed. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   start: {
     parameters: {
       query?: never;
@@ -25408,6 +26070,29 @@ export enum VariantEventType {
 }
 export enum VariantSynchronousSinkType {
   variant_sync_sink = "variant-sync-sink",
+}
+export enum VendorEstimateCountedType {
+  COUNTED = "COUNTED",
+}
+export enum VendorEstimateErrorType {
+  ERROR = "ERROR",
+}
+export enum VendorEstimatePendingType {
+  PENDING = "PENDING",
+}
+export enum VendorEstimateUnparseableType {
+  UNPARSEABLE = "UNPARSEABLE",
+}
+export enum VendorEstimationRunState {
+  QUEUED = "QUEUED",
+  RUNNING = "RUNNING",
+  THROTTLED = "THROTTLED",
+  COMPLETE = "COMPLETE",
+  PARTIAL = "PARTIAL",
+  FAILED = "FAILED",
+}
+export enum VendorEstimationRunVendor {
+  DATADOG = "DATADOG",
 }
 export enum VendorImportedExceptionExceptionType {
   DATADOG_MONITOR = "DATADOG_MONITOR",
