@@ -34,7 +34,7 @@ export function createApiClient(options: ApiClientFactoryOptions): GreprApiClien
   };
 
   if (options.debug) {
-    console.log("API Client Config:", clientConfig);
+    console.error('API Client Config:', { ...clientConfig, clientSecret: clientConfig.clientSecret ? '[REDACTED]' : undefined });
   }
 
   return new GreprApiClient(clientConfig);

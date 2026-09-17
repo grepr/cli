@@ -80,8 +80,9 @@ export class ClientCredentialsAuth {
   /**
    * Get authentication headers for API requests
    */
-  async getAuthHeaders(): Promise<Record<string, string>> {
-    const token = await this.getAccessToken();
+  async getAuthHeaders(signal?: AbortSignal): Promise<Record<string, string>> {
+    signal?.throwIfAborted();
+    const token = await this.getAccessToken(signal);
     return {
       'Authorization': `Bearer ${token}`
     };
@@ -120,7 +121,8 @@ export class ClientCredentialsAuth {
    * Get a valid access token, fetching a new one if expired.
    * Checks in-memory cache first, then disk cache (if authCache is enabled), then Auth0.
    */
-  private async getAccessToken(): Promise<string> {
+  private async getAccessToken(signal?: AbortSignal): Promise<string> {
+    signal?.throwIfAborted();
     if (this.cachedToken && !this.isTokenExpired(this.cachedToken)) {
       return this.cachedToken.access_token;
     }
@@ -143,6 +145,7 @@ export class ClientCredentialsAuth {
 
     try {
       const response = await axios.post(tokenUrl, tokenParams, {
+        signal,
         headers: {
           'Content-Type': 'application/json'
         }
@@ -187,7 +190,8 @@ export class NoAuth {
     this.config = options;
   }
 
-  async getAuthHeaders(): Promise<Record<string, string>> {
+  async getAuthHeaders(signal?: AbortSignal): Promise<Record<string, string>> {
+    signal?.throwIfAborted();
     return {};
   }
 }
@@ -235,7 +239,7 @@ export class GreprAuth {
     };
 
     if (options.debug) {
-      console.log('OAuth configuration:', oauthConf);
+      console.error('OAuth configuration:', { ...oauthConf, clientSecret: oauthConf.clientSecret ? '[REDACTED]' : undefined });
     }
 
     return oauthConf;
@@ -244,8 +248,9 @@ export class GreprAuth {
   /**
    * Get authentication headers for API requests (OAuth uses Bearer token)
    */
-  async getAuthHeaders(): Promise<Record<string, string>> {
-    const token = await this.getAccessToken();
+  async getAuthHeaders(signal?: AbortSignal): Promise<Record<string, string>> {
+    signal?.throwIfAborted();
+    const token = await this.getAccessToken(signal);
     return {
       'Authorization': `Bearer ${token}`
     };
@@ -254,11 +259,12 @@ export class GreprAuth {
   /**
    * Get a valid access token, refreshing if necessary
    */
-  async getAccessToken(): Promise<string> {
+  async getAccessToken(signal?: AbortSignal): Promise<string> {
+    signal?.throwIfAborted();
     // Skip cache if --no-auth-cache option is set
     if (!this.config.authCache) {
-      console.log('Forcing fresh authentication (--no-auth-cache option enabled)');
-      return await this.performFreshAuthentication();
+      console.error('Forcing fresh authentication (--no-auth-cache option enabled)');
+      return await this.performFreshAuthentication(signal);
     }
 
     const cachedToken = await this.loadCachedToken();
@@ -269,23 +275,24 @@ export class GreprAuth {
 
     if (cachedToken?.refresh_token && this.isTokenExpired(cachedToken)) {
       try {
-        const refreshedToken = await this.refreshToken(cachedToken.refresh_token);
+        const refreshedToken = await this.refreshToken(cachedToken.refresh_token, signal);
         await this.saveCachedToken(refreshedToken);
         return refreshedToken.access_token;
       } catch {
+        signal?.throwIfAborted();
         console.warn('Token refresh failed, starting new authentication flow');
       }
     }
 
     // Start new OAuth flow and cache the result
-    return await this.performFreshAuthentication();
+    return await this.performFreshAuthentication(signal);
   }
 
   /**
    * Perform fresh OAuth authentication and optionally cache the result
    */
-  private async performFreshAuthentication(): Promise<string> {
-    const newToken = await this.authenticateWithPKCE();
+  private async performFreshAuthentication(signal?: AbortSignal): Promise<string> {
+    const newToken = await this.authenticateWithPKCE(signal);
 
     // Only save to cache if caching is enabled
     if (this.config.authCache) {
@@ -298,7 +305,8 @@ export class GreprAuth {
   /**
    * OAuth 2.0 PKCE flow with local callback server
    */
-  async authenticateWithPKCE(): Promise<TokenData> {
+  async authenticateWithPKCE(signal?: AbortSignal): Promise<TokenData> {
+    signal?.throwIfAborted();
     const { codeVerifier, codeChallenge } = this.generatePKCEPair();
     const state = randomBytes(16).toString('hex');
 
@@ -318,16 +326,16 @@ export class GreprAuth {
 
     const authUrl = `${this.config.authUrl}?${new URLSearchParams(authParams).toString()}`;
 
-    console.log('Opening browser for authentication...');
-    console.log(`If the browser doesn't open automatically, visit: ${authUrl}`);
+    console.error('Opening browser for authentication...');
+    console.error(`If the browser doesn't open automatically, visit: ${authUrl}`);
 
     // Start local callback server
-    const authCode = await this.startCallbackServer(state, authUrl);
-    console.log('Authorization code received, exchanging for access token...');
+    const authCode = await this.startCallbackServer(state, authUrl, signal);
+    console.error('Authorization code received, exchanging for access token...');
 
     // Exchange authorization code for access token
-    const tokenResponse = await this.exchangeCodeForToken(authCode, codeVerifier);
-    console.log('Authentication successful!');
+    const tokenResponse = await this.exchangeCodeForToken(authCode, codeVerifier, signal);
+    console.error('Authentication successful!');
 
     return tokenResponse;
   }
@@ -347,7 +355,8 @@ export class GreprAuth {
   /**
    * Start local HTTP server to receive OAuth callback
    */
-  async startCallbackServer(expectedState: string, authUrl: string): Promise<string> {
+  async startCallbackServer(expectedState: string, authUrl: string, signal?: AbortSignal): Promise<string> {
+    signal?.throwIfAborted();
     return new Promise((resolve, reject) => {
       const server = createServer((req: IncomingMessage, res: ServerResponse) => {
         const url = new URL(req.url || '', `http://${this.config.orgId}.app.localhost:3000`);
@@ -386,11 +395,19 @@ export class GreprAuth {
         resolve(code);
       });
 
+      const abort = (): void => {
+        server.closeAllConnections();
+        server.close();
+        reject(new Error('Authentication cancelled'));
+      };
+      const cleanup = (): void => signal?.removeEventListener('abort', abort);
+      signal?.addEventListener('abort', abort, { once: true });
+      server.once('close', cleanup);
       server.listen(3000, () => {
-        console.log(`Callback server started on http://${this.config.orgId}.app.localhost:3000`);
+        console.error(`Callback server started on http://${this.config.orgId}.app.localhost:3000`);
 
         if (!this.config.browser) {
-          console.log('Browser auto-launch disabled (--no-browser option enabled)');
+          console.error('Browser auto-launch disabled (--no-browser option enabled)');
         } else {
           open(authUrl).catch(err => {
             console.warn('Failed to open browser automatically:', err.message);
@@ -399,6 +416,7 @@ export class GreprAuth {
       });
 
       server.on('error', (err) => {
+        cleanup();
         reject(new Error(`Callback server error: ${err.message}`));
       });
     });
@@ -407,7 +425,7 @@ export class GreprAuth {
   /**
    * Exchange authorization code for access token
    */
-  async exchangeCodeForToken(authCode: string, codeVerifier: string): Promise<TokenData> {
+  async exchangeCodeForToken(authCode: string, codeVerifier: string, signal?: AbortSignal): Promise<TokenData> {
     const tokenParams = {
       grant_type: 'authorization_code',
       client_id: this.config.clientId,
@@ -418,6 +436,7 @@ export class GreprAuth {
 
     try {
       const response = await axios.post(this.config.tokenUrl, tokenParams, {
+        signal,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
@@ -437,7 +456,7 @@ export class GreprAuth {
   /**
    * Refresh access token using refresh token
    */
-  async refreshToken(refreshToken: string): Promise<TokenData> {
+  async refreshToken(refreshToken: string, signal?: AbortSignal): Promise<TokenData> {
     const refreshParams = {
       grant_type: 'refresh_token',
       client_id: this.config.clientId,
@@ -446,6 +465,7 @@ export class GreprAuth {
 
     try {
       const response = await axios.post(this.config.tokenUrl, refreshParams, {
+        signal,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }

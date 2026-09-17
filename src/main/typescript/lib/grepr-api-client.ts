@@ -35,6 +35,12 @@ import {
   SchemaTemplate,
   SchemaUpdateJob
 } from '@/openapi/openApiTypes'
+import type {
+  InvestigationSummaryStatus,
+  SchemaAgentDetail, SchemaAgentRosterEntry, SchemaAgentSummary,
+  SchemaInvestigationsList, SchemaInvestigationTranscript, SchemaTranscriptTurnsList,
+  SchemaMemorySearchRequest, SchemaMemorySearchResponse
+} from '@/openapi/openApiTypes'
 import { GreprAuth, ClientCredentialsAuth, NoAuth } from './auth.js'
 import {
   ApiClientConfig, IntegrationReadType,
@@ -80,6 +86,18 @@ function retryAfterMsFromResponse(response: Response | undefined): number | unde
   return Number.isNaN(dateMs) ? undefined : Math.max(0, dateMs - Date.now());
 }
 
+/** Preserve HTTP diagnostics, including empty error bodies, for investigation reads. */
+function requireReadData<T>(result: { data?: T; error?: unknown; response: Response }): T {
+  if (!result.response.ok || result.data === undefined) {
+    throw new ApiError(
+      `HTTP ${result.response.status}: ${result.error === undefined ? 'Missing response data' : JSON.stringify(result.error)}`,
+      result.response.status,
+      retryAfterMsFromResponse(result.response)
+    );
+  }
+  return result.data;
+}
+
 /**
  * Main API client for the Grepr CLI using openapi-fetch.
  * This follows the same patterns as the frontend API client.
@@ -110,19 +128,19 @@ export class GreprApiClient {
     // noinspection JSUnusedGlobalSymbols
     this.client.use({
       onRequest: async ({ request }) => {
-        const headers = await this.auth.getAuthHeaders();
+        const headers = await this.auth.getAuthHeaders(request.signal);
         Object.entries(headers).forEach(([key, value]) => {
           request.headers.set(key, value);
         });
         if (config.debug) {
-          console.log('Request:', request.method, request.url);
-          console.log('Headers:', redactSensitiveHeaders(request.headers));
+          console.error('Request:', request.method, request.url);
+          console.error('Headers:', redactSensitiveHeaders(request.headers));
         }
       },
 
       onResponse: async ({ response }) => {
         if (config.debug) {
-          console.log('Response:', response.status, response.url);
+          console.error('Response:', response.status, response.url);
         }
       }
     });
@@ -134,6 +152,45 @@ export class GreprApiClient {
    */
   getClient(): ReturnType<typeof createClient<paths>> {
     return this.client;
+  }
+
+  async listAgentRoster(): Promise<SchemaAgentRosterEntry[]> {
+    return requireReadData(await this.client.GET('/v1/agents/roster'));
+  }
+
+  async listAgents(): Promise<SchemaAgentSummary[]> {
+    return requireReadData(await this.client.GET('/v1/agents'));
+  }
+
+  async getAgent(id: string): Promise<SchemaAgentDetail> {
+    return requireReadData(await this.client.GET('/v1/agents/{id}', { params: { path: { id } } }));
+  }
+
+  async listInvestigations(id: string, query: {
+    page?: number; pageSize?: number; statuses?: InvestigationSummaryStatus[];
+  }): Promise<SchemaInvestigationsList> {
+    return requireReadData(await this.client.GET('/v1/agents/{id}/investigations', {
+      params: { path: { id }, query },
+      querySerializer: { array: { style: 'form', explode: true } }
+    }));
+  }
+
+  /** Metadata only; transcript messages are read separately with getInvestigationTurns. */
+  async getInvestigation(investigationId: string, signal?: AbortSignal): Promise<SchemaInvestigationTranscript> {
+    return requireReadData(await this.client.GET('/v1/investigations/{investigationId}/transcript', {
+      params: { path: { investigationId } }, signal
+    }));
+  }
+
+  async getInvestigationTurns(investigationId: string, afterSeq: number, pageSize: number,
+    signal?: AbortSignal): Promise<SchemaTranscriptTurnsList> {
+    return requireReadData(await this.client.GET('/v1/investigations/{investigationId}/turns', {
+      params: { path: { investigationId }, query: { afterSeq, pageSize } }, signal
+    }));
+  }
+
+  async searchInvestigationMemory(body: SchemaMemorySearchRequest): Promise<SchemaMemorySearchResponse> {
+    return requireReadData(await this.client.POST('/v1/agent-memory/search', { body }));
   }
 
   // Job Management Methods

@@ -29827,7 +29827,7 @@
     },
     "/v1/investigations/{investigationId}/transcript": {
       "get": {
-        "description": "Returns the investigation\u0027s status and its turn-by-turn transcript of model messages, tool calls and tool results.",
+        "description": "Returns investigation metadata and recorded actions, without journal turns. Use the turns endpoint for model messages, tool calls, and tool results.",
         "operationId": "transcript",
         "parameters": [
           {
@@ -29848,7 +29848,7 @@
                 }
               }
             },
-            "description": "Transcript retrieved successfully"
+            "description": "Investigation metadata retrieved successfully"
           },
           "401": {
             "description": "Unauthorized"
@@ -29865,7 +29865,7 @@
             "grepr-oidc": []
           }
         ],
-        "summary": "Get an investigation transcript",
+        "summary": "Get investigation metadata and recorded actions",
         "tags": [
           "Investigations"
         ]

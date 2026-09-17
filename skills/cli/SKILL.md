@@ -1,10 +1,10 @@
 ---
-description: Router for the Grepr CLI. Use whenever the user wants to manage Grepr jobs/pipelines, datasets, integrations, or documentation, query logs or spans, backfill data, or edit a pipeline — it directs to the specialized command and pipeline-editing skills. Start here for any "grepr" command request.
+description: Router for the Grepr CLI. Use whenever the user wants to manage Grepr jobs/pipelines, datasets, integrations, or documentation, inspect agent investigations or memories, query logs or spans, backfill data, or edit a pipeline — it directs to specialized command skills. Start here for any "grepr" command request.
 ---
 
 # Grepr CLI
 
-The Grepr CLI provides commands for managing jobs, datasets, integrations, and documentation.
+The Grepr CLI provides commands for managing jobs, datasets, integrations, and documentation, and inspecting agent investigations and memories.
 
 ## Prerequisites
 
@@ -40,6 +40,13 @@ Common flags:
 ## Command Categories
 
 Choose the appropriate specialized skill based on what you need to do:
+
+### Agent Investigations and Memory → `grepr:investigations`
+Inspect investigation outcomes, transcript messages/tool calls, recorded actions,
+and memories of related incidents. Supports both CLI and Grepr MCP reads.
+- Commands: `agent:list`, `agent:get`, `investigation:list`, `investigation:get`,
+  `investigation:turns`, `investigation:transcript`, `investigation:memory:search`
+- Use `--format raw` for evidence-preserving responses with pagination metadata.
 
 ### Job/Pipeline Management → `grepr:job-commands`
 Manage Grepr jobs and pipelines.

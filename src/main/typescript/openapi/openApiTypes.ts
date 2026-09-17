@@ -2461,8 +2461,8 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * Get an investigation transcript
-     * @description Returns the investigation's status and its turn-by-turn transcript of model messages, tool calls and tool results.
+     * Get investigation metadata
+     * @description Returns the investigation's status, timestamps, summary, and recorded actions. Read transcript content from the cursor-paged turns endpoint.
      */
     get: operations["transcript"];
     put?: never;
@@ -22108,7 +22108,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Transcript retrieved successfully */
+      /** @description Investigation metadata retrieved successfully */
       200: {
         headers: {
           [name: string]: unknown;

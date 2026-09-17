@@ -21,6 +21,9 @@ import { DocsSearchCommand } from './commands/docs-command.js';
 import { DocsGetCommand } from './commands/docs-get-command.js';
 import { SqlValidateCommand } from './commands/sql-validate-command.js';
 import { BackfillCommand } from './commands/backfill-command.js';
+import { AgentCommand } from './commands/agent-command.js';
+import { InvestigationCommand } from './commands/investigation-command.js';
+import { InvestigationMemoryCommand } from './commands/investigation-memory-command.js';
 import type { CliOptions } from './types.js';
 import { parseAuthMethod, parseEnvUrl, parseQueryEngine, parseUrl } from './lib/option-parsers.js';
 
@@ -189,6 +192,9 @@ export class GreprQueryCLI {
    * Register all commands with the command registry
    */
   private registerCommands(): void {
+    this.commandRegistry.register(new AgentCommand());
+    this.commandRegistry.register(new InvestigationCommand());
+    this.commandRegistry.register(new InvestigationMemoryCommand());
     // Register streaming commands
     this.commandRegistry.register(new QueryCommand());
 
