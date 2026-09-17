@@ -207,30 +207,23 @@ In the API, the window is the `window` object of the structured analytics query,
 
 ## Read the results table
 
-The results table sorts and arranges itself, and both are part of the analysis rather than a local
-view setting.
+Click a column header to sort the rows you already have. No second run happens and no scan budget
+is spent; Shift-click adds a second sort instead of replacing the first.
 
-Click a column header to sort by that column. Each click cycles it through descending, ascending and
-unsorted, and the header shows which way it is sorting. Shift-click a second header to sort by it as
-well instead of replacing the first sort; headers then carry a number showing which sort takes
-priority. Clicking a header edits the sort expressions in the builder, so the two never disagree.
+When an analysis comes back at its row limit, the rows you have are only the top of the ranking, so
+sorting them on the page can put the wrong rows first. The table says so and offers **Sort on the
+server**, which puts the sort into ORDER BY and runs the analysis again so the engine ranks every
+matching row.
 
-A sort takes effect on the next run, because the query engine does the sorting. Until then the table
-says the sort no longer matches the rows it is showing.
-
-![Result headers sorting by count0 first and p95 second, each carrying its priority number, with a note that the sort changed and Analyze has to be run to apply it.](/images/queries/analyze/analyze-header-sort.png)
-
-Drag a header by its handle to move a column. From the keyboard, focus the handle, press Space to
-pick the column up, move it with the arrow keys, and press Space again to drop it. The order you
-arrange survives a re-run, a new column appears without disturbing it, and the CSV download follows
-the order you see rather than the order the query returned.
+![Result headers sorted by count0 then service, above a notice that the analysis returned its row limit and an offer to sort on the server.](/images/queries/analyze/analyze-header-sort.png)
 
 ## Share an analysis
 
 The whole analysis lives in the page URL, so copying the link from the address bar is enough to share
-it. The link carries the dataset, the time range, the search query, every SELECT expression and its alias, every GROUP BY
-expression, the HAVING condition, the sort, the time window, the row limit, the scan
-budget and the column order you arranged.
+it. The link carries the dataset, the time range, the search query, every SELECT expression and its
+alias, every GROUP BY expression, the HAVING condition, the ORDER BY, the time window, the row limit,
+the scan budget, and the way you arranged the results table — its column order, column widths and
+sort.
 
 Opening such a link seats every control and runs the analysis once, so the recipient sees the rows
 rather than a filled-in form waiting for a click. Back and Forward move between analyses you have
@@ -248,7 +241,7 @@ Each result row is a JSON object keyed by column name, so a column holds whateve
 - An analysis reads one dataset at a time. Joins across datasets are not supported.
 - Sorting by an attribute that you have not cast sorts it by its stored text, so `100` sorts before `99`. Cast the attribute to sort numerically, as in `CAST(@http.status_code AS BIGINT)`.
 - A result alias cannot be a reserved SQL word, and a reference to one has to match its lowercase spelling exactly.
-- A sort you set from the result headers applies on the next run, since the query engine sorts the rows.
+- A sort you set from the result headers sorts the rows already on the page. When the analysis returned its row limit, use **Sort on the server** to rank every matching row instead.
 - An analysis too long to fit in the address bar cannot be shared as a link.
 - An analysis can compute at most 128 values, group by at most 64 expressions, and sort by at most 64 expressions. Each expression can be at most 4,096 characters long.
 - A time window's size and slide are whole milliseconds, and a sliding window covers at most 100 slides. `window_start` and `window_end` cannot be used as result aliases while a window is set.
@@ -273,7 +266,7 @@ Each result row is a JSON object keyed by column name, so a column holds whateve
   },
   {
     q: "How do I share a Grepr analysis?",
-    a: "Copy the page URL. The link carries the dataset, time range, query, every expression and alias, the window, the row limit, the scan budget and the column order, and opening it runs the analysis once."
+    a: "Copy the page URL. The link carries the dataset, time range, query, every expression and alias, the window, the row limit, the scan budget and the column order, widths and sort, and opening it runs the analysis once."
   },
   {
     q: "Why can't I name a result column count?",
@@ -285,6 +278,6 @@ Each result row is a JSON object keyed by column name, so a column holds whateve
   },
   {
     q: "How do I sort an analysis by a result column?",
-    a: "Click the column header in the results table. Each click cycles descending, ascending and unsorted, and Shift-click adds a second column to the sort. The sort applies on the next run."
+    a: "Click the column header in the results table. The rows on the page reorder immediately, without a second run. If the analysis returned its row limit, the table offers Sort on the server, which puts the sort into ORDER BY and runs the analysis again."
   },
 ]} />
