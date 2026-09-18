@@ -1734,6 +1734,9 @@
       "AnalyticsDiagnostic": {
         "description": "Request constraints, followed by the first SQL failure when the request is complete, at most one per field. Empty means no draft errors were found; execution still validates the query against its actual table and engine.",
         "properties": {
+          "fix": {
+            "$ref": "#/components/schemas/AnalyticsDiagnosticFix"
+          },
           "message": {
             "description": "What is wrong, as a finished sentence to show the person editing the query.",
             "example": "Result aliases must be unique.",
@@ -1748,6 +1751,20 @@
         "required": [
           "message",
           "path"
+        ],
+        "type": "object"
+      },
+      "AnalyticsDiagnosticFix": {
+        "description": "A change that resolves this diagnostic, when the server has verified one: today, the GROUP BY entry that makes an ungrouped SELECT expression valid.",
+        "properties": {
+          "addGroupBy": {
+            "description": "A GROUP BY entry to append: the result column\u0027s alias, quoted when it starts with a digit, or its expression when it has no alias. The server has translated the query with this entry added and found it valid.",
+            "example": "service",
+            "type": "string"
+          }
+        },
+        "required": [
+          "addGroupBy"
         ],
         "type": "object"
       },
