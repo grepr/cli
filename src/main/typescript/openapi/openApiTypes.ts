@@ -16115,6 +16115,10 @@ export interface operations {
         pageSize?: number;
         /** @description Investigation statuses to include, e.g. QUEUED, RUNNING, COMPLETED; repeat for multiple. Absent or empty for all statuses. */
         statuses?: string[];
+        /** @description Whether the investigation has recorded actions; absent for either */
+        hasActions?: boolean;
+        /** @description Signal types to include; repeat for multiple. Absent for all. */
+        triggers?: PathsV1AgentsIdInvestigationsGetParametersQueryTriggers[];
       };
       header?: never;
       path: {
@@ -25113,6 +25117,11 @@ export enum PathsV1AgentSuggestionsGetParametersQueryStatus {
   PENDING = "PENDING",
   APPLIED = "APPLIED",
   REJECTED = "REJECTED",
+}
+export enum PathsV1AgentsIdInvestigationsGetParametersQueryTriggers {
+  MANUAL = "MANUAL",
+  WEBHOOK_SIGNAL = "WEBHOOK_SIGNAL",
+  LOG_PATTERN_SIGNAL = "LOG_PATTERN_SIGNAL",
 }
 export enum PathsV1FilesUploadPresignedUrlPostParametersQueryFormat {
   json = "json",

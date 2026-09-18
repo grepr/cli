@@ -5780,11 +5780,17 @@
           "appBaseUrl": {
             "type": "string"
           },
+          "billingEnabled": {
+            "type": "boolean"
+          },
           "flinkBaseUrl": {
             "type": "string"
           },
           "gtmContainerId": {
             "type": "string"
+          },
+          "intercomEnabled": {
+            "type": "boolean"
           },
           "kafkaToolkitClusterName": {
             "type": "string"
@@ -22434,6 +22440,30 @@
               },
               "type": "array"
             }
+          },
+          {
+            "description": "Whether the investigation has recorded actions; absent for either",
+            "in": "query",
+            "name": "hasActions",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Signal types to include; repeat for multiple. Absent for all.",
+            "in": "query",
+            "name": "triggers",
+            "schema": {
+              "items": {
+                "enum": [
+                  "MANUAL",
+                  "WEBHOOK_SIGNAL",
+                  "LOG_PATTERN_SIGNAL"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            }
           }
         ],
         "responses": {
@@ -29827,7 +29857,7 @@
     },
     "/v1/investigations/{investigationId}/transcript": {
       "get": {
-        "description": "Returns investigation metadata and recorded actions, without journal turns. Use the turns endpoint for model messages, tool calls, and tool results.",
+        "description": "Returns the investigation\u0027s status, timestamps, summary, and recorded actions. Read transcript content from the cursor-paged turns endpoint.",
         "operationId": "transcript",
         "parameters": [
           {
@@ -29865,7 +29895,7 @@
             "grepr-oidc": []
           }
         ],
-        "summary": "Get investigation metadata and recorded actions",
+        "summary": "Get investigation metadata",
         "tags": [
           "Investigations"
         ]
