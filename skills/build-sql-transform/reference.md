@@ -115,6 +115,7 @@ OTel; 9=INFO), `tags` MAP<STRING, ARRAY<STRING>>, `attributes` VARIANT.
 | `data-warehouse` | The processed-logs data-lake write **plus** the step immediately after it — i.e. the full normal post-warehouse fan-out. |
 | `log-reducer` | The reducer/aggregation step only. |
 | `sinks` | The pipeline's vendor/output sinks. |
+| `agent-signal` | The configured agent-signal sink. This terminal route is only for the narrow pipeline signal filter accepted by `update_job`, which fills one vacant `pre-parser`, `pre-warehouse`, or `pre-exceptions` slot. |
 
 Pick the slot's natural successor for *this* pipeline (read topology from
 `grepr:describe-pipeline`). In `drop` mode the routed output is the only path
@@ -136,7 +137,7 @@ The CLI validates before `job:plan`; mirror these to fail fast. Verbatim:
 | Duplicate output name | `duplicate sql_output outputName "<name>"; output names must be unique` |
 | `outputRouting` not object | `outputRouting must be an object` |
 | Routing key has no output | `outputRouting key "<key>" does not match any sql_output outputName` |
-| Bad target value | `outputRouting["<key>"] = <value> is not a valid target step. Valid targets: json-log-processor, grok-parser, data-warehouse, log-reducer, sinks.` |
+| Bad target value | `outputRouting["<key>"] = <value> is not a valid target step. Valid targets: json-log-processor, grok-parser, data-warehouse, log-reducer, sinks, agent-signal.` |
 | Output not routed | `sql_output "<name>" has no route in outputRouting` |
 | Bad gate | `gate must be an EventPredicate object with a "type"` |
 

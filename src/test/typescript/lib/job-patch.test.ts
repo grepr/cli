@@ -1177,6 +1177,20 @@ describe('classifyPatch', () => {
     ).toBe('sink');
   });
 
+  it('test_classify_agentSignalSinkEdits_touchSinkAndReportUnverifiedDelivery', () => {
+    const patches: JobPatch[] = [
+      { operations: [{ op: 'set-input-field', path: 'agentSignalSink', value: { type: 'agent-signal-sink', name: 'agent_signal_sink', targetAgentIds: ['agent-2'] } }] },
+      { operations: [{ op: 'set-input-field', path: 'input.agentSignalSink.context', value: 'Security detection recurrence' }] },
+      { operations: [{ op: 'unset-input-field', path: 'agentSignalSink' }] },
+    ];
+    for (const patch of patches) {
+      expect(classifyPatch(patch)).toBe('sink');
+      expect(draftVerificationLimitations(patch)).toEqual([
+        expect.stringContaining('external sink delivery is not verified'),
+      ]);
+    }
+  });
+
   it('test_classify_setInputFieldOnRawSinkConfig_touchesSink', () => {
     expect(
       classifyPatch({ operations: [{ op: 'set-input-field', path: 'rawSinkConfig.datasetId', value: 'other' }] }),

@@ -2482,6 +2482,7 @@ const INPUT_FIELD_TOUCHES: Record<keyof SchemaLogReducerTemplateInput, 'source' 
   sources: 'source',
   draftSource: 'source',
   sinks: 'sink',
+  agentSignalSink: 'sink',
   processedLogsSink: 'sink',
   processedLogsSinkFilter: 'sink',
   rawSinkConfig: 'sink',

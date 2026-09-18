@@ -4198,6 +4198,23 @@ export interface components {
       /** @description OTLP integrations receiving agent harness events and execution spans. */
       sources: components["schemas"]["AgentSessionsEndpoint"][];
     };
+    /** @description Emits a generic pipeline signal for each input log event. */
+    AgentSignalSink: {
+      /** @description Optional author-provided context included with every emitted signal. */
+      context?: string;
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Agent ids that should investigate every signal emitted by this sink.
+       * @default []
+       */
+      targetAgentIds: string[];
+      /**
+       * @description Emits generic pipeline signals to selected agents. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: AgentSignalSinkType;
+    };
     /** @description Normalizes agent span attributes and projects observed transcript content as canonical agent LogEvents in one pass. */
     AgentSpanProcessor: {
       /** @example operation_name */
@@ -8165,6 +8182,7 @@ export interface components {
      * @description Schema for the log reducer job graph.
      */
     LogReducerTemplateInput: {
+      agentSignalSink?: components["schemas"]["AgentSignalSink"];
       /** @description Conditional routing of raw logs to datasets. Logs will match the filters in order, and once a log matches a filter, it will not attempt to match other filters in the list. If a log matches none of the filters, it is written to the default dataset. A default dataset must be set when conditional routing is configured. */
       conditionalDatasets?: components["schemas"]["ConditionalDataLakeConfig"][];
       /**
@@ -9449,6 +9467,7 @@ export interface components {
       | components["schemas"]["VariantSynchronousSink"]
       | components["schemas"]["SpansSynchronousSink"]
       | components["schemas"]["QuerySink"]
+      | components["schemas"]["AgentSignalSink"]
       | components["schemas"]["DiscardingSink"]
       | components["schemas"]["DatadogMetricsSink"]
       | components["schemas"]["LegacyDatadogMetricsSink"]
@@ -14645,6 +14664,7 @@ export type SchemaAgentSessionsSynchronousSink =
   components["schemas"]["AgentSessionsSynchronousSink"];
 export type SchemaAgentSessionsTemplateInput =
   components["schemas"]["AgentSessionsTemplateInput"];
+export type SchemaAgentSignalSink = components["schemas"]["AgentSignalSink"];
 export type SchemaAgentSpanProcessor =
   components["schemas"]["AgentSpanProcessor"];
 export type SchemaAgentSubscriptionCounts =
@@ -25211,6 +25231,9 @@ export enum AgentSessionsIcebergTableSourceType {
 export enum AgentSessionsSynchronousSinkType {
   agent_sessions_sync_sink = "agent-sessions-sync-sink",
 }
+export enum AgentSignalSinkType {
+  agent_signal_sink = "agent-signal-sink",
+}
 export enum AgentSpanProcessorType {
   agent_span_processor = "agent-span-processor",
 }
@@ -25909,6 +25932,7 @@ export enum SqlNodeOutputRouting {
   grok_parser = "grok-parser",
   data_warehouse = "data-warehouse",
   log_reducer = "log-reducer",
+  agent_signal = "agent-signal",
   sinks = "sinks",
 }
 export enum SqlNodeKind {
@@ -26168,6 +26192,7 @@ export const SOURCE_TYPES = new Set<string>([
 
 export const SINK_TYPES = new Set<string>([
   'agent-sessions-sync-sink',
+  'agent-signal-sink',
   'datadog-log-sink',
   'datadog-metrics-sink',
   'datadog-stats-sink',

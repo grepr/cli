@@ -159,7 +159,7 @@ Write a `set-sql-transform` patch to `patch-sql-<tag>.json` (op shape in
    bite: `mainStream` required; ≥1 `sql_output`; every `outputName` is unique and
    **contains an underscore** (`critical_errors` ✅, `criticalerrors` ❌ — this
    one surfaces only at draft); every output has a route in `outputRouting`; each
-   target is one of the five enum values; aggregations need a window TVF.
+   target is one of the six enum values; aggregations need a window TVF.
 3. **Route to the slot's natural successor** (read it from describe-pipeline).
    This matters most in `drop` mode: the dropped original no longer carries logs
    forward, so the routed output is the *only* path down. At `pre-warehouse`,
@@ -179,6 +179,36 @@ carry pre-transform data — that's expected): confirm the intended change is
 present, correctly typed, exactly one copy per event, and landing where you
 intend. For a safety/coverage change, a marker tag in the SELECT (`` 'v1' AS
 `tags.<marker>` ``) lets you and the user query that the change landed.
+
+### Pipeline signal filter for `update_job`
+
+`agent-signal` is the terminal route for an additive pipeline signal filter. For this one narrow
+`update_job` use case, author a single vacant slot at any one of `pre-parser`, `pre-warehouse`, or
+`pre-exceptions`, with `mainStream: "passthrough"`, one `LOG_EVENT` input named `logs`, and one
+`LOG_EVENT` output routed only to `agent-signal`. Pick the phase by the fields the predicate needs:
+`pre-parser` runs before parsing and sees the raw event, while `pre-warehouse` and `pre-exceptions`
+run after parsing and see the parsed fields. If the pipeline masks logs (`input.masking` is set),
+only `pre-exceptions` is accepted: it runs after the masking operator, and the other two would
+signal unmasked events. The chosen slot must be absent today, one change fills one slot, and the
+current template inputs must already contain `input.agentSignalSink`; never put that sink
+configuration in the patch or change it.
+
+Check the existing stages before you author anything. If a stage already selects the same
+behavior, routes its matching output to `agent-signal`, and keeps its `next` path passthrough, the
+behavior is covered: report that and stop rather than adding a near-duplicate variation.
+
+Keep the query a plain `SELECT * FROM logs WHERE <predicate>`: no join, subquery, aggregate, or
+window, no pipeline datasets, no functions, and no `globalStateTtl`; the verifier rejects anything
+else. Flink validates it at draft and apply time. Every matching
+event starts an investigation, so keep the predicate selective. Write `logs` and the event field names
+in lower case, because Flink SQL identifiers are case-sensitive. Plan and draft the `set-sql-transform` form first. When calling `update_job`, express the same operation as
+that one vacant `input.transforms` stage (`preParser`, `preWarehouse`, or `preExceptions`) with one
+`sql-node`, its single output route to `agent-signal`, and `next: {"kind":"passthrough-node"}`. The
+change is static and takes effect only after a successful pipeline restart.
+
+The draft preview is bounded and intentionally omits the live terminal `agent-signal` sink. Its
+absence from a passing draft is not a failure, and not a reason to redesign the filter or repeat
+the draft.
 
 ## Routing to cases
 

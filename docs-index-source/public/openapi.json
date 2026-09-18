@@ -1350,6 +1350,46 @@
         "title": "Inputs Schema",
         "type": "object"
       },
+      "AgentSignalSink": {
+        "description": "Emits a generic pipeline signal for each input log event.",
+        "properties": {
+          "context": {
+            "description": "Optional author-provided context included with every emitted signal.",
+            "maxLength": 4096,
+            "minLength": 0,
+            "type": "string"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "targetAgentIds": {
+            "default": [],
+            "description": "Agent ids that should investigate every signal emitted by this sink.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": {
+            "description": "Emits generic pipeline signals to selected agents.",
+            "enum": [
+              "agent-signal-sink"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "targetAgentIds",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sinks"
+        ]
+      },
       "AgentSpanProcessor": {
         "description": "Normalizes agent span attributes and projects observed transcript content as canonical agent LogEvents in one pass.",
         "properties": {
@@ -9010,6 +9050,9 @@
       "LogReducerTemplateInput": {
         "description": "Schema for the log reducer job graph.",
         "properties": {
+          "agentSignalSink": {
+            "$ref": "#/components/schemas/AgentSignalSink"
+          },
           "conditionalDatasets": {
             "description": "Conditional routing of raw logs to datasets. Logs will match the filters in order, and once a log matches a filter, it will not attempt to match other filters in the list. If a log matches none of the filters, it is written to the default dataset. A default dataset must be set when conditional routing is configured.",
             "items": {
@@ -11323,6 +11366,7 @@
             "agent-session-events-iceberg-table-source": "#/components/schemas/AgentSessionEventsIcebergTableSource",
             "agent-sessions-iceberg-table-source": "#/components/schemas/AgentSessionsIcebergTableSource",
             "agent-sessions-sync-sink": "#/components/schemas/AgentSessionsSynchronousSink",
+            "agent-signal-sink": "#/components/schemas/AgentSignalSink",
             "agent-span-processor": "#/components/schemas/AgentSpanProcessor",
             "athena-agent-sessions-source": "#/components/schemas/AthenaAgentSessionsSource",
             "athena-analytics-source": "#/components/schemas/AthenaAnalyticsSource",
@@ -11572,6 +11616,9 @@
           },
           {
             "$ref": "#/components/schemas/QuerySink"
+          },
+          {
+            "$ref": "#/components/schemas/AgentSignalSink"
           },
           {
             "$ref": "#/components/schemas/DiscardingSink"
@@ -16600,6 +16647,7 @@
                 "grok-parser",
                 "data-warehouse",
                 "log-reducer",
+                "agent-signal",
                 "sinks"
               ],
               "type": "string"
