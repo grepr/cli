@@ -6,6 +6,20 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in September 2026.
 
+## September 16, 2026
+
+{/* ENGT-5663 */}
+### Authenticate OTLP ingestion with a header
+
+You can now send OTLP logs and traces to endpoints that read your Grepr token from an `x-grepr-token` header instead of carrying it as a segment of the URL path.
+
+### Other improvements and fixes
+
+- {/* ENGT-5607, ENGT-5610, ENGT-5618 */} Several improvements were made to Analyze mode in Log Explorer, including checking your analysis with the server as you write it and completion suggestions drawn from the vocabulary the server accepts.
+- {/* ENGT-5632 */} You can now set the records path and the file reading strategy when configuring an S3 file source, so the source can read files that don't use the default layout.
+- {/* ENGT-5662 */} Log events that carry a capitalized `Message` attribute now have it remapped to the message field by default.
+- {/* ENGT-5674 */} Fixed an issue where logs in some circumstances were not correctly reporting their severity in Datadog.
+
 ## September 15, 2026
 
 {/* ENGT-5598, ENGT-5593 */}
