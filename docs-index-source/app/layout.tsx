@@ -486,12 +486,6 @@ const pageMap = [
         title: "Authenticate to Grepr APIs",
       },
       {
-        name: "mcp",
-        route: "/apis/mcp",
-        type: "page",
-        title: "Connect to the Grepr MCP server",
-      },
-      {
         name: "job-creation-guide",
         route: "/apis/job-creation-guide",
         type: "page",

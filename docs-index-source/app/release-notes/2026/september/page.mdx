@@ -6,37 +6,6 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in September 2026.
 
-## September 19, 2026
-
-{/* ENGT-5534, ENGT-5758 */}
-### Connect an AI assistant to Grepr with the MCP server
-
-Grepr hosts a remote Model Context Protocol server, so an AI assistant can work with your organization directly: list pipelines, browse datasets and templates, search your logs, validate Flink SQL and Grok rules, and propose pipeline changes. Claude and Claude Code sign in with your own Grepr account over OAuth, Claude in Slack connects through a downloadable plugin, and any other MCP client can authenticate with a service account access token. Every tool call is authorized with the same role-based permissions as the Grepr UI and REST APIs. See [_](/apis/mcp).
-
-### Other improvements and fixes
-
-- {/* ENGT-5608, ENGT-5612 */} The results grid and the Analyze results table now keep your column order, widths, and sort in the page URL, so a reload or a shared link restores the table as you left it; when an analysis comes back at its row limit, **Sort on the server** pushes the sort into the query and runs it again. See [_](/queries/analyze).
-- {/* ENGT-5626 */} An Analyze SELECT column that is neither an aggregate nor one of the grouping expressions now offers a **Group by** button beside its message, which adds the grouping for you once the server confirms that the amended analysis translates.
-- {/* ENGT-5679 */} Fixed an issue where the billing page failed to load for organizations whose contract does not start on the first of a month.
-- {/* ENGT-5768 */} Fixed an issue where a log send that timed out and returned an error could still be ingested, so the retry from your collector was stored as a duplicate.
-- {/* ENGT-5609 */} Fixed an issue where grouping by a tag in Analyze used only the first of its values, so events carrying the same set of values in a different order landed in different groups; the suggested accessor now reads the whole set as `ARRAY_TO_STRING(SORT_ARRAY(tags['service']), ',')`.
-- {/* ENGT-5660 */} Fixed an issue where a New Relic integration that failed part way through setup was left behind unusable and blocked creating it again under the same name.
-- {/* ENGT-5678 */} Fixed an issue where a pipeline could restart repeatedly instead of recovering after an upgrade timed out.
-
-## September 16, 2026
-
-{/* ENGT-5663 */}
-### Authenticate OTLP ingestion with a header
-
-You can now send OTLP logs and traces to endpoints that read your Grepr token from an `x-grepr-token` header instead of carrying it as a segment of the URL path.
-
-### Other improvements and fixes
-
-- {/* ENGT-5607, ENGT-5610, ENGT-5618 */} Several improvements were made to Analyze mode in Log Explorer, including checking your analysis with the server as you write it and completion suggestions drawn from the vocabulary the server accepts.
-- {/* ENGT-5632 */} You can now set the records path and the file reading strategy when configuring an S3 file source, so the source can read files that don't use the default layout.
-- {/* ENGT-5662 */} Log events that carry a capitalized `Message` attribute now have it remapped to the message field by default.
-- {/* ENGT-5674 */} Fixed an issue where logs in some circumstances were not correctly reporting their severity in Datadog.
-
 ## September 15, 2026
 
 {/* ENGT-5598, ENGT-5593 */}

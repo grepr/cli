@@ -129,7 +129,6 @@ jobs:
   asyncBatchJobScheduler: 1s
 
 jobDeploymentConfigs:
-  flinkNamespace: "flink"
   jobRunningStateTransitionTimeout: "PT5M"
   jobStopStateTransitionTimeout: "PT2M"
   jobDeletedStateTransitionTimeout: "PT1M"
