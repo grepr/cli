@@ -5863,6 +5863,15 @@ export interface components {
        *     ]
        */
       browserLogGroupByAttributes?: string[];
+      /**
+       * @description Top-level JSON field names to write the host to. Datadog only maps one of these onto the log's host if the name is in the destination organization's "Preprocessing for JSON logs -> Host attributes" list, so an organization that has removed the default entry needs this overridden. Defaults to ["hostname"].
+       * @default []
+       * @example [
+       *       "hostname",
+       *       "host"
+       *     ]
+       */
+      hostFieldNames?: string[];
       /** @description The Datadog integration id. */
       integrationId: string;
       /** @example operation_name */

@@ -4671,6 +4671,18 @@
             },
             "type": "array"
           },
+          "hostFieldNames": {
+            "default": [],
+            "description": "Top-level JSON field names to write the host to. Datadog only maps one of these onto the log\u0027s host if the name is in the destination organization\u0027s \"Preprocessing for JSON logs -\u003e Host attributes\" list, so an organization that has removed the default entry needs this overridden. Defaults to [\"hostname\"].",
+            "example": [
+              "hostname",
+              "host"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "integrationId": {
             "description": "The Datadog integration id.",
             "type": "string"
