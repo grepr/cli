@@ -26,8 +26,10 @@ If this fails, ask the user to provide `--org-name` or `--conf` options.
 
 ## General Usage Notes
 
-- Use `--format table` for human-readable output
-- Use `--format raw` for JSON output that's easier to parse programmatically
+- Output defaults to `compact` in a sandbox (`GREPR_OUTPUT_FORMAT`); pass `-f` only to ask
+  for something else. `compact`/`raw` emit one JSON object per line, so parse per line
+  (`| jq -c .`), never `| jq '.[]'`. Avoid `--format table`: it truncates nested values.
+- Use `--fields id,name,state` to keep only the fields you need.
 - Integrations include both vendor integrations (Datadog, Splunk, etc.) and storage integrations (S3, etc.)
 - Creating/updating integrations is done through the Grepr UI or API, not the CLI
 
@@ -47,17 +49,17 @@ If this fails, ask the user to provide `--org-name` or `--conf` options.
 
 ### List all integrations
 ```bash
-grepr integration:list --format table
+grepr integration:list --fields id,name,type
 ```
 
 ### Get integration details
 ```bash
-grepr integration:get <integration-id> --format raw
+grepr integration:get <integration-id> -f compact
 ```
 
 ### Find integration ID for a vendor
 ```bash
-grepr integration:list --format raw | jq '.[] | select(.type=="datadog")'
+grepr integration:list -f compact | jq 'select(.type=="datadog")'
 ```
 
 ## Command Details

@@ -51,16 +51,16 @@ Ask the user these questions:
 
 ```bash
 # List available integrations
-grepr integration:list --format table
+grepr integration:list --fields id,name,type
 
 # List existing datasets (for sink or reference)
-grepr dataset:list --format table
+grepr dataset:list --fields id,name
 
 # List existing pipelines for reference patterns
-grepr job:list --processing STREAMING --format table
+grepr job:list --processing STREAMING --fields id,name,state
 
 # Get an existing pipeline config as reference
-grepr job:get <job-id> --format raw
+grepr job:get <job-id> -f compact
 ```
 
 **Key information to gather:**
@@ -251,7 +251,7 @@ Convert to production configuration:
 grepr job:create production-pipeline.json
 
 # Verify it started
-grepr job:list --state RUNNING --format table
+grepr job:list --state RUNNING -f compact
 ```
 
 ## Step 7: Validate in Production
@@ -260,13 +260,13 @@ After a few minutes, verify data is flowing:
 
 ```bash
 # Check job status
-grepr job:get <job-id> --format table
+grepr job:get <job-id> -f compact
 
 # Query the output dataset
-grepr query --dataset-id <output-dataset-id> --limit 10 --format table
+grepr query --dataset-id <output-dataset-id> --limit 10 -f compact
 
 # Check for expected fields
-grepr query --dataset-id <output-dataset-id> --query "service:target-service" --limit 5 -q --format raw -o output-sample.ndjson
+grepr query --dataset-id <output-dataset-id> --query "service:target-service" --limit 5 -q -f compact -o output-sample.ndjson
 ```
 
 **Validation checklist:**

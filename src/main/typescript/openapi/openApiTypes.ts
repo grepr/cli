@@ -4347,6 +4347,7 @@ export interface components {
     };
     /** @description Request constraints, followed by the first SQL failure when the request is complete, at most one per field. Empty means no draft errors were found; execution still validates the query against its actual table and engine. */
     AnalyticsDiagnostic: {
+      fix?: components["schemas"]["AnalyticsDiagnosticFix"];
       /**
        * @description What is wrong, as a finished sentence to show the person editing the query.
        * @example Result aliases must be unique.
@@ -4357,6 +4358,14 @@ export interface components {
        * @example select[1].alias
        */
       path: string;
+    };
+    /** @description A change that resolves this diagnostic, when the server has verified one: today, the GROUP BY entry that makes an ungrouped SELECT expression valid. */
+    AnalyticsDiagnosticFix: {
+      /**
+       * @description A GROUP BY entry to append: the result column's alias, quoted when it starts with a digit, or its expression when it has no alias. The server has translated the query with this entry added and found it valid.
+       * @example service
+       */
+      addGroupBy: string;
     };
     AnalyticsDraftRequest: {
       /** @description Dataset the query reads. Supplying it checks the scan budget against that dataset's ceiling and requires VIEW permission on it. */
@@ -14685,6 +14694,8 @@ export type SchemaAnalyticsCompletion =
   components["schemas"]["AnalyticsCompletion"];
 export type SchemaAnalyticsDiagnostic =
   components["schemas"]["AnalyticsDiagnostic"];
+export type SchemaAnalyticsDiagnosticFix =
+  components["schemas"]["AnalyticsDiagnosticFix"];
 export type SchemaAnalyticsDraftRequest =
   components["schemas"]["AnalyticsDraftRequest"];
 export type SchemaAnalyticsDraftResponse =
@@ -25789,6 +25800,7 @@ export enum ReadFeatureFlags {
   AI_WORKFLOWS = "AI_WORKFLOWS",
   SEARCH_ICEBERG_SOURCE = "SEARCH_ICEBERG_SOURCE",
   QUERY_JOBS = "QUERY_JOBS",
+  MULTI_GROK_PARSER = "MULTI_GROK_PARSER",
   AUTH0_SSO_CONNECTION = "AUTH0_SSO_CONNECTION",
   TRINO_QUERY_ENGINE = "TRINO_QUERY_ENGINE",
   UNKNOWN = "UNKNOWN",

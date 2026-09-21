@@ -10,7 +10,7 @@ The Grepr CLI provides commands for managing jobs, datasets, integrations, and d
 
 Check that the Grepr CLI is accessible:
 ```bash
-grepr job:list
+grepr config:list
 ```
 
 If this fails due to missing org information, ask the user to provide `--org-name` or `--conf` options.
@@ -32,10 +32,25 @@ View all available commands:
 
 Common flags:
 - `--help` - Get help for any command (e.g., `grepr job:create --help`)
-- `--format table` - Human-readable table output
-- `--format raw` - JSON output for programmatic use
+- `-f, --format` - `compact` (one JSON object per line), `raw` (same), `csv`, `pretty`
+  (indented JSON), `table` (human). `json` is an alias for `compact`. Any other value is
+  rejected.
+- `--fields id,name,state` - keep only these field paths (list and get commands). Dot paths
+  work, e.g. `--fields id,jobGraph.vertices`.
 - `--debug` - Verbose output for troubleshooting
 - `--quiet` - Reduce noise (where available)
+
+### Output conventions
+
+- **Prefer `-f compact` and `--fields`.** Sandboxes set `GREPR_OUTPUT_FORMAT=compact`, so the
+  default is already the JSON stream; pass `-f` only to ask for something else. Do NOT pass
+  `--format table`: it truncates nested values to 4 lines and is unparseable.
+- `compact`, `raw` and `csv` keep stdout a pure data stream; status lines and summaries go to
+  stderr. `table` and `pretty` are human formats and keep their chatter on stdout.
+- `compact` and `raw` emit **one JSON object per line**, so parse them per line
+  (`| jq -c .`, `| jq -s '.[]'`), never `| jq '.[]'`.
+- For large results write to a file with `-o out.ndjson`, then analyse it locally with duckdb
+  or jq. Prefer `-o` over a shell `>` redirect so only records reach the file.
 
 ## Command Categories
 

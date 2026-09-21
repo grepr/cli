@@ -29,7 +29,7 @@ Resolve the org config once and reuse it on every command — see the `grepr:cli
 
 ```bash
 # Get full job details
-grepr job:get <job-id> --format raw
+grepr job:get <job-id> -f compact
 ```
 
 **Key fields to check:**
@@ -59,7 +59,7 @@ Let the user know the job status and any error messages.
 Read the pipeline json and determine if there's an output dataset configured as a raw data sink. This is usually a dataset that captures logs before parsing/enrichment or at the various stages of the pipeline. Pull out the dataset and use the query command to see if any logs are arriving there. Look at data from the last 5 minutes.
 
 ```bash
-grepr query --dataset-id <raw-sink-dataset-id> --limit 10 --format table --start <time> --end <time>
+grepr query --dataset-id <raw-sink-dataset-id> --limit 10 -f compact --start <time> --end <time>
 ```
 
 Let the user know what the result of your check is.
@@ -99,7 +99,7 @@ If logs appear but fields are missing or wrong:
 
 ```bash
 # Get a sample log message from the data
-grepr query --dataset-id <dataset> --limit 1 -q --format raw -o parse-sample-<tag>.ndjson
+grepr query --dataset-id <dataset> --limit 1 -q -f compact -o parse-sample-<tag>.ndjson
 jq -r '.message // .data.message // empty' parse-sample-<tag>.ndjson
 
 # Test the grok pattern
@@ -214,7 +214,7 @@ only for a workflow that cannot be expressed as a patch through
 grepr job:get <job-id>
 
 # Query output after a few minutes
-grepr query --dataset-id <output> --limit 10 --format table
+grepr query --dataset-id <output> --limit 10 -f compact
 ```
 
 ## Debugging Checklist

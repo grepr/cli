@@ -3,7 +3,7 @@ import { ICommand } from '../lib/command-registry.js';
 import { GreprApiClient } from '../lib/api-client.js';
 import { createApiClient, ApiClientFactoryOptions } from '../lib/api-client-factory.js';
 import { JsonFormatter, JsonFormatterOptions } from '../lib/json-formatter.js';
-import { OutputFormat } from '../lib/output-format.js';
+import { logHumanFooter, OutputFormat, parseOutputFormat, resolveDefaultFormat } from '../lib/output-format.js';
 import { parseIntArg } from '../lib/option-parsers.js';
 import { SchemaGrokParseResponse, SchemaGrokParseBatchRequest, GrokParserType } from '../openapi/openApiTypes.js';
 import { MergeConfiguration, CommandOptionsRecord } from '../types.js';
@@ -61,7 +61,7 @@ export class GrokParseCommand implements ICommand {
       .option('--samples-file <file>', 'File containing log samples (one per line)')
       .option('--extract-attribute <attribute>', 'Optional attribute to extract')
       .option('--helper-rules <rules...>', 'Additional grok helper rules')
-      .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', 'raw')
+      .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', parseOutputFormat, resolveDefaultFormat('raw'))
       .option('--no-color', 'Disable colored output')
       .option('--no-timestamps', 'Hide timestamps')
       .option('--max-depth <number>', 'Maximum object nesting depth for table columns', parseIntArg, 1)
@@ -103,29 +103,27 @@ export class GrokParseCommand implements ICommand {
         throw new Error(`Grok parse failed: ${JSON.stringify(result.error)}`);
       }
 
-      // Format and output the results
+      // Format and output the results. Every sample renders through the same
+      // path so one sample and many samples share a shape, and so `-q` only
+      // removes chatter rather than switching the payload to a different one.
       if (result.data && result.data.results && result.data.results.length > 0) {
-        if (options.format === 'raw' && options.quiet) {
-          console.log(JSON.stringify(result.data, null, 2));
-        } else {
-          for (let i = 0; i < result.data.results.length; i++) {
-            const singleResult = result.data.results[i];
-            if (singleResult) {
-              if (result.data.results.length > 1 && !options.quiet) {
-                console.log(`\n=== Sample ${i + 1} ===`);
-              }
+        for (let i = 0; i < result.data.results.length; i++) {
+          const singleResult = result.data.results[i];
+          if (singleResult) {
+            if (result.data.results.length > 1 && !options.quiet) {
+              logHumanFooter(options.format, `\n=== Sample ${i + 1} ===`);
+            }
 
-              await this.formatAndOutput(singleResult, options);
+            await this.formatAndOutput(singleResult, options);
 
-              if (!options.quiet) {
-                this.showParsingSummary(singleResult, options);
-              }
+            if (!options.quiet) {
+              this.showParsingSummary(singleResult, options);
             }
           }
+        }
 
-          if (result.data.results.length > 1 && !options.quiet) {
-            this.showBatchSummary(result.data.results, options);
-          }
+        if (result.data.results.length > 1 && !options.quiet) {
+          this.showBatchSummary(result.data.results, options);
         }
       } else {
         if (!options.quiet) {
@@ -245,18 +243,14 @@ export class GrokParseCommand implements ICommand {
       await fs.writeFile(options.output, formattedData);
 
       if (!options.quiet) {
-        console.log(`✓ Output written to ${options.output}`);
+        logHumanFooter(options.format, `✓ Output written to ${options.output}`);
       }
     } else {
       // Write to stdout
-      if (options.format === 'raw') {
-        console.log(JSON.stringify(displayData, null, 2));
-      } else {
-        if (!this.formatter) {
-          throw new Error('Formatter not initialized');
-        }
-        console.log(this.formatter.formatObjects([displayData]));
+      if (!this.formatter) {
+        throw new Error('Formatter not initialized');
       }
+      console.log(this.formatter.formatObjects([displayData]));
     }
   }
 
@@ -283,7 +277,7 @@ export class GrokParseCommand implements ICommand {
       const tagCount = data.tags ? Object.keys(data.tags).length : 0;
       const topLevelFieldCount = data.topLevelFields ? Object.keys(data.topLevelFields).length : 0;
 
-      console.log(`\nGrok Parse Summary:
+      logHumanFooter(options.format, `\nGrok Parse Summary:
 - Match successful: ${hasMatch ? 'Yes' : 'No'}
 - Matching rule: ${data.matchingRuleName || 'None'}
 - Attributes extracted: ${attributeCount}
@@ -301,7 +295,7 @@ export class GrokParseCommand implements ICommand {
       const successfulMatches = results.filter(r => r.match).length;
       const failedMatches = totalSamples - successfulMatches;
 
-      console.log(`\n=== Batch Summary ===
+      logHumanFooter(options.format, `\n=== Batch Summary ===
 - Total samples processed: ${totalSamples}
 - Successful matches: ${successfulMatches}
 - Failed matches: ${failedMatches}

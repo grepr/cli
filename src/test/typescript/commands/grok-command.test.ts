@@ -287,8 +287,10 @@ describe('GrokParseCommand', () => {
       });
 
       expect((command as any).formatAndOutput).toHaveBeenCalledTimes(2);
-      expect(consoleSpy.log).toHaveBeenCalledWith('\n=== Sample 1 ===');
-      expect(consoleSpy.log).toHaveBeenCalledWith('\n=== Sample 2 ===');
+      // `raw` is machine-readable, so the separators must not reach stdout.
+      expect(consoleSpy.error).toHaveBeenCalledWith('\n=== Sample 1 ===');
+      expect(consoleSpy.error).toHaveBeenCalledWith('\n=== Sample 2 ===');
+      expect(consoleSpy.log).not.toHaveBeenCalledWith('\n=== Sample 1 ===');
     });
 
     it('test_execute_apiError_shouldThrowError', async () => {
@@ -353,7 +355,10 @@ describe('GrokParseCommand', () => {
 
       await command.execute(quietOptions);
 
-      expect(consoleSpy.log).toHaveBeenCalledWith(JSON.stringify(mockResponse, null, 2));
+      // Quiet renders each sample through the same path as a loud run; it only
+      // drops the chatter, rather than switching to a different payload shape.
+      expect((command as any).formatAndOutput).toHaveBeenCalledTimes(1);
+      expect((command as any).formatAndOutput).toHaveBeenCalledWith(mockResponse.results?.[0], quietOptions);
       expect(consoleSpy.log).not.toHaveBeenCalledWith(expect.stringContaining('Grok Parse Summary:'));
       expect(consoleSpy.log).not.toHaveBeenCalledWith(expect.stringContaining('=== Sample'));
     });

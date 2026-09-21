@@ -3,7 +3,14 @@ import { JsonFormatter, JsonFormatterOptions } from '../lib/json-formatter.js';
 import { ICommand } from '../lib/command-registry.js';
 import { GreprApiClient } from '../lib/api-client.js';
 import { createApiClient, ApiClientFactoryOptions } from '../lib/api-client-factory.js';
-import { logHumanFooter, OutputFormat } from '../lib/output-format.js';
+import {
+  logHumanFooter,
+  OutputFormat,
+  parseFieldsArg,
+  parseOutputFormat,
+  projectFields,
+  resolveDefaultFormat
+} from '../lib/output-format.js';
 import { parseIntArg } from '../lib/option-parsers.js';
 import { CommandOption, MergeConfiguration, CommandOptionsRecord } from '../types.js';
 
@@ -18,6 +25,7 @@ export interface ListCommandOptions extends ApiClientFactoryOptions {
   jobState?: boolean;
   maxDepth?: number;
   maxLines?: number;
+  fields?: string[];
 }
 
 /**
@@ -81,7 +89,8 @@ export abstract class ListCommand<T extends ListCommandOptions> implements IComm
 
     // Add common formatting options
     command
-      .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', 'table')
+      .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', parseOutputFormat, resolveDefaultFormat('table'))
+      .option('--fields <list>', 'Comma-separated field paths to keep (e.g. "id,name,state")', parseFieldsArg)
       .option('-s, --sort <column:order>', 'Sort by column (e.g., "name:asc")', 'id:asc')
       .option('--no-color', 'Disable colored output')
       .option('--no-timestamps', 'Hide timestamps')
@@ -109,9 +118,14 @@ export abstract class ListCommand<T extends ListCommandOptions> implements IComm
   /**
    * Setup formatter for output
    */
+  /** The format actually in effect, including the env-var default. */
+  protected resolveFormat(options: T): OutputFormat {
+    return options.format ?? resolveDefaultFormat('table');
+  }
+
   protected setupFormatter(options: T): void {
     const formatterOptions: JsonFormatterOptions = {
-      format: (options.format as OutputFormat) || 'table',
+      format: this.resolveFormat(options),
       showTimestamps: options.timestamps !== false,
       colorize: options.color !== false && process.stdout.isTTY && !options.output,
       sortBy: options.sort || 'id:asc',
@@ -138,10 +152,11 @@ export abstract class ListCommand<T extends ListCommandOptions> implements IComm
    * Format and output data
    */
   protected async formatAndOutput(
-    data: Record<string, unknown>[],
+    rows: Record<string, unknown>[],
     options: T,
     dataType: string
   ): Promise<void> {
+    const data = options.fields ? projectFields(rows, options.fields) : rows;
     if (!data || data.length === 0) {
       if (!options.quiet) {
         logHumanFooter(options.format, `No ${dataType} found.`);
@@ -163,7 +178,7 @@ export abstract class ListCommand<T extends ListCommandOptions> implements IComm
       await fs.default.writeFile(options.output, formattedData);
 
       if (!options.quiet) {
-        console.log(`✓ Output written to ${options.output}`);
+        logHumanFooter(this.resolveFormat(options), `✓ Output written to ${options.output}`);
       }
     } else {
       // Write to stdout

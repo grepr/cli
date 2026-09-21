@@ -26,8 +26,10 @@ If this fails, ask the user to provide `--org-name` or `--conf` options.
 
 ## General Usage Notes
 
-- Use `--format table` for human-readable output
-- Use `--format raw` for JSON output that's easier to parse programmatically
+- Output defaults to `compact` in a sandbox (`GREPR_OUTPUT_FORMAT`); pass `-f` only to ask
+  for something else. `compact`/`raw` emit one JSON object per line, so parse per line
+  (`| jq -c .`), never `| jq '.[]'`. Avoid `--format table`: it truncates nested values.
+- Use `--fields id,name,state` to keep only the fields you need.
 - Datasets are Iceberg tables in the data lake (S3)
 - Each pipeline writes to one or more datasets
 - Query logs or spans from datasets using the `grepr:query` skill
@@ -37,13 +39,13 @@ If this fails, ask the user to provide `--org-name` or `--conf` options.
 ### Find the dataset a pipeline writes to
 
 ```bash
-grepr dataset:list --format raw | jq -r '.[] | "\(.id)\t\(.name)"'
+grepr dataset:list -f compact | jq -r '[.id, .name] | @tsv'
 ```
 
 Then inspect the one you want:
 
 ```bash
-grepr dataset:get <id> --format raw | jq
+grepr dataset:get <id> -f compact | jq
 ```
 
 ## Creating or Changing Datasets

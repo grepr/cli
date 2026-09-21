@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'bun:test';
-import { DocsSearchCommand } from '../../../../src/main/typescript/commands/docs-command.js';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'bun:test';
+import { DocsSearchCommand, parseDocsFormat, resolveDocsDefaultFormat } from '../../../../src/main/typescript/commands/docs-command.js';
 import { SearchResult } from '../../../../src/main/typescript/lib/docs-search.js';
 import { DocumentTextSection } from 'vectra';
 
@@ -277,4 +277,66 @@ describe('DocsSearchCommand', () => {
     });
   });
 
+});
+
+describe('parseDocsFormat', () => {
+  it('test_parseDocsFormat_docsFormats_shouldReturnUnchanged', () => {
+    expect(parseDocsFormat('pretty')).toBe('pretty');
+    expect(parseDocsFormat('json')).toBe('json');
+    expect(parseDocsFormat('compact')).toBe('compact');
+  });
+
+  it('test_parseDocsFormat_raw_shouldAliasToJson', () => {
+    expect(parseDocsFormat('raw')).toBe('json');
+  });
+
+  it('test_parseDocsFormat_unknownFormat_shouldThrow', () => {
+    expect(() => parseDocsFormat('table')).toThrow(
+      'must be one of pretty, json, compact (or raw, an alias for json)'
+    );
+  });
+});
+
+describe('resolveDocsDefaultFormat', () => {
+  const original = process.env.GREPR_OUTPUT_FORMAT;
+
+  function setFormatEnv(value: string | undefined): void {
+    if (value === undefined) {
+      delete process.env.GREPR_OUTPUT_FORMAT;
+    } else {
+      process.env.GREPR_OUTPUT_FORMAT = value;
+    }
+  }
+
+  afterEach(() => {
+    setFormatEnv(original);
+  });
+
+  it('test_resolveDocsDefaultFormat_envUnset_shouldBeProse', () => {
+    setFormatEnv(undefined);
+    expect(resolveDocsDefaultFormat()).toBe('pretty');
+  });
+
+  it('test_resolveDocsDefaultFormat_machineReadableEnv_shouldBeJson', () => {
+    // This command's own `compact` is prose, so the env var selects the class
+    // of output and this command picks its matching rendering.
+    setFormatEnv('compact');
+    expect(resolveDocsDefaultFormat()).toBe('json');
+    setFormatEnv('raw');
+    expect(resolveDocsDefaultFormat()).toBe('json');
+    setFormatEnv('csv');
+    expect(resolveDocsDefaultFormat()).toBe('json');
+  });
+
+  it('test_resolveDocsDefaultFormat_humanEnv_shouldBeProse', () => {
+    setFormatEnv('table');
+    expect(resolveDocsDefaultFormat()).toBe('pretty');
+    setFormatEnv('pretty');
+    expect(resolveDocsDefaultFormat()).toBe('pretty');
+  });
+
+  it('test_resolveDocsDefaultFormat_envInvalid_shouldThrowNamingTheVariable', () => {
+    setFormatEnv('nope');
+    expect(() => resolveDocsDefaultFormat()).toThrow("GREPR_OUTPUT_FORMAT: 'nope' is invalid.");
+  });
 });

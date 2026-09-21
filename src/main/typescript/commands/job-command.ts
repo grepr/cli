@@ -3,7 +3,7 @@ import { ListCommand, ListCommandOptions } from './list-command.js';
 import { CrudCommand, CrudCommandOptions, CrudCreateUpdateOptions } from './crud-command.js';
 import { parseSinceOption } from '../lib/time-utils.js';
 import { StreamingJobExecutor } from '../lib/streaming-job-executor.js';
-import { logHumanFooter } from '../lib/output-format.js';
+import { logHumanFooter, parseOutputFormat, resolveDefaultFormat } from '../lib/output-format.js';
 import { parseIntArg } from '../lib/option-parsers.js';
 import fs from 'fs-extra';
 import { FormattableCommandOptions, CommandOption, MergeConfiguration, CommandOptionsRecord, JobExecution, JobProcessing, JobState } from '../types.js';
@@ -11,6 +11,7 @@ import { SchemaCreateJob, SchemaUpdateJob } from '../openapi/openApiTypes.js';
 
 // Job-specific interfaces extending the base interfaces
 export interface JobListCommandOptions extends ListCommandOptions {
+  includeGraph?: boolean;
   since?: string;
   processing?: JobProcessing;
   allVersions?: boolean;
@@ -27,6 +28,29 @@ export interface JobCrudCommandOptions extends CrudCommandOptions {
 
 export interface JobCreateUpdateOptions extends CrudCreateUpdateOptions {
   rollbackEnabled?: boolean;
+}
+
+/**
+ * Drop `jobGraph` from list rows unless asked for. It is about 88% of a list
+ * payload and is never readable in a list anyway - the table format truncates
+ * it and the JSON formats bury the row in it. `job:get` returns the full graph
+ * for a single pipeline, which is how a caller that needs it should ask.
+ */
+function stripJobGraphs(
+  jobs: Record<string, unknown>[],
+  options: JobListCommandOptions
+): Record<string, unknown>[] {
+  if (options.includeGraph) {
+    return jobs;
+  }
+
+  return jobs.map(job => {
+    if (!('jobGraph' in job)) {
+      return job;
+    }
+    const { jobGraph: _jobGraph, ...rest } = job;
+    return rest;
+  });
 }
 
 /**
@@ -72,6 +96,10 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
       {
         flags: '--all',
         description: 'Show all jobs (overrides default state and time filtering)'
+      },
+      {
+        flags: '--include-graph',
+        description: 'Include each job\'s full jobGraph (about 8x the output; use job:get for one pipeline)'
       }
     ];
   }
@@ -84,7 +112,7 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
       const params = this.buildJobListParams(options);
 
       const jobs = await this.apiClient.listJobs(Object.keys(params).length > 0 ? params : undefined);
-      const jobList = jobs?.items || [];
+      const jobList = stripJobGraphs(jobs?.items || [], options);
 
       await this.formatAndOutput(jobList, options, 'jobs');
       this.showQuerySummary(options, jobList.length);
@@ -328,7 +356,7 @@ export class JobCrudCommand extends CrudCommand<JobCrudCommandOptions> {
       program
         .command(`${prefix}:create <${resourceName}-file>`)
         .description(`Create a new ${resourceName} from file`)
-        .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', 'table')
+        .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', parseOutputFormat, resolveDefaultFormat('table'))
         .option('-s, --sort <column:order>', 'Sort table by column (e.g., "eventTimestamp:asc")', 'eventTimestamp:asc')
         .option('--max-depth <number>', 'Maximum object nesting depth for table columns', parseIntArg, 1)
         .option('--max-lines <number>', 'Maximum lines per table cell', parseIntArg, 4)

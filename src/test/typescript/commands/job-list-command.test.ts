@@ -87,6 +87,50 @@ describe('JobListCommand', () => {
       browser: true
     };
 
+    it('test_executeList_default_shouldDropJobGraphFromEachRow', async () => {
+      const graph = { vertices: [{ type: 'source', name: 'src' }] };
+      mockApiClient.listJobs.mockResolvedValue({
+        items: [
+          { id: '1', name: 'job-1', state: 'RUNNING', jobGraph: graph },
+          { id: '2', name: 'job-2', state: 'FINISHED', jobGraph: graph }
+        ]
+      });
+
+      await command.executeList(mockOptions);
+
+      expect((command as any).formatAndOutput).toHaveBeenCalledWith(
+        [
+          { id: '1', name: 'job-1', state: 'RUNNING' },
+          { id: '2', name: 'job-2', state: 'FINISHED' }
+        ],
+        mockOptions,
+        'jobs'
+      );
+    });
+
+    it('test_executeList_includeGraph_shouldKeepJobGraph', async () => {
+      const graph = { vertices: [{ type: 'source', name: 'src' }] };
+      const items = [{ id: '1', name: 'job-1', state: 'RUNNING', jobGraph: graph }];
+      mockApiClient.listJobs.mockResolvedValue({ items });
+
+      await command.executeList({ ...mockOptions, includeGraph: true });
+
+      expect((command as any).formatAndOutput).toHaveBeenCalledWith(
+        items,
+        { ...mockOptions, includeGraph: true },
+        'jobs'
+      );
+    });
+
+    it('test_executeList_rowWithoutJobGraph_shouldBeUnchanged', async () => {
+      const items = [{ id: '1', name: 'job-1', state: 'RUNNING' }];
+      mockApiClient.listJobs.mockResolvedValue({ items });
+
+      await command.executeList(mockOptions);
+
+      expect((command as any).formatAndOutput).toHaveBeenCalledWith(items, mockOptions, 'jobs');
+    });
+
     it('test_executeList_successfulResponse_shouldFormatAndDisplayJobs', async () => {
       const mockJobs = {
         items: [

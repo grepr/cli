@@ -3,6 +3,7 @@ import { BaseCommand } from './base-command.js';
 import type { ICommand } from '../lib/command-registry.js';
 import { createApiClient } from '../lib/api-client-factory.js';
 import { parseIntArg } from '../lib/option-parsers.js';
+import { logHumanFooter, parseOutputFormat, resolveDefaultFormat } from '../lib/output-format.js';
 import { validateOptionalTimestampRange } from '../lib/time-utils.js';
 import {
   JobExecution,
@@ -299,7 +300,7 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
     });
 
     command
-      .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', 'table')
+      .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', parseOutputFormat, resolveDefaultFormat('table'))
       .option('-s, --sort <column:order>', 'Sort table by column (e.g., "eventTimestamp:asc")', 'eventTimestamp:asc')
       .option('--no-color', 'Disable colored output')
       .option('--no-timestamps', 'Hide timestamps')
@@ -336,7 +337,7 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
         warnOnUnliftedSpanQuery(options.query ?? '');
       }
       if (!options.quiet && !options.datasetId) {
-        console.log(`Querying ${resolved.dataType} dataset ${resolved.datasetId}`);
+        logHumanFooter(options.format, `Querying ${resolved.dataType} dataset ${resolved.datasetId}`);
       }
       await this.processJobStream(jobDefinition, options);
     } catch (error) {

@@ -4,7 +4,14 @@ import { JsonFormatter, JsonFormatterOptions } from '../lib/json-formatter.js';
 import { ICommand } from '../lib/command-registry.js';
 import { GreprApiClient } from '../lib/api-client.js';
 import { createApiClient, ApiClientFactoryOptions } from '../lib/api-client-factory.js';
-import { OutputFormat } from '../lib/output-format.js';
+import {
+  logHumanFooter,
+  OutputFormat,
+  parseFieldsArg,
+  parseOutputFormat,
+  projectFields,
+  resolveDefaultFormat
+} from '../lib/output-format.js';
 import { parseIntArg } from '../lib/option-parsers.js';
 import { CommandOption, MergeConfiguration, CommandOptionsRecord } from '../types.js';
 
@@ -19,6 +26,7 @@ export interface CrudCommandOptions extends ApiClientFactoryOptions {
   jobState?: boolean;
   maxDepth?: number;
   maxLines?: number;
+  fields?: string[];
 }
 
 export interface CrudCreateUpdateOptions extends CrudCommandOptions {
@@ -138,7 +146,8 @@ export abstract class CrudCommand<T extends CrudCommandOptions> implements IComm
       let getCommand = program
         .command(`${prefix}:get <id>`)
         .description(`Get a specific ${resourceName} by ID`)
-        .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', 'pretty')
+        .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', parseOutputFormat, resolveDefaultFormat('pretty'))
+        .option('--fields <list>', 'Comma-separated field paths to keep (e.g. "id,name,state")', parseFieldsArg)
         .option('-s, --sort <column:order>', 'Sort by column (e.g., "name:asc")', 'id:asc')
         .option('--no-color', 'Disable colored output')
         .option('--no-timestamps', 'Hide timestamps')
@@ -260,12 +269,17 @@ export abstract class CrudCommand<T extends CrudCommandOptions> implements IComm
     }
   }
 
+  /** The format actually in effect, including the env-var default. */
+  protected resolveFormat(options: T): OutputFormat {
+    return options.format ?? resolveDefaultFormat('pretty');
+  }
+
   /**
    * Setup formatter for output
    */
   protected setupFormatter(options: T): void {
     const formatterOptions: JsonFormatterOptions = {
-      format: (options.format as OutputFormat) || 'pretty',
+      format: this.resolveFormat(options),
       showTimestamps: options.timestamps !== false,
       colorize: options.color !== false && process.stdout.isTTY && !options.output,
       sortBy: options.sort || 'id:asc',
@@ -292,30 +306,37 @@ export abstract class CrudCommand<T extends CrudCommandOptions> implements IComm
    * Format and output single resource
    */
   protected async formatAndOutputSingle(
-    data: Record<string, unknown>,
+    resource: Record<string, unknown>,
     options: T
   ): Promise<void> {
     // Setup formatter
     this.setupFormatter(options);
 
+    const [data] = options.fields ? projectFields([resource], options.fields) : [resource];
+    if (!data) {
+      throw new Error('Projection produced no row');
+    }
+
+    if (!this.formatter) {
+      throw new Error('Formatter not initialized');
+    }
+
+    // formatObjects, not formatObject: the `table` format only accumulates rows
+    // in formatObject and renders them in a separate pass, so a single-resource
+    // call through formatObject emits nothing at all.
+    const formattedData = this.formatter.formatObjects([data]);
+
     // Handle output
     if (options.output) {
       // Write to file
-      if (!this.formatter) {
-        throw new Error('Formatter not initialized');
-      }
-      const formattedData = this.formatter.formatObject(data);
       await fs.writeFile(options.output, formattedData);
 
       if (!options.quiet) {
-        console.log(`✓ Output written to ${options.output}`);
+        logHumanFooter(this.resolveFormat(options), `✓ Output written to ${options.output}`);
       }
     } else {
       // Write to stdout
-      if (!this.formatter) {
-        throw new Error('Formatter not initialized');
-      }
-      console.log(this.formatter.formatObject(data));
+      console.log(formattedData);
     }
   }
 
@@ -346,7 +367,10 @@ export abstract class CrudCommand<T extends CrudCommandOptions> implements IComm
    */
   protected showCreateSuccess(createdResource: Record<string, unknown>, options: T): void {
     if (!options.quiet) {
-      console.log(`✓ ${this.getResourceName()} created successfully with ID: ${createdResource.id}`);
+      logHumanFooter(
+        this.resolveFormat(options),
+        `✓ ${this.getResourceName()} created successfully with ID: ${createdResource.id}`
+      );
     }
   }
 
@@ -355,7 +379,7 @@ export abstract class CrudCommand<T extends CrudCommandOptions> implements IComm
    */
   protected showUpdateSuccess(resourceId: string, options: T): void {
     if (!options.quiet) {
-      console.log(`✓ ${this.getResourceName()} ${resourceId} updated successfully`);
+      logHumanFooter(this.resolveFormat(options), `✓ ${this.getResourceName()} ${resourceId} updated successfully`);
     }
   }
 
@@ -364,7 +388,7 @@ export abstract class CrudCommand<T extends CrudCommandOptions> implements IComm
    */
   protected showDeleteSuccess(resourceId: string, options: T): void {
     if (!options.quiet) {
-      console.log(`✓ ${this.getResourceName()} ${resourceId} deleted successfully`);
+      logHumanFooter(this.resolveFormat(options), `✓ ${this.getResourceName()} ${resourceId} deleted successfully`);
     }
   }
 }

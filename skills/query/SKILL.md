@@ -18,8 +18,8 @@ Use one source mode:
   Pass `--data-type` only when the user explicitly asserted it.
 
 For a bare name, prefer an active matching job from
-`grepr job:list --state RUNNING -f raw`; otherwise resolve it with
-`grepr dataset:list`.
+`grepr job:list --state RUNNING --fields id,name,processing`; otherwise resolve it with
+`grepr dataset:list --fields id,name`.
 
 ## 2. Build the predicate
 
@@ -37,7 +37,7 @@ Use absolute ISO-8601 timestamps when the user supplied a range. The CLI's
 omitted defaults are bounded: the last 10 minutes and 100 records. Set a
 smaller explicit `--limit` when sampling.
 
-For a result the user will read directly, use table output. For any further
+For a result the user will read directly, use `-f table`. For any further
 analysis, run once and save clean NDJSON:
 
 ```bash
@@ -46,8 +46,10 @@ grepr query <source> [--data-type spans] [--query "<query>"] \
   -q -f raw -o query-result.ndjson
 ```
 
-Do not pipe or redirect stderr into the record stream. Inspect the saved file
-with `jq` instead of rerunning the query.
+Use `-o`, not a shell `>` redirect: `-o` writes records only, while `>` also captures
+whatever stdout carries. Do not pipe or redirect stderr into the record stream. Inspect
+the saved file with `jq` (one JSON object per line, so `jq -c .`, never `jq '.[]'`)
+instead of rerunning the query.
 
 Examples:
 

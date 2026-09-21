@@ -258,9 +258,17 @@ export class GreprQueryCLI {
       .option('-d, --debug', 'Enable debug output')
       .option('-q, --quiet', 'Suppress non-essential output');
 
-    // Register all commands using the registry
+    // Register all commands using the registry. Registration resolves
+    // GREPR_OUTPUT_FORMAT, which happens before commander owns the process and
+    // so would otherwise surface a bad value as an uncaught stack trace.
     this.registerCommands();
-    this.commandRegistry.registerAll(this.program, this.mergeConfiguration.bind(this));
+    try {
+      this.commandRegistry.registerAll(this.program, this.mergeConfiguration.bind(this));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`error: ${message}`);
+      process.exit(1);
+    }
 
     this.applyCommandAllowlist();
 

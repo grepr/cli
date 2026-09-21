@@ -1,8 +1,9 @@
-import { Command } from 'commander';
+import { Command, InvalidArgumentError } from 'commander';
 import { ICommand } from '../lib/command-registry.js';
 import { DocsSearch, SearchResult } from '../lib/docs-search.js';
 import chalk from 'chalk';
 import { MergeConfiguration, CommandOptionsRecord } from '../types.js';
+import { isMachineReadable, resolveDefaultFormat } from '../lib/output-format.js';
 
 /**
  * Command-line options for the docs:search command.
@@ -61,6 +62,42 @@ function parseDocsSearchOptions(opts: CommandOptionsRecord): DocsSearchOptions {
  *   grepr docs:search "datadog" -l 10 --threshold 0.5
  *   grepr docs:search "integrations" -f json
  */
+/**
+ * docs:search renders prose, so it keeps its own format vocabulary rather than
+ * the record-oriented one in output-format.ts. Its `compact` is a short prose
+ * preview, not the single-line JSON that `compact` means elsewhere; `json` is
+ * this command's machine-readable rendering. `raw` is accepted as an alias for
+ * `json` because that is the machine-readable name every other command uses.
+ */
+const DOCS_FORMATS = ['pretty', 'json', 'compact'] as const;
+type DocsFormat = (typeof DOCS_FORMATS)[number];
+
+export function parseDocsFormat(value: string): DocsFormat {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'raw') {
+    return 'json';
+  }
+  if ((DOCS_FORMATS as readonly string[]).includes(normalized)) {
+    return normalized as DocsFormat;
+  }
+
+  throw new InvalidArgumentError(
+    `must be one of ${DOCS_FORMATS.join(', ')} (or raw, an alias for json)`
+  );
+}
+
+/**
+ * Pick the default rendering from GREPR_OUTPUT_FORMAT. The env var selects a
+ * CLASS of output rather than a literal format name, because this command's
+ * names do not line up with the record-oriented ones: any machine-readable
+ * setting resolves to this command's JSON rendering, and any human setting to
+ * its prose. An explicit `-f` still names a docs format directly and wins.
+ */
+export function resolveDocsDefaultFormat(): DocsFormat {
+  // 'table' as the fallback stands for "no env var set", which means prose.
+  return isMachineReadable(resolveDefaultFormat('table')) ? 'json' : 'pretty';
+}
+
 export class DocsSearchCommand implements ICommand {
   getCommandName(): string {
     return 'docs:search';
@@ -77,7 +114,7 @@ export class DocsSearchCommand implements ICommand {
       .argument('<query>', 'Search query')
       .option('-l, --limit <n>', 'Number of results to return', '5')
       .option('--threshold <score>', 'Minimum relevance score (0.0-1.0)', '0.0')
-      .option('-f, --format <type>', 'Output format (pretty, json, compact)', 'pretty')
+      .option('-f, --format <type>', 'Output format (pretty, json, compact)', parseDocsFormat, resolveDocsDefaultFormat())
       .option('-c, --context <tokens>', 'Tokens of context per section (default: 300)', '300')
       .option('-t, --type <filter>', 'Filter by type: doc (default), all, api, schema', 'doc')
       .option('--no-color', 'Disable colored output')
@@ -124,7 +161,13 @@ export class DocsSearchCommand implements ICommand {
     });
 
     if (results.length === 0) {
-      console.log(chalk.yellow('No results found.'));
+      // An empty result is still a result in JSON mode; a prose line there
+      // would be the one non-JSON thing on an otherwise parseable stdout.
+      if (format === 'json') {
+        this.outputJson(results);
+      } else {
+        console.log(chalk.yellow('No results found.'));
+      }
       return;
     }
 

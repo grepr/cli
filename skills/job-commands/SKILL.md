@@ -12,7 +12,7 @@ Use these commands to manage Grepr jobs and pipelines.
 
 Verify CLI access:
 ```bash
-grepr job:list
+grepr config:list
 ```
 
 If this fails, ask the user to provide `--org-name` or `--conf` options.
@@ -29,8 +29,10 @@ If this fails, ask the user to provide `--org-name` or `--conf` options.
 
 ## General Usage Notes
 
-- Use `--format table` for human-readable output
-- Use `--format raw` for JSON output that's easier to parse programmatically
+- Output defaults to `compact` in a sandbox (`GREPR_OUTPUT_FORMAT`); pass `-f` only to ask
+  for something else. `compact`/`raw` emit one JSON object per line, so parse per line
+  (`| jq -c .`), never `| jq '.[]'`. Avoid `--format table`: it truncates nested values.
+- Use `--fields id,name,state` to keep only the fields you need.
 - Use `--debug` for verbose troubleshooting output
 - Use `--quiet` to reduce noise where available
 
@@ -38,12 +40,12 @@ If this fails, ask the user to provide `--org-name` or `--conf` options.
 
 ### List running pipelines
 ```bash
-grepr job:list --state RUNNING --format table
+grepr job:list --state RUNNING --fields id,name,state,processing
 ```
 
 ### Get pipeline configuration
 ```bash
-grepr job:get <job-id> --format raw
+grepr job:get <job-id> -f compact
 ```
 
 ### Create a new pipeline

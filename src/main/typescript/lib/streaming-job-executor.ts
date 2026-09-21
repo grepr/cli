@@ -5,7 +5,7 @@ import { createApiClient } from './api-client-factory.js';
 import { HeartbeatManager } from './heartbeat.js';
 import { JsonFormatter, JsonFormatterOptions } from './json-formatter.js';
 import { NDJsonStreamParser } from './parser.js';
-import { isMachineReadable, OutputFormat } from './output-format.js';
+import { isMachineReadable, OutputFormat, resolveDefaultFormat } from './output-format.js';
 import { FormattableCommandOptions, ProcessStats, HEARTBEAT_EVENTS, STREAM_EVENTS, LogEventData } from '../types.js';
 import { SchemaCreateJob } from '../openapi/openApiTypes.js';
 
@@ -53,9 +53,13 @@ export class StreamingJobExecutor {
     }
   }
 
+  private resolveFormat(options: FormattableCommandOptions): OutputFormat {
+    return (options.format as OutputFormat) ?? resolveDefaultFormat('table');
+  }
+
   private setupFormatter(options: FormattableCommandOptions): void {
     const formatterOptions: JsonFormatterOptions = {
-      format: (options.format as OutputFormat) || 'table',
+      format: this.resolveFormat(options),
       showTimestamps: options.timestamps !== false,
       colorize: options.color !== false && process.stdout.isTTY && !options.output,
       sortBy: options.sort || 'eventTimestamp:asc',
@@ -276,7 +280,7 @@ export class StreamingJobExecutor {
 
     // Print error messages if any occurred (always to console, not to file)
     if (this.stats.errorMessages.length > 0) {
-      console.log('\nErrors encountered:');
+      console.error('\nErrors encountered:');
       this.stats.errorMessages.forEach(errorMsg => {
         console.error(`  ${errorMsg}`);
       });
@@ -409,7 +413,7 @@ export class StreamingJobExecutor {
     // Machine-readable formats (compact, raw, csv) suppress job-state chatter by default
     // so callers piping to jq/CSV-parsers don't see interleaved status lines. Explicit
     // --no-job-state always wins. Human-readable formats (table, pretty) keep chatter on.
-    this.showJobState = options.jobState !== false && !isMachineReadable(options.format);
+    this.showJobState = options.jobState !== false && !isMachineReadable(this.resolveFormat(options));
 
     if (!options.quiet && this.showJobState) {
       if (this.formatter) {
