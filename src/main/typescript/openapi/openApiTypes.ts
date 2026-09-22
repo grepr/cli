@@ -13961,6 +13961,7 @@ export interface components {
       decimal?: number;
       /** Format: double */
       double?: number;
+      emptyObject?: boolean;
       /** Format: float */
       float?: number;
       /** Format: date-time */
