@@ -918,6 +918,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/datadog/app-key/scopes/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Preview authorization scopes for keys not yet saved to any integration
+     * @description Probes Datadog with the supplied site and keys and reports each authorization scope. For the create form, where there is no integration to take keys from, so every field is required. Nothing is written and nothing is stored.
+     */
+    post: operations["previewNewDatadogAppKeyScopes"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/integrations/datadog/sites": {
     parameters: {
       query?: never;
@@ -1025,6 +1045,26 @@ export interface paths {
      * @description Deletes a Datadog integration app key. No-op if already deleted.
      */
     delete: operations["deleteAppKey"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/datadog/{id}/app-key/scopes/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Preview authorization scopes for unsaved changes to an integration
+     * @description Probes Datadog with the integration's stored keys, overridden by whatever the body supplies, and reports each authorization scope. Nothing is written. An omitted field means "use what is stored", so an empty body reports what the stored key can do right now. A scope whose probe does not complete is reported UNKNOWN rather than as a permission the user has to grant.
+     */
+    post: operations["previewDatadogAppKeyScopes"];
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -4677,6 +4717,21 @@ export interface components {
       /** @description The cleartext key value (for an added or rotated key) */
       value?: string;
     };
+    /** @description Whether a Datadog application key holds one authorization scope */
+    AppKeyScopeCheck: {
+      /** @description Whether Grepr rejects an application key without this scope */
+      required?: boolean;
+      /**
+       * @description The Datadog authorization scope identifier
+       * @example monitors_read
+       */
+      scope?: string;
+      /**
+       * @description Whether the application key was found to hold a scope, or could not be checked
+       * @enum {string}
+       */
+      status?: AppKeyScopeCheckStatus;
+    };
     ArrayData: Record<string, never>;
     AthenaAgentSessionsSource: {
       /** @description The ID of the dataset to read data from. */
@@ -5149,6 +5204,18 @@ export interface components {
       };
       message?: string;
       sampleId?: string;
+    };
+    /** @description Keys and site to check Datadog authorization scopes against */
+    CheckAppKeyScopesRequest: {
+      /** @description API key to authenticate the probes with */
+      apiKey: string;
+      /** @description Application key to check */
+      appKey: string;
+      /**
+       * @description The Datadog site to probe
+       * @example datadoghq.com
+       */
+      site: string;
     };
     ChunkedOutputEventRecordReadableData: {
       closed?: boolean;
@@ -10081,6 +10148,18 @@ export interface components {
        */
       uploadId?: string;
     };
+    /** @description Unsaved changes to check Datadog authorization scopes against */
+    PreviewAppKeyScopesRequest: {
+      /** @description API key to probe with instead of the stored one */
+      apiKey?: string;
+      /** @description Application key to check instead of the stored one */
+      appKey?: string;
+      /**
+       * @description Site to probe instead of the stored one
+       * @example datadoghq.com
+       */
+      site?: string;
+    };
     PublicUpdate: {
       accessConfig?: components["schemas"]["AccessConfig"];
       comments?: string;
@@ -14739,6 +14818,7 @@ export type SchemaAnomalyConfig = components["schemas"]["AnomalyConfig"];
 export type SchemaAnthropic = components["schemas"]["Anthropic"];
 export type SchemaAny = components["schemas"]["Any"];
 export type SchemaApiKey = components["schemas"]["ApiKey"];
+export type SchemaAppKeyScopeCheck = components["schemas"]["AppKeyScopeCheck"];
 export type SchemaArrayData = components["schemas"]["ArrayData"];
 export type SchemaAthenaAgentSessionsSource =
   components["schemas"]["AthenaAgentSessionsSource"];
@@ -14786,6 +14866,8 @@ export type SchemaBucketPartitionTransform =
   components["schemas"]["BucketPartitionTransform"];
 export type SchemaChainNode = components["schemas"]["ChainNode"];
 export type SchemaChangeFinding = components["schemas"]["ChangeFinding"];
+export type SchemaCheckAppKeyScopesRequest =
+  components["schemas"]["CheckAppKeyScopesRequest"];
 export type SchemaChunkedOutputEventRecordReadableData =
   components["schemas"]["ChunkedOutputEventRecordReadableData"];
 export type SchemaClearSecret = components["schemas"]["ClearSecret"];
@@ -15170,6 +15252,8 @@ export type SchemaPreserveAllAttributesMergeStrategy =
   components["schemas"]["PreserveAllAttributesMergeStrategy"];
 export type SchemaPresignedUploadUrlResponse =
   components["schemas"]["PresignedUploadUrlResponse"];
+export type SchemaPreviewAppKeyScopesRequest =
+  components["schemas"]["PreviewAppKeyScopesRequest"];
 export type SchemaPublicUpdate = components["schemas"]["PublicUpdate"];
 export type SchemaQuantileSamplingTier =
   components["schemas"]["QuantileSamplingTier"];
@@ -17843,6 +17927,44 @@ export interface operations {
       };
     };
   };
+  previewNewDatadogAppKeyScopes: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["CheckAppKeyScopesRequest"];
+      };
+    };
+    responses: {
+      /** @description Scopes checked successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AppKeyScopeCheck"][];
+        };
+      };
+      /** @description The supplied site is not allowed for this organization. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   listValidDatadogSites: {
     parameters: {
       query?: never;
@@ -18087,6 +18209,13 @@ export interface operations {
         };
         content?: never;
       };
+      /** @description App key is missing a required authorization scope. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
       /** @description Unauthorized */
       401: {
         headers: {
@@ -18116,6 +18245,53 @@ export interface operations {
     responses: {
       /** @description App key deleted successfully. */
       204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  previewDatadogAppKeyScopes: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["PreviewAppKeyScopesRequest"];
+      };
+    };
+    responses: {
+      /** @description Scopes checked successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AppKeyScopeCheck"][];
+        };
+      };
+      /** @description The supplied site is not allowed for this organization. */
+      400: {
         headers: {
           [name: string]: unknown;
         };
@@ -25322,6 +25498,11 @@ export enum AnnualDataProcessingSummaryType {
 }
 export enum AnnualSaasPreCommitmentSummaryType {
   annual_saas_pre_commitment = "annual-saas-pre-commitment",
+}
+export enum AppKeyScopeCheckStatus {
+  GRANTED = "GRANTED",
+  DENIED = "DENIED",
+  UNKNOWN = "UNKNOWN",
 }
 export enum AthenaAgentSessionsSourceType {
   athena_agent_sessions_source = "athena-agent-sessions-source",

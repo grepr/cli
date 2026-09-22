@@ -2376,6 +2376,30 @@
         },
         "type": "object"
       },
+      "AppKeyScopeCheck": {
+        "description": "Whether a Datadog application key holds one authorization scope",
+        "properties": {
+          "required": {
+            "description": "Whether Grepr rejects an application key without this scope",
+            "type": "boolean"
+          },
+          "scope": {
+            "description": "The Datadog authorization scope identifier",
+            "example": "monitors_read",
+            "type": "string"
+          },
+          "status": {
+            "description": "Whether the application key was found to hold a scope, or could not be checked",
+            "enum": [
+              "GRANTED",
+              "DENIED",
+              "UNKNOWN"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "ArrayData": {
         "type": "object"
       },
@@ -3297,6 +3321,32 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "CheckAppKeyScopesRequest": {
+        "description": "Keys and site to check Datadog authorization scopes against",
+        "properties": {
+          "apiKey": {
+            "description": "API key to authenticate the probes with",
+            "type": "string"
+          },
+          "appKey": {
+            "description": "Application key to check",
+            "type": "string"
+          },
+          "site": {
+            "description": "The Datadog site to probe",
+            "example": "datadoghq.com",
+            "maxLength": 255,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "required": [
+          "apiKey",
+          "appKey",
+          "site"
+        ],
         "type": "object"
       },
       "ChunkedOutputEventRecordReadableData": {
@@ -12844,6 +12894,27 @@
           "uploadId": {
             "description": "Unique identifier for this upload",
             "example": "abc123def456",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PreviewAppKeyScopesRequest": {
+        "description": "Unsaved changes to check Datadog authorization scopes against",
+        "properties": {
+          "apiKey": {
+            "description": "API key to probe with instead of the stored one",
+            "type": "string"
+          },
+          "appKey": {
+            "description": "Application key to check instead of the stored one",
+            "type": "string"
+          },
+          "site": {
+            "description": "Site to probe instead of the stored one",
+            "example": "datadoghq.com",
+            "maxLength": 255,
+            "minLength": 0,
             "type": "string"
           }
         },
@@ -24633,6 +24704,115 @@
         ]
       }
     },
+    "/v1/integrations/datadog/app-key/scopes/preview": {
+      "post": {
+        "description": "Probes Datadog with the supplied site and keys and reports each authorization scope. For the create form, where there is no integration to take keys from, so every field is required. Nothing is written and nothing is stored.",
+        "operationId": "previewNewDatadogAppKeyScopes",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckAppKeyScopesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AppKeyScopeCheck"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Scopes checked successfully"
+          },
+          "400": {
+            "description": "The supplied site is not allowed for this organization."
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Preview authorization scopes for keys not yet saved to any integration",
+        "tags": [
+          "Datadog Integration"
+        ]
+      }
+    },
+    "/v1/integrations/datadog/{id}/app-key/scopes/preview": {
+      "post": {
+        "description": "Probes Datadog with the integration\u0027s stored keys, overridden by whatever the body supplies, and reports each authorization scope. Nothing is written. An omitted field means \"use what is stored\", so an empty body reports what the stored key can do right now. A scope whose probe does not complete is reported UNKNOWN rather than as a permission the user has to grant.",
+        "operationId": "previewDatadogAppKeyScopes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewAppKeyScopesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AppKeyScopeCheck"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Scopes checked successfully"
+          },
+          "400": {
+            "description": "The supplied site is not allowed for this organization."
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Preview authorization scopes for unsaved changes to an integration",
+        "tags": [
+          "Datadog Integration"
+        ]
+      }
+    },
     "/v1/integrations/datadog/sites": {
       "get": {
         "description": "Get all valid Datadog sites for your organization.",
@@ -24974,6 +25154,9 @@
         "responses": {
           "204": {
             "description": "App key upserted successfully."
+          },
+          "400": {
+            "description": "App key is missing a required authorization scope."
           },
           "401": {
             "description": "Unauthorized"
