@@ -2654,46 +2654,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/jobs/query": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Submit a query job.
-     * @description Submit an asynchronous batch query job. The job results will be available as the paths specified in the response token. The job will expire after the expiry time specified in the response. and will be terminated if no heartbeats are received after the heartbeat expiry time. To keep the job alive, send a query read request with the received token.
-     */
-    post: operations["query"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/jobs/query/read": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Read the status of a query job.
-     * @description Read the status of a query job using the token received when the job was submitted or was last queried. The response contains the job details including the status, result paths, etc., and a new token that can be used to further query for the job details should anything change. Once the job is finished, any more calls to this endpoint before expiry will yield the same result.
-     */
-    post: operations["read"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/jobs/sync": {
     parameters: {
       query?: never;
@@ -2883,7 +2843,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations["query_1"];
+    post: operations["query"];
     delete?: never;
     options?: never;
     head?: never;
@@ -7486,15 +7446,6 @@ export interface components {
       ruleEngineName: string;
       triggerId: string;
     };
-    /** @description The Flink job ID for the query job. */
-    JobID: {
-      /** Format: byte */
-      bytes?: string;
-      /** Format: int64 */
-      lowerPart?: number;
-      /** Format: int64 */
-      upperPart?: number;
-    };
     /** @description JSON file format. */
     JsonFileFormat: {
       /**
@@ -10226,49 +10177,6 @@ export interface components {
        * @example 0.8
        */
       samplingRate: number;
-    };
-    /** @description Information about a query job. */
-    QueryJobInfo: {
-      flinkJobId: components["schemas"]["JobID"];
-      /** @description The integration id used for the query job. This determines where the results will be stored. */
-      integrationId?: string;
-      /**
-       * Format: date-time
-       * @description The time at which the job will expire. After this time, the job is bound to be terminated and any new results will not be made available.
-       */
-      jobExpiry: string;
-      metadata?: components["schemas"]["QueryJobMetadata"];
-      /**
-       * Format: date-time
-       * @description The time after which the client should send a heartbeat. If no new heartbeats are received a certain amount of time after this, the job is bound to be terminated. To send heartbeats, do a query read.
-       */
-      nextHeartbeatTime: string;
-      /** @description The path where results from the query job will be available. */
-      resultPath: string;
-      /** @description The results of the query job. The keys are the names of the result files and the values are the paths to them. */
-      results?: {
-        [key: string]: string;
-      };
-      /**
-       * @description The status of the query job.
-       * @enum {string}
-       */
-      status: QueryJobInfoStatus;
-    };
-    /** @description Metadata about a query job. */
-    QueryJobMetadata: {
-      /** Format: int32 */
-      numTasksFinished?: number;
-      /** Format: int32 */
-      numTasksPending?: number;
-      /** Format: int32 */
-      numTasksRunning?: number;
-    };
-    /** @description Token issued for a submitted query job. This is used to retrieve the job details and results. */
-    QueryJobToken: {
-      jobInfo: components["schemas"]["QueryJobInfo"];
-      /** @description Token to verify the user's session. */
-      sessionToken: string;
     };
     QueryParsingError: {
       /** @default  */
@@ -15119,7 +15027,6 @@ export type SchemaItemsCollectionVendorImportedException =
 export type SchemaJobAction = components["schemas"]["JobAction"];
 export type SchemaJobActionRule = components["schemas"]["JobActionRule"];
 export type SchemaJobAnomaly = components["schemas"]["JobAnomaly"];
-export type SchemaJobId = components["schemas"]["JobID"];
 export type SchemaJsonFileFormat = components["schemas"]["JsonFileFormat"];
 export type SchemaJsonLogEventMapper =
   components["schemas"]["JsonLogEventMapper"];
@@ -15294,9 +15201,6 @@ export type SchemaPreviewAppKeyScopesRequest =
 export type SchemaPublicUpdate = components["schemas"]["PublicUpdate"];
 export type SchemaQuantileSamplingTier =
   components["schemas"]["QuantileSamplingTier"];
-export type SchemaQueryJobInfo = components["schemas"]["QueryJobInfo"];
-export type SchemaQueryJobMetadata = components["schemas"]["QueryJobMetadata"];
-export type SchemaQueryJobToken = components["schemas"]["QueryJobToken"];
 export type SchemaQueryParsingError =
   components["schemas"]["QueryParsingError"];
 export type SchemaQueryResult = components["schemas"]["QueryResult"];
@@ -22710,78 +22614,6 @@ export interface operations {
       };
     };
   };
-  query: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["GreprJobGraph"];
-      };
-    };
-    responses: {
-      /** @description Query job submitted successfully. The response contains a token that can be used to query the job status and results. */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description The request was malformed or invalid. */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  read: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["QueryJobToken"];
-      };
-    };
-    responses: {
-      /** @description Query job status read successfully. The response contains the job details. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Job details corresponding to the token were not found. They probably expired. */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
   submitSyncJob: {
     parameters: {
       query?: never;
@@ -23149,7 +22981,7 @@ export interface operations {
       };
     };
   };
-  query_1: {
+  query: {
     parameters: {
       query?: never;
       header?: never;
@@ -26047,15 +25879,6 @@ export enum PlanType {
 export enum PreserveAllAttributesMergeStrategyType {
   preserve = "preserve",
 }
-export enum QueryJobInfoStatus {
-  PENDING = "PENDING",
-  RUNNING = "RUNNING",
-  FINISHED = "FINISHED",
-  UNKNOWN = "UNKNOWN",
-  FAILED = "FAILED",
-  TIMEOUT = "TIMEOUT",
-  CANCELLED = "CANCELLED",
-}
 export enum QuerySinkFormat {
   COMPRESSED_JSON = "COMPRESSED_JSON",
   JSON_LINES = "JSON_LINES",
@@ -26074,7 +25897,6 @@ export enum ReadFeatureFlags {
   PIPELINE_TEMPLATES = "PIPELINE_TEMPLATES",
   AI_WORKFLOWS = "AI_WORKFLOWS",
   SEARCH_ICEBERG_SOURCE = "SEARCH_ICEBERG_SOURCE",
-  QUERY_JOBS = "QUERY_JOBS",
   MULTI_GROK_PARSER = "MULTI_GROK_PARSER",
   AUTH0_SSO_CONNECTION = "AUTH0_SSO_CONNECTION",
   TRINO_QUERY_ENGINE = "TRINO_QUERY_ENGINE",

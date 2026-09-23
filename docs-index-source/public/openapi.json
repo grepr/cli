@@ -7740,24 +7740,6 @@
         ],
         "type": "object"
       },
-      "JobID": {
-        "description": "The Flink job ID for the query job.",
-        "properties": {
-          "bytes": {
-            "format": "byte",
-            "type": "string"
-          },
-          "lowerPart": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "upperPart": {
-            "format": "int64",
-            "type": "integer"
-          }
-        },
-        "type": "object"
-      },
       "JsonFileFormat": {
         "description": "JSON file format.",
         "properties": {
@@ -12999,99 +12981,6 @@
         "title": "Quantile Sampling Tiers",
         "type": "object"
       },
-      "QueryJobInfo": {
-        "description": "Information about a query job.",
-        "properties": {
-          "flinkJobId": {
-            "$ref": "#/components/schemas/JobID"
-          },
-          "integrationId": {
-            "description": "The integration id used for the query job. This determines where the results will be stored.",
-            "type": "string"
-          },
-          "jobExpiry": {
-            "description": "The time at which the job will expire. After this time, the job is bound to be terminated and any new results will not be made available.",
-            "format": "date-time",
-            "type": "string"
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/QueryJobMetadata"
-          },
-          "nextHeartbeatTime": {
-            "description": "The time after which the client should send a heartbeat. If no new heartbeats are received a certain amount of time after this, the job is bound to be terminated. To send heartbeats, do a query read.",
-            "format": "date-time",
-            "type": "string"
-          },
-          "resultPath": {
-            "description": "The path where results from the query job will be available.",
-            "type": "string"
-          },
-          "results": {
-            "additionalProperties": {
-              "description": "The results of the query job. The keys are the names of the result files and the values are the paths to them.",
-              "type": "string"
-            },
-            "description": "The results of the query job. The keys are the names of the result files and the values are the paths to them.",
-            "type": "object"
-          },
-          "status": {
-            "description": "The status of the query job.",
-            "enum": [
-              "PENDING",
-              "RUNNING",
-              "FINISHED",
-              "UNKNOWN",
-              "FAILED",
-              "TIMEOUT",
-              "CANCELLED"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "flinkJobId",
-          "jobExpiry",
-          "nextHeartbeatTime",
-          "resultPath",
-          "status"
-        ],
-        "type": "object"
-      },
-      "QueryJobMetadata": {
-        "description": "Metadata about a query job.",
-        "properties": {
-          "numTasksFinished": {
-            "format": "int32",
-            "type": "integer"
-          },
-          "numTasksPending": {
-            "format": "int32",
-            "type": "integer"
-          },
-          "numTasksRunning": {
-            "format": "int32",
-            "type": "integer"
-          }
-        },
-        "type": "object"
-      },
-      "QueryJobToken": {
-        "description": "Token issued for a submitted query job. This is used to retrieve the job details and results.",
-        "properties": {
-          "jobInfo": {
-            "$ref": "#/components/schemas/QueryJobInfo"
-          },
-          "sessionToken": {
-            "description": "Token to verify the user\u0027s session.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "jobInfo",
-          "sessionToken"
-        ],
-        "type": "object"
-      },
       "QueryParsingError": {
         "properties": {
           "message": {
@@ -13273,7 +13162,6 @@
                 "PIPELINE_TEMPLATES",
                 "AI_WORKFLOWS",
                 "SEARCH_ICEBERG_SOURCE",
-                "QUERY_JOBS",
                 "AUTH0_SSO_CONNECTION",
                 "TRINO_QUERY_ENGINE",
                 "UNKNOWN"
@@ -30682,82 +30570,6 @@
         ]
       }
     },
-    "/v1/jobs/query": {
-      "post": {
-        "description": "Submit an asynchronous batch query job. The job results will be available as the paths specified in the response token. The job will expire after the expiry time specified in the response. and will be terminated if no heartbeats are received after the heartbeat expiry time. To keep the job alive, send a query read request with the received token.",
-        "operationId": "query",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GreprJobGraph"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Query job submitted successfully. The response contains a token that can be used to query the job status and results."
-          },
-          "400": {
-            "description": "The request was malformed or invalid."
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "Submit a query job.",
-        "tags": [
-          "Query Jobs"
-        ]
-      }
-    },
-    "/v1/jobs/query/read": {
-      "post": {
-        "description": "Read the status of a query job using the token received when the job was submitted or was last queried. The response contains the job details including the status, result paths, etc., and a new token that can be used to further query for the job details should anything change. Once the job is finished, any more calls to this endpoint before expiry will yield the same result.",
-        "operationId": "read",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/QueryJobToken"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Query job status read successfully. The response contains the job details."
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Job details corresponding to the token were not found. They probably expired."
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "Read the status of a query job.",
-        "tags": [
-          "Query Jobs"
-        ]
-      }
-    },
     "/v1/jobs/sync": {
       "post": {
         "description": "Submits a job whose results will be returned synchronously as a stream of nd-json. Both streaming and batch jobs using a source with synchronous processing type are supported. The returned data is new-line delimited json log event records. The returned data will be wrapped in an EventRecord object that contains the state of the job. The server will periodically send heartbeats to the client through the same stream so the client knows the server is still alive. The client in return should send a heartbeat back to the server using the `/sync/heartbeat` endpoint to keep the connection alive. The client should use the heartbeat token returned in the EventRecord object to send the heartbeat. The connection will be closed if the client does not send a heartbeat within the timeout period. Additionally, the connection will close if the job fails or finished, or if the job runs for too long. This last timeout is dependent on whether the job is a batch or streaming job.",
@@ -31219,7 +31031,7 @@
     },
     "/v1/metrics/query": {
       "post": {
-        "operationId": "query_1",
+        "operationId": "query",
         "requestBody": {
           "content": {
             "application/x-www-form-urlencoded": {
@@ -34034,10 +33846,6 @@
       "name": "Access Configuration"
     },
     {
-      "description": "Execute and manage query jobs",
-      "name": "Query Jobs"
-    },
-    {
       "description": "Monitor and manage job anomalies",
       "name": "Job Anomalies"
     },
@@ -34128,7 +33936,6 @@
     {
       "name": "Query \u0026 Analysis",
       "tags": [
-        "Query Jobs",
         "Job Anomalies",
         "Grok Parsing",
         "Query Parsing",
