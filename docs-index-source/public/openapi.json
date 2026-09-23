@@ -13162,6 +13162,7 @@
                 "PIPELINE_TEMPLATES",
                 "AI_WORKFLOWS",
                 "SEARCH_ICEBERG_SOURCE",
+                "MULTI_GROK_PARSER",
                 "AUTH0_SSO_CONNECTION",
                 "TRINO_QUERY_ENGINE",
                 "UNKNOWN"
@@ -20033,6 +20034,9 @@
           "double": {
             "format": "double",
             "type": "number"
+          },
+          "emptyObject": {
+            "type": "boolean"
           },
           "float": {
             "format": "float",
