@@ -117,6 +117,26 @@ const pageMap = [
     ],
   },
   {
+    name: "solution-guides",
+    route: "/solution-guides",
+    type: "folder",
+    title: "Solution guides",
+    children: [
+      {
+        name: "index",
+        route: "/solution-guides",
+        type: "page",
+        title: "Overview",
+      },
+      {
+        name: "route-logs-to-several-accounts",
+        route: "/solution-guides/route-logs-to-several-accounts",
+        type: "page",
+        title: "Route logs to several vendor accounts",
+      },
+    ],
+  },
+  {
     name: "pipelines",
     route: "/pipelines",
     type: "folder",

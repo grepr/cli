@@ -66,6 +66,8 @@ You can use the LogTransformAction in the REST API to specify actions that trans
 
 You can route log messages to be processed by different pipelines based on query matches. Because the pipelines UI doesn't support branching, Grepr recommends creating multiple pipelines that ingest data using the same source, and then use filters to route data to the correct pipeline.
 
+Sending logs to different destinations, rather than processing them differently, is a separate problem with its own approaches. See [_](/solution-guides/route-logs-to-several-accounts).
+
 You can also use the REST API to create more complex pipeline configurations. See [LogsBranch](/apis/api-spec#schema/LogsBranch).
 
 <HiddenFAQ

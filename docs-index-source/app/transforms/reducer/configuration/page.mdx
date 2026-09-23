@@ -27,15 +27,19 @@ To modify the configuration settings in the UI, on the overview page for your pi
 
 ## Configure how messages are grouped [#grouping-configuration]
 
-The **Grouping Configuration** section controls how incoming messages are partitioned into independent groups before pattern detection, and the level of similarity messages must meet to be considered part of the same pattern.
+Grouping controls how incoming messages are partitioned into independent groups before pattern detection, and the level of similarity messages must meet to be considered part of the same pattern.
 
-### Group-by values [#group-by-configuration]
+### Group messages by a field [#group-by-configuration]
 
-To control how the reducer partitions messages, enter a comma-separated list of tag keys and attribute paths in the **Group-by values** field. Messages are aggregated separately for each unique combination of values across the listed tags and attributes, so patterns from different services, hosts, or other dimensions are never merged. For example, the value `service, host, @http.url.path` aggregates messages independently for each unique combination of `service`, `host`, and the `http.url.path` attribute.
+Messages are aggregated separately for each unique combination of values across the fields you group on, so patterns from different services, hosts, or other dimensions are never merged. Grouping on `service`, `host`, and the `http.url.path` attribute aggregates messages independently for each unique combination of those three values.
 
-To specify attributes, prefix the attribute path with `@` and use dot notation for nested attributes. For example: `@http.url.path`. Enter tag keys using just the key name without any prefix.
+To group on a field, on the pipeline's **Reducer** step, click **Edit** on the **Fields** card, find the field, and set its behavior to **Match or split**. A field with this behavior is kept out of aggregation, so messages whose values for it differ are never merged into one pattern.
 
-Use this setting to retain the values of important fields by excluding them from aggregation. For example, to retain the values of high-cardinality identifiers, such as user IDs. To prevent a field from being aggregated, parse the field into an attribute using the **JSON Parser** or **Grok Parser** steps earlier in the pipeline, then add that attribute to the **Group-by values** field. See [Transform JSON strings into JSON objects](/transforms/json-parsing) and [Parse log messages to enrich log events with the Grok parser](/transforms/grok).
+Attribute paths are written with an `@` prefix and dot notation for nested attributes, such as `@http.url.path`. Tag keys are written as the key name alone.
+
+Use grouping to retain the values of important fields by excluding them from aggregation, such as high-cardinality identifiers like user IDs. To keep a field that is currently inside the message, parse it into an attribute or a tag with the **JSON Parser** or **Grok Parser** step earlier in the pipeline, then group on that field. See [Transform JSON strings into JSON objects](/transforms/json-parsing) and [Parse log messages to enrich log events with the Grok parser](/transforms/grok).
+
+Grouping also decides how a summary can be routed, because a summary carries the tag values of the fields it was grouped on. To use grouping to send each group's logs to a different destination, see [_](/solution-guides/route-logs-to-several-accounts).
 
 ### Similarity threshold (%)
 

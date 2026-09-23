@@ -1,0 +1,26 @@
+---
+description: Guides that work through common Grepr situations end to end, showing the ways you can configure a pipeline to solve each one.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Solution guides
+
+A solution guide works through a situation you are likely to meet in production, rather than a single feature. A Grepr pipeline is a free-form processing graph, so most situations have more than one good shape. Each guide states the problem, then walks through the ways you can configure Grepr for it.
+
+Use these guides when you know what you want to achieve but not yet how to shape your pipelines around it. To learn a feature on its own, see the reference documentation for [pipelines](/pipelines), [transforms](/transforms), and [integrations](/integrations). To work through the product step by step, see [_](/tutorials).
+
+## Route logs to several vendor accounts
+
+Your logs belong to more than one account in your observability platform, because separate teams, environments, or business units each own their own. This guide shows two ways to get each log, and each summary of those logs, to the account that owns it: a pipeline for each group, or one pipeline whose reducer groups on a routing key and whose sinks each filter on it. See [_](/solution-guides/route-logs-to-several-accounts).
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is a Grepr solution guide?",
+    a: "A solution guide works through a situation you are likely to meet in production rather than a single feature. A Grepr pipeline is a free-form processing graph, so most situations have more than one good shape. Each guide states the problem, then walks through the ways you can configure Grepr for it."
+  },
+  {
+    q: "How is a solution guide different from a tutorial?",
+    a: "A tutorial teaches the product step by step, starting from nothing. A solution guide assumes you know what you want to achieve and shows you the ways you can shape your pipelines around it."
+  }
+]} />

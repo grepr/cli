@@ -1,0 +1,90 @@
+---
+description: Two ways to send logs to several vendor accounts, by creating a pipeline for each group or by grouping the reducer and filtering each sink.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Route logs to several vendor accounts
+
+Your logs do not all belong in the same place. Separate teams, environments, or business units each own an account in your observability platform, and a log has to reach the account that owns it. Each account you send to is its own Grepr integration.
+
+A Grepr pipeline is a free-form processing graph rather than a fixed shape, so you can arrange this in more than one way. Here are two examples, and you can combine them.
+
+## Create a pipeline for each group [#pipeline-per-group]
+
+Create one pipeline for each group of logs that belongs together, filter its source to that group, and give it the sink for that group's account.
+
+Each pipeline summarizes only its own logs, so you can tune each one on its own. Choose this when the groups need different configurations, or when you want them isolated from each other.
+
+To create a pipeline, see [_](/tutorials/first-pipeline). To limit what one ingests, see [_](/transforms/filter-events).
+
+## Group the reducer and filter each sink [#grouped-sinks]
+
+Run a single pipeline, add a sink for each account, and filter each sink to that account's logs. Choose this when the groups have the same configuration, and you would rather manage one pipeline than several.
+
+Routing rests on a _routing key_, which is a field whose value names the account a log belongs to, such as `account` or `team`. Two settings act on it: the reducer groups on the key, and each sink filters on it.
+
+Grouping is what makes the filtering correct. A summary carries the values of the fields it was grouped on, so grouping on the routing key gives every summary exactly one account, and each sink's filter then matches its own account and no other.
+
+<Callout type="warning">
+  Configure the grouping before you add the sinks, because leaving it out fails quietly. Without the routing key in the group-by, logs bound for different accounts aggregate together. A tag then carries every value the merged messages had, so every account receives the same summary, reporting counts that include the other accounts' logs. An attribute is merged instead, and the default merge strategy replaces values that differ with a wildcard, so no filter matches and the summary reaches no account.
+</Callout>
+
+### Step 1: Put the routing key on every log [#step1-routing-key]
+
+The routing key has to be on each log before the reducer sees it, holding one value per account. If your collectors already tag logs with the owning team or environment, use that tag. If the value is inside the message, parse it into an attribute or a tag first with the Grok parser or the JSON parser. See [_](/transforms/grok) and [_](/transforms/json-parsing).
+
+A tag and an attribute both work as the routing key. Choose one whose values are few and stable, because each value aggregates separately. Decide what happens to logs carrying no value for the key, which match no filter and so reach no account: give them a default value when you parse, or add a sink that catches them.
+
+### Step 2: Group the reducer on the routing key [#step2-group]
+
+1. On the pipeline's **Reducer** step, click **Edit** on the **Fields** card.
+1. If the routing key is listed, set its **Behaviour** to **Match or split**.
+1. If it is not listed, enter it in the **Add field** row, set the **Behaviour** to **Match or split**, and click **Add**.
+1. Click **Save**.
+
+![The reducer Fields dialog, with a tag entered in the Add field row and its behavior set to Match or split.](/images/solution-guides/reducer-fields-match-or-split.png)
+
+The **Match or split** behavior keeps a field out of aggregation, so messages whose values differ are never merged into one pattern. Enter tag keys plainly, and prefix attribute paths with `@`. An attribute is merged as well as grouped, and the default merge strategy keeps the value that every message in the group agrees on. If you set a different merge strategy for the routing attribute, check that it preserves that value rather than combining or discarding it. See [_](/transforms/reducer/configuration#attribute-configuration).
+
+### Step 3: Create a Grepr integration for each account [#step3-integrations]
+
+Create one Grepr integration for each account you send to. An integration authenticates to a single account, so its credential is what decides where its logs land. Name each integration after its account, because that name is what you select when you add the sink. See [_](/integrations).
+
+### Step 4: Add a filtered sink for each account [#step4-sinks]
+
+Repeat for each account:
+
+1. On the pipeline's **Sinks** step, click **Add sink**.
+1. In the **Sink** menu, select the integration for the account. Grepr fills in a **Name**, which you can change.
+1. In the **Query language** menu, select the syntax you want to write the filter in.
+1. In the **Filter Query** field, enter a query that matches only that account's logs, such as `team:platform`.
+1. Click **Add**, then save the pipeline.
+
+![The Add sink dialog for a New Relic integration, with a filter query that matches one team's logs.](/images/solution-guides/add-sink-filter-query.png)
+
+A sink with an empty filter forwards everything, so give each sink a filter query that matches it to one account. A sink's card reports its filter and shows **All messages** when it has none, which is how you spot one you missed. The filter runs on everything the reducer emits, so summaries, samples, passthrough messages, and exceptions all follow the same routing. To learn about the filter syntax, see [_](/queries/datadog) and [_](/queries/new-relic).
+
+<HiddenFAQ faqs={[
+  {
+    q: "Can one Grepr pipeline send logs to several accounts of the same vendor?",
+    a: "Yes. Add one sink for each account, each pointing at that account's integration, and give each sink a filter that matches only that account's logs. Group the reducer on the same routing key the filters use, so that each summary belongs to exactly one account."
+  },
+  {
+    q: "Why does the reducer need to group on the routing key?",
+    a: "Without it, logs for different accounts aggregate together and the summary no longer identifies one account. If the key is a tag, the summary carries every value the merged messages had, so each account's filter matches it and every account receives counts that include the other accounts' logs. If the key is an attribute, the default merge strategy replaces the differing values with a wildcard, so no filter matches and the summary reaches no account."
+  },
+  {
+    q: "Should I create a pipeline for each account or filter the sinks of one pipeline?",
+    a: "Create a pipeline for each group when the groups need different reduction settings or different exceptions, or when you want them isolated. Filter the sinks of one pipeline when the groups share one reduction policy and you would rather keep a single pipeline to change."
+  },
+  {
+    q: "What happens to logs that have no value for the routing key?",
+    a: "They match no sink's filter and reach no vendor account. Give them a default value when you parse the routing key, or add a sink whose filter matches them so they land somewhere you can see."
+  },
+  {
+    q: "Does a sink filter apply to summarized logs as well as raw ones?",
+    a: "Yes. The filter runs on everything the reducer emits, so summaries, samples, passthrough messages, and exceptions all follow the same routing."
+  }
+]} />
