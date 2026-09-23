@@ -5761,6 +5761,27 @@
         ],
         "type": "object"
       },
+      "ExceptionImpact": {
+        "description": "Estimated passthrough for one parsed alert query against one dataset",
+        "properties": {
+          "measuredAt": {
+            "description": "When the estimation run that produced this percentage completed. Absent when the age of the measurement is not known; that is not the same as freshly measured.",
+            "example": "2026-09-09T04:15:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "percentage": {
+            "description": "Estimated percentage of the dataset\u0027s raw log volume this query matches. Honouring the query as a pipeline exception passes approximately this share of the data through without aggregation.",
+            "example": 4.27,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "percentage"
+        ],
+        "type": "object"
+      },
       "ExternalSourceTrigger": {
         "properties": {
           "conditionIds": {
@@ -24752,67 +24773,6 @@
         ]
       }
     },
-    "/v1/integrations/datadog/{id}/app-key/scopes/preview": {
-      "post": {
-        "description": "Probes Datadog with the integration\u0027s stored keys, overridden by whatever the body supplies, and reports each authorization scope. Nothing is written. An omitted field means \"use what is stored\", so an empty body reports what the stored key can do right now. A scope whose probe does not complete is reported UNKNOWN rather than as a permission the user has to grant.",
-        "operationId": "previewDatadogAppKeyScopes",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PreviewAppKeyScopesRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/AppKeyScopeCheck"
-                  },
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Scopes checked successfully"
-          },
-          "400": {
-            "description": "The supplied site is not allowed for this organization."
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Integration not found."
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "Preview authorization scopes for unsaved changes to an integration",
-        "tags": [
-          "Datadog Integration"
-        ]
-      }
-    },
     "/v1/integrations/datadog/sites": {
       "get": {
         "description": "Get all valid Datadog sites for your organization.",
@@ -25174,6 +25134,67 @@
           }
         ],
         "summary": "Creates or updates a Datadog integration app key",
+        "tags": [
+          "Datadog Integration"
+        ]
+      }
+    },
+    "/v1/integrations/datadog/{id}/app-key/scopes/preview": {
+      "post": {
+        "description": "Probes Datadog with the integration\u0027s stored keys, overridden by whatever the body supplies, and reports each authorization scope. Nothing is written. An omitted field means \"use what is stored\", so an empty body reports what the stored key can do right now. A scope whose probe does not complete is reported UNKNOWN rather than as a permission the user has to grant.",
+        "operationId": "previewDatadogAppKeyScopes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewAppKeyScopesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AppKeyScopeCheck"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Scopes checked successfully"
+          },
+          "400": {
+            "description": "The supplied site is not allowed for this organization."
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Preview authorization scopes for unsaved changes to an integration",
         "tags": [
           "Datadog Integration"
         ]
@@ -29461,6 +29482,67 @@
         ]
       }
     },
+    "/v1/integrations/{integrationId}/exceptions/impacts": {
+      "get": {
+        "description": "Returns the estimated percentage of the dataset\u0027s raw log volume each of the integration\u0027s parsed alert queries matches, with the time that estimate was measured. Queries that have not been estimated are absent from the response rather than reported as zero. The dataset must be one of those returned by the estimation-datasets endpoint for this integration.",
+        "operationId": "getIntegrationExceptionImpactsByDataset",
+        "parameters": [
+          {
+            "description": "Integration id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "integrationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Dataset the estimates are scoped to",
+            "example": "ds-prod-1",
+            "in": "query",
+            "name": "datasetId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/ExceptionImpact"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Impact estimates retrieved"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found - Integration not found, or the dataset is not reachable from it."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get parsed alert query impacts for an integration and dataset",
+        "tags": [
+          "Integration Exceptions"
+        ]
+      }
+    },
     "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs": {
       "get": {
         "description": "Returns the integration\u0027s estimation runs newest first, including failed and stopped ones. Scope and window identify a run: numbers from runs over different scopes or windows are not comparable.",
@@ -31667,7 +31749,7 @@
     },
     "/v1/pipelines/{pipelineId}/exceptions/integrations/{integrationId}/impacts": {
       "get": {
-        "description": "Returns the per-exception impact percentages the runtime auto-sync threshold filter would compare against for this pipeline/integration pair. The pipeline\u0027s sink dataset scopes the lookup; exceptions without an estimation row are absent from the response.",
+        "description": "Returns the per-exception impact percentages the runtime auto-sync threshold filter would compare against for this pipeline/integration pair, each with the time that estimate was measured. The pipeline\u0027s sink dataset scopes the lookup; exceptions without an estimation row are absent from the response rather than reported as zero.",
         "operationId": "getIntegrationExceptionImpacts",
         "parameters": [
           {
@@ -31697,8 +31779,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "format": "double",
-                    "type": "number"
+                    "$ref": "#/components/schemas/ExceptionImpact"
                   },
                   "type": "object"
                 }

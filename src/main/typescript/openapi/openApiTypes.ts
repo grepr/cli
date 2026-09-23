@@ -2285,6 +2285,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/{integrationId}/exceptions/impacts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get parsed alert query impacts for an integration and dataset
+     * @description Returns the estimated percentage of the dataset's raw log volume each of the integration's parsed alert queries matches, with the time that estimate was measured. Queries that have not been estimated are absent from the response rather than reported as zero. The dataset must be one of those returned by the estimation-datasets endpoint for this integration.
+     */
+    get: operations["getIntegrationExceptionImpactsByDataset"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs": {
     parameters: {
       query?: never;
@@ -3063,7 +3083,7 @@ export interface paths {
     };
     /**
      * Get integration exception impacts for a pipeline
-     * @description Returns the per-exception impact percentages the runtime auto-sync threshold filter would compare against for this pipeline/integration pair. The pipeline's sink dataset scopes the lookup; exceptions without an estimation row are absent from the response.
+     * @description Returns the per-exception impact percentages the runtime auto-sync threshold filter would compare against for this pipeline/integration pair, each with the time that estimate was measured. The pipeline's sink dataset scopes the lookup; exceptions without an estimation row are absent from the response rather than reported as zero.
      */
     get: operations["getIntegrationExceptionImpacts"];
     put?: never;
@@ -6457,6 +6477,21 @@ export interface components {
        * @enum {string}
        */
       type: ExactAttributesMergeStrategyType;
+    };
+    /** @description Estimated passthrough for one parsed alert query against one dataset */
+    ExceptionImpact: {
+      /**
+       * Format: date-time
+       * @description When the estimation run that produced this percentage completed. Absent when the age of the measurement is not known; that is not the same as freshly measured.
+       * @example 2026-09-09T04:15:00Z
+       */
+      measuredAt?: string;
+      /**
+       * Format: double
+       * @description Estimated percentage of the dataset's raw log volume this query matches. Honouring the query as a pipeline exception passes approximately this share of the data through without aggregation.
+       * @example 4.27
+       */
+      percentage: number;
     };
     ExternalSourceTrigger: {
       /**
@@ -14959,6 +14994,7 @@ export type SchemaEventPredicateTrigger =
 export type SchemaEventRecord = components["schemas"]["EventRecord"];
 export type SchemaExactAttributesMergeStrategy =
   components["schemas"]["ExactAttributesMergeStrategy"];
+export type SchemaExceptionImpact = components["schemas"]["ExceptionImpact"];
 export type SchemaExternalSourceTrigger =
   components["schemas"]["ExternalSourceTrigger"];
 export type SchemaExternalTriggerPayload =
@@ -21762,6 +21798,54 @@ export interface operations {
       };
     };
   };
+  getIntegrationExceptionImpactsByDataset: {
+    parameters: {
+      query: {
+        /**
+         * @description Dataset the estimates are scoped to
+         * @example ds-prod-1
+         */
+        datasetId: string;
+      };
+      header?: never;
+      path: {
+        /**
+         * @description Integration id
+         * @example 0q841q0j81m2q
+         */
+        integrationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Impact estimates retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: components["schemas"]["ExceptionImpact"];
+          };
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Integration not found, or the dataset is not reachable from it. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   listVendorEstimationRuns: {
     parameters: {
       query?: {
@@ -23547,7 +23631,7 @@ export interface operations {
         };
         content: {
           "application/json": {
-            [key: string]: number;
+            [key: string]: components["schemas"]["ExceptionImpact"];
           };
         };
       };
