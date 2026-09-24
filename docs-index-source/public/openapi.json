@@ -30978,6 +30978,27 @@
         ]
       }
     },
+    "/v1/me/login": {
+      "post": {
+        "operationId": "recordLogin",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {}
+            },
+            "description": "default response"
+          }
+        },
+        "security": [
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "tags": [
+          "Users"
+        ]
+      }
+    },
     "/v1/me/permissions": {
       "get": {
         "operationId": "getUserPermissions",
