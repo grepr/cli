@@ -2413,6 +2413,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/{integrationId}/parsed-queries/import": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get parsed-query import state
+     * @description Says whether this vendor's parsed queries can be imported, whether the credential the import needs is saved, whether an import is already under way, and which integrations an import covers. Poll this while an import is running; what it imported is reported in the integration's activity log.
+     */
+    get: operations["getParsedQueryImportStatus"];
+    put?: never;
+    /**
+     * Import an integration's parsed queries now
+     * @description Reads the integration's alert, monitor and dashboard queries from its vendor without waiting for the hourly import. One fetch is shared by every integration in the organization using the same vendor account, so this updates all of them. If an import is already under way this joins it rather than starting another. The import runs in the background; its result appears in the integration's activity log.
+     */
+    post: operations["importParsedQueries"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/investigations": {
     parameters: {
       query?: never;
@@ -9803,6 +9827,28 @@ export interface components {
       errorMessage?: string;
       parseable?: boolean;
     };
+    ParsedQueryImportStatus: {
+      /**
+       * @description Every integration an import updates. Integrations that share a vendor account share one fetch, so importing for one imports for all of them.
+       * @default []
+       */
+      coveredIntegrationIds: string[];
+      /**
+       * @description Whether the credential the import needs is saved. For Datadog this is the application key.
+       * @example true
+       */
+      hasCredential: boolean;
+      /**
+       * @description Whether an import covering this integration is already under way.
+       * @example false
+       */
+      importing: boolean;
+      /**
+       * @description Whether this vendor's parsed queries can be imported at all. False for vendors Grepr cannot read alert queries from.
+       * @example true
+       */
+      supported: boolean;
+    };
     ParsedQueryNode:
       | components["schemas"]["AttributeNode"]
       | components["schemas"]["AttributeKeyTermNode"]
@@ -15183,6 +15229,8 @@ export type SchemaParseQueryRequest =
 export type SchemaParseQueryResponse =
   components["schemas"]["ParseQueryResponse"];
 export type SchemaParseResult = components["schemas"]["ParseResult"];
+export type SchemaParsedQueryImportStatus =
+  components["schemas"]["ParsedQueryImportStatus"];
 export type SchemaParsedQueryNode = components["schemas"]["ParsedQueryNode"];
 export type SchemaParsedQueryTree = components["schemas"]["ParsedQueryTree"];
 export type SchemaPartitionConfig = components["schemas"]["PartitionConfig"];
@@ -22116,6 +22164,93 @@ export interface operations {
         content?: never;
       };
       /** @description Conflict - The run is not eligible to be resumed. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getParsedQueryImportStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Integration id
+         * @example 0q841q0j81m2q
+         */
+        integrationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description State retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ParsedQueryImportStatus"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  importParsedQueries: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Integration id
+         * @example 0q841q0j81m2q
+         */
+        integrationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Import started, or already under way */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ParsedQueryImportStatus"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Conflict - This vendor has no parsed queries to import, or the integration has no application key saved. */
       409: {
         headers: {
           [name: string]: unknown;

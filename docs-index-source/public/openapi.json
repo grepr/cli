@@ -12201,6 +12201,41 @@
         },
         "type": "object"
       },
+      "ParsedQueryImportStatus": {
+        "properties": {
+          "coveredIntegrationIds": {
+            "default": [],
+            "description": "Every integration an import updates. Integrations that share a vendor account share one fetch, so importing for one imports for all of them.",
+            "items": {
+              "description": "Every integration an import updates. Integrations that share a vendor account share one fetch, so importing for one imports for all of them.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "hasCredential": {
+            "description": "Whether the credential the import needs is saved. For Datadog this is the application key.",
+            "example": true,
+            "type": "boolean"
+          },
+          "importing": {
+            "description": "Whether an import covering this integration is already under way.",
+            "example": false,
+            "type": "boolean"
+          },
+          "supported": {
+            "description": "Whether this vendor\u0027s parsed queries can be imported at all. False for vendors Grepr cannot read alert queries from.",
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "coveredIntegrationIds",
+          "hasCredential",
+          "importing",
+          "supported"
+        ],
+        "type": "object"
+      },
       "ParsedQueryNode": {
         "discriminator": {
           "mapping": {
@@ -29857,6 +29892,103 @@
         "summary": "Resume a stalled vendor estimation run",
         "tags": [
           "Integration Exceptions"
+        ]
+      }
+    },
+    "/v1/integrations/{integrationId}/parsed-queries/import": {
+      "get": {
+        "description": "Says whether this vendor\u0027s parsed queries can be imported, whether the credential the import needs is saved, whether an import is already under way, and which integrations an import covers. Poll this while an import is running; what it imported is reported in the integration\u0027s activity log.",
+        "operationId": "getParsedQueryImportStatus",
+        "parameters": [
+          {
+            "description": "Integration id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "integrationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParsedQueryImportStatus"
+                }
+              }
+            },
+            "description": "State retrieved"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found - Integration not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get parsed-query import state",
+        "tags": [
+          "Integrations"
+        ]
+      },
+      "post": {
+        "description": "Reads the integration\u0027s alert, monitor and dashboard queries from its vendor without waiting for the hourly import. One fetch is shared by every integration in the organization using the same vendor account, so this updates all of them. If an import is already under way this joins it rather than starting another. The import runs in the background; its result appears in the integration\u0027s activity log.",
+        "operationId": "importParsedQueries",
+        "parameters": [
+          {
+            "description": "Integration id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "integrationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParsedQueryImportStatus"
+                }
+              }
+            },
+            "description": "Import started, or already under way"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found - Integration not found."
+          },
+          "409": {
+            "description": "Conflict - This vendor has no parsed queries to import, or the integration has no application key saved."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Import an integration\u0027s parsed queries now",
+        "tags": [
+          "Integrations"
         ]
       }
     },
