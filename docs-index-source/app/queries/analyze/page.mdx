@@ -90,6 +90,12 @@ CAST(@duration_ms AS BIGINT)
 MIN(CAST(@duration_ms AS DOUBLE))
 ```
 
+Grepr reads a numeric attribute as a 64-bit floating point value, which represents whole numbers
+exactly only up to 9,007,199,254,740,992. Above that limit, two different whole numbers can compare
+as equal. Store large identifiers such as trace ids and 64-bit request ids as strings, which always
+match exactly. If an attribute already holds a large whole number, cast it to `BIGINT` to compare it
+exactly.
+
 <Callout type="warning">
 Sorting by an attribute you have not cast sorts it as text, so `100` sorts before `99`. Cast it to
 sort numerically.
