@@ -445,6 +445,7 @@ The Grepr CLI includes commands to:
 - Manage datasets for log storage and querying: `dataset:create`, `dataset:list`, `dataset:get`, `dataset:update`, `dataset:delete`.
 - Search and retrieve Grepr documentation: `docs:search`, `docs:get`.
 - Test Grok rules: `grok:parse`.
+- Read AI agents and their investigations: `agent:list`, `agent:get`, `investigation:list`, `investigation:get`, `investigation:turns`, `investigation:transcript`, `investigation:memory:search`.
 
 The following sections contain examples demonstrating how to use these commands. Most of these examples assume you have already saved a default configuration. If you haven't saved a default configuration, include the `--conf` option to specify a saved configuration when you run CLI commands. To learn how to create a default configuration, see [Configure the Grepr CLI](#cli-configuration).
 
@@ -953,6 +954,81 @@ grepr grok:parse \
   --sample "17-Feb-2026 10:15:30 CRITICAL System overload detected" \
   --helper-rules "CUSTOM_TIMESTAMP %{MONTHDAY}-%{MONTH}-%{YEAR} %{TIME}" "SEVERITY (CRITICAL|ERROR|WARN|INFO|DEBUG)"
 ```
+
+## Examples: AI agent and investigation commands [#agent-command-examples]
+
+Use these commands to read your AI agents, the investigations they ran, and the conclusions they recorded. The commands are read-only: you create and configure agents in the Grepr UI or through the REST API. To learn what agents are, see [_](/ai-agents).
+
+### List agents
+
+```console copy
+# List the agents in your organization, with their identifiers
+grepr agent:list
+```
+
+```console copy
+# Get one agent's configuration and its aggregate metrics
+grepr agent:get <agent-id>
+```
+
+The configuration `agent:get` returns is the agent's configuration now, which is not necessarily the configuration an older investigation ran under.
+
+### List and read investigations
+
+```console copy
+# List an agent's investigations
+grepr investigation:list --agent-id <agent-id> --page-size 10
+```
+
+```console copy
+# List only the failed investigations, repeating --status to include more states
+grepr investigation:list --agent-id <agent-id> --status FAILED --status DISCARDED
+```
+
+```console copy
+# Read one investigation's metadata, summary, and the changes it made
+grepr investigation:get <investigation-id>
+```
+
+```console copy
+# Read the turns of an investigation, including tool calls and their results
+grepr investigation:turns <investigation-id> --page-size 10
+```
+
+To page through turns, pass the last sequence number you read to `--after-seq`. To follow a running investigation as it progresses, add `--follow`, which stops when the investigation pauses, reaches a terminal state, or hits the deadline. To learn what each investigation state means, see [_](/ai-agents/investigations#states).
+
+### Export a transcript
+
+```console copy
+# Export up to 50 turns to a file
+grepr investigation:transcript <investigation-id> --output investigation.json
+```
+
+```console copy
+# Export every turn, allowing more time for a long investigation
+grepr investigation:transcript <investigation-id> --all --timeout 5m
+```
+
+An export reports its own coverage, so check that before you treat one as complete.
+
+### Search agent memories
+
+```console copy
+# Find investigations mentioning a literal string
+grepr investigation:memory:search --mode text --query "connection refused" --limit 5
+```
+
+```console copy
+# Find investigations whose conclusions are similar in meaning
+grepr investigation:memory:search --mode semantic --agent-id <agent-id> --query "intermittent ingestion failures"
+```
+
+```console copy
+# See what has been happening to one service lately
+grepr investigation:memory:search --mode timeline --entity-tag entity:service=checkout
+```
+
+A semantic search needs an agent id, because a query can only be compared inside the index that agent embeds into. A timeline search needs at least one entity tag. To learn what memories hold and how the modes differ, see [_](/ai-agents/memory#search-modes).
 
 ## Examples: Documentation commands
 

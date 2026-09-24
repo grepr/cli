@@ -29308,8 +29308,14 @@
           "404": {
             "description": "No such webhook integration"
           },
+          "409": {
+            "description": "The integration has no live target agent to start"
+          },
           "413": {
             "description": "Body exceeds the size limit"
+          },
+          "503": {
+            "description": "At least one target agent could not be started for a transient reason; retry"
           }
         },
         "security": [
@@ -30886,6 +30892,9 @@
     "/v1/llm-usage/{integrationId}": {
       "get": {
         "operationId": "currentWindow",
+        "tags": [
+          "LLM Usage"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -32361,6 +32370,9 @@
     "/v1/skills": {
       "get": {
         "operationId": "list_3",
+        "tags": [
+          "Skills"
+        ],
         "parameters": [
           {
             "in": "query",
@@ -32396,6 +32408,9 @@
       },
       "post": {
         "operationId": "create_2",
+        "tags": [
+          "Skills"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -32423,6 +32438,9 @@
     "/v1/skills/{id}": {
       "delete": {
         "operationId": "archive",
+        "tags": [
+          "Skills"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -32455,6 +32473,9 @@
       },
       "get": {
         "operationId": "get_3",
+        "tags": [
+          "Skills"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -32481,6 +32502,9 @@
       },
       "put": {
         "operationId": "update_1",
+        "tags": [
+          "Skills"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -33901,6 +33925,30 @@
     {
       "description": "Operations for managing SSO claim-to-role mappings",
       "name": "SSO Claim Mappings"
+    },
+    {
+      "description": "Create and manage AI agents, read the tool catalog, and manage a pipeline subscription",
+      "name": "Agents"
+    },
+    {
+      "description": "Start, stop, resume, and cancel agent investigations, and read their transcripts",
+      "name": "Investigations"
+    },
+    {
+      "description": "Search the conclusions agents recorded from past investigations, and record or link one",
+      "name": "Agent Memory"
+    },
+    {
+      "description": "Review the pipeline changes an agent proposed, and apply or reject them",
+      "name": "Agent Suggestions"
+    },
+    {
+      "description": "Create and manage organization skills, and read the platform skill catalog",
+      "name": "Skills"
+    },
+    {
+      "description": "Read the current max-tokens window of one LLM integration",
+      "name": "LLM Usage"
     }
   ],
   "x-tagGroups": [
@@ -33965,6 +34013,17 @@
         "Grok Parsing",
         "Query Parsing",
         "Validation"
+      ]
+    },
+    {
+      "name": "AI Agents",
+      "tags": [
+        "Agents",
+        "Investigations",
+        "Agent Memory",
+        "Agent Suggestions",
+        "Skills",
+        "LLM Usage"
       ]
     },
     {

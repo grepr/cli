@@ -1,0 +1,111 @@
+---
+description: Learn what Grepr AI agents are, how they investigate your telemetry, and what to configure before you create one.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Grepr AI agents
+
+A Grepr _AI agent_ is a configured investigator that Grepr runs for you. You give it instructions, a model to reason with, an identity to act as, and a set of capabilities. It then runs _investigations_: in each one the agent works in an isolated sandbox, uses the capabilities you granted to examine your logs, pipelines, and connected systems, records the changes it made outside the sandbox that Grepr recognizes, and writes up what it found.
+
+You decide when an agent runs. Start an investigation yourself and give it the context to work from, or connect the agent to a source so it investigates on its own whenever that source reports something. When an investigation finishes, you can carry it forward into a new one that starts from the earlier conversation.
+
+An agent is not a chat assistant. It runs unattended and finishes with a written conclusion you read afterwards. If it concludes that a pipeline should change, what happens next depends on the agent's change approval mode: it either records the change as a suggestion for you to review, or applies it directly.
+
+<Callout type="info">
+  AI agents are enabled for each organization individually. To turn on AI agents for your organization, contact [support@grepr.ai](mailto:support@grepr.ai).
+</Callout>
+
+## What an agent can do [#capabilities-summary]
+
+Every agent works inside its own sandbox, where it can always run shell commands, Python, and DuckDB, and read and write its own files. What it can reach beyond that sandbox is entirely what you grant it:
+
+- Search the logs and spans in your data lake.
+- Read the configuration of your pipelines, datasets, templates, and integrations.
+- Propose and apply changes to a pipeline's Grok parsers and SQL transforms.
+- Call the tools published by an MCP server you connect.
+- Read its own past investigations and the conclusions it recorded from them.
+
+An agent acts as a Grepr service account that you choose. The roles on that service account cap what the agent can reach, whatever tools you enable, so the service account is the outer boundary and the tool grants narrow it further. To learn more, see [_](/ai-agents/capabilities).
+
+## The parts of an AI agent [#parts]
+
+| Part | What it is |
+|---|---|
+| Agent | The configuration you create: a name, instructions, a model, a service account, the tools and skills it can use, and its limits. |
+| Signal source | A pipeline that detects new log patterns, or a Grepr Agent integration that receives events from another system. |
+| Subscription | The link between an agent and a signal source. A signal from that source starts an investigation on that agent. |
+| Investigation | One run of an agent, with its transcript, the actions it took, and its summary. |
+| Memory | What an agent recorded from past investigations, and can search during a new one. |
+| Skill | A directory of instructions an agent loads when it needs them. A skill can also grant tools. |
+| Suggestion | A pipeline change an agent proposed and is waiting for you to review. |
+
+## How an investigation runs [#investigation-loop]
+
+1. An investigation is queued, either because you started one and gave it context, or because a source the agent is connected to reported something. If the agent is already running as many investigations as you allow, the new one waits or is dropped, depending on the agent's queueing setting.
+1. The agent starts in a fresh sandbox, reads its instructions and whatever it was given to start from, and searches its memory for investigations that reached a similar conclusion.
+1. The agent works through as many turns as you allow, calling the tools you granted. Grepr records each turn, each tool call, and each change it recognizes the agent making outside the sandbox.
+1. The agent writes a summary and, when it has one, records a conclusion in its memory. If it wants to change a pipeline, it submits the change as a suggestion, or applies it directly when you configured the agent to do so.
+
+An investigation ends on its own, or you can stop it to add guidance and resume it, cancel it outright, or continue it in a fresh investigation seeded from it. To learn more, see [_](/ai-agents/investigations).
+
+## What you need before you start [#requirements]
+
+Before you create your first agent, you need:
+
+- An LLM integration that provides the model the agent reasons with. See [_](/integrations/llm).
+- A Grepr service account for the agent to act as. See [_](/admin/service-accounts).
+
+That is enough to create an agent and run investigations yourself. Three further capabilities each need their own setup:
+
+- To have an agent investigate on its own, connect it to a signal source, which is either a pipeline or a Grepr Agent integration. See [_](/ai-agents/subscriptions).
+- To let an agent call an external system's tools, create an MCP integration. See [_](/integrations/mcp).
+- To let an agent keep and search conclusions from past investigations, create a vector index integration and an embedding integration. See [_](/ai-agents/memory).
+
+## Create an agent
+
+Create an agent in a six-step wizard that collects its instructions, its model, its capabilities, its memory settings, and its subscriptions. The same settings are editable afterwards on the agent's page. See [_](/ai-agents/create-an-agent).
+
+## Control what an agent can do
+
+An agent's reach is set by the service account it acts as, the tools you enable, the skills you give it, and the MCP servers you connect. This also covers whether the pipeline changes it proposes need your approval. See [_](/ai-agents/capabilities).
+
+## Extend agents with skills
+
+A skill is a directory of instructions that an agent loads only when it is relevant, and which can grant the tools it needs. Grepr ships a set of skills, and you can write your own. See [_](/ai-agents/skills).
+
+## Have an agent investigate on its own
+
+Connect an agent to a pipeline or a Grepr Agent integration so that source's events start investigations without you. See [_](/ai-agents/subscriptions).
+
+## Run and review investigations
+
+Start an investigation yourself, follow the ones a source triggered, read their transcripts, guide one that is running, and review the pipeline changes an agent proposes. See [_](/ai-agents/investigations).
+
+## Remember past investigations
+
+With memory turned on, an agent records what it concluded, counts how often the same conclusion recurs, and searches those records during later investigations. See [_](/ai-agents/memory).
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is a Grepr AI agent?",
+    a: "A Grepr AI agent is a configured investigator that runs unattended in an isolated sandbox. You give it instructions, a model, a service account identity, and a set of capabilities, then run investigations with it. You can start an investigation yourself, connect the agent to a source so it investigates on its own, or continue a finished investigation in a new one. In each investigation the agent examines your telemetry, records the actions it took, and writes a summary."
+  },
+  {
+    q: "How is an AI agent different from an agent sessions pipeline?",
+    a: "An AI agent investigates your telemetry and can change your pipelines. An agent sessions pipeline does the opposite: it ingests the OpenTelemetry data that coding agents such as Claude Code, Codex, and OpenCode produce, and reassembles it into readable sessions so you can review transcripts and measure token usage and cost."
+  },
+  {
+    q: "How does a Grepr AI agent investigation start?",
+    a: "You can start one yourself from the agent's page and give it the context to work from, or continue a finished investigation in a new one. An agent connected to a source also investigates on its own: a pipeline reducer detecting a log pattern it has not seen before, a SQL output in a pipeline routed to the agent signal, or an event received by a Grepr Agent webhook integration."
+  },
+  {
+    q: "Can a Grepr AI agent change my pipelines without approval?",
+    a: "Only if you configure it that way. An agent's change approval mode is either Require human approval, which records every proposed change as a suggestion for you to review and apply, or Auto-apply, which applies verified changes directly. Require human approval is the default."
+  },
+  {
+    q: "What limits how many investigations an agent runs?",
+    a: "You set the maximum number of concurrent investigations for each agent and whether additional signals queue or are discarded at that limit. You can also cap the tokens a single investigation can consume and the tokens the agent can consume per time window. The LLM integration the agent shares carries its own token budget as well."
+  }
+]} />

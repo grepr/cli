@@ -1,0 +1,140 @@
+---
+description: Connect another system's MCP server to Grepr so your AI agents can call the tools it publishes.
+---
+
+import { Callout, Tabs } from 'nextra/components'
+import AddTeamAccess from '@/app/shared/add-team-access-to-integration.mdx'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Configure MCP server connections with a Grepr integration
+
+An MCP integration connects Grepr to a Model Context Protocol server, or MCP server, run by another system. After you create one, you can let a Grepr AI agent call the tools that server publishes, so the agent gains capabilities, such as reading an incident, querying a dashboard, posting to a channel, or opening a pull request.
+
+<Callout type="info">
+  MCP integrations, along with the rest of the Grepr AI agent features, are in a closed beta. To request access, contact [support@grepr.ai](mailto:support@grepr.ai).
+</Callout>
+
+<Callout type="warning">
+  This page is about Grepr calling another system's MCP server. For the opposite direction, where an AI agent, such as Claude, calls Grepr's own MCP server, see [_](/apis/mcp).
+</Callout>
+
+## Requirements
+
+To create an MCP integration, you need:
+
+- A credential for the system you are connecting. See [Create an MCP integration](#create) for where to get it.
+
+## What an agent can do through a connected server [#server-tools]
+
+The tools an agent gains depend on the server you connect:
+
+| Type | What an agent can do with it |
+|---|---|
+| Datadog MCP | Read monitors, dashboards, logs, and metrics from your Datadog organization. |
+| GitHub MCP | Read and change repository content, issues, pull requests, and workflow runs. |
+| PagerDuty MCP | Read and act on incidents, services, and schedules. |
+| Slack MCP | Read and post messages in the channels the token can reach. |
+
+Each integration has a server URL you set, so you can point one at a self-hosted or regional endpoint rather than the vendor's.
+
+Don't see an MCP in the list? Send a request to [support@grepr.ai](mailto:support@grepr.ai).
+
+## Create an MCP integration [#create]
+
+1. On the **Integrations** page, next to the **MCP Servers** section heading, click **Add new**.
+1. In the **Add MCP Server** dialog, select the server from the **Type** menu.
+1. Complete the remaining fields, which depend on the type you selected.
+1. Click **Create**.
+
+You cannot change an integration's type after you create it. You can change its other fields at any time, and each investigation picks up the change when it starts.
+
+![The Add MCP Server dialog for a Datadog MCP integration, showing the type, name, server URL, and credential fields.](/images/integrations/mcp/add-mcp-server.png)
+
+Every type has a **Name** field, which identifies the integration when you configure an agent, and an **MCP Server URL** field. The remaining fields are the credential the server authenticates with.
+
+The credential decides what the agent can do through that MCP. Grepr passes it through as you supply it, so give the token minimal access for what the agent needs. Select the tab for the MCP you are connecting.
+
+<Tabs items={['Datadog MCP', 'GitHub MCP', 'PagerDuty MCP', 'Slack MCP']}>
+  <Tabs.Tab>
+
+    | Field | Value |
+    |---|---|
+    | **MCP Server URL** | `https://mcp.datadoghq.com/v1/mcp`, or your regional Datadog MCP endpoint. |
+    | **API Key (DD-API-KEY)** | A Datadog API key. |
+    | **Application Key (DD-APPLICATION-KEY)** | A Datadog application key. |
+
+    Create both keys in Datadog under **Organization Settings**. An application key carries the authorization scopes that decide what the agent can read, so scope it to the data you want the agent to reach, such as monitors, dashboards, and logs. To learn more, see [API and Application Keys](https://docs.datadoghq.com/account_management/api-app-keys/) and [Authorization Scopes](https://docs.datadoghq.com/api/latest/scopes/) in the Datadog documentation.
+
+    If you already use Datadog as a Grepr source or sink, this is a separate integration. Reusing the same keys is fine. See [_](/integrations/datadog).
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    | Field | Value |
+    |---|---|
+    | **MCP Server URL** | `https://api.githubcopilot.com/mcp/`, or your GitHub Enterprise MCP endpoint. |
+    | **Personal access token** | A GitHub personal access token. |
+
+    Create the token in GitHub under **Settings** > **Developer settings** > **Personal access tokens**. A fine-grained token is the better choice, because you can limit it to the repositories the agent works in.
+
+    Grant the token access to the repository content, issues, pull requests, and workflow runs the agent needs. An agent that only reads code needs read access alone, and an agent that opens pull requests needs write access to contents and pull requests. To learn more, see [Managing your personal access tokens](https://docs.github.com/en/authentication/keeping-your-account-secure/managing-your-personal-access-tokens) in the GitHub documentation.
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    | Field | Value |
+    |---|---|
+    | **MCP Server URL** | `https://mcp.pagerduty.com/mcp`, or your PagerDuty MCP endpoint. |
+    | **Account URL** | Your PagerDuty account URL, such as `https://<your-org>.pagerduty.com`. Optional. |
+    | **API Key** | A PagerDuty API key. |
+
+    Create the key in PagerDuty under **Integrations** > **API Access Keys**. A read-only key lets an agent read incidents, services, and schedules, and a full-access key also lets it acknowledge or resolve incidents, so choose the one that matches what you want the agent to do. To learn more, see [API Access Keys](https://support.pagerduty.com/main/docs/api-access-keys) in the PagerDuty documentation.
+
+    Grepr uses the **Account URL** to build links back to incidents in the actions an agent records, so set it if you want those links to resolve.
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    | Field | Value |
+    |---|---|
+    | **MCP Server URL** | `https://mcp.slack.com/mcp`, or your Slack MCP endpoint. |
+    | **User token** | A Slack user token, which begins with `xoxp-`. |
+
+    Create a Slack app in your workspace, add the user token scopes the agent needs, then install the app to get the token. Grant `channels:read` and `channels:history` for an agent that reads channels, and add `chat:write` for one that posts. The agent reaches only the channels the token's user is in, so invite that user to the channels you want covered. To learn more, see [Access tokens](https://docs.slack.dev/authentication/tokens) in the Slack documentation.
+
+  </Tabs.Tab>
+</Tabs>
+
+## Choose which tools an agent can call [#allowed-tools]
+
+Creating an integration does not give any agent access to it. You enable an integration on each agent, and you choose which of the server's tools that agent can call. Two agents can therefore share one integration with different tool allowances.
+
+The tool allowance lives on the agent, not on the integration. To set it, go to the agent's **Capabilities** step, find the integration in the **MCP integrations** table, and edit its allowed tools. Grepr reads the tool list from the server, marks each tool as read only or writing, and lets you allow all tools or only the ones you select. To learn more, see [_](/ai-agents/capabilities#mcp-integrations).
+
+An agent can enable at most one GitHub MCP integration. The agent's `github_code` tool also requires an enabled GitHub MCP integration, because that is how it reaches source code.
+
+## Grant team access [#team-access]
+
+<AddTeamAccess />
+
+<HiddenFAQ faqs={[
+  {
+    q: "Which MCP servers can Grepr AI agents connect to?",
+    a: "You set each integration's server URL, so you can point one at a self-hosted or regional endpoint. Grepr adds integrations continuously, so contact support@grepr.ai to get an agent connected to the server you use."
+  },
+  {
+    q: "How do I limit which MCP tools a Grepr AI agent can call?",
+    a: "The allowance is set on the agent, not on the integration. On the agent's Capabilities step, find the integration in the MCP integrations table and either allow all of the server's tools or select individual tools. Grepr reads the tool list from the server and marks each tool as read only or writing."
+  },
+  {
+    q: "What is the difference between an MCP integration and the Grepr MCP server?",
+    a: "An MCP integration lets a Grepr AI agent call another system's MCP server. The Grepr MCP server is the reverse: it lets an AI assistant such as Claude or Claude Code call Grepr to list pipelines, query logs, and propose pipeline changes."
+  },
+  {
+    q: "How do I change an MCP integration after creating it?",
+    a: "Edit it from the three-dot menu on the integration card. Investigations that start after the change use the new settings, and one already running keeps the settings it started with. An integration's type is fixed when you create it, so to move to a different server type, create a new integration."
+  }
+]} />

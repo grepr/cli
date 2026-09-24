@@ -15,10 +15,13 @@ You can use the Grepr UI or the REST API to create and manage integrations. To u
 
 ## Integration types
 
-The Grepr platform includes two integration types:
+The Grepr platform includes the following integration types:
 
 - Observability platform integrations: Connections to monitoring, logging, and APM platforms, such as Datadog, Splunk, New Relic, and Sumo Logic.
 - Cloud storage integrations: Connections to cloud storage. The Grepr data lake uses cloud storage to store your raw data and metadata.
+- AI integrations: Connections that Grepr AI agents use, covering the model providers they reason with, the MCP servers they call, the webhook endpoints that trigger them, and the vector indexes that store their memories. See [Supported AI integrations](#ai-integrations).
+
+Observability platform and cloud storage integrations become the sources and sinks of your pipelines. AI integrations are used by AI agents instead, so they are not selectable as a pipeline source or sink.
 
 ## Supported platform and storage integrations [#supported-integrations]
 
@@ -79,6 +82,34 @@ The Grepr data lake uses Amazon S3 to store, manage, and support querying the ra
 To configure the Grepr-hosted integration, you only need to assign a name to the integration. The Grepr platform manages the S3 bucket, including its deployment and configuration.
 
 Using the integration with your own S3 bucket requires that you deploy and configure an S3 bucket in your AWS account, but it provides more control over your data. See [Host a Grepr data lake with the Amazon S3 integration](/integrations/aws-s3).
+
+## Supported AI integrations [#ai-integrations]
+
+The following integrations support Grepr AI agents. They appear on the **Integrations** page only when AI agents are enabled for your organization. To turn on AI agents, contact [support@grepr.ai](mailto:support@grepr.ai). To learn what AI agents do, see [_](/ai-agents).
+
+### LLM providers
+
+An LLM integration holds the credentials for a large language model provider. Grepr AI agents use generative models for reasoning and embedding models for memories.
+
+See [_](/integrations/llm).
+
+### MCP servers
+
+An MCP integration connects Grepr to a MCP server run by another system, so an agent can call that system's tools during an investigation. You set each integration's server URL, so you can point one at a self-hosted or regional endpoint.
+
+See [_](/integrations/mcp).
+
+### Grepr Agent webhooks
+
+A Grepr Agent integration is a webhook endpoint that turns events from another system, such as an alerting platform or a Kubernetes event forwarder, into AI agent investigations.
+
+See [_](/integrations/grepr-agent-webhooks).
+
+### Vector indexes
+
+A vector index integration stores the search index for agent memory, which is what lets an agent find past investigations that reached a similar conclusion. You create one in the **S3 Vector Index** section of the **Integrations** page.
+
+See [_](/ai-agents/memory#vector-index).
 
 ## Manage integrations in the Grepr UI [#manage-integrations-in-ui]
 

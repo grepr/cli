@@ -182,6 +182,16 @@ The **Default Strategy** section defines the strategies that apply to every attr
 
 As with path-specific strategies, you can add multiple default strategies. When you add multiple default strategies, each strategy produces a suffixed attribute in the summary, and the first strategy also writes to the base attribute name.
 
+## Send new-pattern signals to AI agents [#agent-signals]
+
+The reducer identifies the patterns in your logs, which also makes it the first place a pattern that has never occurred before becomes visible. You can have the pipeline report each new pattern to your Grepr AI agents, so an agent investigates behavior that is new in your systems without you writing an alert for it first.
+
+To turn this on, on the reducer step of your pipeline, open the **Advanced** settings and select **Emit new-pattern signals to AI agents**.
+
+Turning it on emits nothing by itself. A signal reaches an agent only when that agent is subscribed to the pipeline, and Grepr refuses a subscription to a pipeline that has this setting off. So turn it on first, then subscribe the agent.
+
+Each pattern signals an agent once rather than on every occurrence, for as long as the reducer keeps that pattern in its state, so a pattern that keeps matching does not keep starting investigations. To learn how signals reach an agent and how to bound the volume, see [_](/ai-agents/subscriptions).
+
 <HiddenFAQ faqs={[
     {
         q: "What is the aggregation window?",

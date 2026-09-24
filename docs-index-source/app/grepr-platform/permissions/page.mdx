@@ -48,6 +48,21 @@ This table lists all available permissions for organization and team-level roles
 | Edit       | Datasets              | Organization or Team |
 | View       | Datasets              | Organization or Team |
 
+## Permissions for AI agent resources [#ai-agent-permissions]
+
+AI agents, skills, and agent memory do not have permissions of their own. They are governed by the permissions already in the table:
+
+| To do this | You need |
+|---|---|
+| View an agent, its investigations, or its skills | View on integrations |
+| Create, edit, or delete an agent or an organization skill | Edit on integrations |
+| Create or edit an LLM, MCP, or Grepr Agent integration | Edit on integrations |
+| Subscribe an agent to a pipeline, or unsubscribe it | Edit on jobs |
+| View the pipeline changes an agent proposed | View on jobs |
+| Apply or reject a pipeline change an agent proposed | Edit on jobs |
+
+An agent's own reach is separate from yours. An agent acts as the service account you assign it, and that account's roles cap what the agent can read and change, whatever tools it holds. To learn more, see [_](/ai-agents/capabilities#service-account).
+
 ## Permissions by role
 
 The following are the permissions granted to each role type in the Grepr platform:

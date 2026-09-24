@@ -21669,8 +21669,22 @@ export interface operations {
         };
         content?: never;
       };
+      /** @description The integration has no live target agent to start */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
       /** @description Body exceeds the size limit */
       413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description At least one target agent could not be started for a transient reason; retry */
+      503: {
         headers: {
           [name: string]: unknown;
         };

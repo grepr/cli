@@ -17,6 +17,21 @@ This page provides an overview of the observability platform and cloud storage i
 
 Grepr supports Amazon S3 for storing, querying, and backfilling raw data. See [Host a Grepr data lake with the Amazon S3 integration](/integrations/aws-s3).
 
+## Supported integrations: AI agents [#supported-ai-integrations]
+
+The following integrations support Grepr AI agents. None of them are a pipeline source or sink, so they do not appear in the source and sink tables on this page.
+
+| Integration | What it provides |
+|---|---|
+| LLM provider | The generative model an agent reasons with and the embedding model agent memory uses. |
+| MCP server | The tools of another system that an agent can call. |
+| Grepr Agent webhook | An endpoint that turns events from another system into investigations. |
+| Vector index | Storage for the agent memory search index. |
+
+To configure these, see [_](/integrations/llm), [_](/integrations/mcp), [_](/integrations/grepr-agent-webhooks), and [_](/ai-agents/memory#vector-index).
+
+Grepr adds integrations continuously. To get an agent connected to the provider you use, contact [support@grepr.ai](mailto:support@grepr.ai).
+
 ## Supported integrations: observability platforms [#supported-observability-integrations]
 
 A Grepr integration provides the configuration details needed to connect to an external system, such as an observability platform. Integrations support moving data into Grepr and between Grepr and external systems by enabling the creation of sources and sinks in your Grepr pipelines.

@@ -1,0 +1,133 @@
+---
+description: Connect a model provider with a Grepr LLM integration, and cap how many tokens your agents consume per time window.
+---
+
+import { Callout, Tabs } from 'nextra/components'
+import AddTeamAccess from '@/app/shared/add-team-access-to-integration.mdx'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Configure LLM provider connections with a Grepr integration
+
+An LLM integration holds the credentials Grepr uses to call a large language model provider. Grepr AI agents can use LLM integrations for two purposes: a generative model used for reasoning, or an embedding model used for similarity analysis.
+
+An LLM integration can be assigned a token budget, which is a mechanism that caps the amount of tokens your agents can spend. When several agents share one integration, the budget applies to all of them together.
+
+<Callout type="info">
+  LLM integrations, along with the rest of the Grepr AI agent features, are in a closed beta. To request access, contact [support@grepr.ai](mailto:support@grepr.ai).
+</Callout>
+
+## Requirements
+
+To create an LLM integration, you need:
+
+- The credential your provider requires, which is an API key for most providers, or a gateway URL and a key for the gateway.
+
+## Choose a provider [#providers]
+
+An LLM integration serves one of two purposes, so create the one that matches what you need.
+
+For the model an agent reasons with, create an integration for your model provider. You can also create a gateway integration to route your agents through a gateway you run, which reaches whatever models you configure it with, so use one to choose the model yourself, apply your own routing rules, or keep model traffic inside your own infrastructure.
+
+For the embedding model that agent memory uses, create an integration for a provider that supplies embeddings. One integration can serve both purposes, so a single integration is often enough to run an agent with memory turned on.
+
+The **Type** menu in the **Add LLM** dialog lists the providers available to you.
+
+Don't see your provider in the list? Send a request to [support@grepr.ai](mailto:support@grepr.ai).
+
+## Create an LLM integration [#create]
+
+1. On the **Integrations** page, next to the **LLMs** section heading, click **Add new**.
+1. In the **Add LLM** dialog, select the provider from the **Type** menu.
+1. Complete the remaining fields, which depend on the provider you selected.
+1. Click **Create**.
+
+You cannot change an integration's type after you create it. To move to a different provider, create a new integration and point your agents at it.
+
+![The Add LLM dialog for a Gemini integration, showing the type, team access, name, key, and token window fields.](/images/integrations/llm/add-llm-integration.png)
+
+Select the tab for your provider to see the fields it requires:
+
+<Tabs items={['Gemini', 'LiteLLM', 'OpenAI']}>
+  <Tabs.Tab>
+
+    | Field | Description |
+    |---|---|
+    | **Name** | A name for the integration, used to identify it when you configure an agent. |
+    | **API Key** | Your Gemini API key. |
+    | **Max tokens per window** | The total tokens that all agents using this integration can consume in each window. Leave empty for the default of 20,000,000. |
+    | **Max tokens window (hours)** | The length of the budget window. Leave empty for the default of 1 hour. |
+
+    A Gemini integration can serve as both an agent's model and the embedding model for agent memory.
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    | Field | Description |
+    |---|---|
+    | **Name** | A name for the integration, used to identify it when you configure an agent. |
+    | **Gateway URL** | The base URL of your LiteLLM proxy, such as `https://litellm.example.com/team-a`. Required. |
+    | **Virtual key** | The LiteLLM virtual key Grepr authenticates with. |
+    | **Validate virtual key when saving** | Turn this on to have Grepr verify the virtual key against the gateway before it saves the integration. |
+    | **Max tokens per window** | The total tokens that all agents using this integration can consume in each window. Leave empty for the default of 20,000,000. |
+    | **Max tokens window (hours)** | The length of the budget window. Leave empty for the default of 1 hour. |
+
+    Grepr reaches whatever models your gateway exposes, so the model names available to an agent are the ones your LiteLLM configuration routes.
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    | Field | Description |
+    |---|---|
+    | **Name** | A name for the integration, used to identify it when you configure an agent. |
+    | **API Key** | Your OpenAI API key. |
+
+    An OpenAI integration provides the embedding model that agent memory uses.
+
+  </Tabs.Tab>
+</Tabs>
+
+## Cap token consumption with a budget window [#max-tokens]
+
+An integration that serves an agent's model carries a token budget, which is what caps the spend of every agent sharing it. The budget has two settings:
+
+- **Max tokens per window** is the total tokens every agent sharing the integration can consume in one window.
+- **Max tokens window (hours)** is the length of that window. The value must divide 24 evenly, so the valid lengths are 1, 2, 3, 4, 6, 8, 12, and 24 hours. Windows are aligned to UTC.
+
+Before it starts an investigation, Grepr reserves the tokens that investigation is allowed to consume and checks the reservation against two budgets: the integration's budget, and the agent's per-window budget. Both must have room. An agent whose own budget is untouched still waits when the shared integration has none left, so when investigations stop starting, check which of the two is exhausted on the agent's page before you raise a limit. To learn more about the agent-level settings, see [_](/ai-agents/create-an-agent#limits).
+
+## Update an API key [#update-key]
+
+To replace a key, click the three-dot menu on the integration card, select **Edit**, enter the new key, and click **Save**. Every agent using the integration picks up the new key automatically.
+
+## Grant team access [#team-access]
+
+<AddTeamAccess />
+
+## View token usage [#usage]
+
+Each LLM integration card on the **Integrations** page charts the tokens its agents consumed, broken down by token type, and shows how much of the budget window remains. The card totals every agent sharing the integration and lists which agents those are, so to see how much one agent is spending, open that agent's page.
+
+<HiddenFAQ faqs={[
+  {
+    q: "Which LLM providers can a Grepr AI agent use as its model?",
+    a: "Create an LLM integration for your model provider, or a gateway integration to route your agents through a gateway you run, which reaches whatever models you configure it with. Use a gateway to choose the model yourself, apply your own routing rules, or keep model traffic inside your own infrastructure. The Type menu in the Add LLM dialog lists the providers available to you, and Grepr adds integrations continuously, so contact support@grepr.ai to get connected to the provider you use."
+  },
+  {
+    q: "Which LLM providers can Grepr use for agent memory embeddings?",
+    a: "Create an LLM integration for a provider that supplies embeddings. One integration can serve as both an agent's reasoning model and its embedding model, so a single integration is often enough to run an agent with memory turned on."
+  },
+  {
+    q: "How does Grepr cap the tokens my AI agents consume?",
+    a: "An LLM integration that serves an agent's model carries a max-tokens budget and a window length in hours that must divide 24 evenly. Grepr reserves an investigation's tokens up front and requires room in both the shared integration budget and the agent's own per-window budget before the investigation starts."
+  },
+  {
+    q: "Can I change an LLM integration's provider after creating it?",
+    a: "No. The type is fixed when you create the integration. To move to a different provider, create a new integration and point your agents at it."
+  },
+  {
+    q: "Why have my agent's investigations stopped starting?",
+    a: "The most common cause is an exhausted token budget. Because several agents can share one LLM integration, the shared budget can run out while the agent's own budget is untouched. The agent's page reports which of the two blocked the investigation and when the window resets."
+  }
+]} />
