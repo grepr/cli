@@ -76,6 +76,22 @@ form, which takes a dotted path through that document:
 The shorthand reads one value out of the parsed document. The `attributes` column is the whole
 document, so use `@` when you want a field and `attributes` when you want the object itself.
 
+An attribute name is a dotted path of letters, digits, and underscores. A hyphen or a slash can
+join characters inside a segment, so `@trace-id` and `@app.kubernetes.io/name` are each one name.
+Because `-` and `/` are name characters, put whitespace around them when you mean subtraction or
+division: write `@bytes / 1024`, not `@bytes/1024` (which reads `bytes/1024` as one name). Every
+other character ends the name, so `@status=500` and `@duration_ms*2` work without spaces.
+
+To read a key that uses any other character, such as a space, comma, or bracket, reference it
+through the `attributes` column with a single-quoted key in brackets. The bracketed key can be any
+string, dots included, and names exactly one key; double a single quote to include one. Add one
+bracketed key per level of a nested path:
+
+```sql
+attributes['service.status']
+attributes['special outer key']['special inner key']
+```
+
 An attribute has no declared type, because two logs in the same dataset can carry different types
 under the same name. Grepr infers a type from how you use the value, so `SUM(@duration_ms)` reads it
 as a number and `LOWER(@user.email)` reads it as a string.
