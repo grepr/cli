@@ -103,6 +103,28 @@ jobs:
       - name: Run tests
         run: bun run test
 
+      - name: Verify packed documentation works offline
+        run: |
+          set -euo pipefail
+
+          mkdir -p build/npm-smoke
+          ARCHIVE=$(npm pack --ignore-scripts --pack-destination build/npm-smoke --silent)
+          TARBALL="$PWD/build/npm-smoke/$ARCHIVE"
+          INSTALL_DIR="$PWD/build/npm-smoke/install"
+
+          npm install --prefix "$INSTALL_DIR" "$TARBALL"
+
+          # Run with no network interfaces so this can only use the index
+          # bundled in the packed npm artifact.
+          CLI_BIN="$INSTALL_DIR/node_modules/.bin/grepr"
+          sudo env "PATH=$PATH" unshare --net -- \
+            "$CLI_BIN" docs:get doc://integrations/datadog/page.mdx \
+            > build/npm-smoke/docs-get.txt
+
+          grep -Fq \
+            '# Configure Datadog connections with a Grepr integration' \
+            build/npm-smoke/docs-get.txt
+
       - name: Create distributions
         run: |
           echo "Creating distribution packages..."
