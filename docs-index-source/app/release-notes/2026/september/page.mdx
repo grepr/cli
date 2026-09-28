@@ -6,6 +6,32 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in September 2026.
 
+## September 26, 2026
+
+### Other improvements and fixes
+
+- {/* ENGT-5790 */} Grepr now imports the queries used by your Datadog monitors and dashboards as soon as you save a valid application key, and the **Parsed alert queries** dialog has an import button to pick up changes without waiting for the next hourly import. See [_](/integrations#passthrough-estimation).
+- {/* ENGT-5846 */} The field menu in the log details panel now has an **Analyze** section that fills in the Analyze form to group by a field, count its unique values, count it over time, or add the common numeric aggregations, without running the analysis until you choose to. See [_](/queries/analyze).
+- {/* ENGT-5853 */} The query search in the **Parsed alert queries** table now matches queries that contain all of the words you enter, in any order, and highlights the matches; the previous exact-substring search is still available in the search mode menu.
+- {/* ENGT-5672 */} The **Parsed alert queries** dialog now shows the measured passthrough percentage and its measurement time beside each query, and you can filter the table by passthrough range.
+- {/* ENGT-5545 */} The Datadog integration form now checks your application key as you enter it and after you save it, and lists the permissions it grants and any it is missing.
+- {/* ENGT-5789 */} New Datadog MCP integrations default to Datadog's supported `/v1/mcp` endpoint.
+- {/* ENGT-5858 */} The on-premises Helm charts now accept tolerations for the pipeline operator and the Kafka health check, and can read the Kafka health check password from an existing Kubernetes Secret.
+- {/* ENGT-5817 */} In Log Explorer and Trace Explorer, the result count now sits with the results table instead of next to the **Search** button, so the search controls stay on one row.
+- {/* ENGT-5791 */} The pipeline illustration now has a dedicated dark mode version instead of an inverted copy of the light one.
+- {/* ENGT-5809 */} Fixed an issue where queries in the New Relic log query-like syntax that used lowercase `and`, `or`, or `not` treated them as search terms instead of operators, so the query matched no events.
+- {/* ENGT-5836 */} Fixed an issue where some trace pipelines showed 0 spans out on the pipeline overview even while spans reached their sinks.
+- {/* ENGT-3505 */} Fixed an issue where, when one log event fed more than one reducer in a pipeline, a summary from one reducer could pick up tags or attributes from another.
+
+## September 21, 2026
+
+### Other improvements and fixes
+
+- {/* ENGT-5756 */} You can now set the field a Datadog log sink writes the host to with the **Host field override** setting, for Datadog organizations that removed `hostname` from their host attributes for JSON log preprocessing.
+- {/* ENGT-5670 */} In Grepr CLI version 1.11.5 and later, `job:list` omits each pipeline's job graph unless you pass `--include-graph`, the list and get commands accept `--fields` to return only the fields you name, and the `GREPR_OUTPUT_FORMAT` environment variable sets the default output format. See [_](/cli#command-reference).
+- {/* ENGT-5767 */} Fixed an issue where the jobs list did not show the link to view a backfill job's logs in your vendor.
+- {/* ENGT-5785 */} Fixed an issue where the log search tool of the Grepr MCP server failed on some requests.
+
 ## September 19, 2026
 
 {/* ENGT-5534, ENGT-5758 */}
