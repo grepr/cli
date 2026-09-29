@@ -5869,6 +5869,12 @@ export interface components {
        * @example ************EN
        */
       readonly clientToken?: string;
+      /**
+       * Format: ISO-8601
+       * @description Only dashboards viewed within this window are imported as parsed queries. When unset, every dashboard is imported. Minimum one day.
+       * @example PT20.345S
+       */
+      dashboardFreshnessWindow?: string;
       /** @description The imported exceptions from Datadog. This is a map from the vendor resource Id to the exception. */
       readonly exceptions?: {
         [key: string]: components["schemas"]["VendorImportedException"];
@@ -5879,6 +5885,11 @@ export interface components {
        * @example service:my-service
        */
       filterQuery: string;
+      /**
+       * @description When the dashboard window is set, whether dashboards that were never viewed are still imported. Unset means they are.
+       * @default true
+       */
+      includeNeverViewedDashboards?: boolean;
       /**
        * @description Identifier of the API key used to send data back to Datadog. Defaults to the only key when unset.
        * @example k_7f3a
