@@ -2305,6 +2305,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/{integrationId}/exceptions/usage": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the usage of an integration's parsed queries
+     * @description Returns the usage the observability vendor reports for the source of each parsed query, such as when a Datadog dashboard was last viewed and its total views, with whether the last attempt to read it worked. Queries the vendor reported nothing for are absent rather than reported as never viewed.
+     */
+    get: operations["getIntegrationExceptionUsage"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs": {
     parameters: {
       query?: never;
@@ -5871,7 +5891,7 @@ export interface components {
       readonly clientToken?: string;
       /**
        * Format: ISO-8601
-       * @description Only dashboards viewed within this window are imported as parsed queries. When unset, every dashboard is imported. Minimum one day.
+       * @description The active dashboard threshold: only dashboards viewed within it are imported as parsed queries. When unset, every dashboard is imported. Minimum one day.
        * @example PT20.345S
        */
       dashboardFreshnessWindow?: string;
@@ -5886,7 +5906,7 @@ export interface components {
        */
       filterQuery: string;
       /**
-       * @description When the dashboard window is set, whether dashboards that were never viewed are still imported. Unset means they are.
+       * @description When the active dashboard threshold is set, whether dashboards that were never viewed are still imported. Unset means they are.
        * @default true
        */
       includeNeverViewedDashboards?: boolean;
@@ -6503,6 +6523,36 @@ export interface components {
        * @example 4.27
        */
       percentage: number;
+    };
+    /** @description Usage the vendor reports for the source of one parsed query */
+    ExceptionUsage: {
+      /**
+       * Format: date-time
+       * @description When the source was last viewed. Null means the vendor reports it was never viewed.
+       * @example 2026-09-20T14:05:00Z
+       */
+      lastViewedAt?: string;
+      /**
+       * Format: int64
+       * @description How many times the source was viewed, as the vendor counts them. Datadog counts views since January 2025 and refreshes the count daily.
+       * @example 1204
+       */
+      totalViews?: number;
+    };
+    /** @description Usage the vendor reports for an integration's parsed queries */
+    ExceptionUsageResponse: {
+      /**
+       * @description The parsed query exception types (values of a parsed query's exceptionType) the vendor reports usage for. Empty when the vendor reports none; a query of any other type has no usage to show.
+       * @example [
+       *       "DATADOG_DASHBOARD"
+       *     ]
+       */
+      reportedTypes: string[];
+      status: components["schemas"]["UsageStatus"];
+      /** @description Usage keyed by composite exception id (integrationId:vendorResourceId:exceptionType), the key the impacts endpoint uses. A query the vendor reported nothing for is absent, which is not the same as never viewed. */
+      usage: {
+        [key: string]: components["schemas"]["ExceptionUsage"];
+      };
     };
     ExternalSourceTrigger: {
       /**
@@ -13933,6 +13983,25 @@ export interface components {
       files: components["schemas"]["SkillFile"][];
       toolIds: string[];
     };
+    /** @description The outcome of the last attempt to read the integration's usage */
+    UsageStatus: {
+      /**
+       * Format: date-time
+       * @description When usage was last read successfully. The usage returned is as of this time; absent when it was never read.
+       * @example 2026-09-27T18:45:03Z
+       */
+      collectedAt?: string;
+      /**
+       * @description Why the last attempt failed, in words fit to show. Absent when it worked.
+       * @example the application key needs the dashboards_read permission
+       */
+      detail?: string;
+      /**
+       * @description Whether the usage of the integration's parsed queries could be read
+       * @enum {string}
+       */
+      state: UsageStatusState;
+    };
     /** @description Base class for the information of a user signing up. */
     UserInfo: {
       type: string;
@@ -14976,6 +15045,9 @@ export type SchemaEventRecord = components["schemas"]["EventRecord"];
 export type SchemaExactAttributesMergeStrategy =
   components["schemas"]["ExactAttributesMergeStrategy"];
 export type SchemaExceptionImpact = components["schemas"]["ExceptionImpact"];
+export type SchemaExceptionUsage = components["schemas"]["ExceptionUsage"];
+export type SchemaExceptionUsageResponse =
+  components["schemas"]["ExceptionUsageResponse"];
 export type SchemaExternalSourceTrigger =
   components["schemas"]["ExternalSourceTrigger"];
 export type SchemaExternalTriggerPayload =
@@ -15514,6 +15586,7 @@ export type SchemaUpdateServiceAccount =
   components["schemas"]["UpdateServiceAccount"];
 export type SchemaUpdateSkillRequest =
   components["schemas"]["UpdateSkillRequest"];
+export type SchemaUsageStatus = components["schemas"]["UsageStatus"];
 export type SchemaUserInfo = components["schemas"]["UserInfo"];
 export type SchemaUserPermissionsResponse =
   components["schemas"]["UserPermissionsResponse"];
@@ -21839,6 +21912,46 @@ export interface operations {
       };
     };
   };
+  getIntegrationExceptionUsage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Integration id
+         * @example 0q841q0j81m2q
+         */
+        integrationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Usage retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExceptionUsageResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   listVendorEstimationRuns: {
     parameters: {
       query?: {
@@ -26384,6 +26497,13 @@ export enum TrinoRawSpanSourceType {
 }
 export enum TrinoReducerLogSourceType {
   trino_reducer_log_source = "trino-reducer-log-source",
+}
+export enum UsageStatusState {
+  OK = "OK",
+  PENDING = "PENDING",
+  PERMISSION_DENIED = "PERMISSION_DENIED",
+  NO_VIEWS = "NO_VIEWS",
+  ERROR = "ERROR",
 }
 export enum VariantType {
   OBJECT = "OBJECT",
