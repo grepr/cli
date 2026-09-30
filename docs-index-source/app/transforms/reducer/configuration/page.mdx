@@ -64,6 +64,49 @@ To have the reducer prepend a prefix to each summary message that indicates the 
 
 Clear **Add repeat count prefix to summary messages** if your downstream system needs to parse the summary message body without changes. For example, if summary messages use JSON formatting, the leading prefix would cause a syntax error.
 
+### Choose which fields form a pattern [#structured-configuration]
+
+To reduce logs whose useful information is in attributes, on the reducer step of your pipeline, click **Edit** on the **Patterns** card. Use **Build patterns from** to select the fields that determine patterns:
+
+| Build patterns from | Behavior |
+| --- | --- |
+| **Message only** | Uses only the message. Empty messages pass through without reduction. This is the default. |
+| **Message, or attributes when empty** | Uses the message when it is nonempty, otherwise the selected attributes. Summaries of empty-message events have a null message. |
+| **Attributes only** | Ignores the message for pattern matching. Generated summaries have a null message; original samples and exceptions retain their messages. |
+| **Message and attributes** | Uses the selected attribute structure for exact grouping and combines message tokens with any attribute-value tokens for similarity. Summaries contain only the message text, and events with an empty message produce summaries with a null message. |
+
+When attributes participate, their selected key structure must match exactly. Key order does not matter. Adding a selected key, changing nesting, or changing a null field to a populated scalar separates patterns. When the message is read from an attribute that holds a string, that attribute does not participate either: it is used as the message or, with **Attributes only**, ignored along with the message. An attribute holding anything else, such as an object body, provides no message and participates like any other attribute.
+
+With the default, **Message only**, attributes are not used. The attribute settings below appear when you set **Build patterns from** to an option that uses attributes.
+
+Use **Attribute values** to choose how selected attributes affect similarity scoring:
+
+- **Compare values**: Use values as part of the similarity calculations. A mask applies to a value only when it matches the entire value.
+- **Ignore values**: Attribute values are not used for similarity scoring.
+
+### Include or exclude attribute subtrees [#attribute-prefixes]
+
+Use **Include attributes** and **Exclude attributes** to select the attribute structure and values that participate in pattern matching. Enter each attribute path the same way as in the **Fields** dialog: `@` followed by the path in dot notation, or a JSON array for a key that contains a dot. For example, `@request.headers` selects the nested `request.headers` subtree, while `@["request.headers"]` selects a top-level key containing a literal dot.
+
+Leave the include field empty to include all attributes. Exclusions take precedence over includes. Prefixes select complete subtrees and address keys inside array elements without an array index. Excluded fields, ancestors containing only excluded fields, and array elements containing only excluded fields contribute neither structure nor value tokens. Selected containers that are empty in the event remain part of the shape.
+
+These settings affect pattern matching. They do not remove attributes from events or change their configured merge strategies. An excluded attribute can still be an explicit grouping value. If no message tokens or selected attribute structure remain, the event passes through.
+
+For example, this reducer configuration uses request keys for matching while requiring the excluded tenant value to match exactly:
+
+```json
+{
+  "type": "log-reducer",
+  "tokenizationInput": "ATTRIBUTES_ONLY",
+  "attributeTokenization": "KEYS_ONLY",
+  "includedAttributePrefixes": [["request"]],
+  "excludedAttributePrefixes": [["request", "tenant_id"], ["request", "trace_id"]],
+  "partitionByAttributePaths": [["request", "tenant_id"]]
+}
+```
+
+The `pattern-matcher` operation supports the same API settings and preserves the messages of forwarded events. Both operations default `tokenizationInput` to `MESSAGE_ONLY`, which is **Message only**, so attributes are not used. When attributes are used, `attributeTokenization` defaults to `KEYS_AND_VALUES`, which is **Compare values**, and empty attribute lists select every attribute.
+
 ## Configure a sampling strategy [#sampling-configuration]
 
 The **Sampling Configuration** section controls whether and how additional raw messages are forwarded for a pattern after the minimum number of samples is reached in the current aggregation window. To configure the sampling strategy for a reducer, in the **Sampling strategy** menu, select one of the following options:
@@ -141,7 +184,7 @@ To modify the delimiter list:
 
 ## Configure how attributes are merged [#attribute-configuration]
 
-To group log messages, the log reducer uses only the text in the `message` field. However, because of the possible variability of the attribute values associated with the grouped messages, the reducer provides multiple strategies to merge them.
+The log reducer groups events using the configured [pattern inputs](#structured-configuration). Attribute values can differ within a group, so the reducer provides multiple strategies to merge them. These merge strategies also apply to attributes excluded from pattern matching.
 
 To control how the reducer combines attributes, you use the **Attribute Configuration** section to specify merge strategies for individual attribute paths and configure a default strategy that applies to any attribute path without an explicit configuration.
 
@@ -224,6 +267,10 @@ Each pattern signals an agent once rather than on every occurrence, for as long 
     {
         q: "What are masks and why does the reducer apply them?",
         a: "Masks are regular expressions that identify variable parts of a log message, such as timestamps, IDs, or IP addresses, and replace them with specific tokens before clustering. This normalizes messages that differ only in those values so they can be grouped into the same pattern."
+    },
+    {
+        q: "Why are my JSON-only or fully structured logs not being reduced?",
+        a: "On the Patterns card, set Build patterns from to 'Message, or attributes when empty', 'Attributes only', or 'Message and attributes'. The default, 'Message only', passes empty-message events through without reduction. Selected attribute keys define exact grouping boundaries. With 'Compare values', selected values also participate in similarity matching; with 'Ignore values', they do not. Summaries of patterns without message text have a null message."
     },
     {
         q: "Can I add my own masks?",

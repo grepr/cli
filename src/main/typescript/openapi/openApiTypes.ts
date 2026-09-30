@@ -8167,6 +8167,12 @@ export interface components {
        */
       attributeMergeStrategyEntries?: components["schemas"]["AttributesMergeStrategyEntry"][];
       /**
+       * @description Use attribute shape only, or shape and whole-value similarity tokens.
+       * @default KEYS_AND_VALUES
+       * @enum {string}
+       */
+      attributeTokenization?: LogReducerAttributeTokenization;
+      /**
        * Deduplication threshold
        * Format: int32
        * @description Number of duplicates we send for a pattern before we start deduplication.
@@ -8236,6 +8242,16 @@ export interface components {
        *     ]
        */
       enabledMasks: string[];
+      /**
+       * @description Excluded attribute prefixes as arrays of literal key segments. Does not affect partition-by values or output attributes.
+       * @default []
+       */
+      excludedAttributePrefixes?: string[][];
+      /**
+       * @description Included attribute prefixes as arrays of literal key segments. Empty selects all. Array elements are traversed without indices.
+       * @default []
+       */
+      includedAttributePrefixes?: string[][];
       /**
        * Vendor imported exceptions
        * @description Exception configs that define which exceptions to use from the ones imported from the observability vendor integrations.
@@ -8336,6 +8352,12 @@ export interface components {
        * @example 70
        */
       similarityThreshold?: number;
+      /**
+       * @description Selects message text, attributes, both, or message text with an attributes fallback.
+       * @default MESSAGE_ONLY
+       * @enum {string}
+       */
+      tokenizationInput?: LogReducerTokenizationInput;
       /**
        * @description Reduces logs by combining messages with similar patterns. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -9984,6 +10006,12 @@ export interface components {
     };
     PatternMatcher: {
       /**
+       * @description Use attribute shape only, or shape and whole-value similarity tokens.
+       * @default KEYS_AND_VALUES
+       * @enum {string}
+       */
+      attributeTokenization?: LogReducerAttributeTokenization;
+      /**
        * Token delimiters
        * @description Characters to use for splitting tokens.
        * @default [
@@ -10043,6 +10071,16 @@ export interface components {
        *     ]
        */
       enabledMasks: string[];
+      /**
+       * @description Excluded attribute prefixes as arrays of literal key segments. Does not affect partition-by values or output attributes.
+       * @default []
+       */
+      excludedAttributePrefixes?: string[][];
+      /**
+       * @description Included attribute prefixes as arrays of literal key segments. Empty selects all. Array elements are traversed without indices.
+       * @default []
+       */
+      includedAttributePrefixes?: string[][];
       /**
        * Masks
        * @description Set of masks that can be applied to messages before tokenizing them. These masks are specified as pairs of (name, regex).
@@ -10104,6 +10142,12 @@ export interface components {
        * @example 70
        */
       similarityThreshold?: number;
+      /**
+       * @description Selects message text, attributes, both, or message text with an attributes fallback.
+       * @default MESSAGE_ONLY
+       * @enum {string}
+       */
+      tokenizationInput?: LogReducerTokenizationInput;
       /**
        * @description Matches log patterns using an iterative feedback loop. Events with known patterns skip the global reducer for improved efficiency. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -25997,6 +26041,16 @@ export enum LogAttributesRemapperType {
 }
 export enum LogEventType {
   log = "log",
+}
+export enum LogReducerAttributeTokenization {
+  KEYS_ONLY = "KEYS_ONLY",
+  KEYS_AND_VALUES = "KEYS_AND_VALUES",
+}
+export enum LogReducerTokenizationInput {
+  MESSAGE_ONLY = "MESSAGE_ONLY",
+  ATTRIBUTES_ONLY = "ATTRIBUTES_ONLY",
+  MESSAGE_AND_ATTRIBUTES = "MESSAGE_AND_ATTRIBUTES",
+  AUTO = "AUTO",
 }
 export enum LogReducerType {
   log_reducer = "log-reducer",

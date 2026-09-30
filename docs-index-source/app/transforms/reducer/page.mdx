@@ -31,7 +31,7 @@ The log reducer divides incoming log events into fixed-duration, tumbling window
 If the reducer cannot find a matching pattern for a message, the message passes through unmodified. Reasons that the reducer cannot find a pattern include:
 
 - The clustering process is unable to extract patterns from messages.
-- The log message field is empty or null.
+- The selected inputs contain neither message tokens nor attribute structure to group by. See [Choose which fields form a pattern](/transforms/reducer/configuration#structured-configuration).
 - The message matches a configured exception rule that prevents it from being reduced.
 
 To learn more about the transformations the reducer applies to messages and how to modify its default behavior, see [Configure the log reducer in a Grepr pipeline](/transforms/reducer/configuration).
