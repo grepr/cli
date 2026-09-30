@@ -47,7 +47,20 @@ You cannot change an integration's type after you create it. To move to a differ
 
 Select the tab for your provider to see the fields it requires:
 
-<Tabs items={['Gemini', 'LiteLLM', 'OpenAI']}>
+<Tabs items={['Anthropic', 'Gemini', 'LiteLLM', 'OpenAI']}>
+  <Tabs.Tab>
+
+    | Field | Description |
+    |---|---|
+    | **Name** | A name for the integration, used to identify it when you configure an agent. |
+    | **API Key** | Your Anthropic API key. |
+    | **Max tokens per window** | The total tokens that all agents using this integration can consume in each window. Leave empty for the default of 20,000,000. |
+    | **Max tokens window (hours)** | The length of the budget window. Leave empty for the default of 1 hour. |
+
+    An Anthropic integration serves as an agent's model. Anthropic does not supply embeddings, so an agent with memory turned on also needs a Gemini or OpenAI integration for its embedding model.
+
+  </Tabs.Tab>
+
   <Tabs.Tab>
 
     | Field | Description |
