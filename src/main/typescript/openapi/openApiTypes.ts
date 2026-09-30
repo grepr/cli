@@ -379,6 +379,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/agents/{id}/pipelines/{jobId}/state": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Pause or resume an agent's pipeline subscription
+     * @description Sets one subscription to PAUSED or ACTIVE. While paused, new signals from the pipeline are dropped for this agent, and the pipeline keeps marking new patterns as sent. Investigations already queued still run. The running pipeline is not restarted.
+     */
+    put: operations["setPipelineState"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agents/{id}/state": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Pause or resume an agent
+     * @description Sets the agent to PAUSED or ACTIVE. A paused agent runs no investigations: signals from every source are dropped, manual starts and resumes are refused, and queued investigations wait until the agent is resumed. Pipelines keep marking new patterns as sent, so after resuming, the agent usually reacts only to patterns that are new since then.
+     */
+    put: operations["setState"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/agents/{id}/subscriptions": {
     parameters: {
       query?: never;
@@ -388,7 +428,7 @@ export interface paths {
     };
     /**
      * List an agent's subscriptions
-     * @description Returns the pipeline ids the agent is subscribed to.
+     * @description Returns the agent's pipeline subscriptions, including when each was paused.
      */
     get: operations["subscriptions"];
     put?: never;
@@ -3827,6 +3867,8 @@ export interface components {
       name: string;
       organizationId: string;
       payload: components["schemas"]["AgentConfigPayload"];
+      /** @enum {string} */
+      state?: AgentConfigState;
       /** Format: date-time */
       updatedAt: string;
       /** Format: int32 */
@@ -3973,6 +4015,13 @@ export interface components {
         };
       };
       vectorIndexIntegrationId?: string;
+    };
+    AgentPipelineSubscription: {
+      jobId: string;
+      /** Format: date-time */
+      pausedAt?: string;
+      /** Format: date-time */
+      subscribedAt: string;
     };
     AgentRecentHealth: {
       /** Format: int32 */
@@ -12328,6 +12377,10 @@ export interface components {
     StartInvestigationResponse: {
       investigationId?: string;
     };
+    StateChangeRequest: {
+      /** @enum {string} */
+      state: StateChangeRequestState;
+    };
     /** @description Status information for a span */
     Status: {
       /**
@@ -14866,6 +14919,8 @@ export type SchemaAgentMcpIntegrations =
   components["schemas"]["AgentMcpIntegrations"];
 export type SchemaAgentMemoryConfiguration =
   components["schemas"]["AgentMemoryConfiguration"];
+export type SchemaAgentPipelineSubscription =
+  components["schemas"]["AgentPipelineSubscription"];
 export type SchemaAgentRecentHealth =
   components["schemas"]["AgentRecentHealth"];
 export type SchemaAgentRosterEntry = components["schemas"]["AgentRosterEntry"];
@@ -15520,6 +15575,8 @@ export type SchemaStartInvestigationRequest =
   components["schemas"]["StartInvestigationRequest"];
 export type SchemaStartInvestigationResponse =
   components["schemas"]["StartInvestigationResponse"];
+export type SchemaStateChangeRequest =
+  components["schemas"]["StateChangeRequest"];
 export type SchemaStatus = components["schemas"]["Status"];
 export type SchemaStreamFormatAny = components["schemas"]["StreamFormatAny"];
 export type SchemaStringData = components["schemas"]["StringData"];
@@ -16523,6 +16580,97 @@ export interface operations {
       };
     };
   };
+  setPipelineState: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StateChangeRequest"];
+      };
+    };
+    responses: {
+      /** @description State set (or already set) */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The state is not ACTIVE or PAUSED */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent not found, or not subscribed to the pipeline */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  setState: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StateChangeRequest"];
+      };
+    };
+    responses: {
+      /** @description State set (or already set) */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The state is not ACTIVE or PAUSED */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   subscriptions: {
     parameters: {
       query?: never;
@@ -16540,7 +16688,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": string[];
+          "application/json": components["schemas"]["AgentPipelineSubscription"][];
         };
       };
       /** @description Unauthorized */
@@ -25656,6 +25804,11 @@ export enum ActivityLogsSearchStatuses {
 export enum AddToListAttributeActionType {
   attribute_add_action = "attribute-add-action",
 }
+export enum AgentConfigState {
+  ACTIVE = "ACTIVE",
+  PAUSED = "PAUSED",
+  DELETED = "DELETED",
+}
 export enum AgentConfigCreateChangeApprovalMode {
   REQUIRE_APPROVAL = "REQUIRE_APPROVAL",
   AUTO_APPLY = "AUTO_APPLY",
@@ -26425,6 +26578,10 @@ export enum SqlOutputStatementType {
 }
 export enum SqlViewStatementType {
   sql_view = "sql_view",
+}
+export enum StateChangeRequestState {
+  ACTIVE = "ACTIVE",
+  PAUSED = "PAUSED",
 }
 export enum StatusCode {
   UNSET = "UNSET",

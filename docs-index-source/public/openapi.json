@@ -236,6 +236,14 @@
           "payload": {
             "$ref": "#/components/schemas/AgentConfigPayload"
           },
+          "state": {
+            "enum": [
+              "ACTIVE",
+              "PAUSED",
+              "DELETED"
+            ],
+            "type": "string"
+          },
           "updatedAt": {
             "format": "date-time",
             "type": "string"
@@ -685,6 +693,26 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "AgentPipelineSubscription": {
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "pausedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "subscribedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId",
+          "subscribedAt"
+        ],
         "type": "object"
       },
       "AgentRecentHealth": {
@@ -17030,6 +17058,21 @@
         },
         "type": "object"
       },
+      "StateChangeRequest": {
+        "properties": {
+          "state": {
+            "enum": [
+              "ACTIVE",
+              "PAUSED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "type": "object"
+      },
       "Status": {
         "description": "Status information for a span",
         "properties": {
@@ -22828,9 +22871,121 @@
         ]
       }
     },
+    "/v1/agents/{id}/pipelines/{jobId}/state": {
+      "put": {
+        "description": "Sets one subscription to PAUSED or ACTIVE. While paused, new signals from the pipeline are dropped for this agent, and the pipeline keeps marking new patterns as sent. Investigations already queued still run. The running pipeline is not restarted.",
+        "operationId": "setPipelineState",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StateChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "State set (or already set)"
+          },
+          "400": {
+            "description": "The state is not ACTIVE or PAUSED"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Agent not found, or not subscribed to the pipeline"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Pause or resume an agent\u0027s pipeline subscription",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
+    "/v1/agents/{id}/state": {
+      "put": {
+        "description": "Sets the agent to PAUSED or ACTIVE. A paused agent runs no investigations: signals from every source are dropped, manual starts and resumes are refused, and queued investigations wait until the agent is resumed. Pipelines keep marking new patterns as sent, so after resuming, the agent usually reacts only to patterns that are new since then.",
+        "operationId": "setState",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StateChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "State set (or already set)"
+          },
+          "400": {
+            "description": "The state is not ACTIVE or PAUSED"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Agent not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Pause or resume an agent",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
     "/v1/agents/{id}/subscriptions": {
       "get": {
-        "description": "Returns the pipeline ids the agent is subscribed to.",
+        "description": "Returns the agent\u0027s pipeline subscriptions, including when each was paused.",
         "operationId": "subscriptions",
         "parameters": [
           {
@@ -22848,7 +23003,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "type": "string"
+                    "$ref": "#/components/schemas/AgentPipelineSubscription"
                   },
                   "type": "array"
                 }
