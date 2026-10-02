@@ -13048,6 +13048,181 @@
         },
         "type": "object"
       },
+      "PromotedAttribute": {
+        "description": "Attribute paths the table indexes, with the policy applied to each.",
+        "properties": {
+          "excluded": {
+            "description": "Whether the stored policy leaves this path\u0027s columns NULL.",
+            "type": "boolean"
+          },
+          "numeric": {
+            "description": "Whether the path also has an n_ numeric index column.",
+            "type": "boolean"
+          },
+          "path": {
+            "description": "The attribute path this column indexes.",
+            "type": "string"
+          },
+          "valueColumn": {
+            "description": "The a_ value index column for the path.",
+            "type": "string"
+          }
+        },
+        "readOnly": true,
+        "required": [
+          "excluded",
+          "numeric",
+          "path",
+          "valueColumn"
+        ],
+        "type": "object"
+      },
+      "PromotedTag": {
+        "description": "Tag keys the table indexes, with the policy applied to each.",
+        "properties": {
+          "column": {
+            "description": "The t_ index column for the key.",
+            "type": "string"
+          },
+          "excluded": {
+            "description": "Whether the stored policy leaves this key\u0027s column NULL.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "The tag key this column indexes.",
+            "type": "string"
+          },
+          "protection": {
+            "description": "Why the key cannot be excluded: REQUIRED for service and host, PARTITION_SOURCE for a key the live partition spec buckets on. Absent when it can be.",
+            "enum": [
+              "REQUIRED",
+              "PARTITION_SOURCE"
+            ],
+            "type": "string"
+          }
+        },
+        "readOnly": true,
+        "required": [
+          "column",
+          "excluded",
+          "key"
+        ],
+        "type": "object"
+      },
+      "PromotionPolicy": {
+        "properties": {
+          "attributes": {
+            "$ref": "#/components/schemas/PromotionPolicyAttributes"
+          },
+          "revision": {
+            "description": "Which store of the table\u0027s policy this is, assigned by the server: 0 when the table has none. Echo it on a PUT to be refused with 409 if the policy changed since it was read; omit it to replace whatever is stored.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/PromotionPolicyTags"
+          },
+          "v": {
+            "description": "Promotion policy document version.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attributes",
+          "tags",
+          "v"
+        ],
+        "type": "object"
+      },
+      "PromotionPolicyAttributeExclude": {
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "prefix": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "PromotionPolicyAttributeInclude": {
+        "properties": {
+          "numeric": {
+            "default": false,
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "prefix": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "PromotionPolicyAttributes": {
+        "properties": {
+          "cap": {
+            "default": 0,
+            "format": "int32",
+            "type": "integer"
+          },
+          "exclude": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PromotionPolicyAttributeExclude"
+            },
+            "type": "array"
+          },
+          "include": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PromotionPolicyAttributeInclude"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "cap"
+        ],
+        "type": "object"
+      },
+      "PromotionPolicyTags": {
+        "properties": {
+          "cap": {
+            "default": 0,
+            "format": "int32",
+            "type": "integer"
+          },
+          "exclude": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "include": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "cap"
+        ],
+        "type": "object"
+      },
       "PublicUpdate": {
         "properties": {
           "accessConfig": {
@@ -14271,6 +14446,21 @@
           "maxPipelines": {
             "format": "int32",
             "minimum": 1,
+            "type": "integer"
+          },
+          "maxPromotedAttributeColumns": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "maxPromotedTagColumns": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "maxPromotionPolicyEntriesPerList": {
+            "format": "int32",
+            "minimum": 0,
             "type": "integer"
           },
           "maxS3DataWarehouseIntegrations": {
@@ -17330,16 +17520,6 @@
           "partitionConfig": {
             "$ref": "#/components/schemas/PartitionConfig"
           },
-          "promotedTagKeys": {
-            "default": [],
-            "description": "Bare tag keys to promote to top-level columns.",
-            "items": {
-              "description": "Bare tag keys to promote to top-level columns.",
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
           "sortFields": {
             "default": [],
             "description": "User-chosen sort fields, in precedence order.",
@@ -17361,15 +17541,36 @@
             },
             "type": "array"
           },
+          "promotedAttributes": {
+            "default": [],
+            "description": "Attribute paths the table indexes, with the policy applied to each.",
+            "items": {
+              "$ref": "#/components/schemas/PromotedAttribute"
+            },
+            "readOnly": true,
+            "type": "array"
+          },
           "promotedTagKeys": {
             "default": [],
-            "description": "Bare tag keys promoted to top-level columns.",
+            "description": "The promotion policy\u0027s tags.include, verbatim: the tag keys a partition field may name besides the built-ins. Discovery alone does not add a key to this list, and service or host is listed only when included explicitly.",
             "items": {
-              "description": "Bare tag keys promoted to top-level columns.",
+              "description": "The promotion policy\u0027s tags.include, verbatim: the tag keys a partition field may name besides the built-ins. Discovery alone does not add a key to this list, and service or host is listed only when included explicitly.",
               "type": "string"
             },
             "type": "array",
             "uniqueItems": true
+          },
+          "promotedTags": {
+            "default": [],
+            "description": "Tag keys the table indexes, with the policy applied to each.",
+            "items": {
+              "$ref": "#/components/schemas/PromotedTag"
+            },
+            "readOnly": true,
+            "type": "array"
+          },
+          "promotion": {
+            "$ref": "#/components/schemas/PromotionPolicy"
           },
           "sortFields": {
             "default": [],
@@ -17378,10 +17579,22 @@
               "$ref": "#/components/schemas/SortFieldConfig"
             },
             "type": "array"
+          },
+          "unreadableAttributeColumns": {
+            "default": [],
+            "description": "Attribute index columns whose name could not be decoded to a path.",
+            "items": {
+              "description": "Attribute index columns whose name could not be decoded to a path.",
+              "readOnly": true,
+              "type": "string"
+            },
+            "readOnly": true,
+            "type": "array"
           }
         },
         "required": [
-          "effectiveSpec"
+          "effectiveSpec",
+          "promotion"
         ],
         "type": "object"
       },
@@ -23651,6 +23864,74 @@
         ]
       }
     },
+    "/v1/datasets/{id}/tables/{tableKey}/promotion": {
+      "put": {
+        "description": "Validates and stores the complete promotion policy on the table. Newly included tag columns are added synchronously before the request returns, in the same commit as the policy. Send back the revision the policy was read at to be refused rather than overwrite a change made since; omit it to replace whatever is stored.",
+        "operationId": "putTablePromotion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tableKey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromotionPolicy"
+              }
+            }
+          },
+          "description": "The complete promotion policy document. It is decoded by the same strict codec that reads the stored policy: every field is typed exactly, no unknown field is accepted at any depth, and no value is coerced. It replaces the stored policy rather than patching it, and both groups are required -- a body that omits \"tags\" or \"attributes\" is rejected, not read as a request to stop discovery for that group. The cap is the switch: send a group with \"cap\": 0 to stop it promoting fields it has not seen before. That does not blank the group -- the columns the table already carries keep being written, and a path is stopped by naming it in that group\u0027s exclude list. Read the current policy and send it back whole, changing only what you mean to change.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionPolicy"
+                }
+              }
+            },
+            "description": "The persisted promotion policy."
+          },
+          "400": {
+            "description": "Invalid promotion policy."
+          },
+          "404": {
+            "description": "Dataset or table not found."
+          },
+          "409": {
+            "description": "The policy changed since the revision the request was made against; read it again and reapply the change. Or the table kept changing under the request, which a running writer\u0027s own evolution can cause; retry."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Replace a dataset table promotion policy",
+        "tags": [
+          "Datasets"
+        ]
+      }
+    },
     "/v1/datasets/{id}/{tableKey}/config": {
       "delete": {
         "description": "Removes the user override and reverts the table to defaults. Idempotent.",
@@ -23701,7 +23982,7 @@
         ]
       },
       "get": {
-        "description": "Returns the configuration for one of the dataset\u0027s tables (e.g. logs_raw), including the system-controlled effective partition spec. Body\u0027s user fields are empty when no override has been configured.",
+        "description": "Returns the configuration for one of the dataset\u0027s tables (e.g. logs_raw), including the system-controlled effective partition spec. Without an override, the spec\u0027s editable rows are the table\u0027s defaults.",
         "operationId": "getTableConfig",
         "parameters": [
           {
@@ -31320,9 +31601,6 @@
     "/v1/llm-usage/{integrationId}": {
       "get": {
         "operationId": "currentWindow",
-        "tags": [
-          "LLM Usage"
-        ],
         "parameters": [
           {
             "in": "path",
@@ -31345,7 +31623,10 @@
             "description": "Current window retrieved"
           }
         },
-        "summary": "Get the current maxTokens window of one LLM integration"
+        "summary": "Get the current maxTokens window of one LLM integration",
+        "tags": [
+          "LLM Usage"
+        ]
       }
     },
     "/v1/manifest": {
@@ -32798,9 +33079,6 @@
     "/v1/skills": {
       "get": {
         "operationId": "list_3",
-        "tags": [
-          "Skills"
-        ],
         "parameters": [
           {
             "in": "query",
@@ -32836,9 +33114,6 @@
       },
       "post": {
         "operationId": "create_2",
-        "tags": [
-          "Skills"
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -32866,9 +33141,6 @@
     "/v1/skills/{id}": {
       "delete": {
         "operationId": "archive",
-        "tags": [
-          "Skills"
-        ],
         "parameters": [
           {
             "in": "path",
@@ -32901,9 +33173,6 @@
       },
       "get": {
         "operationId": "get_3",
-        "tags": [
-          "Skills"
-        ],
         "parameters": [
           {
             "in": "path",
@@ -32930,9 +33199,6 @@
       },
       "put": {
         "operationId": "update_1",
-        "tags": [
-          "Skills"
-        ],
         "parameters": [
           {
             "in": "path",
@@ -34353,30 +34619,6 @@
     {
       "description": "Operations for managing SSO claim-to-role mappings",
       "name": "SSO Claim Mappings"
-    },
-    {
-      "description": "Create and manage AI agents, read the tool catalog, and manage a pipeline subscription",
-      "name": "Agents"
-    },
-    {
-      "description": "Start, stop, resume, and cancel agent investigations, and read their transcripts",
-      "name": "Investigations"
-    },
-    {
-      "description": "Search the conclusions agents recorded from past investigations, and record or link one",
-      "name": "Agent Memory"
-    },
-    {
-      "description": "Review the pipeline changes an agent proposed, and apply or reject them",
-      "name": "Agent Suggestions"
-    },
-    {
-      "description": "Create and manage organization skills, and read the platform skill catalog",
-      "name": "Skills"
-    },
-    {
-      "description": "Read the current max-tokens window of one LLM integration",
-      "name": "LLM Usage"
     }
   ],
   "x-tagGroups": [
@@ -34441,17 +34683,6 @@
         "Grok Parsing",
         "Query Parsing",
         "Validation"
-      ]
-    },
-    {
-      "name": "AI Agents",
-      "tags": [
-        "Agents",
-        "Investigations",
-        "Agent Memory",
-        "Agent Suggestions",
-        "Skills",
-        "LLM Usage"
       ]
     },
     {

@@ -1,0 +1,107 @@
+---
+description: Learn how Grepr indexes log attributes and tags as columns in the data lake, and the rules that decide which fields each dataset indexes.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Indexed columns
+
+Grepr stores each raw log's attributes as one JSON document and its tags as a map. A search that filters on one attribute reads every log's whole attribute document to find a match.
+
+An _indexed column_ removes that cost for one field. Grepr writes the field into its own column in the dataset's data lake table, so a search that filters on the field reads that column and skips the files that can't contain a match. See [The Grepr data lake](/grepr-platform/data-lake).
+
+Searches don't change. The same search returns the same results whether or not a field is indexed, and runs faster when it is.
+
+## What Grepr indexes
+
+Each dataset's raw log table has indexing settings for two groups of fields:
+
+- Attributes, named by their dotted path, such as `http.method` or `kube.pod.name`. An indexed path has a column for its value, and a path that holds numbers can also have a numeric column, so that range filters skip files too.
+- Tags, named by their key, such as `region` or `pod_name`. An indexed tag key has a column for its value.
+
+Grepr always indexes the `service` and `host` tags, whatever the settings say.
+
+For each group, you choose whether Grepr discovers new fields, which fields it always indexes, and which fields it never indexes.
+
+## Discovery [#discovery]
+
+When discovery is on, Grepr adds a column for a new field it finds in your logs, until the group has as many columns as its _discovery cap_. Your organization sets the largest cap you can choose. The tag cap doesn't count `service` and `host`.
+
+Discovery is off for a new dataset, so until you turn it on, Grepr indexes only `service`, `host`, and the fields on the always-index lists.
+
+When discovery is on and Grepr finds a number at an indexed path, the path also gets a numeric column. A numeric column doesn't count toward the cap.
+
+Turning discovery off stops Grepr from adding columns. Columns the table already has keep being written. To stop writing a column, add the field to the never-index list.
+
+## Always index and never index [#lists]
+
+Grepr indexes a field on an always-index list whether discovery is on or off, and whether or not the group has reached its cap. Grepr stops writing a field on a never-index list.
+
+For attribute paths:
+
+- A path matches exactly and is case-sensitive. Write the path as it appears in the log.
+- An entry that includes nested paths covers the path and every path under it, split at dots. For example, `kube` with nested paths covers `kube` and `kube.pod.name`, but not `kubernetes`. Wildcards aren't supported.
+- An always-index entry marked numeric gets its numeric column the next time a pipeline writes the path, whether or not discovery is on. Use it for values that are numbers written as strings.
+- When a path is on both lists, always index wins. To stop indexing a subtree except for one path, add the subtree to the never-index list with nested paths, and add the one path to the always-index list.
+
+For tag keys:
+
+- A key matches exactly.
+- A key can't be on both lists.
+- `service`, `host`, and any key the table is partitioned on can't be on the never-index list.
+- To partition a table on a tag key, the key must be on the always-index list, and it stays there while the table is partitioned on it.
+
+## When changes take effect
+
+A change reaches running pipelines within about a minute, without a restart. A tag key you add to the always-index list gets its column when you save, so you can partition on it immediately. An attribute path gets its column the next time a pipeline writes a log that has it.
+
+## Excluded fields and removed columns [#excluded]
+
+Grepr doesn't drop an indexed column. When you add a field to a never-index list, Grepr stops writing the field's column for new logs, and searches read the field from the log's attributes or tags instead, so they return the same results. The column and the data already written stay in the table, and the column still counts toward the discovery cap. To have columns removed, contact [support@grepr.ai](mailto:support@grepr.ai).
+
+## Change indexing through the API
+
+Reading a table's configuration returns its indexing settings with a `revision`. To change them, send the complete settings for both groups to the promotion endpoint, which replaces what's stored. Include the `revision` you read: if the settings changed since then, the request fails with a 409 error, and you read them again before you retry. Without a `revision`, the request replaces the stored settings whatever they are. See the [Datasets specification](/apis/api-spec#tag/Datasets).
+
+<HiddenFAQ faqs={[
+  {
+    q: "What is an indexed column in Grepr?",
+    a: "An indexed column is a log attribute path or tag key that Grepr writes into its own column in the dataset's data lake table, instead of leaving it only in the log's attribute document or tags. Searches that filter on the field read that column and skip files that can't match, which makes them faster."
+  },
+  {
+    q: "Do I have to list the fields I want indexed?",
+    a: "No, if you turn on discovery. Grepr then adds a column for each new field it finds, up to the discovery cap. Discovery is off for a new dataset. List a field on the always-index list to index it whether or not discovery is on."
+  },
+  {
+    q: "Do my searches change when a field is indexed?",
+    a: "No. The same search returns the same results whether or not a field is indexed, and runs faster when it is."
+  },
+  {
+    q: "What happens when I turn discovery off?",
+    a: "Grepr stops adding columns. Every column the table already has keeps being written, and fields on the always-index list keep their columns."
+  },
+  {
+    q: "How do I stop Grepr from writing a column?",
+    a: "Add the field to the never-index list. Turning discovery off doesn't do it, because that only stops new columns. The column stays in the table, and the data already written stays searchable."
+  },
+  {
+    q: "What if an attribute path is on both the always-index and never-index lists?",
+    a: "Always index wins. You can exclude a subtree with a nested-paths entry and keep one path inside it indexed. A tag key can't be on both lists."
+  },
+  {
+    q: "When do indexing changes take effect?",
+    a: "Within about a minute on running pipelines, without a restart. A tag key you add gets its column when you save. An attribute path you add gets its column the next time a pipeline writes a log that has it."
+  },
+  {
+    q: "Can I delete an indexed column?",
+    a: "No. Adding the field to the never-index list stops Grepr from writing it, but the column stays in the table, the data already written stays searchable, and the column still counts toward the discovery cap. Contact support@grepr.ai if you need columns removed."
+  },
+  {
+    q: "Can I stop indexing service and host?",
+    a: "No. Grepr always indexes the service and host tags, and neither key can be on the never-index list."
+  },
+  {
+    q: "What does marking an always-index path numeric do?",
+    a: "The path gets its numeric column the next time a pipeline writes it, whether or not discovery is on. Use it for values that are numbers written as strings."
+  }
+]} />

@@ -614,6 +614,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/datasets/{id}/tables/{tableKey}/promotion": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Replace a dataset table promotion policy
+     * @description Validates and stores the complete promotion policy on the table. Newly included tag columns are added synchronously before the request returns, in the same commit as the policy. Send back the revision the policy was read at to be refused rather than overwrite a change made since; omit it to replace whatever is stored.
+     */
+    put: operations["putTablePromotion"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/datasets/{id}/{tableKey}/config": {
     parameters: {
       query?: never;
@@ -623,7 +643,7 @@ export interface paths {
     };
     /**
      * Get a dataset table config
-     * @description Returns the configuration for one of the dataset's tables (e.g. logs_raw), including the system-controlled effective partition spec. Body's user fields are empty when no override has been configured.
+     * @description Returns the configuration for one of the dataset's tables (e.g. logs_raw), including the system-controlled effective partition spec. Without an override, the spec's editable rows are the table's defaults.
      */
     get: operations["getTableConfig"];
     /**
@@ -10362,6 +10382,79 @@ export interface components {
        */
       site?: string;
     };
+    /** @description Attribute paths the table indexes, with the policy applied to each. */
+    PromotedAttribute: {
+      /** @description Whether the stored policy leaves this path's columns NULL. */
+      excluded: boolean;
+      /** @description Whether the path also has an n_ numeric index column. */
+      numeric: boolean;
+      /** @description The attribute path this column indexes. */
+      path: string;
+      /** @description The a_ value index column for the path. */
+      valueColumn: string;
+    };
+    /** @description Tag keys the table indexes, with the policy applied to each. */
+    PromotedTag: {
+      /** @description The t_ index column for the key. */
+      column: string;
+      /** @description Whether the stored policy leaves this key's column NULL. */
+      excluded: boolean;
+      /** @description The tag key this column indexes. */
+      key: string;
+      /**
+       * @description Why the key cannot be excluded: REQUIRED for service and host, PARTITION_SOURCE for a key the live partition spec buckets on. Absent when it can be.
+       * @enum {string}
+       */
+      protection?: PromotedTagProtection;
+    };
+    PromotionPolicy: {
+      attributes: components["schemas"]["PromotionPolicyAttributes"];
+      /**
+       * Format: int64
+       * @description Which store of the table's policy this is, assigned by the server: 0 when the table has none. Echo it on a PUT to be refused with 409 if the policy changed since it was read; omit it to replace whatever is stored.
+       */
+      revision?: number;
+      tags: components["schemas"]["PromotionPolicyTags"];
+      /**
+       * Format: int32
+       * @description Promotion policy document version.
+       */
+      v: number;
+    };
+    PromotionPolicyAttributeExclude: {
+      path: string;
+      /** @default false */
+      prefix?: boolean;
+    };
+    PromotionPolicyAttributeInclude: {
+      /** @default false */
+      numeric?: boolean;
+      path: string;
+      /** @default false */
+      prefix?: boolean;
+    };
+    PromotionPolicyAttributes: {
+      /**
+       * Format: int32
+       * @default 0
+       */
+      cap: number;
+      /** @default [] */
+      exclude?: components["schemas"]["PromotionPolicyAttributeExclude"][];
+      /** @default [] */
+      include?: components["schemas"]["PromotionPolicyAttributeInclude"][];
+    };
+    PromotionPolicyTags: {
+      /**
+       * Format: int32
+       * @default 0
+       */
+      cap: number;
+      /** @default [] */
+      exclude?: string[];
+      /** @default [] */
+      include?: string[];
+    };
     PublicUpdate: {
       accessConfig?: components["schemas"]["AccessConfig"];
       comments?: string;
@@ -10950,6 +11043,12 @@ export interface components {
       maxOtlpIntegrations?: number;
       /** Format: int32 */
       maxPipelines?: number;
+      /** Format: int32 */
+      maxPromotedAttributeColumns?: number;
+      /** Format: int32 */
+      maxPromotedTagColumns?: number;
+      /** Format: int32 */
+      maxPromotionPolicyEntriesPerList?: number;
       /** Format: int32 */
       maxS3DataWarehouseIntegrations?: number;
       /** Format: int32 */
@@ -12509,11 +12608,6 @@ export interface components {
     TableConfig: {
       partitionConfig?: components["schemas"]["PartitionConfig"];
       /**
-       * @description Bare tag keys to promote to top-level columns.
-       * @default []
-       */
-      promotedTagKeys?: string[];
-      /**
        * @description User-chosen sort fields, in precedence order.
        * @default []
        */
@@ -12526,15 +12620,31 @@ export interface components {
        */
       effectiveSpec: components["schemas"]["EffectivePartitionField"][];
       /**
-       * @description Bare tag keys promoted to top-level columns.
+       * @description Attribute paths the table indexes, with the policy applied to each.
+       * @default []
+       */
+      readonly promotedAttributes?: components["schemas"]["PromotedAttribute"][];
+      /**
+       * @description The promotion policy's tags.include, verbatim: the tag keys a partition field may name besides the built-ins. Discovery alone does not add a key to this list, and service or host is listed only when included explicitly.
        * @default []
        */
       promotedTagKeys?: string[];
+      /**
+       * @description Tag keys the table indexes, with the policy applied to each.
+       * @default []
+       */
+      readonly promotedTags?: components["schemas"]["PromotedTag"][];
+      promotion: components["schemas"]["PromotionPolicy"];
       /**
        * @description Effective sort fields, in precedence order.
        * @default []
        */
       sortFields?: components["schemas"]["SortFieldConfig"][];
+      /**
+       * @description Attribute index columns whose name could not be decoded to a path.
+       * @default []
+       */
+      readonly unreadableAttributeColumns?: string[];
     };
     TagAction: {
       /**
@@ -15444,6 +15554,18 @@ export type SchemaPresignedUploadUrlResponse =
   components["schemas"]["PresignedUploadUrlResponse"];
 export type SchemaPreviewAppKeyScopesRequest =
   components["schemas"]["PreviewAppKeyScopesRequest"];
+export type SchemaPromotedAttribute =
+  components["schemas"]["PromotedAttribute"];
+export type SchemaPromotedTag = components["schemas"]["PromotedTag"];
+export type SchemaPromotionPolicy = components["schemas"]["PromotionPolicy"];
+export type SchemaPromotionPolicyAttributeExclude =
+  components["schemas"]["PromotionPolicyAttributeExclude"];
+export type SchemaPromotionPolicyAttributeInclude =
+  components["schemas"]["PromotionPolicyAttributeInclude"];
+export type SchemaPromotionPolicyAttributes =
+  components["schemas"]["PromotionPolicyAttributes"];
+export type SchemaPromotionPolicyTags =
+  components["schemas"]["PromotionPolicyTags"];
 export type SchemaPublicUpdate = components["schemas"]["PublicUpdate"];
 export type SchemaQuantileSamplingTier =
   components["schemas"]["QuantileSamplingTier"];
@@ -17217,6 +17339,55 @@ export interface operations {
       };
       /** @description No configuration found for this dataset. */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  putTablePromotion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tableKey: string;
+      };
+      cookie?: never;
+    };
+    /** @description The complete promotion policy document. It is decoded by the same strict codec that reads the stored policy: every field is typed exactly, no unknown field is accepted at any depth, and no value is coerced. It replaces the stored policy rather than patching it, and both groups are required -- a body that omits "tags" or "attributes" is rejected, not read as a request to stop discovery for that group. The cap is the switch: send a group with "cap": 0 to stop it promoting fields it has not seen before. That does not blank the group -- the columns the table already carries keep being written, and a path is stopped by naming it in that group's exclude list. Read the current policy and send it back whole, changing only what you mean to change. */
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PromotionPolicy"];
+      };
+    };
+    responses: {
+      /** @description The persisted promotion policy. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PromotionPolicy"];
+        };
+      };
+      /** @description Invalid promotion policy. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Dataset or table not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The policy changed since the revision the request was made against; read it again and reapply the change. Or the table kept changing under the request, which a running writer's own evolution can cause; retry. */
+      409: {
         headers: {
           [name: string]: unknown;
         };
@@ -26394,6 +26565,10 @@ export enum PlanType {
 }
 export enum PreserveAllAttributesMergeStrategyType {
   preserve = "preserve",
+}
+export enum PromotedTagProtection {
+  REQUIRED = "REQUIRED",
+  PARTITION_SOURCE = "PARTITION_SOURCE",
 }
 export enum QuerySinkFormat {
   COMPRESSED_JSON = "COMPRESSED_JSON",

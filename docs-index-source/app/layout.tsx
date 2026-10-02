@@ -53,6 +53,12 @@ const pageMap = [
         title: "The Grepr data lake",
       },
       {
+        name: "indexed-columns",
+        route: "/grepr-platform/indexed-columns",
+        type: "page",
+        title: "Indexed columns",
+      },
+      {
         name: "grepr-model",
         route: "/grepr-platform/grepr-model",
         type: "page",
