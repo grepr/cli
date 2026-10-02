@@ -4403,7 +4403,7 @@
             "type": "string"
           },
           "windowEnd": {
-            "description": "Absolute end of the window to count over; must be after the start",
+            "description": "Absolute end of the window to count over; must be after the start and not in the future",
             "format": "date-time",
             "type": "string"
           },
@@ -20714,18 +20714,13 @@
             "format": "int32",
             "type": "integer"
           },
-          "queuedAhead": {
-            "description": "Number of older runs still waiting for an active slot ahead of this one. Present only while the run is QUEUED.",
-            "format": "int32",
-            "type": "integer"
-          },
           "requestedBy": {
             "description": "Id of the user who started the run",
             "example": "user-1",
             "type": "string"
           },
           "resumeAfter": {
-            "description": "When a throttled run\u0027s next slice is scheduled to fire",
+            "description": "When a THROTTLED run will be counted again",
             "format": "date-time",
             "type": "string"
           },
@@ -20745,14 +20740,14 @@
               "QUEUED",
               "RUNNING",
               "THROTTLED",
+              "STOPPED",
               "COMPLETE",
-              "PARTIAL",
               "FAILED"
             ],
             "type": "string"
           },
           "stopReason": {
-            "description": "Why a PARTIAL run stopped early",
+            "description": "Why a STOPPED run stopped: USER or TIMED_OUT",
             "type": "string"
           },
           "updatedAt": {
@@ -20802,11 +20797,6 @@
           },
           "exceptions": {
             "description": "Exceptions the run would cover: every one the integration has imported",
-            "format": "int32",
-            "type": "integer"
-          },
-          "queuedAhead": {
-            "description": "Runs that would start before this one if it were created now. Absent when a slot is free.",
             "format": "int32",
             "type": "integer"
           },
@@ -30055,7 +30045,7 @@
     },
     "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs": {
       "get": {
-        "description": "Returns the integration\u0027s estimation runs newest first, including failed and stopped ones. Scope and window identify a run: numbers from runs over different scopes or windows are not comparable.",
+        "description": "Returns the integration\u0027s estimation runs newest first, in every state.",
         "operationId": "listVendorEstimationRuns",
         "parameters": [
           {
@@ -30069,13 +30059,15 @@
             }
           },
           {
-            "description": "Maximum runs to return",
+            "description": "Maximum runs to return, 1 to 100",
             "example": 20,
             "in": "query",
             "name": "limit",
             "schema": {
               "default": 20,
               "format": "int32",
+              "maximum": 100,
+              "minimum": 1,
               "type": "integer"
             }
           }
@@ -30093,6 +30085,9 @@
               }
             },
             "description": "Runs retrieved"
+          },
+          "400": {
+            "description": "Bad Request - Limit is outside 1 to 100."
           },
           "401": {
             "description": "Unauthorized"
@@ -30115,7 +30110,7 @@
         ]
       },
       "post": {
-        "description": "Creates a run over the given scope and window covering every exception the integration has imported, with one result row per distinct predicate, and queues its first slice. One non-terminal run per organization: starting a second returns 409 while the first is still in flight.",
+        "description": "Creates a run over the given scope and window covering every exception the integration has imported. Runs are counted in the background, in short slices shared fairly between organizations.",
         "operationId": "createVendorEstimationRun",
         "parameters": [
           {
@@ -30136,10 +30131,11 @@
                 "$ref": "#/components/schemas/CreateVendorEstimationRunRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "201": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
@@ -30150,7 +30146,7 @@
             "description": "Run created"
           },
           "400": {
-            "description": "Bad Request - Window is inverted or scope is invalid."
+            "description": "Bad Request - The window is inverted, starts or ends in the future, or is too long."
           },
           "401": {
             "description": "Unauthorized"
@@ -30159,7 +30155,7 @@
             "description": "Not Found - Integration not found."
           },
           "409": {
-            "description": "Conflict - The organization already has a run that has not finished."
+            "description": "Conflict - The organization already has the most runs allowed in progress."
           }
         },
         "security": [
@@ -30178,7 +30174,7 @@
     },
     "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/preview": {
       "post": {
-        "description": "Classifies the exceptions a run would cover — every one the integration has imported — and returns how many distinct queries it would send to the vendor and which exceptions cannot be counted because their query never parsed. Writes nothing.",
+        "description": "Returns how many exceptions and distinct queries a run would cover, and which exceptions cannot be counted because their query never parsed. Writes nothing.",
         "operationId": "previewVendorEstimationRun",
         "parameters": [
           {
@@ -30199,7 +30195,8 @@
                 "$ref": "#/components/schemas/CreateVendorEstimationRunRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -30213,7 +30210,7 @@
             "description": "Preview computed"
           },
           "400": {
-            "description": "Bad Request - Window is inverted or scope is invalid."
+            "description": "Bad Request - The window is inverted, starts or ends in the future, or is too long."
           },
           "401": {
             "description": "Unauthorized"
@@ -30238,8 +30235,8 @@
     },
     "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/{runId}": {
       "delete": {
-        "description": "Stops the run and keeps every count it has already made. The run ends partial, with a stop reason recording that a person stopped it. No rows are deleted; calling this on a run that has already finished is a no-op.",
-        "operationId": "stopVendorEstimationRun",
+        "description": "Deletes a stopped, complete or failed run and its results. A run in progress returns 409 and has to be stopped first.",
+        "operationId": "deleteVendorEstimationRun",
         "parameters": [
           {
             "description": "Integration id",
@@ -30263,21 +30260,17 @@
           }
         ],
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VendorEstimationRun"
-                }
-              }
-            },
-            "description": "Run stopped"
+          "204": {
+            "description": "Run deleted"
           },
           "401": {
             "description": "Unauthorized"
           },
           "404": {
             "description": "Not Found - Integration or run not found."
+          },
+          "409": {
+            "description": "Conflict - The run is in progress; stop it first."
           }
         },
         "security": [
@@ -30288,13 +30281,13 @@
             "grepr-oidc": []
           }
         ],
-        "summary": "Stop a vendor estimation run",
+        "summary": "Delete a vendor estimation run",
         "tags": [
           "Integration Exceptions"
         ]
       },
       "get": {
-        "description": "Returns the run\u0027s current state and progress. Poll this while the run is non-terminal; results land incrementally and are readable throughout.",
+        "description": "Returns the run\u0027s state and progress. Results are readable while it runs.",
         "operationId": "getVendorEstimationRun",
         "parameters": [
           {
@@ -30352,7 +30345,7 @@
     },
     "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/{runId}/results": {
       "get": {
-        "description": "Returns the run\u0027s per-exception estimates keyed by composite exception id. Each entry is one of four variants selected by its type field, because an estimate can be pending, unparseable or failed as well as counted. An exception missing from the response was not in this run, which is not the same as matching nothing.",
+        "description": "Returns the run\u0027s per-exception estimates keyed by composite exception id. Each is counted, pending, unparseable or an error, selected by its type field. An exception missing from the response was not in this run.",
         "operationId": "getVendorEstimationRunResults",
         "parameters": [
           {
@@ -30413,7 +30406,7 @@
     },
     "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/{runId}/resume": {
       "post": {
-        "description": "Triggers another slice for a run that has been running without progress for longer than the configured stale threshold. Returns 409 for a run that is progressing normally, parked on a rate limit, or already finished.",
+        "description": "Makes a stopped run active again; counting continues where it stopped. Returns 409 for a run that is not stopped, or when the organization has the most runs allowed in progress.",
         "operationId": "resumeVendorEstimationRun",
         "parameters": [
           {
@@ -30446,7 +30439,7 @@
                 }
               }
             },
-            "description": "Slice triggered"
+            "description": "Run resumed"
           },
           "401": {
             "description": "Unauthorized"
@@ -30455,7 +30448,7 @@
             "description": "Not Found - Integration or run not found."
           },
           "409": {
-            "description": "Conflict - The run is not eligible to be resumed."
+            "description": "Conflict - The run cannot be resumed now."
           }
         },
         "security": [
@@ -30466,7 +30459,65 @@
             "grepr-oidc": []
           }
         ],
-        "summary": "Resume a stalled vendor estimation run",
+        "summary": "Resume a stopped vendor estimation run",
+        "tags": [
+          "Integration Exceptions"
+        ]
+      }
+    },
+    "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/{runId}/stop": {
+      "post": {
+        "description": "Stops the run and keeps every count it has made. A stopped run can be resumed or deleted. A no-op on a run that is not in progress.",
+        "operationId": "stopVendorEstimationRun",
+        "parameters": [
+          {
+            "description": "Integration id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "integrationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Run id",
+            "example": "0q841q0j81m2q",
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorEstimationRun"
+                }
+              }
+            },
+            "description": "Run stopped"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found - Integration or run not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Stop a vendor estimation run",
         "tags": [
           "Integration Exceptions"
         ]

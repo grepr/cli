@@ -40,6 +40,7 @@ Creating and configuring a Datadog integration requires the following:
   | Feature | Required scopes |
   |---|---|
   | Selective reduction with automatic exception parsing | `monitors_read`, `dashboards_read`, `logs_read_config` |
+  | Parsed query impact estimation against your indexed Datadog logs | `logs_read_data` |
   | Datadog as a [cloud source](/integrations/support-matrix/#supported-observability-integrations) | `logs_read_data` |
 
   To learn more about exception parsing, see [_](#enable-selective-reduction). To learn more about Datadog keys and scopes, see [API and Application Keys](https://docs.datadoghq.com/account_management/api-app-keys/) and [Authorization Scopes](https://docs.datadoghq.com/api/latest/scopes/).
@@ -69,7 +70,7 @@ To create a Datadog integration in the Grepr UI:
    - In the **Name** field, enter a name for the integration.
    - In the **Site** menu, select the parameter matching your Datadog site.
    - In the **API Key** field, enter your Datadog API key.
-   - Optional: In the **Application Key** field, enter your Datadog Application key. The application key is required only to import exceptions from Datadog or to use the integration as a cloud source.
+   - Optional: In the **Application Key** field, enter your Datadog Application key. The application key is required only to import exceptions from Datadog, to estimate their impact against your indexed Datadog logs, or to use the integration as a cloud source.
 1. Click **Create**.
 
    ![Add a Datadog integration in the Grepr UI.](/images/integrations/add-datadog-integration-modal.png)

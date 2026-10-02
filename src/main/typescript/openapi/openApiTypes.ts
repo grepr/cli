@@ -2394,13 +2394,13 @@ export interface paths {
     };
     /**
      * List vendor estimation runs for an integration
-     * @description Returns the integration's estimation runs newest first, including failed and stopped ones. Scope and window identify a run: numbers from runs over different scopes or windows are not comparable.
+     * @description Returns the integration's estimation runs newest first, in every state.
      */
     get: operations["listVendorEstimationRuns"];
     put?: never;
     /**
      * Start a vendor estimation run
-     * @description Creates a run over the given scope and window covering every exception the integration has imported, with one result row per distinct predicate, and queues its first slice. One non-terminal run per organization: starting a second returns 409 while the first is still in flight.
+     * @description Creates a run over the given scope and window covering every exception the integration has imported. Runs are counted in the background, in short slices shared fairly between organizations.
      */
     post: operations["createVendorEstimationRun"];
     delete?: never;
@@ -2420,7 +2420,7 @@ export interface paths {
     put?: never;
     /**
      * Preview a vendor estimation run
-     * @description Classifies the exceptions a run would cover — every one the integration has imported — and returns how many distinct queries it would send to the vendor and which exceptions cannot be counted because their query never parsed. Writes nothing.
+     * @description Returns how many exceptions and distinct queries a run would cover, and which exceptions cannot be counted because their query never parsed. Writes nothing.
      */
     post: operations["previewVendorEstimationRun"];
     delete?: never;
@@ -2438,16 +2438,16 @@ export interface paths {
     };
     /**
      * Get a vendor estimation run
-     * @description Returns the run's current state and progress. Poll this while the run is non-terminal; results land incrementally and are readable throughout.
+     * @description Returns the run's state and progress. Results are readable while it runs.
      */
     get: operations["getVendorEstimationRun"];
     put?: never;
     post?: never;
     /**
-     * Stop a vendor estimation run
-     * @description Stops the run and keeps every count it has already made. The run ends partial, with a stop reason recording that a person stopped it. No rows are deleted; calling this on a run that has already finished is a no-op.
+     * Delete a vendor estimation run
+     * @description Deletes a stopped, complete or failed run and its results. A run in progress returns 409 and has to be stopped first.
      */
-    delete: operations["stopVendorEstimationRun"];
+    delete: operations["deleteVendorEstimationRun"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2462,7 +2462,7 @@ export interface paths {
     };
     /**
      * Get vendor estimation results for a run
-     * @description Returns the run's per-exception estimates keyed by composite exception id. Each entry is one of four variants selected by its type field, because an estimate can be pending, unparseable or failed as well as counted. An exception missing from the response was not in this run, which is not the same as matching nothing.
+     * @description Returns the run's per-exception estimates keyed by composite exception id. Each is counted, pending, unparseable or an error, selected by its type field. An exception missing from the response was not in this run.
      */
     get: operations["getVendorEstimationRunResults"];
     put?: never;
@@ -2483,10 +2483,30 @@ export interface paths {
     get?: never;
     put?: never;
     /**
-     * Resume a stalled vendor estimation run
-     * @description Triggers another slice for a run that has been running without progress for longer than the configured stale threshold. Returns 409 for a run that is progressing normally, parked on a rate limit, or already finished.
+     * Resume a stopped vendor estimation run
+     * @description Makes a stopped run active again; counting continues where it stopped. Returns 409 for a run that is not stopped, or when the organization has the most runs allowed in progress.
      */
     post: operations["resumeVendorEstimationRun"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/{integrationId}/exceptions/vendor-estimation-runs/{runId}/stop": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Stop a vendor estimation run
+     * @description Stops the run and keeps every count it has made. A stopped run can be resumed or deleted. A no-op on a run that is not in progress.
+     */
+    post: operations["stopVendorEstimationRun"];
     delete?: never;
     options?: never;
     head?: never;
@@ -5854,7 +5874,7 @@ export interface components {
       scopeQuery?: string;
       /**
        * Format: date-time
-       * @description Absolute end of the window to count over; must be after the start
+       * @description Absolute end of the window to count over; must be after the start and not in the future
        */
       windowEnd: string;
       /**
@@ -14402,18 +14422,13 @@ export interface components {
        */
       predicatesTotal: number;
       /**
-       * Format: int32
-       * @description Number of older runs still waiting for an active slot ahead of this one. Present only while the run is QUEUED.
-       */
-      queuedAhead?: number;
-      /**
        * @description Id of the user who started the run
        * @example user-1
        */
       requestedBy?: string;
       /**
        * Format: date-time
-       * @description When a throttled run's next slice is scheduled to fire
+       * @description When a THROTTLED run will be counted again
        */
       resumeAfter?: string;
       /**
@@ -14431,7 +14446,7 @@ export interface components {
        * @enum {string}
        */
       state: VendorEstimationRunState;
-      /** @description Why a PARTIAL run stopped early */
+      /** @description Why a STOPPED run stopped: USER or TIMED_OUT */
       stopReason?: string;
       /**
        * Format: date-time
@@ -14465,11 +14480,6 @@ export interface components {
        * @description Exceptions the run would cover: every one the integration has imported
        */
       exceptions: number;
-      /**
-       * Format: int32
-       * @description Runs that would start before this one if it were created now. Absent when a slot is free.
-       */
-      queuedAhead?: number;
       /** @description Exceptions whose query could not be parsed at import and so cannot be counted, each with the parse error */
       unparseable: components["schemas"]["UnparseableException"][];
     };
@@ -22319,7 +22329,7 @@ export interface operations {
     parameters: {
       query?: {
         /**
-         * @description Maximum runs to return
+         * @description Maximum runs to return, 1 to 100
          * @example 20
          */
         limit?: number;
@@ -22344,6 +22354,13 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["VendorEstimationRun"][];
         };
+      };
+      /** @description Bad Request - Limit is outside 1 to 100. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Unauthorized */
       401: {
@@ -22374,14 +22391,14 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateVendorEstimationRunRequest"];
       };
     };
     responses: {
       /** @description Run created */
-      201: {
+      200: {
         headers: {
           [name: string]: unknown;
         };
@@ -22389,7 +22406,7 @@ export interface operations {
           "application/json": components["schemas"]["VendorEstimationRun"];
         };
       };
-      /** @description Bad Request - Window is inverted or scope is invalid. */
+      /** @description Bad Request - The window is inverted, starts or ends in the future, or is too long. */
       400: {
         headers: {
           [name: string]: unknown;
@@ -22410,7 +22427,7 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description Conflict - The organization already has a run that has not finished. */
+      /** @description Conflict - The organization already has the most runs allowed in progress. */
       409: {
         headers: {
           [name: string]: unknown;
@@ -22432,7 +22449,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateVendorEstimationRunRequest"];
       };
@@ -22447,7 +22464,7 @@ export interface operations {
           "application/json": components["schemas"]["VendorEstimationRunPreview"];
         };
       };
-      /** @description Bad Request - Window is inverted or scope is invalid. */
+      /** @description Bad Request - The window is inverted, starts or ends in the future, or is too long. */
       400: {
         headers: {
           [name: string]: unknown;
@@ -22515,7 +22532,7 @@ export interface operations {
       };
     };
   };
-  stopVendorEstimationRun: {
+  deleteVendorEstimationRun: {
     parameters: {
       query?: never;
       header?: never;
@@ -22535,14 +22552,12 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Run stopped */
-      200: {
+      /** @description Run deleted */
+      204: {
         headers: {
           [name: string]: unknown;
         };
-        content: {
-          "application/json": components["schemas"]["VendorEstimationRun"];
-        };
+        content?: never;
       };
       /** @description Unauthorized */
       401: {
@@ -22553,6 +22568,13 @@ export interface operations {
       };
       /** @description Not Found - Integration or run not found. */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Conflict - The run is in progress; stop it first. */
+      409: {
         headers: {
           [name: string]: unknown;
         };
@@ -22627,7 +22649,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Slice triggered */
+      /** @description Run resumed */
       200: {
         headers: {
           [name: string]: unknown;
@@ -22650,8 +22672,53 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description Conflict - The run is not eligible to be resumed. */
+      /** @description Conflict - The run cannot be resumed now. */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  stopVendorEstimationRun: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Integration id
+         * @example 0q841q0j81m2q
+         */
+        integrationId: string;
+        /**
+         * @description Run id
+         * @example 0q841q0j81m2q
+         */
+        runId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Run stopped */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VendorEstimationRun"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found - Integration or run not found. */
+      404: {
         headers: {
           [name: string]: unknown;
         };
@@ -26931,8 +26998,8 @@ export enum VendorEstimationRunState {
   QUEUED = "QUEUED",
   RUNNING = "RUNNING",
   THROTTLED = "THROTTLED",
+  STOPPED = "STOPPED",
   COMPLETE = "COMPLETE",
-  PARTIAL = "PARTIAL",
   FAILED = "FAILED",
 }
 export enum VendorEstimationRunVendor {
