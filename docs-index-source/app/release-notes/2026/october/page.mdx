@@ -1,0 +1,39 @@
+---
+description: Release notes for new features, improvements, and bug fixes to the Grepr platform released in October 2026.
+---
+
+# Release notes for October 2026
+
+Grepr released these feature updates, improvements, and bug fixes in October 2026.
+
+## October 2, 2026
+
+{/* ENGT-5568 */}
+### Faster searches on the log attributes and tags you filter on most
+
+Grepr can now index log attributes and tags as their own columns in a dataset's data lake table, so a search that filters on an indexed field reads only that column and skips the files that cannot match. In each dataset's settings, you choose whether Grepr discovers new fields to index, which fields it always indexes, and which it never indexes. Searches return the same results whether or not a field is indexed. See [_](/grepr-platform/indexed-columns).
+
+{/* ENGT-3505 */}
+### Detect log patterns from the shape of their attributes
+
+Log reduction can now build patterns from a log's attributes instead of only its message, so structured logs whose message is empty or always the same still reduce into distinct, meaningful patterns. On the reducer's **Patterns** card, you choose whether patterns come from the message, the attributes, or both, whether attribute values count toward similarity or only the attribute keys do, and which attribute subtrees to include or exclude. These settings replace the single structured tokenization switch, and reduction keeps grouping events by the message alone unless you choose otherwise. See [_](/transforms/reducer/configuration#structured-configuration).
+
+{/* ENGT-5821, ENGT-5545 */}
+### Import fewer Datadog exceptions and estimate their impact before you build a pipeline
+
+The Datadog integration has a new **Active dashboard threshold** setting that limits dashboard imports to dashboards viewed within the period you choose, so queries from dashboards nobody looks at no longer produce exceptions.
+
+You can also estimate each imported exception against your indexed Datadog logs, so you can see how much volume it would keep before any Grepr pipeline exists. From the integration's exceptions dialog, start an estimation run over a scope and time window, and each exception shows the share of indexed logs it matches in the **% indexed logs** column. Estimating against indexed logs requires an application key with the `logs_read_data` scope. See [_](/integrations#passthrough-estimation).
+
+### Other improvements and fixes
+
+- {/* ENGT-5939 */} Log pipelines evaluate filter, exception, and routing queries faster, especially Datadog word searches, case-insensitive matches, `LIKE` patterns, and long `IN` lists.
+- {/* ENGT-5764 */} Log pipelines now have a single **Parsing** step that runs JSON parsing, attribute remapping, and Grok parsing in order, so you can now remap attributes that a Grok pattern extracts.
+- {/* ENGT-4711 */} The **Parsed alert queries** table now shows when each Datadog dashboard query was last viewed and how many views it has, and you can filter the table on both.
+- {/* ENGT-5821 */} You can now rename an integration, or change settings that no running pipeline reads, such as the active dashboard threshold, without stopping the pipelines that use it.
+- {/* ENGT-5655 */} The **Input-Output Lag** metric for trace pipelines now includes the time spans wait before the pipeline reads them, so it reports the full delay from ingestion to output. After a pipeline restarts with a backlog, the metric shows the backlog's real age instead of reading near zero.
+- {/* ENGT-5798 */} The pipeline log viewer now has one tabbed settings dialog in place of its two footer dialogs, and no longer shows a loading spinner in the middle of the results while new logs stream in.
+- {/* ENGT-5816 */} Fixed an issue where Analyze expressions failed with a "Table not found" error when an `@` attribute name contained a hyphen or slash, such as `@trace-id` or `@app.kubernetes.io/name`.
+- {/* ENGT-4718 */} Fixed an issue where an `IN` or `NOT IN` list with a large number of values in an NRQL or Grepr SQL query matched every event instead of filtering.
+- {/* ENGT-5798 */} Fixed several issues in the pipeline log viewer, including column selection, a crash in the popped-out view, the diff tab not working when popped out, and an empty link from the reducer step to the sink step.
+- {/* ENGT-5934 */} Fixed an issue where metrics chart axes showed too few or too many decimal places for small or fractional values, such as CPU usage.

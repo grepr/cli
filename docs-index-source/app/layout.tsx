@@ -630,6 +630,12 @@ const pageMap = [
         title: "2026",
         children: [
           {
+            name: "october",
+            route: "/release-notes/2026/october",
+            type: "page",
+            title: "October",
+          },
+          {
             name: "september",
             route: "/release-notes/2026/september",
             type: "page",
