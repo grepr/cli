@@ -275,7 +275,7 @@ This job reads logs from the data lake and outputs the results immediately.
     "jobGraph": {
       "vertices": [
         {
-          "type": "logs-iceberg-table-source",
+          "type": "grepr-raw-log-source",
           "name": "source_data_lake",
           "datasetId": "<dataset-id>",
           "start": "2025-01-01T00:00:00Z",

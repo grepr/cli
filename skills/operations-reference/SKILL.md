@@ -86,8 +86,8 @@ Sources have no inputs and produce log events as output.
 
 | Operation | Description | Key Properties |
 |-----------|-------------|----------------|
-| `logs-iceberg-table-source` | Query Iceberg table via Flink (supports transforms) | `datasetId`, `start`, `end`, `query`, `limit` |
 | `grepr-raw-log-source` | Query via Athena (faster, direct to sync-sink only) | `datasetId`, `start`, `end`, `query`, `limit` |
+| `logs-iceberg-table-source` | Query Iceberg table via Flink (supports transforms) | `datasetId`, `start`, `end`, `query`, `limit` |
 
 ### Test Sources
 
@@ -360,9 +360,31 @@ Deduplicates and aggregates similar log messages.
 }
 ```
 
+### grepr-raw-log-source
+
+Queries raw logs from the Grepr data lake on Athena. Use this for data lake queries whose output
+goes straight to `logs-sync-sink`.
+
+```json
+{
+  "type": "grepr-raw-log-source",
+  "name": "source",
+  "datasetId": "abc123",
+  "start": "2024-01-01T00:00:00Z",
+  "end": "2024-01-02T00:00:00Z",
+  "query": {
+    "type": "datadog-query",
+    "query": "service:api status:error"
+  },
+  "limit": 1000,
+  "sortOrder": "DESC"
+}
+```
+
 ### logs-iceberg-table-source
 
-Queries data from the Grepr data lake.
+Queries data from the Grepr data lake on the shared Flink query cluster. Use it only when the job
+has transforms between source and sink; otherwise use `grepr-raw-log-source`.
 
 ```json
 {

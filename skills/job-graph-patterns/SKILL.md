@@ -21,7 +21,7 @@ Query historical data from the data lake and return results immediately.
     "vertices": [
       {
         "name": "source",
-        "type": "logs-iceberg-table-source",
+        "type": "grepr-raw-log-source",
         "datasetId": "<your-dataset-id>",
         "start": "2024-01-01T00:00:00Z",
         "end": "2024-01-02T00:00:00Z",
@@ -43,8 +43,9 @@ Query historical data from the data lake and return results immediately.
 ```
 
 **Notes:**
-- Use `logs-iceberg-table-source` for Flink-based queries (supports transforms)
-- Use `grepr-raw-log-source` for Athena-based queries (faster, but only outputs to `logs-sync-sink`)
+- To search or sample logs, prefer `grepr query` (see `grepr:query`) over hand-writing this job
+- `grepr-raw-log-source` runs the query on Athena and streams results straight to `logs-sync-sink`
+- Use `logs-iceberg-table-source` only when the job has transforms between source and sink.
 - Always set a `limit` to avoid expensive queries
 - `sortOrder`: `DESC` (newest first), `ASC` (oldest first), `UNSORTED` (fastest)
 

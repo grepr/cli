@@ -131,7 +131,7 @@ Query historical log data from Grepr's data lake:
     "vertices": [
       {
         "name": "source",
-        "type": "logs-iceberg-table-source",
+        "type": "grepr-raw-log-source",
         "datasetId": "abc123def456",
         "start": "2024-01-01T00:00:00Z",
         "end": "2024-01-02T00:00:00Z",
@@ -140,7 +140,6 @@ Query historical log data from Grepr's data lake:
           "query": "service:my-service status:error"
         },
         "limit": 1000,
-        "reductionInterval": "PT2M",
         "sortOrder": "UNSORTED"
       },
       {
