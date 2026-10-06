@@ -57,11 +57,17 @@ A change reaches running pipelines within about a minute, without a restart. A t
 
 ## Excluded fields and removed columns [#excluded]
 
-Grepr doesn't drop an indexed column. When you add a field to a never-index list, Grepr stops writing the field's column for new logs, and searches read the field from the log's attributes or tags instead, so they return the same results. The column and the data already written stay in the table, and the column still counts toward the discovery cap. To have columns removed, contact [support@grepr.ai](mailto:support@grepr.ai).
+When you add a field to a never-index list, Grepr stops writing the field's column within about a minute, and searches read the field from the log's attributes or tags instead, so they return the same results.
+
+Grepr schedules the column for removal from the table 6 hours after you exclude the field, and the table's indexing settings show that time under the field. While the pipeline is receiving logs, the column is removed at that time or within about an hour after it. A pipeline that receives no logs removes it once logs arrive again. Until then the column still counts toward the discovery cap; once it's removed, its place is free. Logs written before the removal stay searchable through their attributes and tags, but searches on that field no longer skip files using the column.
+
+If you take the field off the never-index list before then, the removal is cancelled: Grepr goes back to writing the same column, and everything already indexed in it stays. After the removal, the field gets a new column the same way a field that was never indexed does: from the always-index list (a tag key when you save, an attribute path with the next log that has it), or from discovery if the table is under its discovery cap. The new column covers only logs written from then on.
 
 ## Change indexing through the API
 
 Reading a table's configuration returns its indexing settings with a `revision`. To change them, send the complete settings for both groups to the promotion endpoint, which replaces what's stored. Include the `revision` you read: if the settings changed since then, the request fails with a 409 error, and you read them again before you retry. Without a `revision`, the request replaces the stored settings whatever they are. See the [Datasets specification](/apis/api-spec#tag/Datasets).
+
+Each excluded attribute entry, and each excluded tag key under `tags.scheduledRemovalAt`, comes back with `scheduledRemovalAt`: when Grepr removes its columns. Grepr sets it when the entry is first saved and ignores any value you send. To change how long Grepr waits before removing an excluded column, set `columnRemovalDelay` to an ISO-8601 duration from `PT2M` (2 minutes) to `P30D` (30 days). Without it, the delay is 6 hours. A new delay applies to entries you exclude from then on.
 
 <HiddenFAQ faqs={[
   {
@@ -82,7 +88,7 @@ Reading a table's configuration returns its indexing settings with a `revision`.
   },
   {
     q: "How do I stop Grepr from writing a column?",
-    a: "Add the field to the never-index list. Turning discovery off doesn't do it, because that only stops new columns. The column stays in the table, and the data already written stays searchable."
+    a: "Add the field to the never-index list. Turning discovery off doesn't do it, because that only stops new columns. Grepr stops writing the column within about a minute and removes it from the table 6 hours later. Take the field off the list before then to keep the column. The data already written stays searchable."
   },
   {
     q: "What if an attribute path is on both the always-index and never-index lists?",
@@ -94,7 +100,7 @@ Reading a table's configuration returns its indexing settings with a `revision`.
   },
   {
     q: "Can I delete an indexed column?",
-    a: "No. Adding the field to the never-index list stops Grepr from writing it, but the column stays in the table, the data already written stays searchable, and the column still counts toward the discovery cap. Contact support@grepr.ai if you need columns removed."
+    a: "Yes. Add the field to the never-index list. Grepr stops writing the column within about a minute and removes it from the table 6 hours later, which frees its place under the discovery cap. Logs already written stay searchable through their attributes and tags."
   },
   {
     q: "Can I stop indexing service and host?",

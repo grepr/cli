@@ -10430,6 +10430,12 @@ export interface components {
     PromotionPolicy: {
       attributes: components["schemas"]["PromotionPolicyAttributes"];
       /**
+       * Format: ISO-8601
+       * @description How long after a path or key is excluded its index columns are removed from the table, as an ISO-8601 duration. Defaults to 6 hours when absent.
+       * @example PT20.345S
+       */
+      columnRemovalDelay?: string;
+      /**
        * Format: int64
        * @description Which store of the table's policy this is, assigned by the server: 0 when the table has none. Echo it on a PUT to be refused with 409 if the policy changed since it was read; omit it to replace whatever is stored.
        */
@@ -10445,6 +10451,11 @@ export interface components {
       path: string;
       /** @default false */
       prefix?: boolean;
+      /**
+       * Format: date-time
+       * @description When the columns this entry excludes are removed from the table, assigned by the server. Taking the entry off the exclude list before then keeps them.
+       */
+      readonly scheduledRemovalAt?: string;
     };
     PromotionPolicyAttributeInclude: {
       /** @default false */
@@ -10474,6 +10485,13 @@ export interface components {
       exclude?: string[];
       /** @default [] */
       include?: string[];
+      /**
+       * @description When each excluded key's column is removed from the table, assigned by the server. Taking the key off the exclude list before then keeps the column.
+       * @default {}
+       */
+      readonly scheduledRemovalAt?: {
+        [key: string]: string;
+      };
     };
     PublicUpdate: {
       accessConfig?: components["schemas"]["AccessConfig"];
