@@ -619,7 +619,7 @@ This example adds multiple values to a new tag, adds additional values to an exi
 SELECT *,
   ARRAY['web', 'api', 'frontend'] as `tags.components`,
   -- extends the existing 'service' tag with an additional value
-  ARRAY_APPEND(tags['service'], 'all_services') as `tags.service`
+  ARRAY_APPEND(tags['service'], 'all_services') as `tags.service`,
   REGEXP_EXTRACT(message, 'team=([a-z]+)', 1) as `tags.team`
 FROM logs
 WHERE message LIKE '%team=%'
