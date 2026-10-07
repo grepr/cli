@@ -624,7 +624,7 @@ export interface paths {
     get?: never;
     /**
      * Replace a dataset table promotion policy
-     * @description Validates and stores the complete promotion policy on the table. Newly included tag columns are added synchronously before the request returns, in the same commit as the policy. Send back the revision the policy was read at to be refused rather than overwrite a change made since; omit it to replace whatever is stored.
+     * @description Validates and stores the complete promotion policy on the table. Newly included tag columns, and the columns of exact attribute includes the attribute cap has room for, are added synchronously before the request returns, in the same commit as the policy. Send back the revision the policy was read at to be refused rather than overwrite a change made since; omit it to replace whatever is stored.
      */
     put: operations["putTablePromotion"];
     post?: never;
@@ -10120,6 +10120,7 @@ export interface components {
        */
       v: number;
     };
+    /** @description An attribute path whose columns writers stop filling, unless an include covers it, and which are removed from the table at scheduledRemovalAt. No exclude entry is allowed while excludeAllByDefault is on. */
     PromotionPolicyAttributeExclude: {
       path: string;
       /** @default false */
@@ -10130,8 +10131,12 @@ export interface components {
        */
       readonly scheduledRemovalAt?: string;
     };
+    /** @description An attribute path indexed whatever an exclude entry or excludeAllByDefault says. It counts against the cap: an exact entry gets its columns when the policy is stored, if the cap has room, and the paths beneath a nested entry are discovered like any other. */
     PromotionPolicyAttributeInclude: {
-      /** @default false */
+      /**
+       * @description Whether the path gets a numeric index column when the policy is stored, without waiting for a number. Exact entries only: refused when prefix is true.
+       * @default false
+       */
       numeric?: boolean;
       path: string;
       /** @default false */
@@ -10145,6 +10150,16 @@ export interface components {
       cap: number;
       /** @default [] */
       exclude?: components["schemas"]["PromotionPolicyAttributeExclude"][];
+      /**
+       * @description Whether every path no include covers is excluded. Writers stop filling the existing columns no include covers, and they are removed from the table at excludeAllScheduledRemovalAt.
+       * @default false
+       */
+      excludeAllByDefault?: boolean;
+      /**
+       * Format: date-time
+       * @description When the columns excludeAllByDefault excludes are removed from the table, assigned by the server. Turning excludeAllByDefault off before then keeps them.
+       */
+      readonly excludeAllScheduledRemovalAt?: string;
       /** @default [] */
       include?: components["schemas"]["PromotionPolicyAttributeInclude"][];
     };
@@ -16915,7 +16930,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    /** @description The complete promotion policy document. It is decoded by the same strict codec that reads the stored policy: every field is typed exactly, no unknown field is accepted at any depth, and no value is coerced. It replaces the stored policy rather than patching it, and both groups are required -- a body that omits "tags" or "attributes" is rejected, not read as a request to stop discovery for that group. The cap is the switch: send a group with "cap": 0 to stop it promoting fields it has not seen before. That does not blank the group -- the columns the table already carries keep being written, and a path is stopped by naming it in that group's exclude list. Read the current policy and send it back whole, changing only what you mean to change. */
+    /** @description The complete promotion policy document. It is decoded by the same strict codec that reads the stored policy: every field is typed exactly, no unknown field is accepted at any depth, and no value is coerced. It replaces the stored policy rather than patching it, and both groups are required -- a body that omits "tags" or "attributes" is rejected, not read as a request to stop discovery for that group. The cap is the switch: send a group with "cap": 0 to stop it promoting fields it has not seen before, which for attributes includes the paths it includes. That does not blank the group -- the columns the table already carries keep being written. A field is stopped by naming it in that group's exclude list, or, for attributes, by setting "excludeAllByDefault", which stops every path the include list does not cover. Read the current policy and send it back whole, changing only what you mean to change. */
     requestBody: {
       content: {
         "application/json": components["schemas"]["PromotionPolicy"];

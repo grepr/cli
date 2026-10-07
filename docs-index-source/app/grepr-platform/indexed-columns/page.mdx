@@ -27,25 +27,30 @@ For each group, you choose whether Grepr discovers new fields, which fields it a
 
 When discovery is on, Grepr adds a column for a new field it finds in your logs, until the group has as many columns as its _discovery cap_. Your organization sets the largest cap you can choose. The tag cap doesn't count `service` and `host`.
 
-Discovery is off for a new dataset, so until you turn it on, Grepr indexes only `service`, `host`, and the fields on the always-index lists.
+For attributes, the cap counts every attribute column, including the ones for paths on the always-index list, so to make room for more paths, raise the cap.
+
+Discovery is off for a new dataset, so until you turn it on, Grepr indexes only `service`, `host`, and the tag keys on the always-index list. Attribute paths on the always-index list get columns after you turn discovery on. Discovery then also indexes other attribute paths it finds, so to index only the paths you list, turn on **Exclude all by default** as well. See [Always index and never index](#lists).
 
 When discovery is on and Grepr finds a number at an indexed path, the path also gets a numeric column. A numeric column doesn't count toward the cap.
 
-Turning discovery off stops Grepr from adding columns. Columns the table already has keep being written. To stop writing a column, add the field to the never-index list.
+Turning discovery off stops Grepr from adding columns for new fields. Columns the table already has keep being written. To stop writing a column, add the field to the never-index list.
 
 ## Always index and never index [#lists]
 
-Grepr indexes a field on an always-index list whether discovery is on or off, and whether or not the group has reached its cap. Grepr stops writing a field on a never-index list.
+Grepr stops writing a field on a never-index list.
 
 For attribute paths:
 
 - A path matches exactly and is case-sensitive. Write the path as it appears in the log.
 - An entry that includes nested paths covers the path and every path under it, split at dots. For example, `kube` with nested paths covers `kube` and `kube.pod.name`, but not `kubernetes`. Wildcards aren't supported.
-- An always-index entry marked numeric gets its numeric column the next time a pipeline writes the path, whether or not discovery is on. Use it for values that are numbers written as strings.
-- When a path is on both lists, always index wins. To stop indexing a subtree except for one path, add the subtree to the never-index list with nested paths, and add the one path to the always-index list.
+- A path on the always-index list counts toward the cap. An exact path gets its column when you save, if the table is under its cap; if it isn't, the path gets its column when you save a higher cap. Paths under a nested entry are discovered like any other path, so they get columns as pipelines find them, up to the cap.
+- An always-index entry marked numeric gets its numeric column when you save, even when the table has reached its cap, as long as the path has its value column. Use it for values that are numbers written as strings. Only an exact path can be marked numeric: a path under a nested entry gets its numeric column when Grepr finds a number there.
+- Always index wins over never index. To stop indexing a subtree except for one path, add the subtree to the never-index list with nested paths, and add the one path to the always-index list. An always-index entry can't cover a never-index entry entirely, because the never-index entry would then never take effect.
+- To index only the paths on the always-index list, turn on **Exclude all by default**. Columns the table already has for other paths stop being written and are removed from the table on the same schedule as a field on a never-index list. See [Excluded fields and removed columns](#excluded). Turning it off before the removal keeps them. The never-index list must be empty while it's on, because every other path is already excluded. To stop discovering new paths but keep writing the columns you have, set the cap to the number of columns the table has instead.
 
 For tag keys:
 
+- Grepr indexes a key on the always-index list whether discovery is on or off, and whether or not the group has reached its cap.
 - A key matches exactly.
 - A key can't be on both lists.
 - `service`, `host`, and any key the table is partitioned on can't be on the never-index list.
@@ -53,7 +58,7 @@ For tag keys:
 
 ## When changes take effect
 
-A change reaches running pipelines within about a minute, without a restart. A tag key you add to the always-index list gets its column when you save, so you can partition on it immediately. An attribute path gets its column the next time a pipeline writes a log that has it.
+A change reaches running pipelines within about a minute, without a restart. A tag key you add to the always-index list gets its column when you save, so you can partition on it immediately. An exact attribute path you add gets its column when you save, if the table is under its cap. A discovered path gets its column after pipelines find it in more than one log, while the table is under its cap.
 
 ## Excluded fields and removed columns [#excluded]
 
@@ -61,13 +66,13 @@ When you add a field to a never-index list, Grepr stops writing the field's colu
 
 Grepr schedules the column for removal from the table 6 hours after you exclude the field, and the table's indexing settings show that time under the field. While the pipeline is receiving logs, the column is removed at that time or within about an hour after it. A pipeline that receives no logs removes it once logs arrive again. Until then the column still counts toward the discovery cap; once it's removed, its place is free. Logs written before the removal stay searchable through their attributes and tags, but searches on that field no longer skip files using the column.
 
-If you take the field off the never-index list before then, the removal is cancelled: Grepr goes back to writing the same column, and everything already indexed in it stays. After the removal, the field gets a new column the same way a field that was never indexed does: from the always-index list (a tag key when you save, an attribute path with the next log that has it), or from discovery if the table is under its discovery cap. The new column covers only logs written from then on.
+If you take the field off the never-index list before then, the removal is cancelled: Grepr goes back to writing the same column, and everything already indexed in it stays. After the removal, the field gets a new column the same way a field that was never indexed does: from the always-index list when you save, if the table is under its cap for an attribute path, or from discovery if the table is under its discovery cap. The new column covers only logs written from then on.
 
 ## Change indexing through the API
 
 Reading a table's configuration returns its indexing settings with a `revision`. To change them, send the complete settings for both groups to the promotion endpoint, which replaces what's stored. Include the `revision` you read: if the settings changed since then, the request fails with a 409 error, and you read them again before you retry. Without a `revision`, the request replaces the stored settings whatever they are. See the [Datasets specification](/apis/api-spec#tag/Datasets).
 
-Each excluded attribute entry, and each excluded tag key under `tags.scheduledRemovalAt`, comes back with `scheduledRemovalAt`: when Grepr removes its columns. Grepr sets it when the entry is first saved and ignores any value you send. To change how long Grepr waits before removing an excluded column, set `columnRemovalDelay` to an ISO-8601 duration from `PT2M` (2 minutes) to `P30D` (30 days). Without it, the delay is 6 hours. A new delay applies to entries you exclude from then on.
+Each excluded attribute entry, and each excluded tag key under `tags.scheduledRemovalAt`, comes back with `scheduledRemovalAt`: when Grepr removes its columns. While `attributes.excludeAllByDefault` is on, `attributes.excludeAllScheduledRemovalAt` is when Grepr removes the columns it excludes. Grepr sets it when the entry is first saved and ignores any value you send. To change how long Grepr waits before removing an excluded column, set `columnRemovalDelay` to an ISO-8601 duration from `PT2M` (2 minutes) to `P30D` (30 days). Without it, the delay is 6 hours. A new delay applies to entries you exclude from then on.
 
 <HiddenFAQ faqs={[
   {
@@ -76,7 +81,7 @@ Each excluded attribute entry, and each excluded tag key under `tags.scheduledRe
   },
   {
     q: "Do I have to list the fields I want indexed?",
-    a: "No, if you turn on discovery. Grepr then adds a column for each new field it finds, up to the discovery cap. Discovery is off for a new dataset. List a field on the always-index list to index it whether or not discovery is on."
+    a: "No, if you turn on discovery. Grepr then adds a column for each new field it finds, up to the discovery cap. Discovery is off for a new dataset. List a tag key on the always-index list to index it whether or not discovery is on. An attribute path on the always-index list counts toward the cap, so it gets a column only while the table is under its cap."
   },
   {
     q: "Do my searches change when a field is indexed?",
@@ -84,7 +89,7 @@ Each excluded attribute entry, and each excluded tag key under `tags.scheduledRe
   },
   {
     q: "What happens when I turn discovery off?",
-    a: "Grepr stops adding columns. Every column the table already has keeps being written, and fields on the always-index list keep their columns."
+    a: "Grepr stops adding columns for new fields, including for attribute paths on the always-index list. Every column the table already has keeps being written."
   },
   {
     q: "How do I stop Grepr from writing a column?",
@@ -92,11 +97,15 @@ Each excluded attribute entry, and each excluded tag key under `tags.scheduledRe
   },
   {
     q: "What if an attribute path is on both the always-index and never-index lists?",
-    a: "Always index wins. You can exclude a subtree with a nested-paths entry and keep one path inside it indexed. A tag key can't be on both lists."
+    a: "Always index wins. You can exclude a subtree with a nested-paths entry and keep one path inside it indexed. An always-index entry can't cover a never-index entry entirely, because the never-index entry would then never take effect. A tag key can't be on both lists."
+  },
+  {
+    q: "How do I index only the attribute paths I list?",
+    a: "Turn on Exclude all by default. Every path that isn't on the always-index list stops being indexed, including paths the table already has columns for, and the never-index list must be empty. Grepr removes those columns from the table 6 hours later, unless you turn it off before then."
   },
   {
     q: "When do indexing changes take effect?",
-    a: "Within about a minute on running pipelines, without a restart. A tag key you add gets its column when you save. An attribute path you add gets its column the next time a pipeline writes a log that has it."
+    a: "Within about a minute on running pipelines, without a restart. A tag key you add gets its column when you save. An exact attribute path you add gets its column when you save, if the table is under its cap. A discovered path gets its column after pipelines find it in more than one log."
   },
   {
     q: "Can I delete an indexed column?",
@@ -108,6 +117,6 @@ Each excluded attribute entry, and each excluded tag key under `tags.scheduledRe
   },
   {
     q: "What does marking an always-index path numeric do?",
-    a: "The path gets its numeric column the next time a pipeline writes it, whether or not discovery is on. Use it for values that are numbers written as strings."
+    a: "The path gets its numeric column when you save, even when the table has reached its cap, as long as the path has its value column. Use it for values that are numbers written as strings. Only an exact path can be marked numeric."
   }
 ]} />
