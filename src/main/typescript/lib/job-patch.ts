@@ -7,7 +7,6 @@ import {
   SchemaAttributesMergeStrategyEntry,
   SchemaEventPredicate,
   SchemaLogReducerTemplateInput,
-  SchemaLogReducerFilters,
   SchemaLogsFilter,
   SchemaLogsIcebergTableSink,
   SchemaTemplateLogSink,
@@ -68,12 +67,8 @@ export type AggregationStrategy =
   | `${MinAttributesMergeStrategyType}`
   | `${MaxAttributesMergeStrategyType}`
   | `${AverageAttributesMergeStrategyType}`;
-export type FilterPhase = keyof SchemaLogReducerFilters;
 
-/**
- * The processing phases that map to a template `transforms` chain slot. A strict
- * subset of {@link FilterPhase}.
- */
+/** The processing phases that map to a template `transforms` chain slot. */
 export type TemplateTransformPhase = 'pre-parser' | 'pre-warehouse' | 'pre-exceptions';
 
 /** The accepted-phases suffix shared by every template transform-phase error. */
@@ -182,13 +177,13 @@ export type JobPatchOp =
     }
   | {
       op: 'set-filter';
-      phase: FilterPhase;
+      phase: TemplateTransformPhase;
       /** Filter for this phase (one per phase). Template: written as a transform-chain gate; job-graph: replaces the canonical filter vertex. */
       filter: SchemaLogsFilter;
     }
   | {
       op: 'clear-filter';
-      phase: FilterPhase;
+      phase: TemplateTransformPhase;
     }
   // Template-only transform-chain ops. Each targets a `transforms` slot by
   // camel-case-equivalent phase and replaces or removes that whole chain.
@@ -1221,7 +1216,7 @@ function jobGraphSetRawDataset(jobGraph: SchemaGreprJobGraph, datasetId: string,
 
 function jobGraphSetFilter(
   jobGraph: SchemaGreprJobGraph,
-  phase: FilterPhase,
+  phase: TemplateTransformPhase,
   filter: SchemaLogsFilter,
   index: number,
 ): void {
@@ -1233,7 +1228,7 @@ function jobGraphSetFilter(
   replaceRawFilterVertex(jobGraph, rawName, filter as unknown as Record<string, unknown>, 'set-filter', index);
 }
 
-function jobGraphClearFilter(jobGraph: SchemaGreprJobGraph, phase: FilterPhase, index: number): void {
+function jobGraphClearFilter(jobGraph: SchemaGreprJobGraph, phase: TemplateTransformPhase, index: number): void {
   const rawName = rawFilterNameForPhase(phase, index, 'clear-filter');
   assertRawUiLogGraph(jobGraph, 'clear-filter', index, [rawName]);
   replaceRawFilterVertex(
@@ -1475,7 +1470,7 @@ function jobGraphUpdateReducerException(vertices: SchemaOperation[], from: Schem
   reducer.logReducerExceptions = existing;
 }
 
-function rawFilterNameForPhase(phase: FilterPhase, index: number, opLabel: string): string {
+function rawFilterNameForPhase(phase: TemplateTransformPhase, index: number, opLabel: string): string {
   switch (phase) {
     case 'pre-parser':
       return RAW_PRE_PARSER_FILTER;
@@ -1897,7 +1892,7 @@ interface FilterGateMatch {
  * transform-backed phases are accepted; any other phase fails with the shared
  * accepted-phases error.
  */
-function phaseToTransformSlot(phase: FilterPhase, index: number, opLabel: string): keyof SchemaTransforms {
+function phaseToTransformSlot(phase: TemplateTransformPhase, index: number, opLabel: string): keyof SchemaTransforms {
   switch (phase) {
     case 'pre-parser':
       return 'preParser';
@@ -1995,7 +1990,7 @@ function findSimpleRootFilterGate(root: SchemaChainNode): FilterGateMatch | unde
  */
 function applySetFilter(
   input: SchemaLogReducerTemplateInput,
-  phase: FilterPhase,
+  phase: TemplateTransformPhase,
   filter: SchemaLogsFilter,
   index: number,
 ): void {
@@ -2027,7 +2022,7 @@ function applySetFilter(
  * slot holds a chain that is not an unambiguous filter gate, rather than
  * guessing which branch is the filter.
  */
-function applyClearFilter(input: SchemaLogReducerTemplateInput, phase: FilterPhase, index: number): void {
+function applyClearFilter(input: SchemaLogReducerTemplateInput, phase: TemplateTransformPhase, index: number): void {
   const slot = phaseToTransformSlot(phase, index, 'clear-filter');
   const transforms = input.transforms;
   const existing = transforms?.[slot];

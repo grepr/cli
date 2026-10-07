@@ -15,7 +15,6 @@ import {
   GreprRawLogsSourceType,
   GreprRawSpanSourceType,
   GreprReducerLogSourceType,
-  TrinoLlmPromptResultsSourceType,
   TrinoRawLogsSourceType,
   TrinoRawSpanSourceType,
   TrinoReducerLogSourceType,
@@ -40,10 +39,6 @@ describe('job-graph-utils', () => {
       // Truncating a span source mid-trace produces broken traces, so Trino
       // spans must not gain a truncation behavior Athena's span source avoids.
       expect(canLimit(vertexOfType(TrinoRawSpanSourceType.trino_raw_span_source))).toBe(false);
-    });
-
-    it('test_canLimit_trinoLlmPromptResultsSource_returnsFalse', () => {
-      expect(canLimit(vertexOfType(TrinoLlmPromptResultsSourceType.trino_llm_prompt_results_source))).toBe(false);
     });
 
     it('test_canLimit_greprRawLogSource_returnsTrue', () => {

@@ -1637,94 +1637,6 @@
         ],
         "type": "object"
       },
-      "AiPipelineTemplateInput": {
-        "description": "Schema for the AI pipeline job graph.",
-        "properties": {
-          "datasetId": {
-            "description": "The unique identifier for the dataset.",
-            "pattern": "^[0-9a-z]{13}$",
-            "type": "string"
-          },
-          "entityContextAggregation": {
-            "$ref": "#/components/schemas/EntityContextAggregation"
-          },
-          "exceptions": {
-            "description": "A list of template-specific exceptions to apply in the pipeline.",
-            "items": {
-              "$ref": "#/components/schemas/TemplateException"
-            },
-            "type": "array"
-          },
-          "filters": {
-            "$ref": "#/components/schemas/LogReducerFilters"
-          },
-          "llmPrompts": {
-            "description": "LLM prompt configurations.",
-            "items": {
-              "$ref": "#/components/schemas/LlmPrompt"
-            },
-            "maxItems": 2147483647,
-            "minItems": 1,
-            "type": "array"
-          },
-          "llmResultsDatasetId": {
-            "description": "Optional dataset ID for storing LLM prompt results in an Iceberg table.",
-            "pattern": "^[0-9a-z]{13}$",
-            "type": "string"
-          },
-          "parsers": {
-            "description": "A list of parsers to be applied to the data.",
-            "items": {
-              "$ref": "#/components/schemas/Operation"
-            },
-            "type": "array"
-          },
-          "patternMatcher": {
-            "$ref": "#/components/schemas/PatternMatcher"
-          },
-          "processedLogsSink": {
-            "$ref": "#/components/schemas/LogsIcebergTableSink"
-          },
-          "processedLogsSinkFilter": {
-            "$ref": "#/components/schemas/LogsFilter"
-          },
-          "sampler": {
-            "$ref": "#/components/schemas/LogsEventSampler"
-          },
-          "sinks": {
-            "description": "A list of template log sinks, each specific to a vendor with optional filter configuration.",
-            "items": {
-              "$ref": "#/components/schemas/TemplateLogSink"
-            },
-            "type": "array"
-          },
-          "sources": {
-            "description": "A list of data sources, each conforming to one of the defined source types.",
-            "items": {
-              "$ref": "#/components/schemas/Operation"
-            },
-            "type": "array"
-          },
-          "sqlOperations": {
-            "$ref": "#/components/schemas/SqlOperations"
-          },
-          "triggerAction": {
-            "$ref": "#/components/schemas/TriggerActionConfig"
-          }
-        },
-        "required": [
-          "datasetId",
-          "exceptions",
-          "filters",
-          "llmPrompts",
-          "parsers",
-          "patternMatcher",
-          "sinks",
-          "sources"
-        ],
-        "title": "AI Pipeline Inputs Schema",
-        "type": "object"
-      },
       "AllQueryNode": {
         "properties": {
           "type": {
@@ -2051,7 +1963,6 @@
               "logs_raw",
               "logs_dedup",
               "logs_pattern_lookup",
-              "llm_prompt_results",
               "metrics_raw",
               "metricdata_raw",
               "spans_raw",
@@ -5353,116 +5264,6 @@
         ],
         "type": "object"
       },
-      "EmbeddingConfig": {
-        "description": "Configuration for an embedding model. The \u0027type\u0027 field determines the provider.",
-        "discriminator": {
-          "propertyName": "type"
-        },
-        "properties": {
-          "dimensions": {
-            "format": "int32",
-            "type": "integer"
-          },
-          "model": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "type"
-        ],
-        "type": "object"
-      },
-      "EntityContextAggregation": {
-        "properties": {
-          "capacity": {
-            "default": 50,
-            "description": "Maximum number of concurrent LLM calls per operator instance.",
-            "example": 50,
-            "format": "int32",
-            "type": "integer"
-          },
-          "entityAttributes": {
-            "default": [],
-            "items": {
-              "description": "Attributes that identify the entity, using dot notation for nested paths. For example, `k8s.namespace.name`.",
-              "example": "[\"k8s.namespace.name\"]",
-              "title": "Entity attributes",
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "entityTags": {
-            "default": [],
-            "items": {
-              "description": "Tag keys that identify the entity. For example, to maintain context per service, specify `service`. Multiple tags form a composite key.",
-              "example": "[\"service\"]",
-              "title": "Entity tags",
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "integrationId": {
-            "description": "The LLM integration ID (Gemini or OpenAI).",
-            "example": "0kk67gfs56a",
-            "type": "string"
-          },
-          "llmConfig": {
-            "$ref": "#/components/schemas/LlmConfig"
-          },
-          "maxRetries": {
-            "default": 2,
-            "description": "Maximum retries for failed LLM calls.",
-            "example": 2,
-            "format": "int32",
-            "type": "integer"
-          },
-          "maxSummaryTokens": {
-            "default": 2000,
-            "description": "Maximum token budget for the entity summary. The system prompt instructs the LLM to keep the summary within this bound.",
-            "example": 2000,
-            "format": "int32",
-            "maximum": 10000,
-            "minimum": 100,
-            "type": "integer"
-          },
-          "name": {
-            "example": "operation_name",
-            "pattern": "[a-z0-9_]{1,128}",
-            "type": "string"
-          },
-          "systemPromptOverride": {
-            "description": "Optional system prompt override. When null, a default system prompt is used that instructs the LLM to maintain a rolling entity summary and report whether the update is broadcast-worthy.",
-            "type": "string"
-          },
-          "timeoutSeconds": {
-            "default": 30,
-            "description": "Timeout for LLM calls in seconds.",
-            "example": 30,
-            "format": "int32",
-            "type": "integer"
-          },
-          "type": {
-            "description": "Maintains per-entity rolling context summaries using an LLM. Broadcasts significant updates for downstream prompt enrichment.",
-            "enum": [
-              "entity-context-aggregation"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "integrationId",
-          "llmConfig",
-          "name",
-          "type"
-        ],
-        "type": "object",
-        "x-tags": [
-          "Transforms"
-        ]
-      },
       "EntityRef": {
         "description": "A reference to an Entity associated with produced telemetry.",
         "properties": {
@@ -6159,89 +5960,6 @@
           "vertices"
         ],
         "type": "object"
-      },
-      "GreprLlmPromptResultsSource": {
-        "properties": {
-          "datasetId": {
-            "description": "The ID of the dataset to read data from.",
-            "pattern": "[a-z0-9]{1,13}",
-            "type": "string"
-          },
-          "end": {
-            "description": "End of time interval to query data for.",
-            "example": "2023-01-01T01:00:00Z",
-            "format": "date-time",
-            "type": "string"
-          },
-          "limit": {
-            "default": 2500,
-            "description": "The maximum number of rows to process",
-            "format": "int32",
-            "type": "integer"
-          },
-          "name": {
-            "example": "operation_name",
-            "pattern": "[a-z0-9_]{1,128}",
-            "type": "string"
-          },
-          "offset": {
-            "default": 0,
-            "description": "Offset on the number of rows to process",
-            "format": "int32",
-            "minimum": 0,
-            "type": "integer"
-          },
-          "query": {
-            "$ref": "#/components/schemas/query"
-          },
-          "sortOrder": {
-            "default": "ASCENDING",
-            "description": "The order in which the rows should be sorted by",
-            "enum": [
-              "ASCENDING",
-              "DESCENDING",
-              "UNSORTED"
-            ],
-            "type": "string"
-          },
-          "start": {
-            "description": "Start of time interval to query data for.",
-            "example": "2023-01-01T00:00:00Z",
-            "format": "date-time",
-            "type": "string"
-          },
-          "type": {
-            "description": "Reads LLM prompt result events using Grepr\u0027s internal query system from an Iceberg Table.",
-            "enum": [
-              "grepr-llm-prompt-results-source"
-            ],
-            "type": "string"
-          },
-          "variables": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/Any"
-            },
-            "default": {},
-            "description": "Variables that can be used to modify the query while parsed",
-            "example": {
-              "__application": "app1",
-              "__service": "service1"
-            },
-            "type": "object"
-          }
-        },
-        "required": [
-          "datasetId",
-          "end",
-          "name",
-          "query",
-          "start",
-          "type"
-        ],
-        "type": "object",
-        "x-tags": [
-          "Sources"
-        ]
       },
       "GreprMetricsSource": {
         "properties": {
@@ -8095,279 +7813,6 @@
           "type": "litellm"
         }
       },
-      "LlmConfig": {
-        "description": "Configuration for the LLM provider and model.",
-        "properties": {
-          "maxTokens": {
-            "default": 8192,
-            "description": "Maximum tokens in the response.",
-            "example": 8192,
-            "format": "int32",
-            "type": "integer"
-          },
-          "model": {
-            "description": "The model identifier.",
-            "example": "gemini-1.5-flash",
-            "type": "string"
-          },
-          "providerConfigs": {
-            "additionalProperties": {
-              "description": "Provider-specific configuration. For OPENAI, may include \u0027baseUrl\u0027. For GEMINI, may include \u0027projectId\u0027.",
-              "example": "{\"baseUrl\":\"https://api.openai.com/v1\"}",
-              "type": "string"
-            },
-            "default": {},
-            "description": "Provider-specific configuration. For OPENAI, may include \u0027baseUrl\u0027. For GEMINI, may include \u0027projectId\u0027.",
-            "example": {
-              "baseUrl": "https://api.openai.com/v1"
-            },
-            "type": "object"
-          },
-          "temperature": {
-            "default": 0.0,
-            "description": "Temperature for response generation. Lower values are more deterministic.",
-            "example": 0.0,
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "model"
-        ],
-        "type": "object"
-      },
-      "LlmPrompt": {
-        "properties": {
-          "availableRuleTypes": {
-            "default": [],
-            "description": "Rule types that the LLM can produce as output. When non-empty, the LLM output schema is augmented with a \u0027rules\u0027 field describing the available rule type schemas. Rules returned by the LLM are parsed and persisted to the LogRulesApplication operator for dynamic per-pattern rule application.",
-            "example": [
-              "masking",
-              "time-series"
-            ],
-            "items": {
-              "description": "Rule types that the LLM can produce as output. When non-empty, the LLM output schema is augmented with a \u0027rules\u0027 field describing the available rule type schemas. Rules returned by the LLM are parsed and persisted to the LogRulesApplication operator for dynamic per-pattern rule application.",
-              "example": "[\"masking\",\"time-series\"]",
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "availableTools": {
-            "default": [],
-            "description": "MCP tool integrations available for the LLM to invoke as terminal actions. Each entry references an integration that exposes MCP-compatible tools.",
-            "items": {
-              "$ref": "#/components/schemas/LlmToolConfig"
-            },
-            "type": "array"
-          },
-          "capacity": {
-            "default": 100,
-            "description": "Maximum number of concurrent LLM calls per operator instance. Note: Total concurrent calls \u003d capacity × Flink parallelism. For example, with parallelism\u003d4 and capacity\u003d100, up to 400 concurrent calls may occur. Consider your LLM provider\u0027s rate limits when configuring this value.",
-            "example": 100,
-            "format": "int32",
-            "type": "integer"
-          },
-          "integrationId": {
-            "description": "The LLM integration ID (Gemini or OpenAI).",
-            "example": "0kk67gfs56a",
-            "type": "string"
-          },
-          "llmConfig": {
-            "$ref": "#/components/schemas/LlmConfig"
-          },
-          "maxRetries": {
-            "default": 2,
-            "description": "Maximum number of retries for failed LLM calls.",
-            "example": 2,
-            "format": "int32",
-            "type": "integer"
-          },
-          "name": {
-            "example": "operation_name",
-            "pattern": "[a-z0-9_]{1,128}",
-            "type": "string"
-          },
-          "outputActions": {
-            "default": [],
-            "description": "Controls where LLM-enriched events are routed after processing. Multiple actions can be combined.",
-            "example": [
-              "FORWARD_TO_SINKS"
-            ],
-            "items": {
-              "description": "Actions to perform on LLM-enriched events after processing. Multiple actions can be combined.",
-              "enum": [
-                "FORWARD_TO_SINKS"
-              ],
-              "example": "[\"FORWARD_TO_SINKS\"]",
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "outputSchema": {
-            "description": "JSON Schema defining the expected structure of the LLM output. When set, the LLM is instructed to return structured JSON matching this schema. The output will include an \u0027actionable\u0027 boolean and a \u0027user_result\u0027 object. Supports standard JSON Schema property keywords: type, description, and enum.",
-            "example": "{\"type\":\"object\",\"properties\":{\"severity\":{\"type\":\"string\",\"description\":\"How severe is this event\",\"enum\":[\"low\",\"medium\",\"high\"]},\"summary\":{\"type\":\"string\",\"description\":\"Brief summary of the event\"},\"pii_found\":{\"type\":\"boolean\",\"description\":\"Whether PII was detected\"},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"severity\",\"summary\",\"pii_found\",\"tags\"],\"additionalProperties\":false}",
-            "type": "string"
-          },
-          "predicate": {
-            "$ref": "#/components/schemas/EventPredicate"
-          },
-          "promptInstruction": {
-            "description": "The user\u0027s prompt instruction describing what the LLM should do. Context (event JSON, entity context, similar patterns) is assembled automatically by the system — do not include placeholders.",
-            "example": "Classify this log pattern and identify any PII or anomalies.",
-            "type": "string"
-          },
-          "responseFormat": {
-            "default": "TEXT",
-            "description": "The format for the LLM response.",
-            "enum": [
-              "TEXT",
-              "JSON"
-            ],
-            "example": "JSON",
-            "type": "string"
-          },
-          "timeoutSeconds": {
-            "default": 30,
-            "description": "Timeout for LLM calls in seconds.",
-            "example": 30,
-            "format": "int32",
-            "type": "integer"
-          },
-          "type": {
-            "description": "Runs LLM prompts on new log patterns.",
-            "enum": [
-              "llm-prompt"
-            ],
-            "type": "string"
-          },
-          "workflowConfig": {
-            "$ref": "#/components/schemas/LlmWorkflowConfig"
-          }
-        },
-        "required": [
-          "integrationId",
-          "llmConfig",
-          "name",
-          "promptInstruction",
-          "type"
-        ],
-        "type": "object",
-        "x-tags": [
-          "Transforms"
-        ]
-      },
-      "LlmPromptResultsIcebergTableSource": {
-        "properties": {
-          "datasetId": {
-            "description": "The ID of the dataset to read data from.",
-            "pattern": "[a-z0-9]{1,13}",
-            "type": "string"
-          },
-          "end": {
-            "description": "End of time interval to query data for.",
-            "example": "2023-01-01T01:00:00Z",
-            "format": "date-time",
-            "type": "string"
-          },
-          "limit": {
-            "default": 2500,
-            "description": "The maximum number of rows to process",
-            "format": "int32",
-            "type": "integer"
-          },
-          "name": {
-            "example": "operation_name",
-            "pattern": "[a-z0-9_]{1,128}",
-            "type": "string"
-          },
-          "offset": {
-            "default": 0,
-            "description": "Offset on the number of rows to process",
-            "format": "int32",
-            "minimum": 0,
-            "type": "integer"
-          },
-          "query": {
-            "$ref": "#/components/schemas/query"
-          },
-          "sortOrder": {
-            "default": "ASCENDING",
-            "description": "The order in which the rows should be sorted by",
-            "enum": [
-              "ASCENDING",
-              "DESCENDING",
-              "UNSORTED"
-            ],
-            "type": "string"
-          },
-          "start": {
-            "description": "Start of time interval to query data for.",
-            "example": "2023-01-01T00:00:00Z",
-            "format": "date-time",
-            "type": "string"
-          },
-          "type": {
-            "description": "Reads LLM prompt results from an Iceberg table for processing.",
-            "enum": [
-              "llm-prompt-results-iceberg-table-source"
-            ],
-            "type": "string"
-          },
-          "variables": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/Any"
-            },
-            "default": {},
-            "description": "Variables that can be used to modify the query while parsed",
-            "example": {
-              "__application": "app1",
-              "__service": "service1"
-            },
-            "type": "object"
-          }
-        },
-        "required": [
-          "datasetId",
-          "end",
-          "name",
-          "query",
-          "start",
-          "type"
-        ],
-        "type": "object",
-        "x-tags": [
-          "Sources"
-        ]
-      },
-      "LlmToolConfig": {
-        "description": "MCP tool integrations available for the LLM to invoke as terminal actions. Each entry references an integration that exposes MCP-compatible tools.",
-        "properties": {
-          "allowedTools": {
-            "description": "Which tools from this MCP server to expose to the LLM. If empty or null, all tools from the server are available.",
-            "items": {
-              "description": "Which tools from this MCP server to expose to the LLM. If empty or null, all tools from the server are available.",
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "description": {
-            "description": "Optional description override for the LLM to understand when to use this integration. e.g., \"Use this to create tickets for anomalous behavior\"",
-            "type": "string"
-          },
-          "integrationId": {
-            "description": "Integration ID for the MCP server (e.g., a Notion integration).",
-            "example": "0kk67gfs56a",
-            "type": "string"
-          }
-        },
-        "required": [
-          "integrationId"
-        ],
-        "type": "object"
-      },
       "LlmUsageWindow": {
         "properties": {
           "end": {
@@ -8399,25 +7844,6 @@
             "type": "integer"
           }
         },
-        "type": "object"
-      },
-      "LlmWorkflowConfig": {
-        "description": "Configuration for the LLM workflow strategy.",
-        "discriminator": {
-          "mapping": {
-            "rag": "#/components/schemas/Rag",
-            "simple": "#/components/schemas/Simple"
-          },
-          "propertyName": "type"
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/Simple"
-          },
-          {
-            "$ref": "#/components/schemas/Rag"
-          }
-        ],
         "type": "object"
       },
       "LogAttributesRemapper": {
@@ -8934,6 +8360,15 @@
             "title": "Attributes merge strategy entries",
             "type": "array"
           },
+          "attributeTokenization": {
+            "default": "KEYS_AND_VALUES",
+            "description": "Use attribute shape only, or shape and whole-value similarity tokens.",
+            "enum": [
+              "KEYS_ONLY",
+              "KEYS_AND_VALUES"
+            ],
+            "type": "string"
+          },
           "dedupThreshold": {
             "default": 4,
             "description": "Number of duplicates we send for a pattern before we start deduplication.",
@@ -9017,6 +8452,32 @@
               "type": "string"
             },
             "title": "Enabled masks",
+            "type": "array"
+          },
+          "excludedAttributePrefixes": {
+            "default": [],
+            "description": "Excluded attribute prefixes as arrays of literal key segments. Does not affect partition-by values or output attributes.",
+            "items": {
+              "description": "Excluded attribute prefixes as arrays of literal key segments. Does not affect partition-by values or output attributes.",
+              "items": {
+                "description": "Excluded attribute prefixes as arrays of literal key segments. Does not affect partition-by values or output attributes.",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "includedAttributePrefixes": {
+            "default": [],
+            "description": "Included attribute prefixes as arrays of literal key segments. Empty selects all. Array elements are traversed without indices.",
+            "items": {
+              "description": "Included attribute prefixes as arrays of literal key segments. Empty selects all. Array elements are traversed without indices.",
+              "items": {
+                "description": "Included attribute prefixes as arrays of literal key segments. Empty selects all. Array elements are traversed without indices.",
+                "type": "string"
+              },
+              "type": "array"
+            },
             "type": "array"
           },
           "integrationExceptionConfigs": {
@@ -9181,6 +8642,17 @@
             "title": "Similarity threshold",
             "type": "number"
           },
+          "tokenizationInput": {
+            "default": "MESSAGE_ONLY",
+            "description": "Selects message text, attributes, both, or message text with an attributes fallback.",
+            "enum": [
+              "MESSAGE_ONLY",
+              "ATTRIBUTES_ONLY",
+              "MESSAGE_AND_ATTRIBUTES",
+              "AUTO"
+            ],
+            "type": "string"
+          },
           "type": {
             "description": "Reduces logs by combining messages with similar patterns.",
             "enum": [
@@ -9200,24 +8672,6 @@
         "x-tags": [
           "Transforms"
         ]
-      },
-      "LogReducerFilters": {
-        "description": "Filters applied at various stages of log processing.",
-        "properties": {
-          "pre-aggregation": {
-            "$ref": "#/components/schemas/LogsFilter"
-          },
-          "pre-exceptions": {
-            "$ref": "#/components/schemas/LogsFilter"
-          },
-          "pre-parser": {
-            "$ref": "#/components/schemas/LogsFilter"
-          },
-          "pre-warehouse": {
-            "$ref": "#/components/schemas/LogsFilter"
-          }
-        },
-        "type": "object"
       },
       "LogReducerTemplateInput": {
         "description": "Schema for the log reducer job graph.",
@@ -11551,9 +11005,7 @@
             "datadog-trace-agent-source": "#/components/schemas/DatadogTraceAgentSource",
             "datadog-trace-sink": "#/components/schemas/DatadogTraceSink",
             "discarding-sink": "#/components/schemas/DiscardingSink",
-            "entity-context-aggregation": "#/components/schemas/EntityContextAggregation",
             "event-dedup-iceberg-table-sink": "#/components/schemas/EventDedupIcebergTableSink",
-            "grepr-llm-prompt-results-source": "#/components/schemas/GreprLlmPromptResultsSource",
             "grepr-metrics-source": "#/components/schemas/GreprMetricsSource",
             "grepr-raw-log-source": "#/components/schemas/GreprRawLogsSource",
             "grepr-raw-span-source": "#/components/schemas/GreprRawSpanSource",
@@ -11562,8 +11014,6 @@
             "grok-parser": "#/components/schemas/GrokParser",
             "json-log-processor": "#/components/schemas/JsonLogProcessor",
             "legacy-datadog-metrics-sink": "#/components/schemas/LegacyDatadogMetricsSink",
-            "llm-prompt": "#/components/schemas/LlmPrompt",
-            "llm-prompt-results-iceberg-table-source": "#/components/schemas/LlmPromptResultsIcebergTableSource",
             "log-attributes-remapper": "#/components/schemas/LogAttributesRemapper",
             "log-reducer": "#/components/schemas/LogReducer",
             "log-rules-application": "#/components/schemas/LogRulesApplication",
@@ -11613,7 +11063,6 @@
             "traces-iceberg-table-source": "#/components/schemas/TracesIcebergTableSource",
             "trigger-action": "#/components/schemas/TriggerActionOp",
             "trino-analytics-source": "#/components/schemas/TrinoAnalyticsSource",
-            "trino-llm-prompt-results-source": "#/components/schemas/TrinoLlmPromptResultsSource",
             "trino-raw-log-source": "#/components/schemas/TrinoRawLogsSource",
             "trino-raw-span-source": "#/components/schemas/TrinoRawSpanSource",
             "trino-reducer-log-source": "#/components/schemas/TrinoReducerLogSource",
@@ -11670,9 +11119,6 @@
             "$ref": "#/components/schemas/MaskingOperator"
           },
           {
-            "$ref": "#/components/schemas/LlmPrompt"
-          },
-          {
             "$ref": "#/components/schemas/PatternMatcher"
           },
           {
@@ -11701,9 +11147,6 @@
           },
           {
             "$ref": "#/components/schemas/AgentSessionEventsIcebergTableSource"
-          },
-          {
-            "$ref": "#/components/schemas/LlmPromptResultsIcebergTableSource"
           },
           {
             "$ref": "#/components/schemas/MetricsIcebergTableSource"
@@ -11817,9 +11260,6 @@
             "$ref": "#/components/schemas/GreprRawSpanSource"
           },
           {
-            "$ref": "#/components/schemas/GreprLlmPromptResultsSource"
-          },
-          {
             "$ref": "#/components/schemas/TrinoAnalyticsSource"
           },
           {
@@ -11830,9 +11270,6 @@
           },
           {
             "$ref": "#/components/schemas/TrinoRawSpanSource"
-          },
-          {
-            "$ref": "#/components/schemas/TrinoLlmPromptResultsSource"
           },
           {
             "$ref": "#/components/schemas/SplunkLogAgentSource"
@@ -11887,9 +11324,6 @@
           },
           {
             "$ref": "#/components/schemas/TriggerActionOp"
-          },
-          {
-            "$ref": "#/components/schemas/EntityContextAggregation"
           },
           {
             "$ref": "#/components/schemas/MultiGrokParser"
@@ -12542,6 +11976,15 @@
       },
       "PatternMatcher": {
         "properties": {
+          "attributeTokenization": {
+            "default": "KEYS_AND_VALUES",
+            "description": "Use attribute shape only, or shape and whole-value similarity tokens.",
+            "enum": [
+              "KEYS_ONLY",
+              "KEYS_AND_VALUES"
+            ],
+            "type": "string"
+          },
           "delimiters": {
             "default": [
               ":",
@@ -12612,6 +12055,32 @@
               "type": "string"
             },
             "title": "Enabled masks",
+            "type": "array"
+          },
+          "excludedAttributePrefixes": {
+            "default": [],
+            "description": "Excluded attribute prefixes as arrays of literal key segments. Does not affect partition-by values or output attributes.",
+            "items": {
+              "description": "Excluded attribute prefixes as arrays of literal key segments. Does not affect partition-by values or output attributes.",
+              "items": {
+                "description": "Excluded attribute prefixes as arrays of literal key segments. Does not affect partition-by values or output attributes.",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "includedAttributePrefixes": {
+            "default": [],
+            "description": "Included attribute prefixes as arrays of literal key segments. Empty selects all. Array elements are traversed without indices.",
+            "items": {
+              "description": "Included attribute prefixes as arrays of literal key segments. Empty selects all. Array elements are traversed without indices.",
+              "items": {
+                "description": "Included attribute prefixes as arrays of literal key segments. Empty selects all. Array elements are traversed without indices.",
+                "type": "string"
+              },
+              "type": "array"
+            },
             "type": "array"
           },
           "masks": {
@@ -12716,6 +12185,17 @@
             "minimum": 20,
             "title": "Similarity threshold",
             "type": "number"
+          },
+          "tokenizationInput": {
+            "default": "MESSAGE_ONLY",
+            "description": "Selects message text, attributes, both, or message text with an attributes fallback.",
+            "enum": [
+              "MESSAGE_ONLY",
+              "ATTRIBUTES_ONLY",
+              "MESSAGE_AND_ATTRIBUTES",
+              "AUTO"
+            ],
+            "type": "string"
           },
           "type": {
             "description": "Matches log patterns using an iterative feedback loop. Events with known patterns skip the global reducer for improved efficiency.",
@@ -13362,61 +12842,6 @@
         "x-tags": [
           "Sinks"
         ]
-      },
-      "Rag": {
-        "description": "RAG workflow that enriches the prompt with similar historical patterns from a vector store before sending to the LLM.",
-        "properties": {
-          "embeddingConfig": {
-            "$ref": "#/components/schemas/EmbeddingConfig"
-          },
-          "embeddingIntegrationId": {
-            "description": "The integration ID for the embedding model. Reuses existing OpenAI or Gemini integrations (same API key).",
-            "example": "0kk67gfs56a",
-            "type": "string"
-          },
-          "metadataFields": {
-            "default": [],
-            "description": "Event field references to store as filterable metadata on each vector and used to filter retrieval at query time. Values prefixed with \u0027@\u0027 are resolved from event attributes; values without \u0027@\u0027 are resolved from event tags. The metadata key is the bare field name (without \u0027@\u0027). Total filterable metadata per vector is limited to 2048 bytes.",
-            "example": [
-              "service",
-              "@product_id"
-            ],
-            "items": {
-              "description": "Event field references to store as filterable metadata on each vector and used to filter retrieval at query time. Values prefixed with \u0027@\u0027 are resolved from event attributes; values without \u0027@\u0027 are resolved from event tags. The metadata key is the bare field name (without \u0027@\u0027). Total filterable metadata per vector is limited to 2048 bytes.",
-              "example": "[\"service\",\"@product_id\"]",
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "topN": {
-            "default": 5,
-            "description": "Number of similar patterns to retrieve from the vector store.",
-            "example": 5,
-            "format": "int32",
-            "maximum": 100,
-            "minimum": 1,
-            "type": "integer"
-          },
-          "type": {
-            "description": "RAG workflow that enriches the prompt with similar historical patterns from a vector store before sending to the LLM.",
-            "enum": [
-              "rag"
-            ],
-            "type": "string"
-          },
-          "vectorIndexIntegrationId": {
-            "description": "The integration ID of the S3 Vector Index to use for similarity search.",
-            "example": "0kk67gfs56a",
-            "type": "string"
-          }
-        },
-        "required": [
-          "embeddingConfig",
-          "embeddingIntegrationId",
-          "type",
-          "vectorIndexIntegrationId"
-        ],
-        "type": "object"
       },
       "RawLogsSinkConfig": {
         "description": "Optional configuration overrides for the raw logs iceberg table sink.",
@@ -16027,22 +15452,6 @@
         ],
         "type": "object"
       },
-      "Simple": {
-        "description": "Simple workflow that sends the log event directly to the LLM.",
-        "properties": {
-          "type": {
-            "description": "Simple workflow that sends the log event directly to the LLM.",
-            "enum": [
-              "simple"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "type"
-        ],
-        "type": "object"
-      },
       "SkillFile": {
         "properties": {
           "content": {
@@ -17066,21 +16475,6 @@
         "x-tags": [
           "Transforms"
         ]
-      },
-      "SqlOperations": {
-        "description": "SQL operations applied at various stages of log processing.",
-        "properties": {
-          "pre-exceptions": {
-            "$ref": "#/components/schemas/TemplateSqlOperation"
-          },
-          "pre-parser": {
-            "$ref": "#/components/schemas/TemplateSqlOperation"
-          },
-          "pre-warehouse": {
-            "$ref": "#/components/schemas/TemplateSqlOperation"
-          }
-        },
-        "type": "object"
       },
       "SqlOutputStatement": {
         "description": "SQL statement that produces a DataStream output",
@@ -19559,26 +18953,6 @@
         ],
         "type": "object"
       },
-      "TriggerActionConfig": {
-        "description": "Configuration for the trigger action operator in an AI pipeline.",
-        "properties": {
-          "capacity": {
-            "default": 50,
-            "description": "Maximum number of concurrent trigger handler calls.",
-            "example": 50,
-            "format": "int32",
-            "type": "integer"
-          },
-          "timeoutSeconds": {
-            "default": 60,
-            "description": "Timeout for trigger handler execution in seconds.",
-            "example": 60,
-            "format": "int32",
-            "type": "integer"
-          }
-        },
-        "type": "object"
-      },
       "TriggerActionOp": {
         "properties": {
           "capacity": {
@@ -19666,89 +19040,6 @@
           "name",
           "query",
           "tables",
-          "type"
-        ],
-        "type": "object",
-        "x-tags": [
-          "Sources"
-        ]
-      },
-      "TrinoLlmPromptResultsSource": {
-        "properties": {
-          "datasetId": {
-            "description": "The ID of the dataset to read data from.",
-            "pattern": "[a-z0-9]{1,13}",
-            "type": "string"
-          },
-          "end": {
-            "description": "End of time interval to query data for.",
-            "example": "2023-01-01T01:00:00Z",
-            "format": "date-time",
-            "type": "string"
-          },
-          "limit": {
-            "default": 2500,
-            "description": "The maximum number of rows to process",
-            "format": "int32",
-            "type": "integer"
-          },
-          "name": {
-            "example": "operation_name",
-            "pattern": "[a-z0-9_]{1,128}",
-            "type": "string"
-          },
-          "offset": {
-            "default": 0,
-            "description": "Offset on the number of rows to process",
-            "format": "int32",
-            "minimum": 0,
-            "type": "integer"
-          },
-          "query": {
-            "$ref": "#/components/schemas/query"
-          },
-          "sortOrder": {
-            "default": "ASCENDING",
-            "description": "The order in which the rows should be sorted by",
-            "enum": [
-              "ASCENDING",
-              "DESCENDING",
-              "UNSORTED"
-            ],
-            "type": "string"
-          },
-          "start": {
-            "description": "Start of time interval to query data for.",
-            "example": "2023-01-01T00:00:00Z",
-            "format": "date-time",
-            "type": "string"
-          },
-          "type": {
-            "description": "Reads LLM prompt result events out of an Iceberg Table, executed against a Trino query engine.",
-            "enum": [
-              "trino-llm-prompt-results-source"
-            ],
-            "type": "string"
-          },
-          "variables": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/Any"
-            },
-            "default": {},
-            "description": "Variables that can be used to modify the query while parsed",
-            "example": {
-              "__application": "app1",
-              "__service": "service1"
-            },
-            "type": "object"
-          }
-        },
-        "required": [
-          "datasetId",
-          "end",
-          "name",
-          "query",
-          "start",
           "type"
         ],
         "type": "object",

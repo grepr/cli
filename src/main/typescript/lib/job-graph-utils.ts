@@ -39,10 +39,9 @@ export function canLimit(vertex: SchemaOperation): boolean {
     GreprRawLogsSourceType.grepr_raw_log_source,
     GreprReducerLogSourceType.grepr_reducer_log_source,
     // Trino counterparts of the two Athena log sources above. Deliberately
-    // excludes trino-raw-span-source and trino-llm-prompt-results-source,
-    // mirroring the existing exclusion of their Athena counterparts
-    // (grepr-raw-span-source, grepr-llm-prompt-results-source): truncating a
-    // span source mid-trace produces broken traces.
+    // excludes trino-raw-span-source, mirroring the exclusion of its Athena
+    // counterpart grepr-raw-span-source: truncating a span source mid-trace
+    // produces broken traces.
     TrinoRawLogsSourceType.trino_raw_log_source,
     TrinoReducerLogSourceType.trino_reducer_log_source,
   ]) as Set<string>;

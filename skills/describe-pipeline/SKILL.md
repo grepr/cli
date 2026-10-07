@@ -73,7 +73,7 @@ Split `jobGraph.vertices` by role using the `type` field:
 | SQL        | `sql-operation` |
 | Masking    | `masking-operator` |
 | Branches   | `logs-branch` |
-| Transforms | `log-transform`, `pattern-matcher`, `log-rules-application` |
+| Transforms | `log-transform` |
 | Sinks      | `logs-iceberg-table-sink`, `datadog-log-sink`, `splunk-log-sink`, `newrelic-log-sink`, `sumologic-log-sink`, `otlp-log-sink`, `logs-sync-sink` |
 
 For a type not listed, fall back to `grepr:operations-reference` to identify its role.

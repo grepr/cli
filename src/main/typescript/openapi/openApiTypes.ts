@@ -4471,34 +4471,6 @@ export interface components {
       as?: string;
       fn: components["schemas"]["AggType"];
     };
-    /**
-     * AI Pipeline Inputs Schema
-     * @description Schema for the AI pipeline job graph.
-     */
-    AiPipelineTemplateInput: {
-      /** @description The unique identifier for the dataset. */
-      datasetId: string;
-      entityContextAggregation?: components["schemas"]["EntityContextAggregation"];
-      /** @description A list of template-specific exceptions to apply in the pipeline. */
-      exceptions: components["schemas"]["TemplateException"][];
-      filters: components["schemas"]["LogReducerFilters"];
-      /** @description LLM prompt configurations. */
-      llmPrompts: components["schemas"]["LlmPrompt"][];
-      /** @description Optional dataset ID for storing LLM prompt results in an Iceberg table. */
-      llmResultsDatasetId?: string;
-      /** @description A list of parsers to be applied to the data. */
-      parsers: components["schemas"]["Operation"][];
-      patternMatcher: components["schemas"]["PatternMatcher"];
-      processedLogsSink?: components["schemas"]["LogsIcebergTableSink"];
-      processedLogsSinkFilter?: components["schemas"]["LogsFilter"];
-      sampler?: components["schemas"]["LogsEventSampler"];
-      /** @description A list of template log sinks, each specific to a vendor with optional filter configuration. */
-      sinks: components["schemas"]["TemplateLogSink"][];
-      /** @description A list of data sources, each conforming to one of the defined source types. */
-      sources: components["schemas"]["Operation"][];
-      sqlOperations?: components["schemas"]["SqlOperations"];
-      triggerAction?: components["schemas"]["TriggerActionConfig"];
-    };
     AllQueryNode: {
       /**
        * @description A node that represents a parsed query that matches all. (enum property replaced by openapi-typescript)
@@ -6386,62 +6358,6 @@ export interface components {
       systemControlled: boolean;
       transform?: components["schemas"]["PartitionTransform"];
     };
-    /** @description Configuration for an embedding model. The 'type' field determines the provider. */
-    EmbeddingConfig: {
-      /** Format: int32 */
-      dimensions?: number;
-      model?: string;
-      type: string;
-    };
-    EntityContextAggregation: {
-      /**
-       * Format: int32
-       * @description Maximum number of concurrent LLM calls per operator instance.
-       * @default 50
-       * @example 50
-       */
-      capacity?: number;
-      /** @default [] */
-      entityAttributes?: string[];
-      /** @default [] */
-      entityTags?: string[];
-      /**
-       * @description The LLM integration ID (Gemini or OpenAI).
-       * @example 0kk67gfs56a
-       */
-      integrationId: string;
-      llmConfig: components["schemas"]["LlmConfig"];
-      /**
-       * Format: int32
-       * @description Maximum retries for failed LLM calls.
-       * @default 2
-       * @example 2
-       */
-      maxRetries?: number;
-      /**
-       * Format: int32
-       * @description Maximum token budget for the entity summary. The system prompt instructs the LLM to keep the summary within this bound.
-       * @default 2000
-       * @example 2000
-       */
-      maxSummaryTokens?: number;
-      /** @example operation_name */
-      name: string;
-      /** @description Optional system prompt override. When null, a default system prompt is used that instructs the LLM to maintain a rolling entity summary and report whether the update is broadcast-worthy. */
-      systemPromptOverride?: string;
-      /**
-       * Format: int32
-       * @description Timeout for LLM calls in seconds.
-       * @default 30
-       * @example 30
-       */
-      timeoutSeconds?: number;
-      /**
-       * @description Maintains per-entity rolling context summaries using an LLM. Broadcasts significant updates for downstream prompt enrichment. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: EntityContextAggregationType;
-    };
     /** @description A reference to an Entity associated with produced telemetry. */
     EntityRef: {
       /**
@@ -6807,59 +6723,6 @@ export interface components {
        *     ]
        */
       vertices: components["schemas"]["Operation"][];
-    };
-    GreprLlmPromptResultsSource: {
-      /** @description The ID of the dataset to read data from. */
-      datasetId: string;
-      /**
-       * Format: date-time
-       * @description End of time interval to query data for.
-       * @example 2023-01-01T01:00:00Z
-       */
-      end: string;
-      /**
-       * Format: int32
-       * @description The maximum number of rows to process
-       * @default 2500
-       */
-      limit?: number;
-      /** @example operation_name */
-      name: string;
-      /**
-       * Format: int32
-       * @description Offset on the number of rows to process
-       * @default 0
-       */
-      offset?: number;
-      query: components["schemas"]["query"];
-      /**
-       * @description The order in which the rows should be sorted by
-       * @default ASCENDING
-       * @enum {string}
-       */
-      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
-      /**
-       * Format: date-time
-       * @description Start of time interval to query data for.
-       * @example 2023-01-01T00:00:00Z
-       */
-      start: string;
-      /**
-       * @description Reads LLM prompt result events using Grepr's internal query system from an Iceberg Table. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: GreprLlmPromptResultsSourceType;
-      /**
-       * @description Variables that can be used to modify the query while parsed
-       * @default {}
-       * @example {
-       *       "__application": "app1",
-       *       "__service": "service1"
-       *     }
-       */
-      variables?: {
-        [key: string]: components["schemas"]["Any"];
-      };
     };
     GreprMetricsSource: {
       /**
@@ -7774,180 +7637,6 @@ export interface components {
        */
       validateKeysOnSave?: boolean;
     };
-    /** @description Configuration for the LLM provider and model. */
-    LlmConfig: {
-      /**
-       * Format: int32
-       * @description Maximum tokens in the response.
-       * @default 8192
-       * @example 8192
-       */
-      maxTokens?: number;
-      /**
-       * @description The model identifier.
-       * @example gemini-1.5-flash
-       */
-      model: string;
-      /**
-       * @description Provider-specific configuration. For OPENAI, may include 'baseUrl'. For GEMINI, may include 'projectId'.
-       * @default {}
-       * @example {
-       *       "baseUrl": "https://api.openai.com/v1"
-       *     }
-       */
-      providerConfigs?: {
-        [key: string]: string;
-      };
-      /**
-       * Format: double
-       * @description Temperature for response generation. Lower values are more deterministic.
-       * @default 0
-       * @example 0
-       */
-      temperature?: number;
-    };
-    LlmPrompt: {
-      /**
-       * @description Rule types that the LLM can produce as output. When non-empty, the LLM output schema is augmented with a 'rules' field describing the available rule type schemas. Rules returned by the LLM are parsed and persisted to the LogRulesApplication operator for dynamic per-pattern rule application.
-       * @default []
-       * @example [
-       *       "masking",
-       *       "time-series"
-       *     ]
-       */
-      availableRuleTypes?: string[];
-      /**
-       * @description MCP tool integrations available for the LLM to invoke as terminal actions. Each entry references an integration that exposes MCP-compatible tools.
-       * @default []
-       */
-      availableTools?: components["schemas"]["LlmToolConfig"][];
-      /**
-       * Format: int32
-       * @description Maximum number of concurrent LLM calls per operator instance. Note: Total concurrent calls = capacity × Flink parallelism. For example, with parallelism=4 and capacity=100, up to 400 concurrent calls may occur. Consider your LLM provider's rate limits when configuring this value.
-       * @default 100
-       * @example 100
-       */
-      capacity?: number;
-      /**
-       * @description The LLM integration ID (Gemini or OpenAI).
-       * @example 0kk67gfs56a
-       */
-      integrationId: string;
-      llmConfig: components["schemas"]["LlmConfig"];
-      /**
-       * Format: int32
-       * @description Maximum number of retries for failed LLM calls.
-       * @default 2
-       * @example 2
-       */
-      maxRetries?: number;
-      /** @example operation_name */
-      name: string;
-      /**
-       * @description Controls where LLM-enriched events are routed after processing. Multiple actions can be combined.
-       * @default []
-       * @example [
-       *       "FORWARD_TO_SINKS"
-       *     ]
-       */
-      outputActions?: LlmPromptOutputActions[];
-      /**
-       * @description JSON Schema defining the expected structure of the LLM output. When set, the LLM is instructed to return structured JSON matching this schema. The output will include an 'actionable' boolean and a 'user_result' object. Supports standard JSON Schema property keywords: type, description, and enum.
-       * @example {"type":"object","properties":{"severity":{"type":"string","description":"How severe is this event","enum":["low","medium","high"]},"summary":{"type":"string","description":"Brief summary of the event"},"pii_found":{"type":"boolean","description":"Whether PII was detected"},"tags":{"type":"array","items":{"type":"string"}}},"required":["severity","summary","pii_found","tags"],"additionalProperties":false}
-       */
-      outputSchema?: string;
-      predicate?: components["schemas"]["EventPredicate"];
-      /**
-       * @description The user's prompt instruction describing what the LLM should do. Context (event JSON, entity context, similar patterns) is assembled automatically by the system — do not include placeholders.
-       * @example Classify this log pattern and identify any PII or anomalies.
-       */
-      promptInstruction: string;
-      /**
-       * @description The format for the LLM response.
-       * @default TEXT
-       * @example JSON
-       * @enum {string}
-       */
-      responseFormat?: LlmPromptResponseFormat;
-      /**
-       * Format: int32
-       * @description Timeout for LLM calls in seconds.
-       * @default 30
-       * @example 30
-       */
-      timeoutSeconds?: number;
-      /**
-       * @description Runs LLM prompts on new log patterns. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: LlmPromptType;
-      workflowConfig?: components["schemas"]["LlmWorkflowConfig"];
-    };
-    LlmPromptResultsIcebergTableSource: {
-      /** @description The ID of the dataset to read data from. */
-      datasetId: string;
-      /**
-       * Format: date-time
-       * @description End of time interval to query data for.
-       * @example 2023-01-01T01:00:00Z
-       */
-      end: string;
-      /**
-       * Format: int32
-       * @description The maximum number of rows to process
-       * @default 2500
-       */
-      limit?: number;
-      /** @example operation_name */
-      name: string;
-      /**
-       * Format: int32
-       * @description Offset on the number of rows to process
-       * @default 0
-       */
-      offset?: number;
-      query: components["schemas"]["query"];
-      /**
-       * @description The order in which the rows should be sorted by
-       * @default ASCENDING
-       * @enum {string}
-       */
-      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
-      /**
-       * Format: date-time
-       * @description Start of time interval to query data for.
-       * @example 2023-01-01T00:00:00Z
-       */
-      start: string;
-      /**
-       * @description Reads LLM prompt results from an Iceberg table for processing. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: LlmPromptResultsIcebergTableSourceType;
-      /**
-       * @description Variables that can be used to modify the query while parsed
-       * @default {}
-       * @example {
-       *       "__application": "app1",
-       *       "__service": "service1"
-       *     }
-       */
-      variables?: {
-        [key: string]: components["schemas"]["Any"];
-      };
-    };
-    /** @description MCP tool integrations available for the LLM to invoke as terminal actions. Each entry references an integration that exposes MCP-compatible tools. */
-    LlmToolConfig: {
-      /** @description Which tools from this MCP server to expose to the LLM. If empty or null, all tools from the server are available. */
-      allowedTools?: string[];
-      /** @description Optional description override for the LLM to understand when to use this integration. e.g., "Use this to create tickets for anomalous behavior" */
-      description?: string;
-      /**
-       * @description Integration ID for the MCP server (e.g., a Notion integration).
-       * @example 0kk67gfs56a
-       */
-      integrationId: string;
-    };
     LlmUsageWindow: {
       /** Format: date-time */
       end?: string;
@@ -7964,10 +7653,6 @@ export interface components {
       /** Format: int64 */
       tokensUsed?: number;
     };
-    /** @description Configuration for the LLM workflow strategy. */
-    LlmWorkflowConfig:
-      | components["schemas"]["Simple"]
-      | components["schemas"]["Rag"];
     LogAttributesRemapper: {
       /**
        * @description List of attribute-to-attribute remapping rules. Each rule moves the value from a source attribute path to a target attribute path, removing the source unless the rule's preserveSource flag is set. An optional predicate filter controls when each rule is applied.
@@ -8452,13 +8137,6 @@ export interface components {
        * @enum {string}
        */
       type: LogReducerType;
-    };
-    /** @description Filters applied at various stages of log processing. */
-    LogReducerFilters: {
-      "pre-aggregation"?: components["schemas"]["LogsFilter"];
-      "pre-exceptions"?: components["schemas"]["LogsFilter"];
-      "pre-parser"?: components["schemas"]["LogsFilter"];
-      "pre-warehouse"?: components["schemas"]["LogsFilter"];
     };
     /**
      * Inputs Schema
@@ -9710,7 +9388,6 @@ export interface components {
       | components["schemas"]["LogReducer"]
       | components["schemas"]["LogTransformAction"]
       | components["schemas"]["MaskingOperator"]
-      | components["schemas"]["LlmPrompt"]
       | components["schemas"]["PatternMatcher"]
       | components["schemas"]["LogsIcebergTableSink"]
       | components["schemas"]["PatternLookupIcebergTableSink"]
@@ -9721,7 +9398,6 @@ export interface components {
       | components["schemas"]["LogsIcebergTableSource"]
       | components["schemas"]["AgentSessionsIcebergTableSource"]
       | components["schemas"]["AgentSessionEventsIcebergTableSource"]
-      | components["schemas"]["LlmPromptResultsIcebergTableSource"]
       | components["schemas"]["MetricsIcebergTableSource"]
       | components["schemas"]["TracesIcebergTableSource"]
       | components["schemas"]["SpansBackfillIcebergTableSource"]
@@ -9759,12 +9435,10 @@ export interface components {
       | components["schemas"]["AthenaAgentSessionsSource"]
       | components["schemas"]["GreprRawLogsSource"]
       | components["schemas"]["GreprRawSpanSource"]
-      | components["schemas"]["GreprLlmPromptResultsSource"]
       | components["schemas"]["TrinoAnalyticsSource"]
       | components["schemas"]["TrinoReducerLogSource"]
       | components["schemas"]["TrinoRawLogsSource"]
       | components["schemas"]["TrinoRawSpanSource"]
-      | components["schemas"]["TrinoLlmPromptResultsSource"]
       | components["schemas"]["SplunkLogAgentSource"]
       | components["schemas"]["SplunkLogHttpSource"]
       | components["schemas"]["NewRelicLogAgentSource"]
@@ -9783,7 +9457,6 @@ export interface components {
       | components["schemas"]["LogsValuesSource"]
       | components["schemas"]["LogRulesApplication"]
       | components["schemas"]["TriggerActionOp"]
-      | components["schemas"]["EntityContextAggregation"]
       | components["schemas"]["MultiGrokParser"]
       | components["schemas"]["AgentSessionAnalytics"]
       | components["schemas"]["AgentLogProcessor"]
@@ -10558,41 +10231,6 @@ export interface components {
        * @enum {string}
        */
       type: QuerySinkType;
-    };
-    /** @description RAG workflow that enriches the prompt with similar historical patterns from a vector store before sending to the LLM. */
-    Rag: {
-      embeddingConfig: components["schemas"]["EmbeddingConfig"];
-      /**
-       * @description The integration ID for the embedding model. Reuses existing OpenAI or Gemini integrations (same API key).
-       * @example 0kk67gfs56a
-       */
-      embeddingIntegrationId: string;
-      /**
-       * @description Event field references to store as filterable metadata on each vector and used to filter retrieval at query time. Values prefixed with '@' are resolved from event attributes; values without '@' are resolved from event tags. The metadata key is the bare field name (without '@'). Total filterable metadata per vector is limited to 2048 bytes.
-       * @default []
-       * @example [
-       *       "service",
-       *       "@product_id"
-       *     ]
-       */
-      metadataFields?: string[];
-      /**
-       * Format: int32
-       * @description Number of similar patterns to retrieve from the vector store.
-       * @default 5
-       * @example 5
-       */
-      topN?: number;
-      /**
-       * @description RAG workflow that enriches the prompt with similar historical patterns from a vector store before sending to the LLM. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: RagType;
-      /**
-       * @description The integration ID of the S3 Vector Index to use for similarity search.
-       * @example 0kk67gfs56a
-       */
-      vectorIndexIntegrationId: string;
     };
     /** @description Optional configuration overrides for the raw logs iceberg table sink. */
     RawLogsSinkConfig: {
@@ -11842,14 +11480,6 @@ export interface components {
       reCaptchaToken: string;
       user: components["schemas"]["UserInfo"];
     };
-    /** @description Simple workflow that sends the log event directly to the LLM. */
-    Simple: {
-      /**
-       * @description Simple workflow that sends the log event directly to the LLM. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: SimpleType;
-    };
     SkillFile: {
       content: string;
       path: string;
@@ -12418,12 +12048,6 @@ export interface components {
        * @example PT20.345S
        */
       watermarkDelay?: string;
-    };
-    /** @description SQL operations applied at various stages of log processing. */
-    SqlOperations: {
-      "pre-exceptions"?: components["schemas"]["TemplateSqlOperation"];
-      "pre-parser"?: components["schemas"]["TemplateSqlOperation"];
-      "pre-warehouse"?: components["schemas"]["TemplateSqlOperation"];
     };
     /** @description SQL statement that produces a DataStream output */
     SqlOutputStatement: {
@@ -13843,23 +13467,6 @@ export interface components {
       | components["schemas"]["EventPredicateTrigger"]
       | components["schemas"]["ExternalSourceTrigger"]
     );
-    /** @description Configuration for the trigger action operator in an AI pipeline. */
-    TriggerActionConfig: {
-      /**
-       * Format: int32
-       * @description Maximum number of concurrent trigger handler calls.
-       * @default 50
-       * @example 50
-       */
-      capacity?: number;
-      /**
-       * Format: int32
-       * @description Timeout for trigger handler execution in seconds.
-       * @default 60
-       * @example 60
-       */
-      timeoutSeconds?: number;
-    };
     TriggerActionOp: {
       /**
        * Format: int32
@@ -13904,59 +13511,6 @@ export interface components {
        * @enum {string}
        */
       type: TrinoAnalyticsSourceType;
-    };
-    TrinoLlmPromptResultsSource: {
-      /** @description The ID of the dataset to read data from. */
-      datasetId: string;
-      /**
-       * Format: date-time
-       * @description End of time interval to query data for.
-       * @example 2023-01-01T01:00:00Z
-       */
-      end: string;
-      /**
-       * Format: int32
-       * @description The maximum number of rows to process
-       * @default 2500
-       */
-      limit?: number;
-      /** @example operation_name */
-      name: string;
-      /**
-       * Format: int32
-       * @description Offset on the number of rows to process
-       * @default 0
-       */
-      offset?: number;
-      query: components["schemas"]["query"];
-      /**
-       * @description The order in which the rows should be sorted by
-       * @default ASCENDING
-       * @enum {string}
-       */
-      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
-      /**
-       * Format: date-time
-       * @description Start of time interval to query data for.
-       * @example 2023-01-01T00:00:00Z
-       */
-      start: string;
-      /**
-       * @description Reads LLM prompt result events out of an Iceberg Table, executed against a Trino query engine. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: TrinoLlmPromptResultsSourceType;
-      /**
-       * @description Variables that can be used to modify the query while parsed
-       * @default {}
-       * @example {
-       *       "__application": "app1",
-       *       "__service": "service1"
-       *     }
-       */
-      variables?: {
-        [key: string]: components["schemas"]["Any"];
-      };
     };
     TrinoRawLogsSource: {
       /** @description The ID of the dataset to read data from. */
@@ -15098,8 +14652,6 @@ export type SchemaAgentSummary = components["schemas"]["AgentSummary"];
 export type SchemaAggregationAccumulator =
   components["schemas"]["AggregationAccumulator"];
 export type SchemaAggregationDecl = components["schemas"]["AggregationDecl"];
-export type SchemaAiPipelineTemplateInput =
-  components["schemas"]["AiPipelineTemplateInput"];
 export type SchemaAllQueryNode = components["schemas"]["AllQueryNode"];
 export type SchemaAnalyticsCompletion =
   components["schemas"]["AnalyticsCompletion"];
@@ -15264,9 +14816,6 @@ export type SchemaEarliestReadingStrategy =
   components["schemas"]["EarliestReadingStrategy"];
 export type SchemaEffectivePartitionField =
   components["schemas"]["EffectivePartitionField"];
-export type SchemaEmbeddingConfig = components["schemas"]["EmbeddingConfig"];
-export type SchemaEntityContextAggregation =
-  components["schemas"]["EntityContextAggregation"];
 export type SchemaEntityRef = components["schemas"]["EntityRef"];
 export type SchemaErrorDetails = components["schemas"]["ErrorDetails"];
 export type SchemaEstimationDatasetSummary =
@@ -15298,8 +14847,6 @@ export type SchemaGemini = components["schemas"]["Gemini"];
 export type SchemaGithubMcp = components["schemas"]["GithubMcp"];
 export type SchemaGreprApiKey = components["schemas"]["GreprApiKey"];
 export type SchemaGreprJobGraph = components["schemas"]["GreprJobGraph"];
-export type SchemaGreprLlmPromptResultsSource =
-  components["schemas"]["GreprLlmPromptResultsSource"];
 export type SchemaGreprMetricsSource =
   components["schemas"]["GreprMetricsSource"];
 export type SchemaGreprRawLogsSource =
@@ -15421,21 +14968,12 @@ export type SchemaLegacyDatadogMetricsSink =
 export type SchemaLinkMemoryRequest =
   components["schemas"]["LinkMemoryRequest"];
 export type SchemaLiteLlm = components["schemas"]["LiteLlm"];
-export type SchemaLlmConfig = components["schemas"]["LlmConfig"];
-export type SchemaLlmPrompt = components["schemas"]["LlmPrompt"];
-export type SchemaLlmPromptResultsIcebergTableSource =
-  components["schemas"]["LlmPromptResultsIcebergTableSource"];
-export type SchemaLlmToolConfig = components["schemas"]["LlmToolConfig"];
 export type SchemaLlmUsageWindow = components["schemas"]["LlmUsageWindow"];
-export type SchemaLlmWorkflowConfig =
-  components["schemas"]["LlmWorkflowConfig"];
 export type SchemaLogAttributesRemapper =
   components["schemas"]["LogAttributesRemapper"];
 export type SchemaLogEvent = components["schemas"]["LogEvent"];
 export type SchemaLogEventMapper = components["schemas"]["LogEventMapper"];
 export type SchemaLogReducer = components["schemas"]["LogReducer"];
-export type SchemaLogReducerFilters =
-  components["schemas"]["LogReducerFilters"];
 export type SchemaLogReducerTemplateInput =
   components["schemas"]["LogReducerTemplateInput"];
 export type SchemaLogRulesApplication =
@@ -15601,7 +15139,6 @@ export type SchemaQueryParsingError =
   components["schemas"]["QueryParsingError"];
 export type SchemaQueryResult = components["schemas"]["QueryResult"];
 export type SchemaQuerySink = components["schemas"]["QuerySink"];
-export type SchemaRag = components["schemas"]["Rag"];
 export type SchemaRawLogsSinkConfig =
   components["schemas"]["RawLogsSinkConfig"];
 export type SchemaRead = components["schemas"]["Read"];
@@ -15672,7 +15209,6 @@ export type SchemaSeverityNode = components["schemas"]["SeverityNode"];
 export type SchemaShardingConfig = components["schemas"]["ShardingConfig"];
 export type SchemaSiblingMergeRule = components["schemas"]["SiblingMergeRule"];
 export type SchemaSignupRequest = components["schemas"]["SignupRequest"];
-export type SchemaSimple = components["schemas"]["Simple"];
 export type SchemaSkillFile = components["schemas"]["SkillFile"];
 export type SchemaSkillView = components["schemas"]["SkillView"];
 export type SchemaSkippedInvestigation =
@@ -15707,7 +15243,6 @@ export type SchemaSqlExecutable = components["schemas"]["SqlExecutable"];
 export type SchemaSqlIoStatement = components["schemas"]["SqlIoStatement"];
 export type SchemaSqlNode = components["schemas"]["SqlNode"];
 export type SchemaSqlOperation = components["schemas"]["SqlOperation"];
-export type SchemaSqlOperations = components["schemas"]["SqlOperations"];
 export type SchemaSqlOutputStatement =
   components["schemas"]["SqlOutputStatement"];
 export type SchemaSqlPredicateFilter =
@@ -15810,14 +15345,10 @@ export type SchemaTranscriptTurnsList =
   components["schemas"]["TranscriptTurnsList"];
 export type SchemaTransforms = components["schemas"]["Transforms"];
 export type SchemaTrigger = components["schemas"]["Trigger"];
-export type SchemaTriggerActionConfig =
-  components["schemas"]["TriggerActionConfig"];
 export type SchemaTriggerActionOp = components["schemas"]["TriggerActionOp"];
 export type SchemaTriggerSignal = components["schemas"]["TriggerSignal"];
 export type SchemaTrinoAnalyticsSource =
   components["schemas"]["TrinoAnalyticsSource"];
-export type SchemaTrinoLlmPromptResultsSource =
-  components["schemas"]["TrinoLlmPromptResultsSource"];
 export type SchemaTrinoRawLogsSource =
   components["schemas"]["TrinoRawLogsSource"];
 export type SchemaTrinoRawSpanSource =
@@ -26149,7 +25680,6 @@ export enum AnalyticsTableBindingTable {
   logs_raw = "logs_raw",
   logs_dedup = "logs_dedup",
   logs_pattern_lookup = "logs_pattern_lookup",
-  llm_prompt_results = "llm_prompt_results",
   metrics_raw = "metrics_raw",
   metricdata_raw = "metricdata_raw",
   spans_raw = "spans_raw",
@@ -26341,9 +25871,6 @@ export enum DoubleDatapointType {
 export enum DropNodeKind {
   drop_node = "drop-node",
 }
-export enum EntityContextAggregationType {
-  entity_context_aggregation = "entity-context-aggregation",
-}
 export enum EventActionRuleType {
   event_rule = "event-rule",
 }
@@ -26368,9 +25895,6 @@ export enum ExactAttributesMergeStrategyType {
 }
 export enum ExternalSourceTriggerType {
   external_source = "external-source",
-}
-export enum GreprLlmPromptResultsSourceType {
-  grepr_llm_prompt_results_source = "grepr-llm-prompt-results-source",
 }
 export enum GreprMetricsSourceMetrics {
   table_totalBytes = "table_totalBytes",
@@ -26431,19 +25955,6 @@ export enum LinkMemoryRequestRootCauseConfidence {
   CONFIRMED = "CONFIRMED",
   SUSPECTED = "SUSPECTED",
   UNKNOWN = "UNKNOWN",
-}
-export enum LlmPromptOutputActions {
-  FORWARD_TO_SINKS = "FORWARD_TO_SINKS",
-}
-export enum LlmPromptResponseFormat {
-  TEXT = "TEXT",
-  JSON = "JSON",
-}
-export enum LlmPromptType {
-  llm_prompt = "llm-prompt",
-}
-export enum LlmPromptResultsIcebergTableSourceType {
-  llm_prompt_results_iceberg_table_source = "llm-prompt-results-iceberg-table-source",
 }
 export enum LogAttributesRemapperType {
   log_attributes_remapper = "log-attributes-remapper",
@@ -26663,9 +26174,6 @@ export enum QuerySinkFormat {
 export enum QuerySinkType {
   query_sink = "query-sink",
 }
-export enum RagType {
-  rag = "rag",
-}
 export enum ReadFeatureFlags {
   DATADOG_BROWSER_LOGS_INTEGRATION = "DATADOG_BROWSER_LOGS_INTEGRATION",
   METRICS_SOURCE = "METRICS_SOURCE",
@@ -26762,9 +26270,6 @@ export enum SamplingAttributesMergeStrategyType {
 }
 export enum SeverityNodeType {
   severity_node = "severity-node",
-}
-export enum SimpleType {
-  simple = "simple",
 }
 export enum SkillViewScope {
   PLATFORM = "PLATFORM",
@@ -26957,9 +26462,6 @@ export enum TriggerActionOpType {
 export enum TrinoAnalyticsSourceType {
   trino_analytics_source = "trino-analytics-source",
 }
-export enum TrinoLlmPromptResultsSourceType {
-  trino_llm_prompt_results_source = "trino-llm-prompt-results-source",
-}
 export enum TrinoRawLogsSourceType {
   trino_raw_log_source = "trino-raw-log-source",
 }
@@ -27057,13 +26559,11 @@ export const SOURCE_TYPES = new Set<string>([
   'datadog-metric-agent-source-v3',
   'datadog-metrics-cloud-source',
   'datadog-trace-agent-source',
-  'grepr-llm-prompt-results-source',
   'grepr-metrics-source',
   'grepr-raw-log-source',
   'grepr-raw-span-source',
   'grepr-reducer-log-source',
   'grepr-uploaded-log-file-source',
-  'llm-prompt-results-iceberg-table-source',
   'logs-backfill-iceberg-table-source',
   'logs-iceberg-replay-source',
   'logs-iceberg-table-source',
@@ -27080,7 +26580,6 @@ export const SOURCE_TYPES = new Set<string>([
   'sumologic-log-agent-source',
   'traces-iceberg-table-source',
   'trino-analytics-source',
-  'trino-llm-prompt-results-source',
   'trino-raw-log-source',
   'trino-raw-span-source',
   'trino-reducer-log-source'
@@ -27096,7 +26595,6 @@ export const SINK_TYPES = new Set<string>([
   'discarding-sink',
   'event-dedup-iceberg-table-sink',
   'legacy-datadog-metrics-sink',
-  'llm-prompt-results-iceberg-table-sink',
   'logs-iceberg-table-sink',
   'logs-predicates-counter',
   'logs-sync-sink',
@@ -27122,10 +26620,8 @@ export const OPERATION_TYPES = new Set<string>([
   'agent-session-analytics',
   'agent-span-processor',
   'clone',
-  'entity-context-aggregation',
   'grok-parser',
   'json-log-processor',
-  'llm-prompt',
   'log-attributes-remapper',
   'log-reducer',
   'log-rules-application',
@@ -27157,34 +26653,6 @@ export function isSinkType(type: string): boolean {
 export function isOperationType(type: string): boolean {
   return OPERATION_TYPES.has(type);
 }
-
-// =============================================================================
-// Auto-generated LLM attribute constants from flink:model
-// DO NOT EDIT - This section is generated by ModelJarCodeGenTask
-// =============================================================================
-
-export const LlmAttributes = {
-  PREFIX: 'grepr.llm.',
-  SUCCESS: 'grepr.llm.success',
-  RESULT: 'grepr.llm.result',
-  ERROR: 'grepr.llm.error',
-  INPUT_TOKENS: 'grepr.llm.inputTokens',
-  OUTPUT_TOKENS: 'grepr.llm.outputTokens',
-  LATENCY_MS: 'grepr.llm.latencyMs',
-  CACHED_INPUT_TOKENS: 'grepr.llm.cachedInputTokens',
-  REASONING_TOKENS: 'grepr.llm.reasoningTokens',
-  MODEL: 'grepr.llm.model',
-  COST_MICRODOLLARS: 'grepr.llm.costMicrodollars',
-  ACTIONABLE: 'grepr.llm.actionable',
-  PROMPT: 'grepr.llm.prompt',
-  ENTITY_CONTEXT: 'grepr.llm.entityContext',
-  RULES: 'grepr.llm.rules',
-  TRIGGER: 'grepr.llm.trigger',
-  TAG_JOB_ID: 'greprJobId',
-  TAG_OPERATOR: 'greprLlmOperator',
-  TAG_SUCCESS: 'greprLlmSuccess',
-  TAG_ACTIONABLE: 'greprLlmActionable'
-} as const;
 
 // =============================================================================
 // Auto-generated default mask metadata from flink:model (Masks.LogReducerMasks)
