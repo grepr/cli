@@ -255,7 +255,7 @@ A complex production pipeline based on the Grepr reference implementation:
         "name": "log_reducer",
         "logReducerExceptions": [{
           "type": "datadog-query",
-          "query": "skipAggregation:true"
+          "query": "grepr.skipaggregation:true"
         }],
         "partitionByTags": ["service"],
         "partitionByAttributes": ["http.url_details.path", "http.method"],
