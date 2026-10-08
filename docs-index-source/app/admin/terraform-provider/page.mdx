@@ -84,6 +84,10 @@ terraform import grepr_pipeline.example <pipeline-id-or-name>
 
 To automatically import an existing pipeline without using the `import` command, create a `grepr_pipeline` resource with the same name as the existing pipeline. The provider will detect and import the existing pipeline.
 
+### Tags [#tf-pipeline-tags]
+
+Grepr sets the tags of a pipeline only when it creates the pipeline. The update API does not accept tags. For an existing pipeline, including a pipeline that you import, either leave `tags` unset or set it to the tags that the pipeline already has.
+
 ## Example: create a pipeline
 
 The following example shows a simple pipeline that uses a Datadog log agent source, a Grok parser, and an Iceberg table sink. To improve maintainability and avoid conflicts with Terraform reserved symbols or keywords, Grepr recommends defining your pipeline's job graph in a separate JSON file. You then reference this JSON file in your Terraform configuration. This example demonstrates how to define a pipeline job graph in a JSON file and reference the file in the Terraform configuration.
@@ -176,7 +180,7 @@ The `grepr_pipeline` resource supports these attributes:
 | `job_graph_json`   | String         | Yes      | The job graph as a JSON string. Use `file()` to load from a JSON file or `jsonencode` to define inline.      |
 | `desired_state`    | String         | No       | The desired state: `RUNNING` or `STOPPED`. Defaults to `RUNNING`.                                            |
 | `team_ids`         | Set of Strings | No       | Team IDs to associate with this pipeline.                                                                    |
-| `tags`             | Map of Strings | No       | Custom tags for the pipeline.                                                                                |
+| `tags`             | Map of Strings | No       | Custom tags. Grepr sets tags only when it creates the pipeline. See [Tags](#tf-pipeline-tags).               |
 | `wait_for_state`   | Boolean        | No       | Wait for the pipeline to reach the desired state. Defaults to `true`.                                        |
 | `state_timeout`    | Number         | No       | Timeout in seconds for state transitions. Defaults to `600`.                                                 |
 | `rollback_enabled` | Boolean        | No       | Roll the pipeline back to its last stable configuration when an update fails. Defaults to `true`.            |
