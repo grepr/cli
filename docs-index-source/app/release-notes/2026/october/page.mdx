@@ -6,6 +6,20 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in October 2026.
 
+## October 6, 2026
+
+### Other improvements and fixes
+
+- {/* ENGT-6051 */} Tag keys on logs sent through a Datadog integration are now converted to lowercase, matching the Datadog convention.
+- {/* ENGT-6025 */} When you add a field to a never-index list, Grepr now removes its column from the dataset's table on a schedule, 6 hours later by default, which frees the column's place under the discovery cap. See [_](/grepr-platform/indexed-columns#excluded).
+- {/* ENGT-5963 */} Composite aggregation keys on a reducer attribute, such as `bytes_sum`, now appear on samples, exceptions, and passthrough messages as well as on summaries, so aggregations over those keys count every message.
+- {/* ENGT-6016 */} Fixed an issue where the Trace Explorer ignored the sort order you chose, which made searches over long time ranges slow.
+- {/* ENGT-5994, ENGT-6012 */} Fixed an issue where the Trace Explorer returned an error for a dataset that had never received trace data.
+- {/* ENGT-6011 */} Fixed an issue where log and span backfills failed with a "Could not submit job" error on some older datasets.
+- {/* ENGT-6013 */} Fixed an issue where a dataset's table settings returned an error for a table the dataset had not written yet.
+- {/* ENGT-5963 */} Fixed an issue where reducer summaries could contain duplicated or truncated values for an attribute with several composite aggregations that collect lists.
+- {/* ENGT-6054 */} Fixed an issue where a pipeline with a SQL transform whose output goes to the **Sinks** step failed to start.
+
 ## October 2, 2026
 
 {/* ENGT-5568 */}
