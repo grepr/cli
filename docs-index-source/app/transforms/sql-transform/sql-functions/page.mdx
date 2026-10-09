@@ -250,6 +250,7 @@ For a complete list of available functions, see [System (Built-in) Functions](ht
   - To specify nested fields, you can use dot notation, such as `$.property`, or bracket notation, such as `$['property']`.
   - Extracted values can be converted to SQL types, including STRING, BOOLEAN, DATE, TIMESTAMP, BINARY, and numeric types.
   - The `VARIANT_VALUE()` function handles missing paths and type conversion errors, with options to return NULL, an error, or a default value.
+  - The path, return type, behaviors, and any default a `'DEFAULT'` behavior uses must be literal constants, and they are checked when the job is planned, before it processes any log. Such a default must be a valid value of the return type: a number or boolean as written, a DATE as `'2024-01-31'`, a TIMESTAMP as `'2024-01-31 10:15:30'`, a TIMESTAMP_LTZ as `'2024-01-31T10:15:30Z'`, and BINARY as Base64 text or an `X'...'` literal.
 
   ```sql
   -- Extract HTTP status code as an integer
