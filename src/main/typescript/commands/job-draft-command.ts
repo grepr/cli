@@ -4,6 +4,7 @@
  * Draft runs do not update the production pipeline.
  */
 import { Command } from 'commander';
+import { randomUUID } from 'crypto';
 import fs from 'fs-extra';
 import { Writable } from 'stream';
 import { ICommand } from '@/lib/command-registry';
@@ -33,6 +34,13 @@ import { parseFloatArg, parseIntArg } from '@/lib/option-parsers.js';
 
 /** Name of the bounded sample source injected as the template input's `draftSource`. */
 const DRAFT_SOURCE_NAME = 'draft_source';
+
+/**
+ * OTel severity number for INFO, stamped on a sample entry that carries none. LogEvent declares
+ * severity as a primitive int in the documented 1-24 OTel range, so an omitted value would
+ * deserialize to 0 — outside the range, and read by severity filters as a level no rule matches.
+ */
+const DEFAULT_SEVERITY = 9;
 
 export class JobDraftCommand implements ICommand {
   addToProgram(program: Command, mergeConfiguration: MergeConfiguration): void {
@@ -327,7 +335,7 @@ async function loadSampleLogs(filePath: string): Promise<SchemaLogEvent[]> {
   if (events.length === 0) {
     throw new Error(`Sample logs file contained no log events: ${filePath}`);
   }
-  return events.map(withLogType);
+  return events.map((event, i) => normalizeSampleLog(event, filePath, i));
 }
 
 /** Parse the file as a JSON array if possible, else as NDJSON. */
@@ -369,9 +377,142 @@ function asEventObject(value: unknown, filePath: string, index: number): Record<
   return value as Record<string, unknown>;
 }
 
-/** Stamp the LogEvent polymorphic type discriminator, which the server requires on values-source entries. */
-function withLogType(event: Record<string, unknown>): SchemaLogEvent {
-  return { ...event, type: LogEventType.log } as unknown as SchemaLogEvent;
+/**
+ * Normalize a hand-authored sample entry into a well-formed LogEvent the draft can replay: stamp the
+ * polymorphic `type` discriminator the server requires on values-source entries, and fill the
+ * identity/timestamp/map/severity fields a real ingested event always carries so a sample that omits
+ * them (carrying only content like `message`/`tags`) is still accepted. Existing values are
+ * preserved.
+ *
+ * A field that IS present but cannot be read is rejected rather than replaced with a default: a
+ * sample copied out of query output carries ISO-8601 timestamps, and silently restamping those with
+ * the current time collapses every sample onto one instant, so the draft exercises time windows and
+ * dedup against times the author never wrote.
+ */
+function normalizeSampleLog(
+  event: Record<string, unknown>,
+  filePath: string,
+  index: number,
+): SchemaLogEvent {
+  const now = Date.now();
+  const eventTimestamp =
+    timestampOf(event, ['eventTimestamp', 'eventtimestamp'], filePath, index) ?? now;
+  const receivedTimestamp =
+    timestampOf(event, ['receivedTimestamp', 'receivedtimestamp'], filePath, index) ??
+    eventTimestamp;
+  return {
+    ...event,
+    type: LogEventType.log,
+    id: nonEmptyString(event.id) ?? randomUUID(),
+    eventTimestamp,
+    receivedTimestamp,
+    severity: severityOf(event, filePath, index),
+    tags: mapOf(event, 'tags', filePath, index),
+    attributes: mapOf(event, 'attributes', filePath, index),
+  } as unknown as SchemaLogEvent;
+}
+
+/**
+ * Read the first of `keys` the event carries as epoch milliseconds, accepting a number, a numeric
+ * string, or any date string `Date.parse` understands (ISO-8601, as query output renders it).
+ * Undefined when the event carries none of the keys; throws when it carries one that cannot be read
+ * as a time.
+ */
+function timestampOf(
+  event: Record<string, unknown>,
+  keys: string[],
+  filePath: string,
+  index: number,
+): number | undefined {
+  for (const key of keys) {
+    const value = event[key];
+    if (value === undefined || value === null) {
+      continue;
+    }
+    const millis = toEpochMillis(value);
+    if (millis === undefined) {
+      throw new Error(
+        `Sample logs file ${filePath}: event ${index} has a ${key} that is not epoch millis or a` +
+          ` date string: ${JSON.stringify(value)}`,
+      );
+    }
+    return millis;
+  }
+  return undefined;
+}
+
+/** A number, numeric string, or date string as epoch millis; undefined when it is none of those. */
+function toEpochMillis(value: unknown): number | undefined {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return undefined;
+  }
+  const asNumber = Number(value);
+  if (Number.isFinite(asNumber)) {
+    return asNumber;
+  }
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? undefined : parsed;
+}
+
+/** The event's `key` map, defaulting to empty when absent; throws when present but not a map. */
+function mapOf(
+  event: Record<string, unknown>,
+  key: string,
+  filePath: string,
+  index: number,
+): Record<string, unknown> {
+  const value = event[key];
+  if (value === undefined || value === null) {
+    return {};
+  }
+  if (!isPlainObject(value)) {
+    throw new Error(
+      `Sample logs file ${filePath}: event ${index} has a ${key} that is not a JSON object:` +
+        ` ${JSON.stringify(value)}`,
+    );
+  }
+  return value;
+}
+
+/**
+ * The event's severity, defaulting to {@link DEFAULT_SEVERITY} when absent; throws when present but
+ * not a number. LogEvent.severity is a primitive int in the OTel 1-24 range, so a level name such as
+ * "ERROR" cannot be coerced — silently substituting the default would run the draft at INFO against
+ * samples the author wrote as errors.
+ */
+function severityOf(event: Record<string, unknown>, filePath: string, index: number): number {
+  const value = event.severity;
+  if (value === undefined || value === null) {
+    return DEFAULT_SEVERITY;
+  }
+  const severity = firstFiniteNumber(value);
+  if (severity === undefined) {
+    throw new Error(
+      `Sample logs file ${filePath}: event ${index} has a severity that is not a number in the` +
+        ` OTel 1-24 range: ${JSON.stringify(value)}`,
+    );
+  }
+  return severity;
+}
+
+/** The first argument that is a finite number, or undefined when none is. */
+function firstFiniteNumber(...values: unknown[]): number | undefined {
+  return values.find(
+    (value): value is number => typeof value === 'number' && Number.isFinite(value),
+  );
+}
+
+/** Whether `value` is a non-null, non-array object (a JSON map). */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** The value when it is a non-empty string, else undefined. */
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
 /** Sampler flags only apply to raw job-graph drafts; reject them on template plans. */

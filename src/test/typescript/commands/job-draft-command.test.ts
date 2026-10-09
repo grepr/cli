@@ -636,6 +636,168 @@ describe('JobDraftCommand', () => {
     expect(draftSource?.values.every(v => v.type === 'log')).toBe(true);
   });
 
+  it('test_jobDraft_sampleLogs_fillsIdAndTimestampsFromContentOnlySample', async () => {
+    const planFile = path.join(tempDir, 'plan.json');
+    await writeTransformPlan(planFile);
+    const sampleFile = path.join(tempDir, 'sample.json');
+    await fs.writeJson(sampleFile, [
+      {
+        message: 'This is a sample log from grepr-flink-query service.',
+        tags: { service: ['grepr-flink-query'] },
+        severity: 9,
+        eventtimestamp: 1785235200000,
+      },
+    ]);
+
+    const stream = Readable.from(['{"jobState":"FINISHED"}\n']);
+    const mockApi = { submitSyncJob: vi.fn().mockResolvedValue(stream) };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
+    await program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-logs', sampleFile]);
+
+    const submitted = mockApi.submitSyncJob.mock.calls[0]?.[0] as {
+      jobGraph: {
+        vertices: {
+          templateInputs?: {
+            input?: { draftSource?: { values: Record<string, unknown>[] } };
+          };
+        }[];
+      };
+    };
+    const value = submitted.jobGraph.vertices[0]?.templateInputs?.input?.draftSource?.values[0];
+    expect(value?.type).toBe('log');
+    expect(typeof value?.id).toBe('string');
+    expect((value?.id as string).length).toBeGreaterThan(0);
+    expect(value?.eventTimestamp).toBe(1785235200000);
+    expect(typeof value?.receivedTimestamp).toBe('number');
+    expect(value?.message).toBe('This is a sample log from grepr-flink-query service.');
+  });
+
+  it('test_jobDraft_sampleLogs_isoTimestamps_areParsedNotRestamped', async () => {
+    // Samples copied out of query output carry ISO-8601 timestamps; restamping them with the
+    // current time collapses every event onto one instant, so time windows and dedup are then
+    // exercised against times the author never wrote.
+    const planFile = path.join(tempDir, 'plan.json');
+    await writeTransformPlan(planFile);
+    const sampleFile = path.join(tempDir, 'sample.json');
+    await fs.writeJson(sampleFile, [
+      { message: 'GET /checkout 200 ok', eventTimestamp: '2026-07-26T12:00:00.000Z' },
+    ]);
+
+    const stream = Readable.from(['{"jobState":"FINISHED"}\n']);
+    const mockApi = { submitSyncJob: vi.fn().mockResolvedValue(stream) };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
+    await program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-logs', sampleFile]);
+
+    const submitted = mockApi.submitSyncJob.mock.calls[0]?.[0] as {
+      jobGraph: {
+        vertices: {
+          templateInputs?: {
+            input?: { draftSource?: { values: Record<string, unknown>[] } };
+          };
+        }[];
+      };
+    };
+    const value = submitted.jobGraph.vertices[0]?.templateInputs?.input?.draftSource?.values[0];
+    expect(value?.eventTimestamp).toBe(Date.parse('2026-07-26T12:00:00.000Z'));
+    expect(value?.receivedTimestamp).toBe(Date.parse('2026-07-26T12:00:00.000Z'));
+  });
+
+  it('test_jobDraft_sampleLogs_unreadableTimestamp_failsInsteadOfSilentlyRestamping', async () => {
+    const planFile = path.join(tempDir, 'plan.json');
+    await writeTransformPlan(planFile);
+    const sampleFile = path.join(tempDir, 'sample.json');
+    await fs.writeJson(sampleFile, [
+      { message: 'GET /checkout 200 ok', eventTimestamp: 'last tuesday' },
+    ]);
+
+    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
+
+    await expect(
+      program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-logs', sampleFile]),
+    ).rejects.toThrow('process.exit called');
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error running draft pipeline:',
+      expect.stringContaining('eventTimestamp'),
+    );
+  });
+
+  it('test_jobDraft_sampleLogs_tagsOfTheWrongType_failsInsteadOfDroppingThem', async () => {
+    const planFile = path.join(tempDir, 'plan.json');
+    await writeTransformPlan(planFile);
+    const sampleFile = path.join(tempDir, 'sample.json');
+    await fs.writeJson(sampleFile, [{ message: 'GET /checkout 200 ok', tags: ['service:checkout'] }]);
+
+    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
+
+    await expect(
+      program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-logs', sampleFile]),
+    ).rejects.toThrow('process.exit called');
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error running draft pipeline:',
+      expect.stringContaining('tags'),
+    );
+  });
+
+  it('test_jobDraft_sampleLogs_messageOnlySample_defaultsSeverityToInfo', async () => {
+    // LogEvent.severity is a primitive int in the OTel 1-24 range, so an omitted severity would
+    // deserialize to 0 — a level no severity rule matches.
+    const planFile = path.join(tempDir, 'plan.json');
+    await writeTransformPlan(planFile);
+    const sampleFile = path.join(tempDir, 'sample.json');
+    await fs.writeJson(sampleFile, [{ message: 'GET /checkout 200 ok' }]);
+
+    const stream = Readable.from(['{"jobState":"FINISHED"}\n']);
+    const mockApi = { submitSyncJob: vi.fn().mockResolvedValue(stream) };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
+    await program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-logs', sampleFile]);
+
+    const submitted = mockApi.submitSyncJob.mock.calls[0]?.[0] as {
+      jobGraph: {
+        vertices: {
+          templateInputs?: {
+            input?: { draftSource?: { values: Record<string, unknown>[] } };
+          };
+        }[];
+      };
+    };
+    const value = submitted.jobGraph.vertices[0]?.templateInputs?.input?.draftSource?.values[0];
+    expect(value?.severity).toBe(9);
+  });
+
+  it('test_jobDraft_sampleLogs_explicitSeverity_isPreserved', async () => {
+    const planFile = path.join(tempDir, 'plan.json');
+    await writeTransformPlan(planFile);
+    const sampleFile = path.join(tempDir, 'sample.json');
+    await fs.writeJson(sampleFile, [{ message: 'GET /checkout 500 upstream timeout', severity: 17 }]);
+
+    const stream = Readable.from(['{"jobState":"FINISHED"}\n']);
+    const mockApi = { submitSyncJob: vi.fn().mockResolvedValue(stream) };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
+    await program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-logs', sampleFile]);
+
+    const submitted = mockApi.submitSyncJob.mock.calls[0]?.[0] as {
+      jobGraph: {
+        vertices: {
+          templateInputs?: {
+            input?: { draftSource?: { values: Record<string, unknown>[] } };
+          };
+        }[];
+      };
+    };
+    const value = submitted.jobGraph.vertices[0]?.templateInputs?.input?.draftSource?.values[0];
+    expect(value?.severity).toBe(17);
+  });
+
   it('test_jobDraft_sampleLogs_acceptsNdjson', async () => {
     // NDJSON (one event per line) is accepted alongside a JSON array.
     const planFile = path.join(tempDir, 'plan.json');

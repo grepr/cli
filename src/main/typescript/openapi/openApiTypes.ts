@@ -134,7 +134,7 @@ export interface paths {
      * List agent suggestions
      * @description Returns the organization's agent suggestions, newest first, optionally filtered by pipeline, review status, and proposing agent.
      */
-    get: operations["list_1"];
+    get: operations["list_2"];
     put?: never;
     post?: never;
     delete?: never;
@@ -154,7 +154,7 @@ export interface paths {
      * Get an agent suggestion
      * @description Returns one agent suggestion, including the template-inputs patch, the job version it was proposed against, and the sample events it was verified with.
      */
-    get: operations["get_1"];
+    get: operations["get_2"];
     put?: never;
     post?: never;
     delete?: never;
@@ -214,13 +214,13 @@ export interface paths {
      * List agents
      * @description Returns every agent configured for your organization, newest first.
      */
-    get: operations["list_2"];
+    get: operations["list_3"];
     put?: never;
     /**
      * Create an agent
      * @description Creates an agent with the given model configuration, tools and prompt.
      */
-    post: operations["create_1"];
+    post: operations["create_2"];
     delete?: never;
     options?: never;
     head?: never;
@@ -298,7 +298,7 @@ export interface paths {
      * Get an agent
      * @description Returns a single agent by id.
      */
-    get: operations["get_2"];
+    get: operations["get_3"];
     /**
      * Update an agent
      * @description Updates an agent. The version must match the version the client most recently observed, else a 409 Conflict is returned.
@@ -309,7 +309,7 @@ export interface paths {
      * Delete an agent
      * @description Soft-deletes an agent. Returns 409 while the agent is still subscribed to any pipeline; unsubscribe it first.
      */
-    delete: operations["delete_1"];
+    delete: operations["delete_2"];
     options?: never;
     head?: never;
     patch?: never;
@@ -534,6 +534,202 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/chat-preferences": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the caller's chat preferences
+     * @description Returns the defaults new chats start with for this user. A field the user has never set is null, which the client reads as "use the default" rather than "empty".
+     */
+    get: operations["get_1"];
+    /**
+     * Set the caller's chat preferences
+     * @description Replaces the defaults new chats start with for this user. Storing an empty skill list is a deliberate choice to start with none, and is kept as such.
+     */
+    put: operations["set"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/chats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List the user's chats
+     * @description Returns one page of the authenticated user's chats within their org, most-recently-updated first. Metadata only (id, title, timestamps); turn content is read per-chat. Page backwards with the response's nextCursor.
+     */
+    get: operations["list_1"];
+    put?: never;
+    /**
+     * Create a chat
+     * @description Creates a chat, starts its workflow, and submits the first message. Returns the new chat id; the turn runs asynchronously.
+     */
+    post: operations["create_1"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/chats/{chatId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get chat metadata
+     * @description Returns the chat's status (mirrored from the backing workflow's Temporal status) and its current turn index. Polled while the chat runs.
+     */
+    get: operations["status"];
+    /**
+     * Append a message to a chat
+     * @description Signals the chat's workflow with a new user message. Returns 202 immediately.
+     */
+    put: operations["append"];
+    post?: never;
+    /**
+     * Delete a chat
+     * @description Soft-deletes the chat: it stops being listed and is reported as not found, while its row and journal are retained. Cancels any in-flight turn and tears down the sandbox. Idempotent. Returns 202 immediately.
+     */
+    delete: operations["delete_1"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/chats/{chatId}/auto-approve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Switch a chat's auto-approval mode
+     * @description Turns auto-approval on or off for the chat. While on, gated actions run without prompting, and a turn already parked on an approval is released. The setting is persisted and survives a restart of the chat. Returns 202 immediately.
+     */
+    put: operations["setAutoApprove"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/chats/{chatId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cancel a chat
+     * @description Signals the chat's workflow to abort the current turn and finish as CANCELLED.
+     */
+    post: operations["cancel"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/chats/{chatId}/permissions/{permissionId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Reply to a chat's pending approval
+     * @description Signals the chat's workflow with the user's approve/reject decision for the gated action it is waiting on, resuming the turn. Returns 202 immediately.
+     */
+    post: operations["respondToPermission"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/chats/{chatId}/stop": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Stop a chat's in-flight turn
+     * @description Signals the chat's workflow to abort the current turn but stay alive, parked for the next message. Returns 202 immediately.
+     */
+    post: operations["stop"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/chats/{chatId}/title": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Rename a chat
+     * @description Replaces the chat's display title with a user-chosen one, clamped to the same length as a derived title. Does not reorder the chat list. Returns 202 immediately.
+     */
+    put: operations["rename"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/chats/{chatId}/turns": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Stream a chat's turns by sequence cursor
+     * @description Returns journalled turns after the given sequence, oldest first.
+     */
+    get: operations["turns"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/datasets": {
     parameters: {
       query?: never;
@@ -733,13 +929,13 @@ export interface paths {
      * List all Anthropic integrations
      * @description Get all Anthropic integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_4"];
+    get: operations["list_5"];
     put?: never;
     /**
      * Create an Anthropic integration
      * @description Creates an integration to connect to Anthropic.
      */
-    post: operations["create_3"];
+    post: operations["create_4"];
     delete?: never;
     options?: never;
     head?: never;
@@ -757,7 +953,7 @@ export interface paths {
      * Get an Anthropic integration
      * @description Get an Anthropic integration by ID.
      */
-    get: operations["get_4"];
+    get: operations["get_5"];
     /**
      * Update an Anthropic integration.
      * @description Updates an Anthropic integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -768,7 +964,7 @@ export interface paths {
      * Delete an Anthropic integration
      * @description Deletes an Anthropic integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_2"];
+    delete: operations["delete_3"];
     options?: never;
     head?: never;
     patch?: never;
@@ -821,13 +1017,13 @@ export interface paths {
      * List all Data Warehouse integrations
      * @description Retrieves all Data Warehouse integrations for the organization.
      */
-    get: operations["list_6"];
+    get: operations["list_7"];
     put?: never;
     /**
      * Create a Data Warehouse integration
      * @description Creates a new Data Warehouse integration for connecting to Grepr S3 bucket.
      */
-    post: operations["create_5"];
+    post: operations["create_6"];
     delete?: never;
     options?: never;
     head?: never;
@@ -845,7 +1041,7 @@ export interface paths {
      * Get a Data Warehouse integration
      * @description Retrieves a Data Warehouse integration.
      */
-    get: operations["get_6"];
+    get: operations["get_7"];
     /**
      * Update a Data Warehouse integration
      * @description Updates an existing Data Warehouse integration.
@@ -856,7 +1052,7 @@ export interface paths {
      * Delete a Data Warehouse integration
      * @description Deletes a Data Warehouse integration if it exists. No-op otherwise.
      */
-    delete: operations["delete_4"];
+    delete: operations["delete_5"];
     options?: never;
     head?: never;
     patch?: never;
@@ -873,13 +1069,13 @@ export interface paths {
      * List all Datadog integrations
      * @description Get all Datadog integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_5"];
+    get: operations["list_6"];
     put?: never;
     /**
      * Create a Datadog integration
      * @description Creates an integration to connect to Datadog.
      */
-    post: operations["create_4"];
+    post: operations["create_5"];
     delete?: never;
     options?: never;
     head?: never;
@@ -897,13 +1093,13 @@ export interface paths {
      * List all Datadog MCP integrations
      * @description Get all Datadog MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_10"];
+    get: operations["list_11"];
     put?: never;
     /**
      * Create a Datadog MCP integration
      * @description Creates an integration to connect to a Datadog MCP server.
      */
-    post: operations["create_9"];
+    post: operations["create_10"];
     delete?: never;
     options?: never;
     head?: never;
@@ -921,7 +1117,7 @@ export interface paths {
      * Get a Datadog MCP integration
      * @description Get a Datadog MCP integration by ID.
      */
-    get: operations["get_10"];
+    get: operations["get_11"];
     /**
      * Update a Datadog MCP integration.
      * @description Updates a Datadog MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -932,7 +1128,7 @@ export interface paths {
      * Delete a Datadog MCP integration
      * @description Deletes a Datadog MCP integration. This will delete the associated API keys as well. No-op if already deleted.
      */
-    delete: operations["delete_8"];
+    delete: operations["delete_9"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1029,7 +1225,7 @@ export interface paths {
      * Get a Datadog integration
      * @description Get an integration to connect to Datadog.
      */
-    get: operations["get_5"];
+    get: operations["get_6"];
     /**
      * Update a Datadog integration.
      * @description Updates an integration to connect to Datadog. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1040,7 +1236,7 @@ export interface paths {
      * Delete a Datadog integration
      * @description Deletes an integration to connect to Datadog. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_3"];
+    delete: operations["delete_4"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1205,13 +1401,13 @@ export interface paths {
      * List all Gemini integrations
      * @description Get all Google Gemini integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_8"];
+    get: operations["list_9"];
     put?: never;
     /**
      * Create a Gemini integration
      * @description Creates an integration to connect to Google Gemini.
      */
-    post: operations["create_7"];
+    post: operations["create_8"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1229,7 +1425,7 @@ export interface paths {
      * Get a Gemini integration
      * @description Get a Gemini integration by ID.
      */
-    get: operations["get_8"];
+    get: operations["get_9"];
     /**
      * Update a Gemini integration.
      * @description Updates a Gemini integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1240,7 +1436,7 @@ export interface paths {
      * Delete a Gemini integration
      * @description Deletes a Gemini integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_6"];
+    delete: operations["delete_7"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1293,13 +1489,13 @@ export interface paths {
      * List all GitHub MCP integrations
      * @description Get all GitHub MCP server integrations for your organization. This will contain masked tokens if present.
      */
-    get: operations["list_11"];
+    get: operations["list_12"];
     put?: never;
     /**
      * Create a GitHub MCP integration
      * @description Creates an integration to connect to a GitHub MCP server.
      */
-    post: operations["create_10"];
+    post: operations["create_11"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1317,7 +1513,7 @@ export interface paths {
      * Get a GitHub MCP integration
      * @description Get a GitHub MCP integration by ID.
      */
-    get: operations["get_11"];
+    get: operations["get_12"];
     /**
      * Update a GitHub MCP integration.
      * @description Updates a GitHub MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1328,7 +1524,7 @@ export interface paths {
      * Delete a GitHub MCP integration
      * @description Deletes a GitHub MCP integration. This will delete the associated token as well. No-op if already deleted.
      */
-    delete: operations["delete_9"];
+    delete: operations["delete_10"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1362,10 +1558,10 @@ export interface paths {
       cookie?: never;
     };
     /** List all LiteLLM integrations */
-    get: operations["list_9"];
+    get: operations["list_10"];
     put?: never;
     /** Create a LiteLLM integration */
-    post: operations["create_8"];
+    post: operations["create_9"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1380,12 +1576,12 @@ export interface paths {
       cookie?: never;
     };
     /** Get a LiteLLM integration */
-    get: operations["get_9"];
+    get: operations["get_10"];
     /** Update a LiteLLM integration */
     put: operations["update_7"];
     post?: never;
     /** Delete a LiteLLM integration */
-    delete: operations["delete_7"];
+    delete: operations["delete_8"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1435,13 +1631,13 @@ export interface paths {
      * List all NewRelic integrations
      * @description Get all NewRelic integrations.
      */
-    get: operations["list_14"];
+    get: operations["list_15"];
     put?: never;
     /**
      * Create a NewRelic integration
      * @description Creates an integration to connect to NewRelic.
      */
-    post: operations["create_13"];
+    post: operations["create_14"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1479,7 +1675,7 @@ export interface paths {
      * Get a NewRelic integration
      * @description Get an integration to connect to NewRelic.
      */
-    get: operations["get_14"];
+    get: operations["get_15"];
     /**
      * Update a NewRelic integration.
      * @description Updates an integration to connect to NewRelic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1490,7 +1686,7 @@ export interface paths {
      * Delete a NewRelic integration
      * @description Deletes an integration to connect to NewRelic. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_12"];
+    delete: operations["delete_13"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1587,13 +1783,13 @@ export interface paths {
      * List all OpenAI integrations
      * @description Get all OpenAI integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_15"];
+    get: operations["list_16"];
     put?: never;
     /**
      * Create an OpenAI integration
      * @description Creates an integration to connect to OpenAI.
      */
-    post: operations["create_14"];
+    post: operations["create_15"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1611,7 +1807,7 @@ export interface paths {
      * Get an OpenAI integration
      * @description Get an OpenAI integration by ID.
      */
-    get: operations["get_15"];
+    get: operations["get_16"];
     /**
      * Update an OpenAI integration.
      * @description Updates an OpenAI integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1622,7 +1818,7 @@ export interface paths {
      * Delete an OpenAI integration
      * @description Deletes an OpenAI integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_13"];
+    delete: operations["delete_14"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1659,13 +1855,13 @@ export interface paths {
      * List all OTLP integrations
      * @description Get all OTLP integrations.
      */
-    get: operations["list_16"];
+    get: operations["list_17"];
     put?: never;
     /**
      * Create an OTLP integration
      * @description Creates an integration to connect to OTLP.
      */
-    post: operations["create_15"];
+    post: operations["create_16"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1683,7 +1879,7 @@ export interface paths {
      * Get a OTLP integration
      * @description Get an integration to connect to OTLP.
      */
-    get: operations["get_16"];
+    get: operations["get_17"];
     /**
      * Update a OTLP integration.
      * @description Updates an integration to connect to OTLP. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1694,7 +1890,7 @@ export interface paths {
      * Delete a OTLP integration
      * @description Deletes an integration to connect to OTLP. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_14"];
+    delete: operations["delete_15"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1755,13 +1951,13 @@ export interface paths {
      * List all PagerDuty MCP integrations
      * @description Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_12"];
+    get: operations["list_13"];
     put?: never;
     /**
      * Create a PagerDuty MCP integration
      * @description Creates an integration to connect to a PagerDuty MCP server.
      */
-    post: operations["create_11"];
+    post: operations["create_12"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1779,7 +1975,7 @@ export interface paths {
      * Get a PagerDuty MCP integration
      * @description Get a PagerDuty MCP integration by ID.
      */
-    get: operations["get_12"];
+    get: operations["get_13"];
     /**
      * Update a PagerDuty MCP integration.
      * @description Updates a PagerDuty MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1790,7 +1986,7 @@ export interface paths {
      * Delete a PagerDuty MCP integration
      * @description Deletes a PagerDuty MCP integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_10"];
+    delete: operations["delete_11"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1824,13 +2020,13 @@ export interface paths {
       cookie?: never;
     };
     /** List all S3 Data Warehouse integrations */
-    get: operations["list_7"];
+    get: operations["list_8"];
     put?: never;
     /**
      * Create a S3 Data Warehouse integration
      * @description Creates an external S3 Data Warehouse integration
      */
-    post: operations["create_6"];
+    post: operations["create_7"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1908,7 +2104,7 @@ export interface paths {
      * Get a S3 Data Warehouse integration
      * @description Gets an external S3 Data Warehouse integration
      */
-    get: operations["get_7"];
+    get: operations["get_8"];
     /**
      * Update a S3 Data Warehouse integration
      * @description Updates an external S3 Data Warehouse integration
@@ -1919,7 +2115,7 @@ export interface paths {
      * Delete a S3 Data Warehouse integration
      * @description Deletes an external S3 Data Warehouse integration if it exists. No-op otherwise.
      */
-    delete: operations["delete_5"];
+    delete: operations["delete_6"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1936,13 +2132,13 @@ export interface paths {
      * List all S3 Vector Index integrations
      * @description Retrieves all S3 Vector Index integrations for the organization.
      */
-    get: operations["list_17"];
+    get: operations["list_18"];
     put?: never;
     /**
      * Create an S3 Vector Index integration
      * @description Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.
      */
-    post: operations["create_16"];
+    post: operations["create_17"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1960,7 +2156,7 @@ export interface paths {
      * Get an S3 Vector Index integration
      * @description Retrieves an S3 Vector Index integration.
      */
-    get: operations["get_17"];
+    get: operations["get_18"];
     /**
      * Update an S3 Vector Index integration
      * @description Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.
@@ -1971,7 +2167,7 @@ export interface paths {
      * Delete an S3 Vector Index integration
      * @description Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn't exist.
      */
-    delete: operations["delete_15"];
+    delete: operations["delete_16"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1988,13 +2184,13 @@ export interface paths {
      * List all Slack MCP integrations
      * @description Get all Slack MCP server integrations for your organization. This will contain masked tokens if present.
      */
-    get: operations["list_13"];
+    get: operations["list_14"];
     put?: never;
     /**
      * Create a Slack MCP integration
      * @description Creates an integration to connect to a Slack MCP server.
      */
-    post: operations["create_12"];
+    post: operations["create_13"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2012,7 +2208,7 @@ export interface paths {
      * Get a Slack MCP integration
      * @description Get a Slack MCP integration by ID.
      */
-    get: operations["get_13"];
+    get: operations["get_14"];
     /**
      * Update a Slack MCP integration.
      * @description Updates a Slack MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -2023,7 +2219,7 @@ export interface paths {
      * Delete a Slack MCP integration
      * @description Deletes a Slack MCP integration. This will delete the associated token as well. No-op if already deleted.
      */
-    delete: operations["delete_11"];
+    delete: operations["delete_12"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2060,13 +2256,13 @@ export interface paths {
      * List all Splunk integrations
      * @description Get all Splunk integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_18"];
+    get: operations["list_19"];
     put?: never;
     /**
      * Create a Splunk integration
      * @description Creates an integration to connect to Splunk.
      */
-    post: operations["create_17"];
+    post: operations["create_18"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2084,7 +2280,7 @@ export interface paths {
      * Get a Splunk integration
      * @description Get an integration to connect to Splunk.
      */
-    get: operations["get_18"];
+    get: operations["get_19"];
     /**
      * Update a Splunk integration.
      * @description Updates an integration to connect to Splunk. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -2095,7 +2291,7 @@ export interface paths {
      * Delete a Splunk integration
      * @description Deletes an integration to connect to Splunk. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_16"];
+    delete: operations["delete_17"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2192,13 +2388,13 @@ export interface paths {
      * List all SumoLogic integrations
      * @description Get all SumoLogic integrations.
      */
-    get: operations["list_19"];
+    get: operations["list_20"];
     put?: never;
     /**
      * Create a SumoLogic integration
      * @description Creates an integration to connect to SumoLogic.
      */
-    post: operations["create_18"];
+    post: operations["create_19"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2216,7 +2412,7 @@ export interface paths {
      * Get a SumoLogic integration
      * @description Get an integration to connect to SumoLogic.
      */
-    get: operations["get_19"];
+    get: operations["get_20"];
     /**
      * Update a SumoLogic integration.
      * @description Updates an integration to connect to SumoLogic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -2227,7 +2423,7 @@ export interface paths {
      * Delete a SumoLogic integration
      * @description Deletes an integration to connect to SumoLogic. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_17"];
+    delete: operations["delete_18"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2264,13 +2460,13 @@ export interface paths {
      * List webhook integrations
      * @description Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.
      */
-    get: operations["list_20"];
+    get: operations["list_21"];
     put?: never;
     /**
      * Create a webhook integration
      * @description Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).
      */
-    post: operations["create_19"];
+    post: operations["create_20"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2288,7 +2484,7 @@ export interface paths {
      * Get a webhook integration
      * @description Get a webhook integration by ID.
      */
-    get: operations["get_20"];
+    get: operations["get_21"];
     /**
      * Update a webhook integration
      * @description Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -2299,7 +2495,7 @@ export interface paths {
      * Delete a webhook integration
      * @description Deletes a webhook integration. No-op if already deleted.
      */
-    delete: operations["delete_18"];
+    delete: operations["delete_19"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2590,7 +2786,27 @@ export interface paths {
      * Cancel an investigation
      * @description Durably marks an eligible investigation as CANCELLING and returns 202. An asynchronous reconciler cancels its workflow, if one exists, and it then finalizes as CANCELLED.
      */
-    post: operations["cancel"];
+    post: operations["cancel_1"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/investigations/{investigationId}/chat": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Open an investigation as a chat
+     * @description Creates a new chat seeded with a copy of the investigation's transcript and returns its chat id, then durably requests the investigation's cancellation so it does not keep running alongside the chat. Each call opens a separate chat.
+     */
+    post: operations["chat"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2630,7 +2846,7 @@ export interface paths {
      * Stop a running investigation
      * @description Durably marks a running investigation as STOPPING and returns 202. An asynchronous reconciler signals the workflow, which pauses at its next turn boundary and records STOPPED; it can then be resumed with a message.
      */
-    post: operations["stop"];
+    post: operations["stop_1"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2668,7 +2884,7 @@ export interface paths {
      * Stream an investigation's transcript turns by sequence cursor
      * @description Returns journalled turns after the given sequence, oldest first.
      */
-    get: operations["turns"];
+    get: operations["turns_1"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3422,10 +3638,10 @@ export interface paths {
       cookie?: never;
     };
     /** List skills */
-    get: operations["list_3"];
+    get: operations["list_4"];
     put?: never;
     /** Create an organization skill */
-    post: operations["create_2"];
+    post: operations["create_3"];
     delete?: never;
     options?: never;
     head?: never;
@@ -3440,7 +3656,7 @@ export interface paths {
       cookie?: never;
     };
     /** Get a skill */
-    get: operations["get_3"];
+    get: operations["get_4"];
     /** Update an organization skill */
     put: operations["update_1"];
     post?: never;
@@ -3715,7 +3931,7 @@ export interface paths {
      * List all users
      * @description Get all users in the system.
      */
-    get: operations["list_21"];
+    get: operations["list_22"];
     put?: never;
     /**
      * Create a new user
@@ -4833,6 +5049,9 @@ export interface components {
        */
       status?: AppKeyScopeCheckStatus;
     };
+    AppendMessageRequest: {
+      text: string;
+    };
     ArrayData: Record<string, never>;
     AthenaAgentSessionsSource: {
       /** @description The ID of the dataset to read data from. */
@@ -5141,6 +5360,9 @@ export interface components {
       provider: string;
       signupClientId?: string;
     };
+    AutoApproveRequest: {
+      autoApprove?: boolean;
+    };
     AvailablePermission: {
       /** @description Action being permitted (e.g., view, edit) */
       action: string;
@@ -5305,6 +5527,30 @@ export interface components {
       };
       message?: string;
       sampleId?: string;
+    };
+    ChatList: {
+      chats?: components["schemas"]["ChatSummary"][];
+      nextCursor?: string;
+    };
+    ChatPreferences: {
+      enabledSkills?: string[];
+    };
+    ChatStatusResponse: {
+      autoApprove?: boolean;
+      model?: components["schemas"]["ModelConfiguration"];
+      pendingApproval?: components["schemas"]["PendingApproval"];
+      processing?: boolean;
+      status?: string;
+      /** Format: int32 */
+      turnIndex?: number;
+    };
+    ChatSummary: {
+      chatId?: string;
+      /** Format: date-time */
+      createdAt?: string;
+      title?: string;
+      /** Format: date-time */
+      updatedAt?: string;
     };
     /** @description Keys and site to check Datadog authorization scopes against */
     CheckAppKeyScopesRequest: {
@@ -5621,6 +5867,15 @@ export interface components {
       | components["schemas"]["CreateLogsBackfillJob"]
       | components["schemas"]["CreateSpansBackfillJob"]
     );
+    CreateChatRequest: {
+      autoApprove?: boolean;
+      enabledSkills?: string[];
+      model: components["schemas"]["ModelConfiguration"];
+      text: string;
+    };
+    CreateChatResponse: {
+      chatId?: string;
+    };
     /** @description Attributes of the Grepr Job to create */
     CreateJob: {
       /**
@@ -9932,6 +10187,10 @@ export interface components {
        */
       type: PaygSummaryType;
     };
+    PendingApproval: {
+      command?: string;
+      permissionId?: string;
+    };
     /** @description One reporting period — dropdown entry plus bounds for display. */
     PeriodEntry: {
       /** @description True if this entry's period contains today. */
@@ -9948,6 +10207,9 @@ export interface components {
        * @description Inclusive period start date.
        */
       startDate: string;
+    };
+    PermissionReplyRequest: {
+      reply: string;
     };
     PhraseNode: {
       /**
@@ -11231,6 +11493,9 @@ export interface components {
        */
       values: string[];
     };
+    RenameChatRequest: {
+      title: string;
+    };
     ResetImpactEstimationResponse: {
       /**
        * Format: int32
@@ -11506,6 +11771,7 @@ export interface components {
       displayName?: string;
       files?: components["schemas"]["SkillFile"][];
       id?: string;
+      mutating?: boolean;
       /** Format: int64 */
       revision?: number;
       /** @enum {string} */
@@ -14709,6 +14975,8 @@ export type SchemaAnthropic = components["schemas"]["Anthropic"];
 export type SchemaAny = components["schemas"]["Any"];
 export type SchemaApiKey = components["schemas"]["ApiKey"];
 export type SchemaAppKeyScopeCheck = components["schemas"]["AppKeyScopeCheck"];
+export type SchemaAppendMessageRequest =
+  components["schemas"]["AppendMessageRequest"];
 export type SchemaArrayData = components["schemas"]["ArrayData"];
 export type SchemaAthenaAgentSessionsSource =
   components["schemas"]["AthenaAgentSessionsSource"];
@@ -14734,6 +15002,8 @@ export type SchemaAttributesMergeStrategy =
 export type SchemaAttributesMergeStrategyEntry =
   components["schemas"]["AttributesMergeStrategyEntry"];
 export type SchemaAuthConfig = components["schemas"]["AuthConfig"];
+export type SchemaAutoApproveRequest =
+  components["schemas"]["AutoApproveRequest"];
 export type SchemaAvailablePermission =
   components["schemas"]["AvailablePermission"];
 export type SchemaAverageAttributesMergeStrategy =
@@ -14756,6 +15026,11 @@ export type SchemaBucketPartitionTransform =
   components["schemas"]["BucketPartitionTransform"];
 export type SchemaChainNode = components["schemas"]["ChainNode"];
 export type SchemaChangeFinding = components["schemas"]["ChangeFinding"];
+export type SchemaChatList = components["schemas"]["ChatList"];
+export type SchemaChatPreferences = components["schemas"]["ChatPreferences"];
+export type SchemaChatStatusResponse =
+  components["schemas"]["ChatStatusResponse"];
+export type SchemaChatSummary = components["schemas"]["ChatSummary"];
 export type SchemaCheckAppKeyScopesRequest =
   components["schemas"]["CheckAppKeyScopesRequest"];
 export type SchemaChunkedOutputEventRecordReadableData =
@@ -14781,6 +15056,10 @@ export type SchemaCreateAgentSessionAnalyticsJob =
   components["schemas"]["CreateAgentSessionAnalyticsJob"];
 export type SchemaCreateBackfillJob =
   components["schemas"]["CreateBackfillJob"];
+export type SchemaCreateChatRequest =
+  components["schemas"]["CreateChatRequest"];
+export type SchemaCreateChatResponse =
+  components["schemas"]["CreateChatResponse"];
 export type SchemaCreateJob = components["schemas"]["CreateJob"];
 export type SchemaCreateLogsBackfillJob =
   components["schemas"]["CreateLogsBackfillJob"];
@@ -15118,7 +15397,10 @@ export type SchemaPatternMatcher = components["schemas"]["PatternMatcher"];
 export type SchemaPatternRuleConfig =
   components["schemas"]["PatternRuleConfig"];
 export type SchemaPaygSummary = components["schemas"]["PaygSummary"];
+export type SchemaPendingApproval = components["schemas"]["PendingApproval"];
 export type SchemaPeriodEntry = components["schemas"]["PeriodEntry"];
+export type SchemaPermissionReplyRequest =
+  components["schemas"]["PermissionReplyRequest"];
 export type SchemaPhraseNode = components["schemas"]["PhraseNode"];
 export type SchemaPipelineChangeRequest =
   components["schemas"]["PipelineChangeRequest"];
@@ -15195,6 +15477,8 @@ export type SchemaReducerLogsQuerySource =
   components["schemas"]["ReducerLogsQuerySource"];
 export type SchemaRemoveKeyAttributeAction =
   components["schemas"]["RemoveKeyAttributeAction"];
+export type SchemaRenameChatRequest =
+  components["schemas"]["RenameChatRequest"];
 export type SchemaResetImpactEstimationResponse =
   components["schemas"]["ResetImpactEstimationResponse"];
 export type SchemaResource = components["schemas"]["Resource"];
@@ -15668,7 +15952,7 @@ export interface operations {
       };
     };
   };
-  list_1: {
+  list_2: {
     parameters: {
       query?: {
         jobId?: string;
@@ -15701,7 +15985,7 @@ export interface operations {
       };
     };
   };
-  get_1: {
+  get_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -15823,7 +16107,7 @@ export interface operations {
       };
     };
   };
-  list_2: {
+  list_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -15850,7 +16134,7 @@ export interface operations {
       };
     };
   };
-  create_1: {
+  create_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -15994,7 +16278,7 @@ export interface operations {
       };
     };
   };
-  get_2: {
+  get_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -16084,7 +16368,7 @@ export interface operations {
       };
     };
   };
-  delete_1: {
+  delete_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -16672,6 +16956,483 @@ export interface operations {
       };
     };
   };
+  get_1: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Preferences retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChatPreferences"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  set: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChatPreferences"];
+      };
+    };
+    responses: {
+      /** @description Preferences stored */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  list_1: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor from a previous page's nextCursor; omit for the first page. */
+        cursor?: string;
+        /** @description Requested page size (1–100); defaults to 20. */
+        pageSize?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chats retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChatList"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  create_1: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["CreateChatRequest"];
+      };
+    };
+    responses: {
+      /** @description Chat created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CreateChatResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  status: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        chatId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Status retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChatStatusResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Chat not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  append: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        chatId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AppendMessageRequest"];
+      };
+    };
+    responses: {
+      /** @description Message accepted */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Chat not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Chat is no longer running */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  delete_1: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        chatId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Delete accepted */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Chat not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  setAutoApprove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        chatId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AutoApproveRequest"];
+      };
+    };
+    responses: {
+      /** @description Auto-approval mode updated */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Chat not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  cancel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        chatId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cancel requested */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Chat not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Chat is already finished */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  respondToPermission: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        chatId: string;
+        permissionId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["PermissionReplyRequest"];
+      };
+    };
+    responses: {
+      /** @description Decision accepted */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Chat not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Chat is no longer running */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  stop: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        chatId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Stop requested */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Chat not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Chat is no longer running */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  rename: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        chatId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["RenameChatRequest"];
+      };
+    };
+    responses: {
+      /** @description Chat renamed */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Chat not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  turns: {
+    parameters: {
+      query?: {
+        afterSeq?: number;
+        pageSize?: number;
+      };
+      header?: never;
+      path: {
+        chatId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Turns retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TranscriptTurnsList"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Chat not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   getAllDatasets: {
     parameters: {
       query?: never;
@@ -17214,7 +17975,7 @@ export interface operations {
       };
     };
   };
-  list_4: {
+  list_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -17241,7 +18002,7 @@ export interface operations {
       };
     };
   };
-  create_3: {
+  create_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -17281,7 +18042,7 @@ export interface operations {
       };
     };
   };
-  get_4: {
+  get_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -17364,7 +18125,7 @@ export interface operations {
       };
     };
   };
-  delete_2: {
+  delete_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -17465,7 +18226,7 @@ export interface operations {
       };
     };
   };
-  list_6: {
+  list_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -17492,7 +18253,7 @@ export interface operations {
       };
     };
   };
-  create_5: {
+  create_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -17530,7 +18291,7 @@ export interface operations {
       };
     };
   };
-  get_6: {
+  get_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -17606,7 +18367,7 @@ export interface operations {
       };
     };
   };
-  delete_4: {
+  delete_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -17633,7 +18394,7 @@ export interface operations {
       };
     };
   };
-  list_5: {
+  list_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -17660,7 +18421,7 @@ export interface operations {
       };
     };
   };
-  create_4: {
+  create_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -17700,7 +18461,7 @@ export interface operations {
       };
     };
   };
-  list_10: {
+  list_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -17727,7 +18488,7 @@ export interface operations {
       };
     };
   };
-  create_9: {
+  create_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -17767,7 +18528,7 @@ export interface operations {
       };
     };
   };
-  get_10: {
+  get_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -17850,7 +18611,7 @@ export interface operations {
       };
     };
   };
-  delete_8: {
+  delete_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -18018,7 +18779,7 @@ export interface operations {
       };
     };
   };
-  get_5: {
+  get_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -18101,7 +18862,7 @@ export interface operations {
       };
     };
   };
-  delete_3: {
+  delete_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -18496,7 +19257,7 @@ export interface operations {
       };
     };
   };
-  list_8: {
+  list_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -18523,7 +19284,7 @@ export interface operations {
       };
     };
   };
-  create_7: {
+  create_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -18563,7 +19324,7 @@ export interface operations {
       };
     };
   };
-  get_8: {
+  get_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -18646,7 +19407,7 @@ export interface operations {
       };
     };
   };
-  delete_6: {
+  delete_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -18747,7 +19508,7 @@ export interface operations {
       };
     };
   };
-  list_11: {
+  list_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -18774,7 +19535,7 @@ export interface operations {
       };
     };
   };
-  create_10: {
+  create_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -18814,7 +19575,7 @@ export interface operations {
       };
     };
   };
-  get_11: {
+  get_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -18897,7 +19658,7 @@ export interface operations {
       };
     };
   };
-  delete_9: {
+  delete_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -18962,7 +19723,7 @@ export interface operations {
       };
     };
   };
-  list_9: {
+  list_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -18989,7 +19750,7 @@ export interface operations {
       };
     };
   };
-  create_8: {
+  create_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -19029,7 +19790,7 @@ export interface operations {
       };
     };
   };
-  get_9: {
+  get_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -19112,7 +19873,7 @@ export interface operations {
       };
     };
   };
-  delete_7: {
+  delete_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -19213,7 +19974,7 @@ export interface operations {
       };
     };
   };
-  list_14: {
+  list_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -19240,7 +20001,7 @@ export interface operations {
       };
     };
   };
-  create_13: {
+  create_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -19307,7 +20068,7 @@ export interface operations {
       };
     };
   };
-  get_14: {
+  get_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -19390,7 +20151,7 @@ export interface operations {
       };
     };
   };
-  delete_12: {
+  delete_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -19578,7 +20339,7 @@ export interface operations {
       };
     };
   };
-  list_15: {
+  list_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -19605,7 +20366,7 @@ export interface operations {
       };
     };
   };
-  create_14: {
+  create_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -19645,7 +20406,7 @@ export interface operations {
       };
     };
   };
-  get_15: {
+  get_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -19728,7 +20489,7 @@ export interface operations {
       };
     };
   };
-  delete_13: {
+  delete_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -19793,7 +20554,7 @@ export interface operations {
       };
     };
   };
-  list_16: {
+  list_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -19820,7 +20581,7 @@ export interface operations {
       };
     };
   };
-  create_15: {
+  create_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -19860,7 +20621,7 @@ export interface operations {
       };
     };
   };
-  get_16: {
+  get_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -19943,7 +20704,7 @@ export interface operations {
       };
     };
   };
-  delete_14: {
+  delete_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -20087,7 +20848,7 @@ export interface operations {
       };
     };
   };
-  list_12: {
+  list_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -20114,7 +20875,7 @@ export interface operations {
       };
     };
   };
-  create_11: {
+  create_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -20154,7 +20915,7 @@ export interface operations {
       };
     };
   };
-  get_12: {
+  get_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -20237,7 +20998,7 @@ export interface operations {
       };
     };
   };
-  delete_10: {
+  delete_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -20302,7 +21063,7 @@ export interface operations {
       };
     };
   };
-  list_7: {
+  list_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -20329,7 +21090,7 @@ export interface operations {
       };
     };
   };
-  create_6: {
+  create_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -20463,7 +21224,7 @@ export interface operations {
       };
     };
   };
-  get_7: {
+  get_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -20553,7 +21314,7 @@ export interface operations {
       };
     };
   };
-  delete_5: {
+  delete_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -20580,7 +21341,7 @@ export interface operations {
       };
     };
   };
-  list_17: {
+  list_18: {
     parameters: {
       query?: never;
       header?: never;
@@ -20607,7 +21368,7 @@ export interface operations {
       };
     };
   };
-  create_16: {
+  create_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -20645,7 +21406,7 @@ export interface operations {
       };
     };
   };
-  get_17: {
+  get_18: {
     parameters: {
       query?: never;
       header?: never;
@@ -20721,7 +21482,7 @@ export interface operations {
       };
     };
   };
-  delete_15: {
+  delete_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -20748,7 +21509,7 @@ export interface operations {
       };
     };
   };
-  list_13: {
+  list_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -20775,7 +21536,7 @@ export interface operations {
       };
     };
   };
-  create_12: {
+  create_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -20815,7 +21576,7 @@ export interface operations {
       };
     };
   };
-  get_13: {
+  get_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -20898,7 +21659,7 @@ export interface operations {
       };
     };
   };
-  delete_11: {
+  delete_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -20963,7 +21724,7 @@ export interface operations {
       };
     };
   };
-  list_18: {
+  list_19: {
     parameters: {
       query?: never;
       header?: never;
@@ -20990,7 +21751,7 @@ export interface operations {
       };
     };
   };
-  create_17: {
+  create_18: {
     parameters: {
       query?: never;
       header?: never;
@@ -21030,7 +21791,7 @@ export interface operations {
       };
     };
   };
-  get_18: {
+  get_19: {
     parameters: {
       query?: never;
       header?: never;
@@ -21113,7 +21874,7 @@ export interface operations {
       };
     };
   };
-  delete_16: {
+  delete_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -21301,7 +22062,7 @@ export interface operations {
       };
     };
   };
-  list_19: {
+  list_20: {
     parameters: {
       query?: never;
       header?: never;
@@ -21328,7 +22089,7 @@ export interface operations {
       };
     };
   };
-  create_18: {
+  create_19: {
     parameters: {
       query?: never;
       header?: never;
@@ -21368,7 +22129,7 @@ export interface operations {
       };
     };
   };
-  get_19: {
+  get_20: {
     parameters: {
       query?: never;
       header?: never;
@@ -21451,7 +22212,7 @@ export interface operations {
       };
     };
   };
-  delete_17: {
+  delete_18: {
     parameters: {
       query?: never;
       header?: never;
@@ -21516,7 +22277,7 @@ export interface operations {
       };
     };
   };
-  list_20: {
+  list_21: {
     parameters: {
       query?: {
         /** @description Only return integrations targeting this agent. */
@@ -21546,7 +22307,7 @@ export interface operations {
       };
     };
   };
-  create_19: {
+  create_20: {
     parameters: {
       query?: never;
       header?: never;
@@ -21584,7 +22345,7 @@ export interface operations {
       };
     };
   };
-  get_20: {
+  get_21: {
     parameters: {
       query?: never;
       header?: never;
@@ -21667,7 +22428,7 @@ export interface operations {
       };
     };
   };
-  delete_18: {
+  delete_19: {
     parameters: {
       query?: never;
       header?: never;
@@ -22462,7 +23223,7 @@ export interface operations {
       };
     };
   };
-  cancel: {
+  cancel_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -22496,6 +23257,42 @@ export interface operations {
       };
       /** @description Investigation is already finished */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  chat: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        investigationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chat opened */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CreateChatResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Investigation not found */
+      404: {
         headers: {
           [name: string]: unknown;
         };
@@ -22548,7 +23345,7 @@ export interface operations {
       };
     };
   };
-  stop: {
+  stop_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -22625,7 +23422,7 @@ export interface operations {
       };
     };
   };
-  turns: {
+  turns_1: {
     parameters: {
       query?: {
         afterSeq?: number;
@@ -24441,7 +25238,7 @@ export interface operations {
       };
     };
   };
-  list_3: {
+  list_4: {
     parameters: {
       query?: {
         query?: string;
@@ -24464,7 +25261,7 @@ export interface operations {
       };
     };
   };
-  create_2: {
+  create_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -24488,7 +25285,7 @@ export interface operations {
       };
     };
   };
-  get_3: {
+  get_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -25303,7 +26100,7 @@ export interface operations {
       };
     };
   };
-  list_21: {
+  list_22: {
     parameters: {
       query?: {
         page?: number;

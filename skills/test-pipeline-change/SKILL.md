@@ -126,6 +126,33 @@ logs into the record file and corrupts parsing; keep stderr separate from the
 `-o` output. For sampling flags and per-backend tag-check commands, see
 reference.md.
 
+**No live traffic? Draft against sample logs.** If the pipeline has little or no
+traffic (a `grepr query` over its raw dataset returns ~0 records), the live
+draft above returns heartbeat-only and verifies nothing. Instead give it a
+deterministic input with `--sample-logs` (template-backed plans only; runs
+BATCH):
+
+```bash
+grepr job:draft plan-<tag>.json --sample-logs sample-<tag>.json --max-duration-seconds 60 -o draft-<tag>.ndjson
+```
+
+`--sample-logs` takes a JSON array (or NDJSON) of sample logs. Write **only the
+content fields** — `message` (the log line), and optionally `tags`
+(`{"<name>": ["<value>"]}`), `severity` (1-24, 9=INFO, defaulted to 9 when
+omitted), and `attributes`. Do
+**not** hand-write `id`, `eventTimestamp`, or `receivedTimestamp`; those are
+internal fields the CLI fills in for you (a hand-written `id` is unnecessary and
+inventing one is wrong). Make the sample messages representative of what the
+patch acts on (e.g. lines the new grok/filter/reducer setting should match).
+Example:
+
+```json
+[
+  { "message": "GET /checkout 500 upstream timeout", "tags": { "service": ["checkout"] }, "severity": 17 },
+  { "message": "GET /checkout 200 ok", "tags": { "service": ["checkout"] }, "severity": 9 }
+]
+```
+
 ### 6. Classify the draft result
 
 A clean exit does not mean the change was verified. Decide which result you
