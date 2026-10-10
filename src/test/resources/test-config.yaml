@@ -20,29 +20,19 @@ database:
   driverClass: org.postgresql.Driver
   url: jdbc:postgresql://localhost:5432/postgres
 
-producer:
-  type: grepr-mock
-  name: external-triggers-producer
-  keySerializer:
-    type: void
-  valueSerializer:
-    type: byte-array
-consumer:
-  type: grepr-mock
-  name: casbin
-  consumerGroupId: grepr-server
-  keyDeserializer:
-    type: string
-  valueDeserializer:
-    type: byte-array
+kafka:
+  clusters:
+  - bootstrapServers:
+    - localhost:9092
+    admin:
+      type: grepr-mock
+  topicConfig:
+    topicConfigs: {}
 
-kafkaAdmin:
-  type: grepr-mock
-  clientId: grepr-server-kafka-admin
-  name: grepr-server-kafka-admin
-
-kafkaTopicConfig:
-  topicConfigs: {}
+externalTriggers:
+  kafka:
+    producer:
+      type: grepr-mock
 
 server:
   type: simple
@@ -72,6 +62,13 @@ auth:
   googleConnectionId: con_xoOuXHdjPoGrdEJJ
   jwksEndpoint: https://dev-beseupp4wmfigwzj.us.auth0.com/.well-known/jwks.json
   issuers: [ https://dev-beseupp4wmfigwzj.us.auth0.com/, https://auth.dev.grepr.ai/ ]
+
+authZ:
+  kafka:
+    producer:
+      type: grepr-mock
+    consumer:
+      type: grepr-mock
 
 authCachePolicy: maximumSize=1000, expireAfterAccess=60m
 
@@ -204,8 +201,9 @@ streamingFlinkConfiguration:
     catalogProperties:
       catalog-impl: org.apache.iceberg.hadoop.HadoopCatalog
 
-  kafkaProperties:
-    "bootstrap.servers": localhost:9092
+  kafkaClusters:
+    "localhost:9092":
+      "bootstrap.servers": localhost:9092
 
   datadogLogSinkConfig:
     logSinkUrlFormat: http://%s/api/v2/logs
