@@ -24,7 +24,7 @@ terraform {
   required_providers {
     grepr = {
       source  = "grepr/grepr"
-      version = "~> 1.0"
+      version = "~> 1.2"
     }
   }
 }
@@ -37,7 +37,7 @@ terraform {
   required_providers {
     grepr = {
       source  = "registry.opentofu.org/grepr/grepr"
-      version = "~> 1.0"
+      version = "~> 1.2"
     }
   }
 }
@@ -76,7 +76,7 @@ export GREPR_CLIENT_SECRET=<your-client-secret>
 
 ## Manage integrations and datasets [#tf-integrations-datasets]
 
-The provider also manages the integrations and datasets your pipelines use. Each integration type has its own resource:
+The provider also manages the integrations and datasets your pipelines use, starting with provider version 1.2.0. Each integration type has its own resource:
 
 | Resource | Manages |
 | --- | --- |
