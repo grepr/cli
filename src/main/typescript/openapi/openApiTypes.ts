@@ -14113,6 +14113,8 @@ export interface components {
     };
     Variant: {
       array?: boolean;
+      /** Format: int32 */
+      arraySize?: number;
       as?: Record<string, never>;
       boolean?: boolean;
       /** Format: byte */
@@ -14127,6 +14129,7 @@ export interface components {
       /** Format: double */
       double?: number;
       emptyObject?: boolean;
+      fieldNames?: string[];
       /** Format: float */
       float?: number;
       /** Format: date-time */

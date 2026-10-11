@@ -135,7 +135,7 @@ jobDeploymentConfigs:
 
 flinkDeploymentSpec:
   imagePullPolicy: IfNotPresent
-  flinkVersion: v2_2
+  flinkVersion: v2_3
   flinkConfiguration: {}
   serviceAccount: "flink"
   envVars: []
