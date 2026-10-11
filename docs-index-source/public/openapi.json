@@ -23896,7 +23896,7 @@
     "/v1/integrations/data-warehouse": {
       "get": {
         "description": "Retrieves all Data Warehouse integrations for the organization.",
-        "operationId": "list_6",
+        "operationId": "listDataWarehouseIntegrations",
         "responses": {
           "200": {
             "content": {
@@ -23927,7 +23927,7 @@
       },
       "post": {
         "description": "Creates a new Data Warehouse integration for connecting to Grepr S3 bucket.",
-        "operationId": "create_5",
+        "operationId": "createDataWarehouseIntegration",
         "requestBody": {
           "content": {
             "application/json": {
@@ -23972,7 +23972,7 @@
     "/v1/integrations/data-warehouse/{id}": {
       "delete": {
         "description": "Deletes a Data Warehouse integration if it exists. No-op otherwise.",
-        "operationId": "delete_4",
+        "operationId": "deleteDataWarehouseIntegration",
         "parameters": [
           {
             "in": "path",
@@ -24006,7 +24006,7 @@
       },
       "get": {
         "description": "Retrieves a Data Warehouse integration.",
-        "operationId": "get_6",
+        "operationId": "getDataWarehouseIntegration",
         "parameters": [
           {
             "in": "path",
@@ -24050,7 +24050,7 @@
       },
       "put": {
         "description": "Updates an existing Data Warehouse integration.",
-        "operationId": "update_4",
+        "operationId": "updateDataWarehouseIntegration",
         "parameters": [
           {
             "in": "path",
@@ -24105,7 +24105,7 @@
     "/v1/integrations/datadog": {
       "get": {
         "description": "Get all Datadog integrations for your organization. This will contain masked keys if present.",
-        "operationId": "list_5",
+        "operationId": "listDatadogIntegrations",
         "responses": {
           "200": {
             "content": {
@@ -24136,7 +24136,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Datadog.",
-        "operationId": "create_4",
+        "operationId": "createDatadogIntegration",
         "requestBody": {
           "content": {
             "application/json": {
@@ -24587,7 +24587,7 @@
     "/v1/integrations/datadog/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to Datadog. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_3",
+        "operationId": "deleteDatadogIntegration",
         "parameters": [
           {
             "in": "path",
@@ -24621,7 +24621,7 @@
       },
       "get": {
         "description": "Get an integration to connect to Datadog.",
-        "operationId": "get_5",
+        "operationId": "getDatadogIntegration",
         "parameters": [
           {
             "in": "path",
@@ -24665,7 +24665,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to Datadog. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_3",
+        "operationId": "updateDatadogIntegration",
         "parameters": [
           {
             "in": "path",
@@ -24723,7 +24723,7 @@
     "/v1/integrations/datadog/{id}/api-key": {
       "put": {
         "description": "Creates an API key for a Datadog integration if it doesn\u0027t exist and updates it otherwise.  If the key is updated while the integration is being used by a pipeline, the  new key will be picked at pipeline restart, rescaling or an update.  Ingestion supports the previous and the updated key for up to 24 hours of  a key update. Make sure to change the key used by the agents to send data within  24 hours of an update for a seamless transition",
-        "operationId": "upsertApiKey_1",
+        "operationId": "upsertDatadogApiKey",
         "parameters": [
           {
             "in": "path",
@@ -24771,7 +24771,7 @@
     "/v1/integrations/datadog/{id}/api-keys": {
       "put": {
         "description": "Replaces the integration\u0027s entire set of API keys in one atomic write. Existing keys are referenced by id (kept or rotated), new keys carry only a value, and omitted keys are removed; one key is marked as the send key used to write data back to Datadog. If any key is rejected the existing set is left unchanged. All keys are accepted for inbound telemetry. Requires the organization to have multiple Datadog API keys enabled. Adding, removing, relabeling, or rotating a key other than the send key is allowed while the integration\u0027s pipeline is running; a change that affects the send key (which key it is, or its value) requires the pipeline to be stopped, since that key is baked into the running Flink job.",
-        "operationId": "setApiKeys",
+        "operationId": "setDatadogApiKeys",
         "parameters": [
           {
             "in": "path",
@@ -24829,7 +24829,7 @@
     "/v1/integrations/datadog/{id}/app-key": {
       "delete": {
         "description": "Deletes a Datadog integration app key. No-op if already deleted.",
-        "operationId": "deleteAppKey",
+        "operationId": "deleteDatadogAppKey",
         "parameters": [
           {
             "in": "path",
@@ -24866,7 +24866,7 @@
       },
       "put": {
         "description": "Creates an app key for a Datadog integration if it doesn\u0027t exist and updates it otherwise.  If the key is updated while the integration is being used by a pipeline, the  new key will be picked at pipeline restart, rescaling or an update. ",
-        "operationId": "upsertAppKey",
+        "operationId": "upsertDatadogAppKey",
         "parameters": [
           {
             "in": "path",
@@ -25063,7 +25063,7 @@
     "/v1/integrations/datadog/{id}/exceptions": {
       "get": {
         "description": "Returns a paginated list of vendor imported exceptions for the specified Datadog integration",
-        "operationId": "getIntegrationExceptions",
+        "operationId": "getDatadogIntegrationExceptions",
         "parameters": [
           {
             "description": "Integration ID",
@@ -25136,7 +25136,7 @@
     "/v1/integrations/datadog/{id}/with-exceptions": {
       "get": {
         "description": "Get an integration to connect to Datadog with vendor imported exceptions populated.",
-        "operationId": "getWithExceptions",
+        "operationId": "getDatadogIntegrationWithExceptions",
         "parameters": [
           {
             "in": "path",
@@ -26065,7 +26065,7 @@
     "/v1/integrations/newrelic": {
       "get": {
         "description": "Get all NewRelic integrations.",
-        "operationId": "list_14",
+        "operationId": "listNewRelicIntegrations",
         "responses": {
           "200": {
             "content": {
@@ -26096,7 +26096,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to NewRelic.",
-        "operationId": "create_13",
+        "operationId": "createNewRelicIntegration",
         "requestBody": {
           "content": {
             "application/json": {
@@ -26184,7 +26184,7 @@
     "/v1/integrations/newrelic/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to NewRelic. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_12",
+        "operationId": "deleteNewRelicIntegration",
         "parameters": [
           {
             "in": "path",
@@ -26218,7 +26218,7 @@
       },
       "get": {
         "description": "Get an integration to connect to NewRelic.",
-        "operationId": "get_14",
+        "operationId": "getNewRelicIntegration",
         "parameters": [
           {
             "in": "path",
@@ -26262,7 +26262,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to NewRelic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_12",
+        "operationId": "updateNewRelicIntegration",
         "parameters": [
           {
             "in": "path",
@@ -26320,7 +26320,7 @@
     "/v1/integrations/newrelic/{id}/api-key": {
       "put": {
         "description": "Creates a NewRelic API key for a NewRelic integration if a key doesn\u0027t exist, and updates it otherwise. If the api key is updated while the integration is being used by a pipeline, the  new key is used at pipeline restart, rescaling, or an update.  This key is used for the NewRelic API to retrieve the dashboards and alerts.",
-        "operationId": "upsertApiKey_8",
+        "operationId": "upsertNewRelicApiKey",
         "parameters": [
           {
             "in": "path",
@@ -26368,7 +26368,7 @@
     "/v1/integrations/newrelic/{id}/exceptions": {
       "get": {
         "description": "Returns a paginated list of vendor imported exceptions for the specified New Relic integration",
-        "operationId": "getIntegrationExceptions_1",
+        "operationId": "getNewRelicIntegrationExceptions",
         "parameters": [
           {
             "description": "Integration ID",
@@ -26441,7 +26441,7 @@
     "/v1/integrations/newrelic/{id}/license-key": {
       "put": {
         "description": "Creates an API key for a NewRelic integration if it doesn\u0027t exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update. Ingestion supports the previous and the updated key for up to 24 hours of a key update. Make sure to change the key used by the agents to send data within 24 hours of an update for a seamless transition",
-        "operationId": "upsertLicenseKey",
+        "operationId": "upsertNewRelicLicenseKey",
         "parameters": [
           {
             "in": "path",
@@ -26489,7 +26489,7 @@
     "/v1/integrations/newrelic/{id}/with-exceptions": {
       "get": {
         "description": "Get an integration to connect to NewRelic with vendor imported exceptions populated.",
-        "operationId": "getWithExceptions_1",
+        "operationId": "getNewRelicIntegrationWithExceptions",
         "parameters": [
           {
             "in": "path",
@@ -26802,7 +26802,7 @@
     "/v1/integrations/otlp": {
       "get": {
         "description": "Get all OTLP integrations.",
-        "operationId": "list_16",
+        "operationId": "listOtlpIntegrations",
         "responses": {
           "200": {
             "content": {
@@ -26833,7 +26833,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to OTLP.",
-        "operationId": "create_15",
+        "operationId": "createOtlpIntegration",
         "requestBody": {
           "content": {
             "application/json": {
@@ -26885,7 +26885,7 @@
     "/v1/integrations/otlp/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to OTLP. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_14",
+        "operationId": "deleteOtlpIntegration",
         "parameters": [
           {
             "in": "path",
@@ -26919,7 +26919,7 @@
       },
       "get": {
         "description": "Get an integration to connect to OTLP.",
-        "operationId": "get_16",
+        "operationId": "getOtlpIntegration",
         "parameters": [
           {
             "in": "path",
@@ -26963,7 +26963,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to OTLP. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_14",
+        "operationId": "updateOtlpIntegration",
         "parameters": [
           {
             "in": "path",
@@ -27021,7 +27021,7 @@
     "/v1/integrations/otlp/{id}/secret-headers/{name}": {
       "delete": {
         "description": "Deletes a single secret HTTP header from an OTLP integration.",
-        "operationId": "deleteSecretHeader",
+        "operationId": "deleteOtlpSecretHeader",
         "parameters": [
           {
             "in": "path",
@@ -27066,7 +27066,7 @@
       },
       "put": {
         "description": "Creates or updates a single secret HTTP header for an OTLP integration.",
-        "operationId": "upsertSecretHeader",
+        "operationId": "upsertOtlpSecretHeader",
         "parameters": [
           {
             "in": "path",
@@ -27125,7 +27125,7 @@
     "/v1/integrations/otlp/{id}/token": {
       "get": {
         "description": "Retrieves the plain-text authentication token for an OTLP integration.",
-        "operationId": "getToken",
+        "operationId": "getOtlpToken",
         "parameters": [
           {
             "in": "path",
@@ -27141,7 +27141,8 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ClearSecret"
+                  "description": "The token in clear text",
+                  "type": "string"
                 }
               }
             },
@@ -27437,7 +27438,7 @@
     },
     "/v1/integrations/s3-data-warehouse": {
       "get": {
-        "operationId": "list_7",
+        "operationId": "listS3DataWarehouseIntegrations",
         "responses": {
           "200": {
             "content": {
@@ -27468,7 +27469,7 @@
       },
       "post": {
         "description": "Creates an external S3 Data Warehouse integration",
-        "operationId": "create_6",
+        "operationId": "createS3DataWarehouseIntegration",
         "requestBody": {
           "content": {
             "application/json": {
@@ -27646,7 +27647,7 @@
     "/v1/integrations/s3-data-warehouse/{id}": {
       "delete": {
         "description": "Deletes an external S3 Data Warehouse integration if it exists. No-op otherwise.",
-        "operationId": "delete_5",
+        "operationId": "deleteS3DataWarehouseIntegration",
         "parameters": [
           {
             "in": "path",
@@ -27680,7 +27681,7 @@
       },
       "get": {
         "description": "Gets an external S3 Data Warehouse integration",
-        "operationId": "get_7",
+        "operationId": "getS3DataWarehouseIntegration",
         "parameters": [
           {
             "in": "path",
@@ -27724,7 +27725,7 @@
       },
       "put": {
         "description": "Updates an external S3 Data Warehouse integration",
-        "operationId": "update_5",
+        "operationId": "updateS3DataWarehouseIntegration",
         "parameters": [
           {
             "in": "path",
@@ -28261,7 +28262,7 @@
     "/v1/integrations/splunk": {
       "get": {
         "description": "Get all Splunk integrations for your organization. This will contain masked keys if present.",
-        "operationId": "list_18",
+        "operationId": "listSplunkIntegrations",
         "responses": {
           "200": {
             "content": {
@@ -28289,7 +28290,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Splunk.",
-        "operationId": "create_17",
+        "operationId": "createSplunkIntegration",
         "requestBody": {
           "content": {
             "application/json": {
@@ -28338,7 +28339,7 @@
     "/v1/integrations/splunk/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to Splunk. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_16",
+        "operationId": "deleteSplunkIntegration",
         "parameters": [
           {
             "in": "path",
@@ -28369,7 +28370,7 @@
       },
       "get": {
         "description": "Get an integration to connect to Splunk.",
-        "operationId": "get_18",
+        "operationId": "getSplunkIntegration",
         "parameters": [
           {
             "in": "path",
@@ -28410,7 +28411,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to Splunk. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_16",
+        "operationId": "updateSplunkIntegration",
         "parameters": [
           {
             "in": "path",
@@ -28465,7 +28466,7 @@
     "/v1/integrations/splunk/{id}/auth-token": {
       "put": {
         "description": "Creates an HEC API auth token for a Splunk integration if it doesn\u0027t exist and updates it otherwise.  If the key is updated while the integration is being used by a pipeline, the  new key will be picked at pipeline restart, rescaling or an update.  Ingestion supports the previous and the updated key for up to 24 hours of  a key update. Make sure to change the key used by the agents to send data within  24 hours of an update for a seamless transition",
-        "operationId": "upsertAuthToken",
+        "operationId": "upsertSplunkAuthToken",
         "parameters": [
           {
             "in": "path",
@@ -28510,7 +28511,7 @@
     "/v1/integrations/splunk/{id}/exceptions": {
       "get": {
         "description": "Returns a paginated list of vendor imported exceptions for the specified Splunk integration",
-        "operationId": "getIntegrationExceptions_2",
+        "operationId": "getSplunkIntegrationExceptions",
         "parameters": [
           {
             "description": "Integration ID",
@@ -28580,7 +28581,7 @@
     "/v1/integrations/splunk/{id}/rest-auth-token": {
       "put": {
         "description": "Creates a Splunk API auth token for a Splunk integration if it doesn\u0027t exist and updates it otherwise.  If the token is updated while the integration is being used by a pipeline, the  new token will be picked at pipeline restart, rescaling or an update.  This token is used for the Splunk API to search and retrieve logs.",
-        "operationId": "upsertRestAuthToken",
+        "operationId": "upsertSplunkRestAuthToken",
         "parameters": [
           {
             "in": "path",
@@ -28625,7 +28626,7 @@
     "/v1/integrations/splunk/{id}/with-exceptions": {
       "get": {
         "description": "Get an integration to connect to Splunk with vendor imported exceptions populated.",
-        "operationId": "getWithExceptions_2",
+        "operationId": "getSplunkIntegrationWithExceptions",
         "parameters": [
           {
             "in": "path",
@@ -28668,7 +28669,7 @@
     "/v1/integrations/sumo": {
       "get": {
         "description": "Get all SumoLogic integrations.",
-        "operationId": "list_19",
+        "operationId": "listSumoIntegrations",
         "responses": {
           "200": {
             "content": {
@@ -28699,7 +28700,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to SumoLogic.",
-        "operationId": "create_18",
+        "operationId": "createSumoIntegration",
         "requestBody": {
           "content": {
             "application/json": {
@@ -28751,7 +28752,7 @@
     "/v1/integrations/sumo/{id}": {
       "delete": {
         "description": "Deletes an integration to connect to SumoLogic. This will delete the associated keys as well. No-op if already deleted.",
-        "operationId": "delete_17",
+        "operationId": "deleteSumoIntegration",
         "parameters": [
           {
             "in": "path",
@@ -28785,7 +28786,7 @@
       },
       "get": {
         "description": "Get an integration to connect to SumoLogic.",
-        "operationId": "get_19",
+        "operationId": "getSumoIntegration",
         "parameters": [
           {
             "in": "path",
@@ -28829,7 +28830,7 @@
       },
       "put": {
         "description": "Updates an integration to connect to SumoLogic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_17",
+        "operationId": "updateSumoIntegration",
         "parameters": [
           {
             "in": "path",
@@ -28887,7 +28888,7 @@
     "/v1/integrations/sumo/{id}/endpoint": {
       "put": {
         "description": "Sets the endpoint for a SumoLogic integration if it doesn\u0027t exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update. Ingestion supports the previous and the updated key for up to 24 hours of a key update. Make sure to change the key used by the agents to send data within 24 hours of an update for a seamless transition",
-        "operationId": "upsertEndpoint",
+        "operationId": "upsertSumoEndpoint",
         "parameters": [
           {
             "in": "path",

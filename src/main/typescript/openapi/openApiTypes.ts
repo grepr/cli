@@ -1017,13 +1017,13 @@ export interface paths {
      * List all Data Warehouse integrations
      * @description Retrieves all Data Warehouse integrations for the organization.
      */
-    get: operations["list_7"];
+    get: operations["listDataWarehouseIntegrations"];
     put?: never;
     /**
      * Create a Data Warehouse integration
      * @description Creates a new Data Warehouse integration for connecting to Grepr S3 bucket.
      */
-    post: operations["create_6"];
+    post: operations["createDataWarehouseIntegration"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1041,18 +1041,18 @@ export interface paths {
      * Get a Data Warehouse integration
      * @description Retrieves a Data Warehouse integration.
      */
-    get: operations["get_7"];
+    get: operations["getDataWarehouseIntegration"];
     /**
      * Update a Data Warehouse integration
      * @description Updates an existing Data Warehouse integration.
      */
-    put: operations["update_4"];
+    put: operations["updateDataWarehouseIntegration"];
     post?: never;
     /**
      * Delete a Data Warehouse integration
      * @description Deletes a Data Warehouse integration if it exists. No-op otherwise.
      */
-    delete: operations["delete_5"];
+    delete: operations["deleteDataWarehouseIntegration"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1069,13 +1069,13 @@ export interface paths {
      * List all Datadog integrations
      * @description Get all Datadog integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_6"];
+    get: operations["listDatadogIntegrations"];
     put?: never;
     /**
      * Create a Datadog integration
      * @description Creates an integration to connect to Datadog.
      */
-    post: operations["create_5"];
+    post: operations["createDatadogIntegration"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1093,13 +1093,13 @@ export interface paths {
      * List all Datadog MCP integrations
      * @description Get all Datadog MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_11"];
+    get: operations["list_8"];
     put?: never;
     /**
      * Create a Datadog MCP integration
      * @description Creates an integration to connect to a Datadog MCP server.
      */
-    post: operations["create_10"];
+    post: operations["create_7"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1117,18 +1117,18 @@ export interface paths {
      * Get a Datadog MCP integration
      * @description Get a Datadog MCP integration by ID.
      */
-    get: operations["get_11"];
+    get: operations["get_8"];
     /**
      * Update a Datadog MCP integration.
      * @description Updates a Datadog MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_8"];
+    put: operations["update_5"];
     post?: never;
     /**
      * Delete a Datadog MCP integration
      * @description Deletes a Datadog MCP integration. This will delete the associated API keys as well. No-op if already deleted.
      */
-    delete: operations["delete_9"];
+    delete: operations["delete_6"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1146,7 +1146,7 @@ export interface paths {
      * Creates or updates a Datadog MCP integration API key
      * @description Creates the DD-API-KEY for a Datadog MCP integration if it doesn't exist and updates it otherwise.
      */
-    put: operations["upsertApiKey_4"];
+    put: operations["upsertApiKey_3"];
     post?: never;
     delete?: never;
     options?: never;
@@ -1166,7 +1166,7 @@ export interface paths {
      * Creates or updates a Datadog MCP integration application key
      * @description Creates the DD-APPLICATION-KEY for a Datadog MCP integration if it doesn't exist and updates it otherwise.
      */
-    put: operations["upsertAppKey_1"];
+    put: operations["upsertAppKey"];
     post?: never;
     delete?: never;
     options?: never;
@@ -1225,18 +1225,18 @@ export interface paths {
      * Get a Datadog integration
      * @description Get an integration to connect to Datadog.
      */
-    get: operations["get_6"];
+    get: operations["getDatadogIntegration"];
     /**
      * Update a Datadog integration.
      * @description Updates an integration to connect to Datadog. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_3"];
+    put: operations["updateDatadogIntegration"];
     post?: never;
     /**
      * Delete a Datadog integration
      * @description Deletes an integration to connect to Datadog. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_4"];
+    delete: operations["deleteDatadogIntegration"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1254,7 +1254,7 @@ export interface paths {
      * Creates or updates a Datadog integration api key
      * @description Creates an API key for a Datadog integration if it doesn't exist and updates it otherwise.  If the key is updated while the integration is being used by a pipeline, the  new key will be picked at pipeline restart, rescaling or an update.  Ingestion supports the previous and the updated key for up to 24 hours of  a key update. Make sure to change the key used by the agents to send data within  24 hours of an update for a seamless transition
      */
-    put: operations["upsertApiKey_1"];
+    put: operations["upsertDatadogApiKey"];
     post?: never;
     delete?: never;
     options?: never;
@@ -1274,7 +1274,7 @@ export interface paths {
      * Set a Datadog integration's API keys
      * @description Replaces the integration's entire set of API keys in one atomic write. Existing keys are referenced by id (kept or rotated), new keys carry only a value, and omitted keys are removed; one key is marked as the send key used to write data back to Datadog. If any key is rejected the existing set is left unchanged. All keys are accepted for inbound telemetry. Requires the organization to have multiple Datadog API keys enabled. Adding, removing, relabeling, or rotating a key other than the send key is allowed while the integration's pipeline is running; a change that affects the send key (which key it is, or its value) requires the pipeline to be stopped, since that key is baked into the running Flink job.
      */
-    put: operations["setApiKeys"];
+    put: operations["setDatadogApiKeys"];
     post?: never;
     delete?: never;
     options?: never;
@@ -1294,13 +1294,13 @@ export interface paths {
      * Creates or updates a Datadog integration app key
      * @description Creates an app key for a Datadog integration if it doesn't exist and updates it otherwise.  If the key is updated while the integration is being used by a pipeline, the  new key will be picked at pipeline restart, rescaling or an update.
      */
-    put: operations["upsertAppKey"];
+    put: operations["upsertDatadogAppKey"];
     post?: never;
     /**
      * Delete a Datadog integration app key
      * @description Deletes a Datadog integration app key. No-op if already deleted.
      */
-    delete: operations["deleteAppKey"];
+    delete: operations["deleteDatadogAppKey"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1361,7 +1361,7 @@ export interface paths {
      * Get Datadog integration exceptions
      * @description Returns a paginated list of vendor imported exceptions for the specified Datadog integration
      */
-    get: operations["getIntegrationExceptions"];
+    get: operations["getDatadogIntegrationExceptions"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1381,7 +1381,7 @@ export interface paths {
      * Get a Datadog integration with exceptions
      * @description Get an integration to connect to Datadog with vendor imported exceptions populated.
      */
-    get: operations["getWithExceptions"];
+    get: operations["getDatadogIntegrationWithExceptions"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1401,13 +1401,13 @@ export interface paths {
      * List all Gemini integrations
      * @description Get all Google Gemini integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_9"];
+    get: operations["list_6"];
     put?: never;
     /**
      * Create a Gemini integration
      * @description Creates an integration to connect to Google Gemini.
      */
-    post: operations["create_8"];
+    post: operations["create_5"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1425,18 +1425,18 @@ export interface paths {
      * Get a Gemini integration
      * @description Get a Gemini integration by ID.
      */
-    get: operations["get_9"];
+    get: operations["get_6"];
     /**
      * Update a Gemini integration.
      * @description Updates a Gemini integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_6"];
+    put: operations["update_3"];
     post?: never;
     /**
      * Delete a Gemini integration
      * @description Deletes a Gemini integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_7"];
+    delete: operations["delete_4"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1454,7 +1454,7 @@ export interface paths {
      * Creates or updates a Gemini integration API key
      * @description Creates an API key for a Gemini integration if it doesn't exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update.
      */
-    put: operations["upsertApiKey_2"];
+    put: operations["upsertApiKey_1"];
     post?: never;
     delete?: never;
     options?: never;
@@ -1489,13 +1489,13 @@ export interface paths {
      * List all GitHub MCP integrations
      * @description Get all GitHub MCP server integrations for your organization. This will contain masked tokens if present.
      */
-    get: operations["list_12"];
+    get: operations["list_9"];
     put?: never;
     /**
      * Create a GitHub MCP integration
      * @description Creates an integration to connect to a GitHub MCP server.
      */
-    post: operations["create_11"];
+    post: operations["create_8"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1513,18 +1513,18 @@ export interface paths {
      * Get a GitHub MCP integration
      * @description Get a GitHub MCP integration by ID.
      */
-    get: operations["get_12"];
+    get: operations["get_9"];
     /**
      * Update a GitHub MCP integration.
      * @description Updates a GitHub MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_9"];
+    put: operations["update_6"];
     post?: never;
     /**
      * Delete a GitHub MCP integration
      * @description Deletes a GitHub MCP integration. This will delete the associated token as well. No-op if already deleted.
      */
-    delete: operations["delete_10"];
+    delete: operations["delete_7"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1542,7 +1542,7 @@ export interface paths {
      * Creates or updates a GitHub MCP integration token
      * @description Creates a token for a GitHub MCP integration if it doesn't exist and updates it otherwise. If the token is updated while the integration is being used by a pipeline, the new token will be picked at pipeline restart, rescaling or an update.
      */
-    put: operations["upsertApiKey_5"];
+    put: operations["upsertApiKey_4"];
     post?: never;
     delete?: never;
     options?: never;
@@ -1558,10 +1558,10 @@ export interface paths {
       cookie?: never;
     };
     /** List all LiteLLM integrations */
-    get: operations["list_10"];
+    get: operations["list_7"];
     put?: never;
     /** Create a LiteLLM integration */
-    post: operations["create_9"];
+    post: operations["create_6"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1576,12 +1576,12 @@ export interface paths {
       cookie?: never;
     };
     /** Get a LiteLLM integration */
-    get: operations["get_10"];
+    get: operations["get_7"];
     /** Update a LiteLLM integration */
-    put: operations["update_7"];
+    put: operations["update_4"];
     post?: never;
     /** Delete a LiteLLM integration */
-    delete: operations["delete_8"];
+    delete: operations["delete_5"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1596,7 +1596,7 @@ export interface paths {
     };
     get?: never;
     /** Creates or updates a LiteLLM integration API key */
-    put: operations["upsertApiKey_3"];
+    put: operations["upsertApiKey_2"];
     post?: never;
     delete?: never;
     options?: never;
@@ -1631,13 +1631,13 @@ export interface paths {
      * List all NewRelic integrations
      * @description Get all NewRelic integrations.
      */
-    get: operations["list_15"];
+    get: operations["listNewRelicIntegrations"];
     put?: never;
     /**
      * Create a NewRelic integration
      * @description Creates an integration to connect to NewRelic.
      */
-    post: operations["create_14"];
+    post: operations["createNewRelicIntegration"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1675,18 +1675,18 @@ export interface paths {
      * Get a NewRelic integration
      * @description Get an integration to connect to NewRelic.
      */
-    get: operations["get_15"];
+    get: operations["getNewRelicIntegration"];
     /**
      * Update a NewRelic integration.
      * @description Updates an integration to connect to NewRelic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_12"];
+    put: operations["updateNewRelicIntegration"];
     post?: never;
     /**
      * Delete a NewRelic integration
      * @description Deletes an integration to connect to NewRelic. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_13"];
+    delete: operations["deleteNewRelicIntegration"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1704,7 +1704,7 @@ export interface paths {
      * Creates or updates an API key for integration with New Relic
      * @description Creates a NewRelic API key for a NewRelic integration if a key doesn't exist, and updates it otherwise. If the api key is updated while the integration is being used by a pipeline, the  new key is used at pipeline restart, rescaling, or an update.  This key is used for the NewRelic API to retrieve the dashboards and alerts.
      */
-    put: operations["upsertApiKey_8"];
+    put: operations["upsertNewRelicApiKey"];
     post?: never;
     delete?: never;
     options?: never;
@@ -1723,7 +1723,7 @@ export interface paths {
      * Get New Relic integration exceptions
      * @description Returns a paginated list of vendor imported exceptions for the specified New Relic integration
      */
-    get: operations["getIntegrationExceptions_1"];
+    get: operations["getNewRelicIntegrationExceptions"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1744,7 +1744,7 @@ export interface paths {
      * Creates or updates a NewRelic integration api key
      * @description Creates an API key for a NewRelic integration if it doesn't exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update. Ingestion supports the previous and the updated key for up to 24 hours of a key update. Make sure to change the key used by the agents to send data within 24 hours of an update for a seamless transition
      */
-    put: operations["upsertLicenseKey"];
+    put: operations["upsertNewRelicLicenseKey"];
     post?: never;
     delete?: never;
     options?: never;
@@ -1763,7 +1763,7 @@ export interface paths {
      * Get a NewRelic integration with exceptions
      * @description Get an integration to connect to NewRelic with vendor imported exceptions populated.
      */
-    get: operations["getWithExceptions_1"];
+    get: operations["getNewRelicIntegrationWithExceptions"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1783,13 +1783,13 @@ export interface paths {
      * List all OpenAI integrations
      * @description Get all OpenAI integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_16"];
+    get: operations["list_12"];
     put?: never;
     /**
      * Create an OpenAI integration
      * @description Creates an integration to connect to OpenAI.
      */
-    post: operations["create_15"];
+    post: operations["create_11"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1807,18 +1807,18 @@ export interface paths {
      * Get an OpenAI integration
      * @description Get an OpenAI integration by ID.
      */
-    get: operations["get_16"];
+    get: operations["get_12"];
     /**
      * Update an OpenAI integration.
      * @description Updates an OpenAI integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_13"];
+    put: operations["update_9"];
     post?: never;
     /**
      * Delete an OpenAI integration
      * @description Deletes an OpenAI integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_14"];
+    delete: operations["delete_10"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1836,7 +1836,7 @@ export interface paths {
      * Creates or updates an OpenAI integration API key
      * @description Creates an API key for an OpenAI integration if it doesn't exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update.
      */
-    put: operations["upsertApiKey_9"];
+    put: operations["upsertApiKey_7"];
     post?: never;
     delete?: never;
     options?: never;
@@ -1855,13 +1855,13 @@ export interface paths {
      * List all OTLP integrations
      * @description Get all OTLP integrations.
      */
-    get: operations["list_17"];
+    get: operations["listOtlpIntegrations"];
     put?: never;
     /**
      * Create an OTLP integration
      * @description Creates an integration to connect to OTLP.
      */
-    post: operations["create_16"];
+    post: operations["createOtlpIntegration"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1879,18 +1879,18 @@ export interface paths {
      * Get a OTLP integration
      * @description Get an integration to connect to OTLP.
      */
-    get: operations["get_17"];
+    get: operations["getOtlpIntegration"];
     /**
      * Update a OTLP integration.
      * @description Updates an integration to connect to OTLP. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_14"];
+    put: operations["updateOtlpIntegration"];
     post?: never;
     /**
      * Delete a OTLP integration
      * @description Deletes an integration to connect to OTLP. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_15"];
+    delete: operations["deleteOtlpIntegration"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1908,13 +1908,13 @@ export interface paths {
      * Create or update a single OTLP integration secret header
      * @description Creates or updates a single secret HTTP header for an OTLP integration.
      */
-    put: operations["upsertSecretHeader"];
+    put: operations["upsertOtlpSecretHeader"];
     post?: never;
     /**
      * Delete a single OTLP integration secret header
      * @description Deletes a single secret HTTP header from an OTLP integration.
      */
-    delete: operations["deleteSecretHeader"];
+    delete: operations["deleteOtlpSecretHeader"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1931,7 +1931,7 @@ export interface paths {
      * Retrieve OTLP integration token in clear text
      * @description Retrieves the plain-text authentication token for an OTLP integration.
      */
-    get: operations["getToken"];
+    get: operations["getOtlpToken"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1951,13 +1951,13 @@ export interface paths {
      * List all PagerDuty MCP integrations
      * @description Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_13"];
+    get: operations["list_10"];
     put?: never;
     /**
      * Create a PagerDuty MCP integration
      * @description Creates an integration to connect to a PagerDuty MCP server.
      */
-    post: operations["create_12"];
+    post: operations["create_9"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1975,18 +1975,18 @@ export interface paths {
      * Get a PagerDuty MCP integration
      * @description Get a PagerDuty MCP integration by ID.
      */
-    get: operations["get_13"];
+    get: operations["get_10"];
     /**
      * Update a PagerDuty MCP integration.
      * @description Updates a PagerDuty MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_10"];
+    put: operations["update_7"];
     post?: never;
     /**
      * Delete a PagerDuty MCP integration
      * @description Deletes a PagerDuty MCP integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_11"];
+    delete: operations["delete_8"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2004,7 +2004,7 @@ export interface paths {
      * Creates or updates a PagerDuty MCP integration API key
      * @description Creates an API key for a PagerDuty MCP integration if it doesn't exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update.
      */
-    put: operations["upsertApiKey_6"];
+    put: operations["upsertApiKey_5"];
     post?: never;
     delete?: never;
     options?: never;
@@ -2020,13 +2020,13 @@ export interface paths {
       cookie?: never;
     };
     /** List all S3 Data Warehouse integrations */
-    get: operations["list_8"];
+    get: operations["listS3DataWarehouseIntegrations"];
     put?: never;
     /**
      * Create a S3 Data Warehouse integration
      * @description Creates an external S3 Data Warehouse integration
      */
-    post: operations["create_7"];
+    post: operations["createS3DataWarehouseIntegration"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2104,18 +2104,18 @@ export interface paths {
      * Get a S3 Data Warehouse integration
      * @description Gets an external S3 Data Warehouse integration
      */
-    get: operations["get_8"];
+    get: operations["getS3DataWarehouseIntegration"];
     /**
      * Update a S3 Data Warehouse integration
      * @description Updates an external S3 Data Warehouse integration
      */
-    put: operations["update_5"];
+    put: operations["updateS3DataWarehouseIntegration"];
     post?: never;
     /**
      * Delete a S3 Data Warehouse integration
      * @description Deletes an external S3 Data Warehouse integration if it exists. No-op otherwise.
      */
-    delete: operations["delete_6"];
+    delete: operations["deleteS3DataWarehouseIntegration"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2132,13 +2132,13 @@ export interface paths {
      * List all S3 Vector Index integrations
      * @description Retrieves all S3 Vector Index integrations for the organization.
      */
-    get: operations["list_18"];
+    get: operations["list_13"];
     put?: never;
     /**
      * Create an S3 Vector Index integration
      * @description Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.
      */
-    post: operations["create_17"];
+    post: operations["create_12"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2156,18 +2156,18 @@ export interface paths {
      * Get an S3 Vector Index integration
      * @description Retrieves an S3 Vector Index integration.
      */
-    get: operations["get_18"];
+    get: operations["get_13"];
     /**
      * Update an S3 Vector Index integration
      * @description Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.
      */
-    put: operations["update_15"];
+    put: operations["update_10"];
     post?: never;
     /**
      * Delete an S3 Vector Index integration
      * @description Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn't exist.
      */
-    delete: operations["delete_16"];
+    delete: operations["delete_11"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2184,13 +2184,13 @@ export interface paths {
      * List all Slack MCP integrations
      * @description Get all Slack MCP server integrations for your organization. This will contain masked tokens if present.
      */
-    get: operations["list_14"];
+    get: operations["list_11"];
     put?: never;
     /**
      * Create a Slack MCP integration
      * @description Creates an integration to connect to a Slack MCP server.
      */
-    post: operations["create_13"];
+    post: operations["create_10"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2208,18 +2208,18 @@ export interface paths {
      * Get a Slack MCP integration
      * @description Get a Slack MCP integration by ID.
      */
-    get: operations["get_14"];
+    get: operations["get_11"];
     /**
      * Update a Slack MCP integration.
      * @description Updates a Slack MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_11"];
+    put: operations["update_8"];
     post?: never;
     /**
      * Delete a Slack MCP integration
      * @description Deletes a Slack MCP integration. This will delete the associated token as well. No-op if already deleted.
      */
-    delete: operations["delete_12"];
+    delete: operations["delete_9"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2237,7 +2237,7 @@ export interface paths {
      * Creates or updates a Slack MCP integration token
      * @description Creates a token for a Slack MCP integration if it doesn't exist and updates it otherwise. If the token is updated while the integration is being used by a pipeline, the new token will be picked at pipeline restart, rescaling or an update.
      */
-    put: operations["upsertApiKey_7"];
+    put: operations["upsertApiKey_6"];
     post?: never;
     delete?: never;
     options?: never;
@@ -2256,13 +2256,13 @@ export interface paths {
      * List all Splunk integrations
      * @description Get all Splunk integrations for your organization. This will contain masked keys if present.
      */
-    get: operations["list_19"];
+    get: operations["listSplunkIntegrations"];
     put?: never;
     /**
      * Create a Splunk integration
      * @description Creates an integration to connect to Splunk.
      */
-    post: operations["create_18"];
+    post: operations["createSplunkIntegration"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2280,18 +2280,18 @@ export interface paths {
      * Get a Splunk integration
      * @description Get an integration to connect to Splunk.
      */
-    get: operations["get_19"];
+    get: operations["getSplunkIntegration"];
     /**
      * Update a Splunk integration.
      * @description Updates an integration to connect to Splunk. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_16"];
+    put: operations["updateSplunkIntegration"];
     post?: never;
     /**
      * Delete a Splunk integration
      * @description Deletes an integration to connect to Splunk. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_17"];
+    delete: operations["deleteSplunkIntegration"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2309,7 +2309,7 @@ export interface paths {
      * Creates or updates a Splunk integration auth token
      * @description Creates an HEC API auth token for a Splunk integration if it doesn't exist and updates it otherwise.  If the key is updated while the integration is being used by a pipeline, the  new key will be picked at pipeline restart, rescaling or an update.  Ingestion supports the previous and the updated key for up to 24 hours of  a key update. Make sure to change the key used by the agents to send data within  24 hours of an update for a seamless transition
      */
-    put: operations["upsertAuthToken"];
+    put: operations["upsertSplunkAuthToken"];
     post?: never;
     delete?: never;
     options?: never;
@@ -2328,7 +2328,7 @@ export interface paths {
      * Get Splunk integration exceptions
      * @description Returns a paginated list of vendor imported exceptions for the specified Splunk integration
      */
-    get: operations["getIntegrationExceptions_2"];
+    get: operations["getSplunkIntegrationExceptions"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2349,7 +2349,7 @@ export interface paths {
      * Creates or updates a Splunk integration API auth token
      * @description Creates a Splunk API auth token for a Splunk integration if it doesn't exist and updates it otherwise.  If the token is updated while the integration is being used by a pipeline, the  new token will be picked at pipeline restart, rescaling or an update.  This token is used for the Splunk API to search and retrieve logs.
      */
-    put: operations["upsertRestAuthToken"];
+    put: operations["upsertSplunkRestAuthToken"];
     post?: never;
     delete?: never;
     options?: never;
@@ -2368,7 +2368,7 @@ export interface paths {
      * Get a Splunk integration with exceptions
      * @description Get an integration to connect to Splunk with vendor imported exceptions populated.
      */
-    get: operations["getWithExceptions_2"];
+    get: operations["getSplunkIntegrationWithExceptions"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2388,13 +2388,13 @@ export interface paths {
      * List all SumoLogic integrations
      * @description Get all SumoLogic integrations.
      */
-    get: operations["list_20"];
+    get: operations["listSumoIntegrations"];
     put?: never;
     /**
      * Create a SumoLogic integration
      * @description Creates an integration to connect to SumoLogic.
      */
-    post: operations["create_19"];
+    post: operations["createSumoIntegration"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2412,18 +2412,18 @@ export interface paths {
      * Get a SumoLogic integration
      * @description Get an integration to connect to SumoLogic.
      */
-    get: operations["get_20"];
+    get: operations["getSumoIntegration"];
     /**
      * Update a SumoLogic integration.
      * @description Updates an integration to connect to SumoLogic. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_17"];
+    put: operations["updateSumoIntegration"];
     post?: never;
     /**
      * Delete a SumoLogic integration
      * @description Deletes an integration to connect to SumoLogic. This will delete the associated keys as well. No-op if already deleted.
      */
-    delete: operations["delete_18"];
+    delete: operations["deleteSumoIntegration"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2441,7 +2441,7 @@ export interface paths {
      * Creates or updates the endpoint for the SumoLogic integration
      * @description Sets the endpoint for a SumoLogic integration if it doesn't exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update. Ingestion supports the previous and the updated key for up to 24 hours of a key update. Make sure to change the key used by the agents to send data within 24 hours of an update for a seamless transition
      */
-    put: operations["upsertEndpoint"];
+    put: operations["upsertSumoEndpoint"];
     post?: never;
     delete?: never;
     options?: never;
@@ -2460,13 +2460,13 @@ export interface paths {
      * List webhook integrations
      * @description Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.
      */
-    get: operations["list_21"];
+    get: operations["list_14"];
     put?: never;
     /**
      * Create a webhook integration
      * @description Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).
      */
-    post: operations["create_20"];
+    post: operations["create_13"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2484,18 +2484,18 @@ export interface paths {
      * Get a webhook integration
      * @description Get a webhook integration by ID.
      */
-    get: operations["get_21"];
+    get: operations["get_14"];
     /**
      * Update a webhook integration
      * @description Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_18"];
+    put: operations["update_11"];
     post?: never;
     /**
      * Delete a webhook integration
      * @description Deletes a webhook integration. No-op if already deleted.
      */
-    delete: operations["delete_19"];
+    delete: operations["delete_12"];
     options?: never;
     head?: never;
     patch?: never;
@@ -3931,7 +3931,7 @@ export interface paths {
      * List all users
      * @description Get all users in the system.
      */
-    get: operations["list_22"];
+    get: operations["list_15"];
     put?: never;
     /**
      * Create a new user
@@ -18226,7 +18226,7 @@ export interface operations {
       };
     };
   };
-  list_7: {
+  listDataWarehouseIntegrations: {
     parameters: {
       query?: never;
       header?: never;
@@ -18253,7 +18253,7 @@ export interface operations {
       };
     };
   };
-  create_6: {
+  createDataWarehouseIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -18291,7 +18291,7 @@ export interface operations {
       };
     };
   };
-  get_7: {
+  getDataWarehouseIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -18327,7 +18327,7 @@ export interface operations {
       };
     };
   };
-  update_4: {
+  updateDataWarehouseIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -18367,7 +18367,7 @@ export interface operations {
       };
     };
   };
-  delete_5: {
+  deleteDataWarehouseIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -18394,7 +18394,7 @@ export interface operations {
       };
     };
   };
-  list_6: {
+  listDatadogIntegrations: {
     parameters: {
       query?: never;
       header?: never;
@@ -18421,7 +18421,7 @@ export interface operations {
       };
     };
   };
-  create_5: {
+  createDatadogIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -18461,7 +18461,7 @@ export interface operations {
       };
     };
   };
-  list_11: {
+  list_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -18488,7 +18488,7 @@ export interface operations {
       };
     };
   };
-  create_10: {
+  create_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -18528,7 +18528,7 @@ export interface operations {
       };
     };
   };
-  get_11: {
+  get_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -18564,7 +18564,7 @@ export interface operations {
       };
     };
   };
-  update_8: {
+  update_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -18611,7 +18611,7 @@ export interface operations {
       };
     };
   };
-  delete_9: {
+  delete_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -18638,7 +18638,7 @@ export interface operations {
       };
     };
   };
-  upsertApiKey_4: {
+  upsertApiKey_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -18676,7 +18676,7 @@ export interface operations {
       };
     };
   };
-  upsertAppKey_1: {
+  upsertAppKey: {
     parameters: {
       query?: never;
       header?: never;
@@ -18779,7 +18779,7 @@ export interface operations {
       };
     };
   };
-  get_6: {
+  getDatadogIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -18815,7 +18815,7 @@ export interface operations {
       };
     };
   };
-  update_3: {
+  updateDatadogIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -18862,7 +18862,7 @@ export interface operations {
       };
     };
   };
-  delete_4: {
+  deleteDatadogIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -18889,7 +18889,7 @@ export interface operations {
       };
     };
   };
-  upsertApiKey_1: {
+  upsertDatadogApiKey: {
     parameters: {
       query?: never;
       header?: never;
@@ -18927,7 +18927,7 @@ export interface operations {
       };
     };
   };
-  setApiKeys: {
+  setDatadogApiKeys: {
     parameters: {
       query?: never;
       header?: never;
@@ -18974,7 +18974,7 @@ export interface operations {
       };
     };
   };
-  upsertAppKey: {
+  upsertDatadogAppKey: {
     parameters: {
       query?: never;
       header?: never;
@@ -19019,7 +19019,7 @@ export interface operations {
       };
     };
   };
-  deleteAppKey: {
+  deleteDatadogAppKey: {
     parameters: {
       query?: never;
       header?: never;
@@ -19172,7 +19172,7 @@ export interface operations {
       };
     };
   };
-  getIntegrationExceptions: {
+  getDatadogIntegrationExceptions: {
     parameters: {
       query?: {
         /** @description Page size (100-2000, default: 100) */
@@ -19221,7 +19221,7 @@ export interface operations {
       };
     };
   };
-  getWithExceptions: {
+  getDatadogIntegrationWithExceptions: {
     parameters: {
       query?: never;
       header?: never;
@@ -19257,7 +19257,7 @@ export interface operations {
       };
     };
   };
-  list_9: {
+  list_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -19284,7 +19284,7 @@ export interface operations {
       };
     };
   };
-  create_8: {
+  create_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -19324,7 +19324,7 @@ export interface operations {
       };
     };
   };
-  get_9: {
+  get_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -19360,7 +19360,7 @@ export interface operations {
       };
     };
   };
-  update_6: {
+  update_3: {
     parameters: {
       query?: never;
       header?: never;
@@ -19407,7 +19407,7 @@ export interface operations {
       };
     };
   };
-  delete_7: {
+  delete_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -19434,7 +19434,7 @@ export interface operations {
       };
     };
   };
-  upsertApiKey_2: {
+  upsertApiKey_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -19508,7 +19508,7 @@ export interface operations {
       };
     };
   };
-  list_12: {
+  list_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -19535,7 +19535,7 @@ export interface operations {
       };
     };
   };
-  create_11: {
+  create_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -19575,7 +19575,7 @@ export interface operations {
       };
     };
   };
-  get_12: {
+  get_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -19611,7 +19611,7 @@ export interface operations {
       };
     };
   };
-  update_9: {
+  update_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -19658,7 +19658,7 @@ export interface operations {
       };
     };
   };
-  delete_10: {
+  delete_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -19685,7 +19685,7 @@ export interface operations {
       };
     };
   };
-  upsertApiKey_5: {
+  upsertApiKey_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -19723,7 +19723,7 @@ export interface operations {
       };
     };
   };
-  list_10: {
+  list_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -19750,7 +19750,7 @@ export interface operations {
       };
     };
   };
-  create_9: {
+  create_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -19790,7 +19790,7 @@ export interface operations {
       };
     };
   };
-  get_10: {
+  get_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -19826,7 +19826,7 @@ export interface operations {
       };
     };
   };
-  update_7: {
+  update_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -19873,7 +19873,7 @@ export interface operations {
       };
     };
   };
-  delete_8: {
+  delete_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -19900,7 +19900,7 @@ export interface operations {
       };
     };
   };
-  upsertApiKey_3: {
+  upsertApiKey_2: {
     parameters: {
       query?: never;
       header?: never;
@@ -19974,7 +19974,7 @@ export interface operations {
       };
     };
   };
-  list_15: {
+  listNewRelicIntegrations: {
     parameters: {
       query?: never;
       header?: never;
@@ -20001,7 +20001,7 @@ export interface operations {
       };
     };
   };
-  create_14: {
+  createNewRelicIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -20068,7 +20068,7 @@ export interface operations {
       };
     };
   };
-  get_15: {
+  getNewRelicIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -20104,7 +20104,7 @@ export interface operations {
       };
     };
   };
-  update_12: {
+  updateNewRelicIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -20151,7 +20151,7 @@ export interface operations {
       };
     };
   };
-  delete_13: {
+  deleteNewRelicIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -20178,7 +20178,7 @@ export interface operations {
       };
     };
   };
-  upsertApiKey_8: {
+  upsertNewRelicApiKey: {
     parameters: {
       query?: never;
       header?: never;
@@ -20216,7 +20216,7 @@ export interface operations {
       };
     };
   };
-  getIntegrationExceptions_1: {
+  getNewRelicIntegrationExceptions: {
     parameters: {
       query?: {
         /** @description Page size (100-2000, default: 100) */
@@ -20265,7 +20265,7 @@ export interface operations {
       };
     };
   };
-  upsertLicenseKey: {
+  upsertNewRelicLicenseKey: {
     parameters: {
       query?: never;
       header?: never;
@@ -20303,7 +20303,7 @@ export interface operations {
       };
     };
   };
-  getWithExceptions_1: {
+  getNewRelicIntegrationWithExceptions: {
     parameters: {
       query?: never;
       header?: never;
@@ -20339,7 +20339,7 @@ export interface operations {
       };
     };
   };
-  list_16: {
+  list_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -20366,7 +20366,7 @@ export interface operations {
       };
     };
   };
-  create_15: {
+  create_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -20406,7 +20406,7 @@ export interface operations {
       };
     };
   };
-  get_16: {
+  get_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -20442,7 +20442,7 @@ export interface operations {
       };
     };
   };
-  update_13: {
+  update_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -20489,7 +20489,7 @@ export interface operations {
       };
     };
   };
-  delete_14: {
+  delete_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -20516,7 +20516,7 @@ export interface operations {
       };
     };
   };
-  upsertApiKey_9: {
+  upsertApiKey_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -20554,7 +20554,7 @@ export interface operations {
       };
     };
   };
-  list_17: {
+  listOtlpIntegrations: {
     parameters: {
       query?: never;
       header?: never;
@@ -20581,7 +20581,7 @@ export interface operations {
       };
     };
   };
-  create_16: {
+  createOtlpIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -20621,7 +20621,7 @@ export interface operations {
       };
     };
   };
-  get_17: {
+  getOtlpIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -20657,7 +20657,7 @@ export interface operations {
       };
     };
   };
-  update_14: {
+  updateOtlpIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -20704,7 +20704,7 @@ export interface operations {
       };
     };
   };
-  delete_15: {
+  deleteOtlpIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -20731,7 +20731,7 @@ export interface operations {
       };
     };
   };
-  upsertSecretHeader: {
+  upsertOtlpSecretHeader: {
     parameters: {
       query?: never;
       header?: never;
@@ -20777,7 +20777,7 @@ export interface operations {
       };
     };
   };
-  deleteSecretHeader: {
+  deleteOtlpSecretHeader: {
     parameters: {
       query?: never;
       header?: never;
@@ -20812,7 +20812,7 @@ export interface operations {
       };
     };
   };
-  getToken: {
+  getOtlpToken: {
     parameters: {
       query?: never;
       header?: never;
@@ -20829,7 +20829,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ClearSecret"];
+          "application/json": string;
         };
       };
       /** @description Unauthorized */
@@ -20848,7 +20848,7 @@ export interface operations {
       };
     };
   };
-  list_13: {
+  list_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -20875,7 +20875,7 @@ export interface operations {
       };
     };
   };
-  create_12: {
+  create_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -20915,7 +20915,7 @@ export interface operations {
       };
     };
   };
-  get_13: {
+  get_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -20951,7 +20951,7 @@ export interface operations {
       };
     };
   };
-  update_10: {
+  update_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -20998,7 +20998,7 @@ export interface operations {
       };
     };
   };
-  delete_11: {
+  delete_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -21025,7 +21025,7 @@ export interface operations {
       };
     };
   };
-  upsertApiKey_6: {
+  upsertApiKey_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -21063,7 +21063,7 @@ export interface operations {
       };
     };
   };
-  list_8: {
+  listS3DataWarehouseIntegrations: {
     parameters: {
       query?: never;
       header?: never;
@@ -21090,7 +21090,7 @@ export interface operations {
       };
     };
   };
-  create_7: {
+  createS3DataWarehouseIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -21224,7 +21224,7 @@ export interface operations {
       };
     };
   };
-  get_8: {
+  getS3DataWarehouseIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -21260,7 +21260,7 @@ export interface operations {
       };
     };
   };
-  update_5: {
+  updateS3DataWarehouseIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -21314,7 +21314,7 @@ export interface operations {
       };
     };
   };
-  delete_6: {
+  deleteS3DataWarehouseIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -21341,7 +21341,7 @@ export interface operations {
       };
     };
   };
-  list_18: {
+  list_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -21368,7 +21368,7 @@ export interface operations {
       };
     };
   };
-  create_17: {
+  create_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -21406,7 +21406,7 @@ export interface operations {
       };
     };
   };
-  get_18: {
+  get_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -21442,7 +21442,7 @@ export interface operations {
       };
     };
   };
-  update_15: {
+  update_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -21482,7 +21482,7 @@ export interface operations {
       };
     };
   };
-  delete_16: {
+  delete_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -21509,7 +21509,7 @@ export interface operations {
       };
     };
   };
-  list_14: {
+  list_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -21536,7 +21536,7 @@ export interface operations {
       };
     };
   };
-  create_13: {
+  create_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -21576,7 +21576,7 @@ export interface operations {
       };
     };
   };
-  get_14: {
+  get_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -21612,7 +21612,7 @@ export interface operations {
       };
     };
   };
-  update_11: {
+  update_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -21659,7 +21659,7 @@ export interface operations {
       };
     };
   };
-  delete_12: {
+  delete_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -21686,7 +21686,7 @@ export interface operations {
       };
     };
   };
-  upsertApiKey_7: {
+  upsertApiKey_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -21724,7 +21724,7 @@ export interface operations {
       };
     };
   };
-  list_19: {
+  listSplunkIntegrations: {
     parameters: {
       query?: never;
       header?: never;
@@ -21751,7 +21751,7 @@ export interface operations {
       };
     };
   };
-  create_18: {
+  createSplunkIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -21791,7 +21791,7 @@ export interface operations {
       };
     };
   };
-  get_19: {
+  getSplunkIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -21827,7 +21827,7 @@ export interface operations {
       };
     };
   };
-  update_16: {
+  updateSplunkIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -21874,7 +21874,7 @@ export interface operations {
       };
     };
   };
-  delete_17: {
+  deleteSplunkIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -21901,7 +21901,7 @@ export interface operations {
       };
     };
   };
-  upsertAuthToken: {
+  upsertSplunkAuthToken: {
     parameters: {
       query?: never;
       header?: never;
@@ -21939,7 +21939,7 @@ export interface operations {
       };
     };
   };
-  getIntegrationExceptions_2: {
+  getSplunkIntegrationExceptions: {
     parameters: {
       query?: {
         /** @description Page size (100-2000, default: 100) */
@@ -21988,7 +21988,7 @@ export interface operations {
       };
     };
   };
-  upsertRestAuthToken: {
+  upsertSplunkRestAuthToken: {
     parameters: {
       query?: never;
       header?: never;
@@ -22026,7 +22026,7 @@ export interface operations {
       };
     };
   };
-  getWithExceptions_2: {
+  getSplunkIntegrationWithExceptions: {
     parameters: {
       query?: never;
       header?: never;
@@ -22062,7 +22062,7 @@ export interface operations {
       };
     };
   };
-  list_20: {
+  listSumoIntegrations: {
     parameters: {
       query?: never;
       header?: never;
@@ -22089,7 +22089,7 @@ export interface operations {
       };
     };
   };
-  create_19: {
+  createSumoIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -22129,7 +22129,7 @@ export interface operations {
       };
     };
   };
-  get_20: {
+  getSumoIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -22165,7 +22165,7 @@ export interface operations {
       };
     };
   };
-  update_17: {
+  updateSumoIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -22212,7 +22212,7 @@ export interface operations {
       };
     };
   };
-  delete_18: {
+  deleteSumoIntegration: {
     parameters: {
       query?: never;
       header?: never;
@@ -22239,7 +22239,7 @@ export interface operations {
       };
     };
   };
-  upsertEndpoint: {
+  upsertSumoEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -22277,7 +22277,7 @@ export interface operations {
       };
     };
   };
-  list_21: {
+  list_14: {
     parameters: {
       query?: {
         /** @description Only return integrations targeting this agent. */
@@ -22307,7 +22307,7 @@ export interface operations {
       };
     };
   };
-  create_20: {
+  create_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -22345,7 +22345,7 @@ export interface operations {
       };
     };
   };
-  get_21: {
+  get_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -22381,7 +22381,7 @@ export interface operations {
       };
     };
   };
-  update_18: {
+  update_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -22428,7 +22428,7 @@ export interface operations {
       };
     };
   };
-  delete_19: {
+  delete_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -26100,7 +26100,7 @@ export interface operations {
       };
     };
   };
-  list_22: {
+  list_15: {
     parameters: {
       query?: {
         page?: number;

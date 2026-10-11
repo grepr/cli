@@ -539,7 +539,7 @@ const pageMap = [
         name: "terraform-provider",
         route: "/admin/terraform-provider",
         type: "page",
-        title: "Manage Grepr pipelines with Terraform",
+        title: "Manage Grepr resources with Terraform",
       },
       {
         name: "activity-logs",

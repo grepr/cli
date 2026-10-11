@@ -1,12 +1,12 @@
 ---
-description: Learn how to use infrastructure as code (IaC) to manage your Grepr pipelines with the Grepr Terraform provider.
+description: Manage Grepr integrations, datasets, and pipelines with Terraform.
 ---
 
 import { HiddenFAQ } from '@/components/HiddenFAQ'
 
-# Manage Grepr pipelines with Terraform
+# Manage Grepr resources with Terraform
 
-You can use the Grepr Terraform provider to manage Grepr pipelines using infrastructure as code (IaC) principles. With the Grepr Terraform provider, you can define, deploy, and manage your pipelines in a consistent and repeatable manner.
+Use the Grepr Terraform provider to create and manage integrations, datasets, and pipelines from your infrastructure configuration.
 
 ## Requirements [#tf-provider-reqs]
 
@@ -56,15 +56,15 @@ To configure the required OAuth2 credentials for authentication, add a provider 
 ```hcl copy
 provider "grepr" {
   host          = "https://<your-org>.app.grepr.ai"
-  client_id     = var.<grepr-client-id>
-  client_secret = var.<grepr-client-secret>
+  client_id     = var.grepr_client_id
+  client_secret = var.grepr_client_secret
 }
 ```
 
 Replace:
 - `<your-org>` with your organization name.
-- `<grepr-client-id>` with your service account client ID.
-- `<grepr-client-secret>` with your service account client secret.
+- `var.grepr_client_id` with a variable containing your service account client ID.
+- `var.grepr_client_secret` with a sensitive variable containing your service account client secret.
 
 Alternatively, you can use environment variables to set the required credentials. The provider automatically reads these environment variables if you set them:
 
@@ -73,6 +73,74 @@ export GREPR_HOST=https://<your-org>.app.grepr.ai
 export GREPR_CLIENT_ID=<your-client-id>
 export GREPR_CLIENT_SECRET=<your-client-secret>
 ```
+
+## Manage integrations and datasets [#tf-integrations-datasets]
+
+The provider also manages the integrations and datasets your pipelines use. Each integration type has its own resource:
+
+| Resource | Manages |
+| --- | --- |
+| `grepr_datadog_integration` | A Datadog integration and its API keys |
+| `grepr_splunk_integration` | A Splunk integration and its tokens |
+| `grepr_newrelic_integration` | A New Relic integration and its keys |
+| `grepr_sumo_integration` | A Sumo Logic integration and its collector URL |
+| `grepr_otlp_integration` | An OTLP/HTTP destination and its secret headers |
+| `grepr_data_warehouse_integration` | A Grepr-managed data warehouse |
+| `grepr_s3_data_warehouse_integration` | A data warehouse in your S3 bucket |
+| `grepr_dataset` | A dataset in a data warehouse |
+
+Reference their IDs from a pipeline so Terraform creates them first:
+
+```hcl copy
+variable "datadog_api_key" {
+  type      = string
+  sensitive = true
+}
+
+resource "grepr_datadog_integration" "datadog" {
+  name    = "terraform_datadog"
+  site    = "datadoghq.com"
+  api_key = var.datadog_api_key
+}
+
+resource "grepr_data_warehouse_integration" "warehouse" {
+  name = "terraform_warehouse"
+}
+
+resource "grepr_dataset" "logs" {
+  name           = "terraform_logs"
+  integration_id = grepr_data_warehouse_integration.warehouse.id
+}
+
+resource "grepr_pipeline" "logs" {
+  name = "terraform_logs"
+  job_graph_json = jsonencode({
+    vertices = [
+      {
+        type          = "datadog-log-agent-source"
+        name          = "source"
+        integrationId = grepr_datadog_integration.datadog.id
+      },
+      {
+        type      = "logs-iceberg-table-sink"
+        name      = "sink"
+        datasetId = grepr_dataset.logs.id
+      }
+    ]
+    edges = ["source -> sink"]
+  })
+}
+```
+
+Keep in mind:
+
+- Secrets such as API keys are sensitive attributes, but Terraform stores them in state. Protect your state backend with encryption and access controls.
+- Grepr never returns secrets, so Terraform writes them but can't read them back and doesn't detect a secret changed outside Terraform. Removing a secret from your configuration stops managing it without revoking it.
+- Write values the way Grepr stores them, such as durations in hours (`PT24H` rather than `P1D`) and lowercase encodings. Grepr rewrites other spellings, and the next plan shows the difference.
+- Deleting a dataset drops its stored data. Changing its `integration_id` replaces it, so the new dataset starts without the old data or table settings such as its promotion policy. Add `lifecycle { prevent_destroy = true }` to guard against accidental deletion. Table settings made outside Terraform are left alone.
+- Import integrations and datasets by ID, for example `terraform import grepr_dataset.logs DATASET_ID`. Import can't recover secrets, so the next apply writes the secrets you configure. Writing a Datadog API key is refused while a pipeline uses the integration, so stop the pipeline first or leave the key out of the configuration.
+
+See the [provider documentation](https://search.opentofu.org/provider/grepr/grepr/) for each resource's attributes.
 
 ## Import an existing pipeline
 
