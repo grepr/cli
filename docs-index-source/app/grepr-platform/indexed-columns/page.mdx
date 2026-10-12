@@ -68,11 +68,23 @@ Grepr schedules the column for removal from the table 6 hours after you exclude 
 
 If you take the field off the never-index list before then, the removal is cancelled: Grepr goes back to writing the same column, and everything already indexed in it stays. After the removal, the field gets a new column the same way a field that was never indexed does: from the always-index list when you save, if the table is under its cap for an attribute path, or from discovery if the table is under its discovery cap. The new column covers only logs written from then on.
 
+## Collect file statistics on every column [#file-statistics]
+
+A search skips a data file on an indexed column by using the file's statistics for that column: the smallest and largest values the column holds in the file, and how many of them are null. By default, a data lake table collects these statistics on its first 100 columns only, counting top-level columns before nested fields. On a table with many indexed columns, the columns and fields past the first 100 have no statistics, so searches that filter on them read every data file.
+
+To collect statistics on every column of a dataset's raw log table or raw span table, in the dataset's settings, expand **Advanced**, turn on **Raw logs table** or **Raw spans table**, and click **Save**. Both are off for a new dataset. Turning one off returns the table to collecting statistics on its first 100 columns. The raw span table's built-in span fields keep their statistics either way. Grepr pins their statistics mode when a pipeline writing the dataset starts, and keeps any mode already set on the table for one of those fields.
+
+Statistics on every column add about 18 bytes of table metadata for each indexed column in each data file.
+
+A change applies to the data files that pipelines write after their next restart, and earlier when the table gets a new indexed column. Data files already written keep the statistics they were written with.
+
 ## Change indexing through the API
 
 Reading a table's configuration returns its indexing settings with a `revision`. To change them, send the complete settings for both groups to the promotion endpoint, which replaces what's stored. Include the `revision` you read: if the settings changed since then, the request fails with a 409 error, and you read them again before you retry. Without a `revision`, the request replaces the stored settings whatever they are. See the [Datasets specification](/apis/api-spec#tag/Datasets).
 
 Each excluded attribute entry, and each excluded tag key under `tags.scheduledRemovalAt`, comes back with `scheduledRemovalAt`: when Grepr removes its columns. While `attributes.excludeAllByDefault` is on, `attributes.excludeAllScheduledRemovalAt` is when Grepr removes the columns it excludes. Grepr sets it when the entry is first saved and ignores any value you send. To change how long Grepr waits before removing an excluded column, set `columnRemovalDelay` to an ISO-8601 duration from `PT2M` (2 minutes) to `P30D` (30 days). Without it, the delay is 6 hours. A new delay applies to entries you exclude from then on.
+
+To turn file statistics on every column on or off for the `logs_raw` or `spans_raw` table, send `{"enabled": true}` or `{"enabled": false}` to the table's column metrics endpoint. Reading the endpoint returns whether the setting is on. See [Collect file statistics on every column](#file-statistics).
 
 <HiddenFAQ faqs={[
   {
@@ -114,6 +126,10 @@ Each excluded attribute entry, and each excluded tag key under `tags.scheduledRe
   {
     q: "Can I stop indexing service and host?",
     a: "No. Grepr always indexes the service and host tags, and neither key can be on the never-index list."
+  },
+  {
+    q: "Why do searches on some indexed columns read every data file?",
+    a: "By default, a data lake table collects file statistics on its first 100 columns only, and a search skips data files on a column only by using those statistics. To collect them on every column of the raw log or raw span table, turn on Raw logs table or Raw spans table under Advanced in the dataset's settings. The change applies to data files written after the pipelines writing the dataset restart."
   },
   {
     q: "What does marking an always-index path numeric do?",

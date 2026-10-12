@@ -810,6 +810,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/datasets/{id}/tables/{tableKey}/column-metrics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get a dataset table's file-statistics setting
+     * @description Returns whether the table's default column statistics mode is Grepr's, truncate(16), which collects min/max values and null counts on every column of its data files that has no per-column mode, indexed columns past the first 100 included, so searches can skip files on them. Off by default: the table then has Iceberg's inferred statistics on its first 100 columns, unless mode reports a default set outside Grepr. spans_raw keeps them on its built-in span fields either way. Supported for logs_raw and spans_raw.
+     */
+    get: operations["getTableColumnMetrics"];
+    /**
+     * Set a dataset table's file-statistics setting
+     * @description Turns Grepr's default column statistics mode on or off for the table. On sets the table's write.metadata.metrics.default to truncate(16), replacing any other default; off removes it when it holds that value, and leaves a value set outside Grepr alone. Per-column modes are never changed. On costs about 18 bytes of table metadata per indexed column for each data file. Pipelines writing the dataset apply a change to new files by their next restart, and possibly sooner; files already written keep their statistics. Supported for logs_raw and spans_raw.
+     */
+    put: operations["putTableColumnMetrics"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/datasets/{id}/tables/{tableKey}/promotion": {
     parameters: {
       query?: never;
@@ -12547,6 +12571,16 @@ export interface components {
        */
       type: SumoLogSourceType;
     };
+    TableColumnMetrics: {
+      /** @description Whether the table's default column statistics mode is Grepr's, which collects them on every column without a per-column mode, indexed columns past the first 100 included. */
+      enabled: boolean;
+      /** @description The table's write.metadata.metrics.default as stored, absent when the table has none. With the setting off, a value here was set outside Grepr. */
+      mode?: string;
+    };
+    TableColumnMetricsUpdate: {
+      /** @description Whether to turn Grepr's column statistics on for the table. */
+      enabled: boolean;
+    };
     /** @description Per-table configuration overrides. Read-only here; use /datasets/{id}/{tableKey}/config to mutate. */
     TableConfig: {
       partitionConfig?: components["schemas"]["PartitionConfig"];
@@ -15574,6 +15608,10 @@ export type SchemaSumAttributesMergeStrategy =
 export type SchemaSumo = components["schemas"]["Sumo"];
 export type SchemaSumoLogSink = components["schemas"]["SumoLogSink"];
 export type SchemaSumoLogSource = components["schemas"]["SumoLogSource"];
+export type SchemaTableColumnMetrics =
+  components["schemas"]["TableColumnMetrics"];
+export type SchemaTableColumnMetricsUpdate =
+  components["schemas"]["TableColumnMetricsUpdate"];
 export type SchemaTableConfig = components["schemas"]["TableConfig"];
 export type SchemaTableConfigRead = components["schemas"]["TableConfigRead"];
 export type SchemaTagAction = components["schemas"]["TagAction"];
@@ -17677,6 +17715,84 @@ export interface operations {
       };
       /** @description No configuration found for this dataset. */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getTableColumnMetrics: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tableKey: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The table's setting. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TableColumnMetrics"];
+        };
+      };
+      /** @description Dataset not found, or the table has no such setting. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  putTableColumnMetrics: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tableKey: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TableColumnMetricsUpdate"];
+      };
+    };
+    responses: {
+      /** @description The table's setting after the change. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TableColumnMetrics"];
+        };
+      };
+      /** @description Dataset not found, or the table has no such setting. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The table kept changing under the request, which running writers can cause; retry. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The body is missing, or has no enabled field. */
+      422: {
         headers: {
           [name: string]: unknown;
         };
