@@ -26820,6 +26820,7 @@ export enum EventRecordJobState {
   TIMED_OUT = "TIMED_OUT",
   UNKNOWN = "UNKNOWN",
   SCANNED_MAX = "SCANNED_MAX",
+  QUERY_TOO_LARGE = "QUERY_TOO_LARGE",
 }
 export enum ExactAttributesMergeStrategyType {
   exact = "exact",

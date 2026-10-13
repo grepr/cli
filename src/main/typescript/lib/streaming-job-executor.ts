@@ -172,6 +172,13 @@ export class StreamingJobExecutor {
       this.completeJob('SCANNED_MAX');
     });
 
+    this.streamParser.on(STREAM_EVENTS.QUERY_TOO_LARGE, (data) => {
+      this.stats.errors++;
+      const errorMsg = data?.message || 'Query is too large';
+      this.stats.errorMessages.push(errorMsg);
+      this.completeJob('QUERY_TOO_LARGE');
+    });
+
     this.streamParser.on(STREAM_EVENTS.PARSE_ERROR, (error: Error, jsonLine?: string) => {
       this.stats.errors++;
       const errorMsg = `JSON parsing error: ${error.message}`;

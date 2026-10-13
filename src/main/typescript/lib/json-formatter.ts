@@ -748,6 +748,10 @@ export class JsonFormatter {
         stateColor = chalk.yellow;
         message = 'Job reached maximum scan limit';
         break;
+      case 'QUERY_TOO_LARGE':
+        stateColor = chalk.yellow;
+        message = 'Query is too large for the query engine';
+        break;
       default:
         stateColor = chalk.gray;
         message = `Unknown job state: ${state}`;

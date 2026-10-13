@@ -174,6 +174,7 @@ export const STREAM_EVENTS = {
   CANCELLED: 'cancelled',
   TIMED_OUT: 'timed_out',
   SCANNED_MAX: 'scanned_max',
+  QUERY_TOO_LARGE: 'query_too_large',
   PARSE_ERROR: 'parse_error'
 };
 
