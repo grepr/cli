@@ -24,6 +24,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/agent-memory": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List this organization's investigation memories, most recently seen first, filtered by tags (key=value, ANDed), agent, significance, verdict or text. Pass nextCursor back as after for the next page. */
+    get: operations["list_5"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/agent-memory/search": {
     parameters: {
       query?: never;
@@ -41,6 +58,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/agent-memory/tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Count the tag keys in use in this organization's memories, or one key's values when key is given. Pass agentId to count only that agent's memories. */
+    get: operations["tags"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/agent-memory/{investigationId}/link/{memoryId}": {
     parameters: {
       query?: never;
@@ -50,7 +84,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Record that this investigation is another occurrence of a memory you already found, instead of recording a second copy of it. Counts a recurrence against that memory and fills in anything it was missing; it must belong to the same agent. */
+    /** Record that this investigation is another occurrence of a memory you already found, instead of recording a second copy of it. Counts a recurrence against that memory and fills in anything it was missing, unless a person edited it: then it takes none of the request's text and textMerged is false. A memory a person marked wrong refuses a new link with 409; only a retried link from an investigation it already counts is accepted, taking no text. The memory must belong to the same agent. */
     post: operations["link"];
     delete?: never;
     options?: never;
@@ -70,6 +104,43 @@ export interface paths {
     /** Record what this investigation concluded. Writes only this investigation's own memory, and may be called again to correct or extend it — a field you leave out keeps what was already recorded, so a later call cannot lose an earlier finding. */
     post: operations["record"];
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agent-memory/{memoryId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read one memory in full by its id (its investigation id), with the investigations linked to it as recurrences */
+    get: operations["get_5"];
+    /** Edit a memory as a person. Every editable field is replaced; tags derived from the triggering signal are kept. Refused with 409 if the memory changed since expectedRevision. An edit that changes nothing writes nothing. */
+    put: operations["edit"];
+    post?: never;
+    /** Delete a memory and the recurrence links pointing at it. The linked investigations keep their transcripts. */
+    delete: operations["delete_3"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agent-memory/{memoryId}/verdict": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Mark a memory's conclusion wrong. Agents that find it are told a person rejected it, with this note. */
+    put: operations["setVerdict"];
+    post?: never;
+    /** Lift a person's verdict that a memory is wrong. */
+    delete: operations["clearVerdict"];
     options?: never;
     head?: never;
     patch?: never;
@@ -953,7 +1024,7 @@ export interface paths {
      * List all Anthropic integrations
      * @description Get all Anthropic integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_5"];
+    get: operations["list_6"];
     put?: never;
     /**
      * Create an Anthropic integration
@@ -977,7 +1048,7 @@ export interface paths {
      * Get an Anthropic integration
      * @description Get an Anthropic integration by ID.
      */
-    get: operations["get_5"];
+    get: operations["get_6"];
     /**
      * Update an Anthropic integration.
      * @description Updates an Anthropic integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -988,7 +1059,7 @@ export interface paths {
      * Delete an Anthropic integration
      * @description Deletes an Anthropic integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_3"];
+    delete: operations["delete_4"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1117,7 +1188,7 @@ export interface paths {
      * List all Datadog MCP integrations
      * @description Get all Datadog MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_8"];
+    get: operations["list_9"];
     put?: never;
     /**
      * Create a Datadog MCP integration
@@ -1141,7 +1212,7 @@ export interface paths {
      * Get a Datadog MCP integration
      * @description Get a Datadog MCP integration by ID.
      */
-    get: operations["get_8"];
+    get: operations["get_9"];
     /**
      * Update a Datadog MCP integration.
      * @description Updates a Datadog MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1152,7 +1223,7 @@ export interface paths {
      * Delete a Datadog MCP integration
      * @description Deletes a Datadog MCP integration. This will delete the associated API keys as well. No-op if already deleted.
      */
-    delete: operations["delete_6"];
+    delete: operations["delete_7"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1425,7 +1496,7 @@ export interface paths {
      * List all Gemini integrations
      * @description Get all Google Gemini integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_6"];
+    get: operations["list_7"];
     put?: never;
     /**
      * Create a Gemini integration
@@ -1449,7 +1520,7 @@ export interface paths {
      * Get a Gemini integration
      * @description Get a Gemini integration by ID.
      */
-    get: operations["get_6"];
+    get: operations["get_7"];
     /**
      * Update a Gemini integration.
      * @description Updates a Gemini integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1460,7 +1531,7 @@ export interface paths {
      * Delete a Gemini integration
      * @description Deletes a Gemini integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_4"];
+    delete: operations["delete_5"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1513,7 +1584,7 @@ export interface paths {
      * List all GitHub MCP integrations
      * @description Get all GitHub MCP server integrations for your organization. This will contain masked tokens if present.
      */
-    get: operations["list_9"];
+    get: operations["list_10"];
     put?: never;
     /**
      * Create a GitHub MCP integration
@@ -1537,7 +1608,7 @@ export interface paths {
      * Get a GitHub MCP integration
      * @description Get a GitHub MCP integration by ID.
      */
-    get: operations["get_9"];
+    get: operations["get_10"];
     /**
      * Update a GitHub MCP integration.
      * @description Updates a GitHub MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1548,7 +1619,7 @@ export interface paths {
      * Delete a GitHub MCP integration
      * @description Deletes a GitHub MCP integration. This will delete the associated token as well. No-op if already deleted.
      */
-    delete: operations["delete_7"];
+    delete: operations["delete_8"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1582,7 +1653,7 @@ export interface paths {
       cookie?: never;
     };
     /** List all LiteLLM integrations */
-    get: operations["list_7"];
+    get: operations["list_8"];
     put?: never;
     /** Create a LiteLLM integration */
     post: operations["create_6"];
@@ -1600,12 +1671,12 @@ export interface paths {
       cookie?: never;
     };
     /** Get a LiteLLM integration */
-    get: operations["get_7"];
+    get: operations["get_8"];
     /** Update a LiteLLM integration */
     put: operations["update_4"];
     post?: never;
     /** Delete a LiteLLM integration */
-    delete: operations["delete_5"];
+    delete: operations["delete_6"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1807,7 +1878,7 @@ export interface paths {
      * List all OpenAI integrations
      * @description Get all OpenAI integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_12"];
+    get: operations["list_13"];
     put?: never;
     /**
      * Create an OpenAI integration
@@ -1831,7 +1902,7 @@ export interface paths {
      * Get an OpenAI integration
      * @description Get an OpenAI integration by ID.
      */
-    get: operations["get_12"];
+    get: operations["get_13"];
     /**
      * Update an OpenAI integration.
      * @description Updates an OpenAI integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -1842,7 +1913,7 @@ export interface paths {
      * Delete an OpenAI integration
      * @description Deletes an OpenAI integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_10"];
+    delete: operations["delete_11"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1975,7 +2046,7 @@ export interface paths {
      * List all PagerDuty MCP integrations
      * @description Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_10"];
+    get: operations["list_11"];
     put?: never;
     /**
      * Create a PagerDuty MCP integration
@@ -1999,7 +2070,7 @@ export interface paths {
      * Get a PagerDuty MCP integration
      * @description Get a PagerDuty MCP integration by ID.
      */
-    get: operations["get_10"];
+    get: operations["get_11"];
     /**
      * Update a PagerDuty MCP integration.
      * @description Updates a PagerDuty MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -2010,7 +2081,7 @@ export interface paths {
      * Delete a PagerDuty MCP integration
      * @description Deletes a PagerDuty MCP integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_8"];
+    delete: operations["delete_9"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2156,7 +2227,7 @@ export interface paths {
      * List all S3 Vector Index integrations
      * @description Retrieves all S3 Vector Index integrations for the organization.
      */
-    get: operations["list_13"];
+    get: operations["list_14"];
     put?: never;
     /**
      * Create an S3 Vector Index integration
@@ -2180,7 +2251,7 @@ export interface paths {
      * Get an S3 Vector Index integration
      * @description Retrieves an S3 Vector Index integration.
      */
-    get: operations["get_13"];
+    get: operations["get_14"];
     /**
      * Update an S3 Vector Index integration
      * @description Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.
@@ -2191,7 +2262,7 @@ export interface paths {
      * Delete an S3 Vector Index integration
      * @description Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn't exist.
      */
-    delete: operations["delete_11"];
+    delete: operations["delete_12"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2208,7 +2279,7 @@ export interface paths {
      * List all Slack MCP integrations
      * @description Get all Slack MCP server integrations for your organization. This will contain masked tokens if present.
      */
-    get: operations["list_11"];
+    get: operations["list_12"];
     put?: never;
     /**
      * Create a Slack MCP integration
@@ -2232,7 +2303,7 @@ export interface paths {
      * Get a Slack MCP integration
      * @description Get a Slack MCP integration by ID.
      */
-    get: operations["get_11"];
+    get: operations["get_12"];
     /**
      * Update a Slack MCP integration.
      * @description Updates a Slack MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -2243,7 +2314,7 @@ export interface paths {
      * Delete a Slack MCP integration
      * @description Deletes a Slack MCP integration. This will delete the associated token as well. No-op if already deleted.
      */
-    delete: operations["delete_9"];
+    delete: operations["delete_10"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2484,7 +2555,7 @@ export interface paths {
      * List webhook integrations
      * @description Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.
      */
-    get: operations["list_14"];
+    get: operations["list_15"];
     put?: never;
     /**
      * Create a webhook integration
@@ -2508,7 +2579,7 @@ export interface paths {
      * Get a webhook integration
      * @description Get a webhook integration by ID.
      */
-    get: operations["get_14"];
+    get: operations["get_15"];
     /**
      * Update a webhook integration
      * @description Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
@@ -2519,7 +2590,7 @@ export interface paths {
      * Delete a webhook integration
      * @description Deletes a webhook integration. No-op if already deleted.
      */
-    delete: operations["delete_12"];
+    delete: operations["delete_13"];
     options?: never;
     head?: never;
     patch?: never;
@@ -3955,7 +4026,7 @@ export interface paths {
      * List all users
      * @description Get all users in the system.
      */
-    get: operations["list_15"];
+    get: operations["list_16"];
     put?: never;
     /**
      * Create a new user
@@ -4285,9 +4356,11 @@ export interface components {
       integrationId: string;
     };
     AgentMemoryConfiguration: {
+      digest?: components["schemas"]["AgentMemoryHistoryDigest"];
       embeddingIntegrationId?: string;
       embeddingModel?: string;
       enabled?: boolean;
+      policy?: components["schemas"]["AgentMemoryPolicy"];
       searchTool?: boolean;
       signalTagMappings?: {
         [key: string]: {
@@ -4295,6 +4368,20 @@ export interface components {
         };
       };
       vectorIndexIntegrationId?: string;
+    };
+    AgentMemoryHistoryDigest: {
+      enabled?: boolean;
+      /** Format: int32 */
+      maxItems?: number;
+      /** Format: int32 */
+      windowDays?: number;
+    };
+    AgentMemoryPolicy: {
+      guidance?: string;
+      /** Format: int32 */
+      maxSearchesPerInvestigation?: number;
+      /** @enum {string} */
+      recordPolicy?: AgentMemoryPolicyRecordPolicy;
     };
     AgentPipelineSubscription: {
       jobId: string;
@@ -7390,6 +7477,22 @@ export interface components {
        */
       rehydrateAnomalousHosts?: boolean;
     };
+    HumanMemoryEdit: {
+      entityTags: {
+        [key: string]: string;
+      };
+      /** Format: int32 */
+      expectedRevision: number;
+      resolution?: string;
+      rootCause?: string;
+      /** @enum {string} */
+      rootCauseConfidence?: HumanMemoryEditRootCauseConfidence;
+      ruledOut?: string;
+      /** @enum {string} */
+      significance: PathsV1AgentMemoryGetParametersQuerySignificance;
+      symptoms?: string;
+      title: string;
+    };
     IcebergLogsReplaySource: {
       /** @description The ID of the dataset to read data from. */
       datasetId: string;
@@ -7881,9 +7984,12 @@ export interface components {
       resolution?: string;
       rootCause?: string;
       /** @enum {string} */
-      rootCauseConfidence?: LinkMemoryRequestRootCauseConfidence;
+      rootCauseConfidence?: HumanMemoryEditRootCauseConfidence;
       ruledOut?: string;
       symptoms?: string;
+    };
+    LinkMemoryResponse: {
+      textMerged?: boolean;
     };
     /** @description The payload containing integration data. */
     LiteLlm: {
@@ -8962,15 +9068,37 @@ export interface components {
       required?: boolean;
       type?: string;
     };
+    MemoryDetail: {
+      /** Format: int32 */
+      contentRevision?: number;
+      /** Format: int64 */
+      linkCount?: number;
+      lockedTagKeys?: string[];
+      memory?: components["schemas"]["MemorySearchResult"];
+      recurrences?: components["schemas"]["RecurrenceLink"][];
+    };
+    MemoryListResponse: {
+      items?: components["schemas"]["MemorySearchResult"][];
+      nextCursor?: string;
+    };
+    MemoryReview: {
+      /** Format: date-time */
+      editedAt?: string;
+      /** Format: date-time */
+      verdictAt?: string;
+      verdictNote?: string;
+    };
     MemorySearchRequest: {
       agentId?: string;
       /** @default {} */
       entityTags?: {
         [key: string]: string;
       };
+      /** @default false */
+      includeVocabulary?: boolean;
       /**
        * Format: int32
-       * @default 10
+       * @default 3
        */
       limit?: number;
       /**
@@ -8981,27 +9109,34 @@ export interface components {
       query?: string;
       /** Format: date-time */
       recordedAfter?: string;
+      /** @default [] */
+      significances: PathsV1AgentMemoryGetParametersQuerySignificance[];
       /** @enum {string} */
-      significance?: MemorySearchRequestSignificance;
+      verbosity?: MemorySearchRequestVerbosity;
     };
     MemorySearchResponse: {
       entityTagVocabulary?: {
         [key: string]: string[];
       };
+      hasMore?: boolean;
       note?: string;
       preamble?: string;
       results?: components["schemas"]["MemorySearchResult"][];
       semanticSearchUnavailable?: boolean;
+      /** @enum {string} */
+      verbosity?: MemorySearchRequestVerbosity;
     };
     MemorySearchResult: {
       /** Format: int64 */
       ageDays?: number;
       agentId?: string;
       investigationId?: string;
+      /** Format: date-time */
+      lastSeenAt?: string;
       /** Format: int64 */
       lastSeenDays?: number;
       /** @enum {string} */
-      matchedOn?: MemorySearchRequestMode;
+      matchedOn?: MemorySearchResultMatchedOn;
       /** @enum {string} */
       recencyLabel?: MemorySearchResultRecencyLabel;
       /** Format: date-time */
@@ -9009,17 +9144,26 @@ export interface components {
       /** Format: int32 */
       recurrenceCount?: number;
       resolution?: string;
+      review?: components["schemas"]["MemoryReview"];
       rootCause?: string;
       /** @enum {string} */
-      rootCauseConfidence?: LinkMemoryRequestRootCauseConfidence;
+      rootCauseConfidence?: HumanMemoryEditRootCauseConfidence;
       ruledOut?: string;
+      /** Format: double */
+      score?: number;
       /** @enum {string} */
-      significance?: MemorySearchRequestSignificance;
+      significance?: PathsV1AgentMemoryGetParametersQuerySignificance;
       symptoms?: string;
       tags?: {
         [key: string]: string;
       };
       title?: string;
+    };
+    MemoryTagCounts: {
+      items?: components["schemas"]["TagCountItem"][];
+    };
+    MemoryVerdictRequest: {
+      note: string;
     };
     MergeMapAttributeAction: {
       /**
@@ -11412,10 +11556,11 @@ export interface components {
       resolution?: string;
       rootCause?: string;
       /** @enum {string} */
-      rootCauseConfidence?: LinkMemoryRequestRootCauseConfidence;
+      rootCauseConfidence?: HumanMemoryEditRootCauseConfidence;
       ruledOut?: string;
+      searchableBySimilarity?: boolean;
       /** @enum {string} */
-      significance: MemorySearchRequestSignificance;
+      significance: PathsV1AgentMemoryGetParametersQuerySignificance;
       symptoms?: string;
       title: string;
     };
@@ -11425,6 +11570,12 @@ export interface components {
       nearestMemoryId?: string;
       /** Format: double */
       nearestSimilarity?: number;
+      review?: components["schemas"]["MemoryReview"];
+    };
+    RecurrenceLink: {
+      investigationId?: string;
+      /** Format: date-time */
+      linkedAt?: string;
     };
     ReducerLogsQuerySource: {
       /** @description The ID of the dataset to read data from. */
@@ -12654,6 +12805,11 @@ export interface components {
        *     ]
        */
       values: string[];
+    };
+    TagCountItem: {
+      /** Format: int64 */
+      count?: number;
+      name?: string;
     };
     TagKeyNode: {
       /**
@@ -14929,6 +15085,10 @@ export type SchemaAgentMcpIntegrations =
   components["schemas"]["AgentMcpIntegrations"];
 export type SchemaAgentMemoryConfiguration =
   components["schemas"]["AgentMemoryConfiguration"];
+export type SchemaAgentMemoryHistoryDigest =
+  components["schemas"]["AgentMemoryHistoryDigest"];
+export type SchemaAgentMemoryPolicy =
+  components["schemas"]["AgentMemoryPolicy"];
 export type SchemaAgentPipelineSubscription =
   components["schemas"]["AgentPipelineSubscription"];
 export type SchemaAgentRecentHealth =
@@ -15206,6 +15366,7 @@ export type SchemaHeadSamplingFilter =
 export type SchemaHeader = components["schemas"]["Header"];
 export type SchemaHostMetadataReporting =
   components["schemas"]["HostMetadataReporting"];
+export type SchemaHumanMemoryEdit = components["schemas"]["HumanMemoryEdit"];
 export type SchemaIcebergLogsReplaySource =
   components["schemas"]["IcebergLogsReplaySource"];
 export type SchemaIgnoreAttributesMergeStrategy =
@@ -15298,6 +15459,8 @@ export type SchemaLegacyDatadogMetricsSink =
   components["schemas"]["LegacyDatadogMetricsSink"];
 export type SchemaLinkMemoryRequest =
   components["schemas"]["LinkMemoryRequest"];
+export type SchemaLinkMemoryResponse =
+  components["schemas"]["LinkMemoryResponse"];
 export type SchemaLiteLlm = components["schemas"]["LiteLlm"];
 export type SchemaLlmUsageWindow = components["schemas"]["LlmUsageWindow"];
 export type SchemaLogAttributesRemapper =
@@ -15344,12 +15507,19 @@ export type SchemaMaxAttributesMergeStrategy =
 export type SchemaMcpToolDescriptor =
   components["schemas"]["McpToolDescriptor"];
 export type SchemaMcpToolParameter = components["schemas"]["McpToolParameter"];
+export type SchemaMemoryDetail = components["schemas"]["MemoryDetail"];
+export type SchemaMemoryListResponse =
+  components["schemas"]["MemoryListResponse"];
+export type SchemaMemoryReview = components["schemas"]["MemoryReview"];
 export type SchemaMemorySearchRequest =
   components["schemas"]["MemorySearchRequest"];
 export type SchemaMemorySearchResponse =
   components["schemas"]["MemorySearchResponse"];
 export type SchemaMemorySearchResult =
   components["schemas"]["MemorySearchResult"];
+export type SchemaMemoryTagCounts = components["schemas"]["MemoryTagCounts"];
+export type SchemaMemoryVerdictRequest =
+  components["schemas"]["MemoryVerdictRequest"];
 export type SchemaMergeMapAttributeAction =
   components["schemas"]["MergeMapAttributeAction"];
 export type SchemaMessageExactMatchNode =
@@ -15510,6 +15680,7 @@ export type SchemaRecordMemoryRequest =
   components["schemas"]["RecordMemoryRequest"];
 export type SchemaRecordMemoryResponse =
   components["schemas"]["RecordMemoryResponse"];
+export type SchemaRecurrenceLink = components["schemas"]["RecurrenceLink"];
 export type SchemaReducerLogsQuerySource =
   components["schemas"]["ReducerLogsQuerySource"];
 export type SchemaRemoveKeyAttributeAction =
@@ -15615,6 +15786,7 @@ export type SchemaTableColumnMetricsUpdate =
 export type SchemaTableConfig = components["schemas"]["TableConfig"];
 export type SchemaTableConfigRead = components["schemas"]["TableConfigRead"];
 export type SchemaTagAction = components["schemas"]["TagAction"];
+export type SchemaTagCountItem = components["schemas"]["TagCountItem"];
 export type SchemaTagKeyNode = components["schemas"]["TagKeyNode"];
 export type SchemaTagKeyPrefixNode = components["schemas"]["TagKeyPrefixNode"];
 export type SchemaTagKeyWildcardNode =
@@ -15806,6 +15978,34 @@ export interface operations {
       };
     };
   };
+  list_5: {
+    parameters: {
+      query?: {
+        tag?: string[];
+        agentId?: string;
+        significance?: PathsV1AgentMemoryGetParametersQuerySignificance[];
+        verdict?: PathsV1AgentMemoryGetParametersQueryVerdict;
+        q?: string;
+        pageSize?: number;
+        after?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description One page of memories */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MemoryListResponse"];
+        };
+      };
+    };
+  };
   search: {
     parameters: {
       query?: never;
@@ -15826,6 +16026,29 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["MemorySearchResponse"];
+        };
+      };
+    };
+  };
+  tags: {
+    parameters: {
+      query?: {
+        agentId?: string;
+        key?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The counts */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MemoryTagCounts"];
         };
       };
     };
@@ -15851,7 +16074,9 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["LinkMemoryResponse"];
+        };
       };
     };
   };
@@ -15878,6 +16103,116 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["RecordMemoryResponse"];
         };
+      };
+    };
+  };
+  get_5: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memoryId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The memory and its recurrences */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MemoryDetail"];
+        };
+      };
+    };
+  };
+  edit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memoryId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["HumanMemoryEdit"];
+      };
+    };
+    responses: {
+      /** @description Edited */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  delete_3: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memoryId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Deleted */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  setVerdict: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memoryId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MemoryVerdictRequest"];
+      };
+    };
+    responses: {
+      /** @description Marked wrong */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  clearVerdict: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memoryId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Verdict lifted */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };
@@ -18094,7 +18429,7 @@ export interface operations {
       };
     };
   };
-  list_5: {
+  list_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -18161,7 +18496,7 @@ export interface operations {
       };
     };
   };
-  get_5: {
+  get_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -18244,7 +18579,7 @@ export interface operations {
       };
     };
   };
-  delete_3: {
+  delete_4: {
     parameters: {
       query?: never;
       header?: never;
@@ -18580,7 +18915,7 @@ export interface operations {
       };
     };
   };
-  list_8: {
+  list_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -18647,7 +18982,7 @@ export interface operations {
       };
     };
   };
-  get_8: {
+  get_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -18730,7 +19065,7 @@ export interface operations {
       };
     };
   };
-  delete_6: {
+  delete_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -19376,7 +19711,7 @@ export interface operations {
       };
     };
   };
-  list_6: {
+  list_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -19443,7 +19778,7 @@ export interface operations {
       };
     };
   };
-  get_6: {
+  get_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -19526,7 +19861,7 @@ export interface operations {
       };
     };
   };
-  delete_4: {
+  delete_5: {
     parameters: {
       query?: never;
       header?: never;
@@ -19627,7 +19962,7 @@ export interface operations {
       };
     };
   };
-  list_9: {
+  list_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -19694,7 +20029,7 @@ export interface operations {
       };
     };
   };
-  get_9: {
+  get_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -19777,7 +20112,7 @@ export interface operations {
       };
     };
   };
-  delete_7: {
+  delete_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -19842,7 +20177,7 @@ export interface operations {
       };
     };
   };
-  list_7: {
+  list_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -19909,7 +20244,7 @@ export interface operations {
       };
     };
   };
-  get_7: {
+  get_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -19992,7 +20327,7 @@ export interface operations {
       };
     };
   };
-  delete_5: {
+  delete_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -20458,7 +20793,7 @@ export interface operations {
       };
     };
   };
-  list_12: {
+  list_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -20525,7 +20860,7 @@ export interface operations {
       };
     };
   };
-  get_12: {
+  get_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -20608,7 +20943,7 @@ export interface operations {
       };
     };
   };
-  delete_10: {
+  delete_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -20967,7 +21302,7 @@ export interface operations {
       };
     };
   };
-  list_10: {
+  list_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -21034,7 +21369,7 @@ export interface operations {
       };
     };
   };
-  get_10: {
+  get_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -21117,7 +21452,7 @@ export interface operations {
       };
     };
   };
-  delete_8: {
+  delete_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -21460,7 +21795,7 @@ export interface operations {
       };
     };
   };
-  list_13: {
+  list_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -21525,7 +21860,7 @@ export interface operations {
       };
     };
   };
-  get_13: {
+  get_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -21601,7 +21936,7 @@ export interface operations {
       };
     };
   };
-  delete_11: {
+  delete_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -21628,7 +21963,7 @@ export interface operations {
       };
     };
   };
-  list_11: {
+  list_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -21695,7 +22030,7 @@ export interface operations {
       };
     };
   };
-  get_11: {
+  get_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -21778,7 +22113,7 @@ export interface operations {
       };
     };
   };
-  delete_9: {
+  delete_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -22396,7 +22731,7 @@ export interface operations {
       };
     };
   };
-  list_14: {
+  list_15: {
     parameters: {
       query?: {
         /** @description Only return integrations targeting this agent. */
@@ -22464,7 +22799,7 @@ export interface operations {
       };
     };
   };
-  get_14: {
+  get_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -22547,7 +22882,7 @@ export interface operations {
       };
     };
   };
-  delete_12: {
+  delete_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -26219,7 +26554,7 @@ export interface operations {
       };
     };
   };
-  list_15: {
+  list_16: {
     parameters: {
       query?: {
         page?: number;
@@ -26465,6 +26800,16 @@ export interface operations {
     };
   };
 }
+export enum PathsV1AgentMemoryGetParametersQuerySignificance {
+  INCIDENT = "INCIDENT",
+  OBSERVATION = "OBSERVATION",
+  INCONCLUSIVE = "INCONCLUSIVE",
+  BENIGN = "BENIGN",
+}
+export enum PathsV1AgentMemoryGetParametersQueryVerdict {
+  WRONG = "WRONG",
+  NONE = "NONE",
+}
 export enum PathsV1AgentSuggestionsGetParametersQueryStatus {
   PENDING = "PENDING",
   APPLIED = "APPLIED",
@@ -26541,6 +26886,11 @@ export enum AgentLogProcessorType {
 export enum AgentMaxTokensStatusBlockedBy {
   AGENT_MAX_TOKENS = "AGENT_MAX_TOKENS",
   INTEGRATION_MAX_TOKENS = "INTEGRATION_MAX_TOKENS",
+}
+export enum AgentMemoryPolicyRecordPolicy {
+  ALWAYS = "ALWAYS",
+  NON_BENIGN_ONLY = "NON_BENIGN_ONLY",
+  REUSABLE_ONLY = "REUSABLE_ONLY",
 }
 export enum AgentSessionAnalyticsType {
   agent_session_analytics = "agent-session-analytics",
@@ -26857,6 +27207,11 @@ export enum GreprVendorSourceType {
 export enum GrokParserType {
   grok_parser = "grok-parser",
 }
+export enum HumanMemoryEditRootCauseConfidence {
+  CONFIRMED = "CONFIRMED",
+  SUSPECTED = "SUSPECTED",
+  UNKNOWN = "UNKNOWN",
+}
 export enum IcebergLogsReplaySourceType {
   logs_iceberg_replay_source = "logs-iceberg-replay-source",
 }
@@ -26882,11 +27237,6 @@ export enum JsonLogProcessorType {
 }
 export enum LegacyDatadogMetricsSinkType {
   legacy_datadog_metrics_sink = "legacy-datadog-metrics-sink",
-}
-export enum LinkMemoryRequestRootCauseConfidence {
-  CONFIRMED = "CONFIRMED",
-  SUSPECTED = "SUSPECTED",
-  UNKNOWN = "UNKNOWN",
 }
 export enum LogAttributesRemapperType {
   log_attributes_remapper = "log-attributes-remapper",
@@ -26954,11 +27304,15 @@ export enum MemorySearchRequestMode {
   TEXT = "TEXT",
   TIMELINE = "TIMELINE",
 }
-export enum MemorySearchRequestSignificance {
-  INCIDENT = "INCIDENT",
-  OBSERVATION = "OBSERVATION",
-  INCONCLUSIVE = "INCONCLUSIVE",
-  BENIGN = "BENIGN",
+export enum MemorySearchRequestVerbosity {
+  COMPACT = "COMPACT",
+  FULL = "FULL",
+}
+export enum MemorySearchResultMatchedOn {
+  SEMANTIC = "SEMANTIC",
+  TEXT = "TEXT",
+  TIMELINE = "TIMELINE",
+  LOOKUP = "LOOKUP",
 }
 export enum MemorySearchResultRecencyLabel {
   ACTIVE = "ACTIVE",

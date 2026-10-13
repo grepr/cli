@@ -39,7 +39,7 @@ An agent can correct its own memory for an investigation while that investigatio
 
 ### Significance [#classification]
 
-Significance is how an agent classifies what it found, and it decides how the memory can be found later:
+Significance is how an agent classifies what it found, and a search can filter on it:
 
 | Significance | Meaning |
 |---|---|
@@ -48,7 +48,7 @@ Significance is how an agent classifies what it found, and it decides how the me
 | Inconclusive | The agent could not determine whether there was a problem. |
 | Benign | Triaged as no problem. |
 
-Benign memories are recorded but not indexed for search by meaning or by text. They are reachable only by a timeline search over their entity tags. This keeps the large number of routine all-clear findings out of the way of searches for real problems, at the cost of making them harder to find. If you want an agent to notice that a given service has been triaged as benign many times, search the timeline for that service rather than searching by text.
+Text and timeline searches find benign memories like any other memory, so an agent can notice that a given service has been triaged as benign many times. A semantic search finds a benign memory only when the agent that recorded it made it searchable by meaning. A search that is looking only for real problems can list the significances it wants and leave benign out.
 
 ## Turn on memory [#enable]
 
@@ -69,12 +69,12 @@ An agent's reasoning model and its embedding model are separate choices. An agen
 
 ### Step 3: Turn on memory for the agent [#agent-memory]
 
-1. On the agent's page, go to the **Memory** step.
+1. On the agent's page, go to the **Memories** step.
 1. Turn on **Remember past investigations**.
 1. Under **Storage**, select the **Vector index integration**, the **Embedding credentials**, and the **Embedding model**.
 1. Save the agent.
 
-![The Memory step with memory turned on and the storage settings showing the vector index, credentials, and embedding model.](/images/ai-agents/agent-memory-settings.png)
+![The Memories step with memory turned on and the storage settings showing the vector index, credentials, and embedding model.](/images/ai-agents/agent-memory-settings.png)
 
 Grepr creates the search index when you create the vector index integration in Step 1, and discards the integration if the index cannot be created. Saving the agent then checks that the embedding model actually works against that index, by embedding a test value with it. So a wrong model or an unusable credential stops the save rather than surfacing later as memories that were never indexed.
 
@@ -94,18 +94,18 @@ A search runs in exactly one of three modes, and which mode fits depends on what
 | Text | Investigations mentioning specific words, using full-text search. | Has this exact error string or identifier come up before? |
 | Timeline | Investigations about given entities, ordered by time. | What has been happening to this service recently? |
 
-Semantic search finds a past incident described in different words, which text search misses. Text search finds a literal, such as an error code or a host name, which semantic search can rank poorly. Timeline search needs entity tags rather than a query, and it is the only mode that returns benign memories.
+Semantic search finds a past incident described in different words, which text search misses. Text search finds a literal, such as an error code or a host name, which semantic search can rank poorly. Timeline search needs entity tags rather than a query.
 
 The modes also differ in how much they cover, which matters when you read an empty result:
 
-- A semantic search covers one agent at a time, because a query is only comparable against embeddings made with that agent's model. An empty semantic result means nothing similar was found within what the search could reach. It is not evidence that the agent recorded nothing similar, and it is not evidence that your organization has not seen the problem. A memory embedded with a model the agent no longer uses is unreachable until it is embedded again, and a search that cannot reach the embedding provider returns empty as well. When an empty result matters, confirm it with a text or timeline search, which read the records directly.
+- A semantic search covers one agent at a time, because a query is only comparable against embeddings made with that agent's model. An empty semantic result means nothing similar was found within what the search could reach. It is not evidence that the agent recorded nothing similar, and it is not evidence that your organization has not seen the problem. A memory embedded with a model the agent no longer uses is unreachable until it is embedded again, and a search that cannot reach the embedding provider returns empty as well. An agent can also record a routine or benign observation without making it searchable by meaning, so a semantic search never returns it. When an empty result matters, confirm it with a text or timeline search, which read the records directly.
 - A text or timeline search covers every agent in your organization by default, so it is the one to use when you want the organization's whole history.
 
 So to find out whether any agent has seen something, search by text or timeline, or repeat the semantic search against each agent you care about.
 
-A result carries the memory's content along with its recurrence count, how long ago it was recorded, when it was last seen, and whether it is active, recent, or historical. There is no relevance score, because the agent judges from the content and the provenance rather than a ranking number.
+A result carries the memory's title, significance, and entity tags along with its recurrence count, how long ago it was recorded, when it was last seen, and whether it is active, recent, or historical. Results are compact by default: the symptoms, root cause, ruled-out causes, and resolution come back only when the search asks for them, or when the agent reads one memory in full by its ID. Each semantic or text result also carries a score that ranks it within that search. A score orders candidates; it does not establish that a past memory is the same incident, which the agent judges from the content.
 
-Search returns at most 50 results and has no pagination, so a broad query can be incomplete. Narrowing by entity tags or by significance is more effective than raising the limit.
+Search returns three results by default and at most 50, without pagination, and says when more matched than it returned. Narrowing by entity tags or by significance is more effective than raising the limit.
 
 ## Entity tags [#tagging]
 
@@ -122,9 +122,38 @@ Grepr derives its tags using a mapping per signal type, which extracts values fr
 | Webhook | The integration, and the service and host from the payload. |
 | Manual | The signal type only. |
 
-The webhook mapping reads the service and host from field names Grepr expects. If your payloads name those fields differently, add a mapping so the tags resolve. On the agent's **Memory** step, under **Entity tags**, add a mapping for the signal type, then add each tag key with the paths to read it from. Grepr tries the paths in order and uses the first that resolves.
+The webhook mapping reads the service and host from field names Grepr expects. If your payloads name those fields differently, add a mapping so the tags resolve. On the agent's **Memories** step, under **Entity tags**, add a mapping for the signal type, then add each tag key with the paths to read it from. Grepr tries the paths in order and uses the first that resolves.
 
-Consistent tag values matter more than complete ones. A service tagged `checkout` in some memories and `checkout-svc` in others splits its history in two, and a timeline search finds only half. Grepr gives an agent the tag values already in use in your organization when it searches, so an agent that searches before recording reuses existing values rather than inventing new ones.
+Consistent tag values matter more than complete ones. A service tagged `checkout` in some memories and `checkout-svc` in others splits its history in two, and a timeline search finds only half. An agent can ask a search for the tag values already in use in your organization, so an agent that checks before recording reuses existing values rather than inventing new ones.
+
+## Set how an agent uses its memory [#policy]
+
+The **Retrieval policy** settings on the agent's **Memories** step tell the agent how much to search and what to record. Grepr adds them to the agent's instructions, so you do not restate them in the agent's own prompt.
+
+| Setting | What it tells the agent | Default |
+|---|---|---|
+| **Search budget per investigation** | How many memory searches to spend in one investigation, from 0 to 10. A budget of 0 tells the agent not to search. | 2 |
+| **Record** | Which conclusions are worth a memory: **Every conclusion**, **Non-benign only**, or **Reusable only**, which keeps only a cause, a fix, or a pattern that is known noise under stated conditions. | Every conclusion |
+| **Extra guidance** | Your own instructions about what this agent should or should not remember, added after the settings above. | None |
+
+The search budget is an instruction, not a limit. Grepr does not count an agent's searches or refuse one past the budget, and an agent can search again when a result gives it a specific reason to. A setting you leave empty or at **Default** follows the default, including if the default changes.
+
+## Hand an agent its related history [#digest]
+
+With the _related-history digest_, an investigation starts with a short list of memories related to its triggering signals, so the agent recognizes a recurring problem before it spends any of the investigation looking for it. The digest is off by default. To turn it on, on the agent's **Memories** step, under **Related-history digest**, turn on **Send related history with the trigger**.
+
+For each triggering signal, Grepr looks up memories tagged with the signal's pattern. When the pattern has no memories in the window, Grepr looks up memories tagged with the signal's service instead. The lookup covers every agent in your organization and keeps memories last seen within the window, so a problem first recorded long ago that keeps recurring still appears.
+
+| Setting | What it controls | Default |
+|---|---|---|
+| **Window (days)** | How long ago a memory can have last been seen and still be listed, from 1 to 90 days. | 14 |
+| **Max items** | How many memories the digest lists in total, from 1 to 20, shared across the triggering signals. | 5 |
+
+Each line of the digest names the memory's ID, whether the agent recorded it, its significance and confidence, how often it recurred, when it was last seen, and whether it matched by pattern or by service. A memory a person edited or marked wrong says so.
+
+The agent treats a digest that checked every triggering signal as its initial memory check, and searches again only for something the digest did not answer, such as older history. When the lookup could not check everything, the agent is told so and searches memory itself, unless its search budget is 0. That happens when the lookup fails, when a signal has no pattern or service tag to look up, when the trigger carries more than 10 tagged signals, or when more memories matched than **Max items** allows.
+
+The digest needs the memory search tool, because the agent reads a listed memory in full before it links its investigation to that memory. Turning on memory for an agent in the Grepr UI also gives it the search tool. A continuation of an earlier investigation does not get a digest, and searches memory itself instead.
 
 ## Who can read and write memories [#scope]
 
@@ -135,9 +164,21 @@ When an agent finds that a past memory describes what it is now seeing, it links
 
 Memories outlive the agent that wrote them. Deleting an agent leaves its memories searchable by your other agents.
 
+## Review memories in the UI [#review]
+
+The **Memories** page in the Agents area lists every agent's memories in your organization, most recently seen first. Filter it by any entity tag, such as a service or an environment, and by agent, significance, verdict, or text, then open a memory to read it in full with links to the investigations it came from. An agent's **Memories** step shows the same list below its memory settings, fixed to that agent.
+
+With permission to edit integrations, you can also correct what an agent concluded:
+
+- **Edit** a memory's title, symptoms, root cause and confidence, ruled-out causes, resolution, significance, or tags. Tags derived from the triggering signal cannot be changed. An edit applies only to the version of the memory you opened, so a change a person or an agent made after you opened it is never overwritten without you seeing it first.
+- **Mark it wrong** with a note explaining why. The memory stays searchable, and agents that find it are told a person rejected its conclusion, so they treat its root cause as ruled out rather than as a match.
+- **Delete** it. Deleting removes the memory and its recurrence links, and the investigations keep their transcripts. If the investigation that recorded it records again, that is a new memory.
+
+Agents see when a person edited a memory or marked it wrong. A later investigation that finds the same incident in a memory you edited counts as a recurrence but does not change its text. An agent does not link an investigation to a memory you marked wrong, and records a memory of its own instead. An investigation whose own memory you edited or marked wrong keeps that memory, so the agent cannot remove your review by linking the investigation to another memory. The investigation that recorded a memory can still update it, because the agent that ran the investigation owns it. An update replaces the text you reviewed, but the memory still shows as edited or marked wrong, and the agent is told that your edit or verdict remains. Agents treat the root cause of a memory you marked wrong as ruled out until you clear the verdict. For a memory you edited, agents are told when you edited it, and that the investigation that recorded it might have updated the text since then.
+
 ## Search memories from the CLI [#cli]
 
-The Grepr CLI searches the same memories an agent does, which is how you read what your agents have concluded.
+The Grepr CLI searches the same memories an agent does, so you can read what your agents have concluded from a terminal or a script as well as on the **Memories** page.
 
 ```bash copy
 # Find investigations mentioning a literal string
@@ -148,11 +189,16 @@ grepr investigation:memory:search --mode semantic --agent-id <agent-id> --query 
 
 # See what has been happening to one service lately
 grepr investigation:memory:search --mode timeline --entity-tag entity:service=checkout
+
+# Read one memory in full, with the investigations linked to it as recurrences
+grepr investigation:memory:get <memory-id>
 ```
 
 A semantic search needs an agent id, because a query can only be compared inside the index that agent embeds into. Text and timeline searches cover every agent in your organization by default. Timeline searches need at least one entity tag.
 
-The CLI is how you read what your agents have concluded outside of an investigation. To learn more about the CLI, see [_](/cli).
+Search results are compact by default. To read a result's symptoms, root cause, ruled-out causes, and resolution, pass its investigation id to `investigation:memory:get`, which also lists the most recent investigations linked to it.
+
+To learn more about the CLI, see [_](/cli).
 
 <HiddenFAQ faqs={[
   {
@@ -165,14 +211,18 @@ The CLI is how you read what your agents have concluded outside of an investigat
   },
   {
     q: "How does an agent search its memory?",
-    a: "In one of three modes. Semantic search finds conclusions that mean something similar to the query, and covers one agent at a time. Text search finds specific words, such as an error code. Timeline search finds memories about given entities ordered by time, and is the only mode that returns benign memories. Text and timeline searches cover every agent in the organization by default."
+    a: "In one of three modes. Semantic search finds conclusions that mean something similar to the query, and covers one agent at a time. Text search finds specific words, such as an error code. Timeline search finds memories about given entities ordered by time. Text and timeline searches cover every agent in the organization by default."
   },
   {
     q: "Can one Grepr AI agent read another agent's memories?",
     a: "Yes, permission is organization-wide, so any agent can search any other agent's memories in your organization. Coverage differs by mode: text and timeline searches span every agent by default, while a search by meaning targets one agent at a time, because a query is only comparable against embeddings made with that agent's model. Writes are owner-only."
   },
   {
+    q: "Can a Grepr AI agent start an investigation with its related history?",
+    a: "Yes, with the related-history digest, which is off by default. When you turn it on, each investigation starts with up to 5 memories related to its triggering signals, looked up by the signal's pattern and then by its service, among memories last seen in the past 14 days. Both numbers are configurable. A continuation of an earlier investigation does not get a digest."
+  },
+  {
     q: "How do I read what my agents have remembered?",
-    a: "Search them with the grepr investigation:memory:search command, choosing text, semantic, or timeline mode, or read them in an investigation that searched them. The Memory step of an agent holds the settings rather than the records."
+    a: "Open the Memories page in the Agents area to browse every agent's memories, filter them by tag, agent, significance, verdict, or text, and open one in full. An agent's Memories step shows the same list for that agent. You can also search them with the grepr investigation:memory:search command."
   }
 ]} />

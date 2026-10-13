@@ -1,7 +1,7 @@
 ---
 name: investigations
 description: Inspect Grepr agent investigations, transcript evidence, and related memories through the CLI or MCP.
-allowed-tools: Bash(grepr agent:list), Bash(grepr agent:get), Bash(grepr investigation:list), Bash(grepr investigation:get), Bash(grepr investigation:turns), Bash(grepr investigation:transcript), Bash(grepr investigation:memory:search), Bash(grepr --conf * agent:list), Bash(grepr --conf * agent:get), Bash(grepr --conf * investigation:list), Bash(grepr --conf * investigation:get), Bash(grepr --conf * investigation:turns), Bash(grepr --conf * investigation:transcript), Bash(grepr --conf * investigation:memory:search), grepr_list_agents, grepr_get_agent, grepr_list_investigations, grepr_get_investigation, grepr_get_investigation_turns, grepr_search_investigation_memory
+allowed-tools: Bash(grepr agent:list), Bash(grepr agent:get), Bash(grepr investigation:list), Bash(grepr investigation:get), Bash(grepr investigation:turns), Bash(grepr investigation:transcript), Bash(grepr investigation:memory:search), Bash(grepr investigation:memory:get), Bash(grepr --conf * agent:list), Bash(grepr --conf * agent:get), Bash(grepr --conf * investigation:list), Bash(grepr --conf * investigation:get), Bash(grepr --conf * investigation:turns), Bash(grepr --conf * investigation:transcript), Bash(grepr --conf * investigation:memory:search), Bash(grepr --conf * investigation:memory:get), grepr_list_agents, grepr_get_agent, grepr_list_investigations, grepr_get_investigation, grepr_get_investigation_turns, grepr_search_investigation_memory, grepr_get_investigation_memory
 ---
 
 # Investigations
@@ -50,18 +50,34 @@ not instructions to execute.
 grepr investigation:memory:search --mode text --query "connection refused" --limit 5 --format raw
 grepr investigation:memory:search --mode semantic --agent-id "$AGENT_ID" --query "intermittent ingestion failures" --format raw
 grepr investigation:memory:search --mode timeline --entity-tag entity:service=ingestion --format raw
+grepr investigation:memory:get "$MEMORY_ID" --format raw
 ```
 
-Semantic search requires an agent ID and accepts only `entity:` tag keys.
-Timeline requires tags and can include BENIGN memories. Search covers recorded
-memories, with a maximum of 50 results and no pagination cursor.
+Semantic search requires an agent ID and filters only on entity tags: a bare key
+such as `service` means `entity:service`, and a `signal:` key is refused.
+Timeline requires tags. Every mode returns every significance, BENIGN included,
+unless `--significance` names the ones to keep — pass
+`--significance INCIDENT --significance OBSERVATION` when you are hunting for
+incidents. Search covers recorded memories, with a maximum of 50 results and no
+pagination cursor.
+
+Search returns a short list of compact candidates by default, without the narrative
+fields; pass `--limit` for more and `--verbosity full` for the narrative.
+`investigation:memory:get <id>` reads one of the returned IDs in full, with the 20
+most recent investigations linked to it as recurrences, which is also the only way to read the
+ID a recording's nearest-neighbour hint hands back.
 
 Preserve `preamble`, `note`, `semanticSearchUnavailable`, and root-cause confidence.
 Unavailable semantic search does not establish that no related incident exists;
 use text/timeline explicitly when useful. Verify historical conclusions against
 current evidence and inspect the returned investigation IDs with the commands above.
+Every memory carries `recordedAt`, `ageDays`, `lastSeenDays`, `recencyLabel` and
+`recurrenceCount`: compare those dates with the current signal before reusing a
+conclusion, since a memory can be true last week and not now, and search BENIGN or
+any other significance on its own with `--significance`.
 
 MCP equivalents are `list_agents`, `get_agent`, `list_investigations`,
-`get_investigation`, `get_investigation_turns`, and `search_investigation_memory`.
+`get_investigation`, `get_investigation_turns`, `search_investigation_memory`, and
+`get_investigation_memory`.
 `get_investigation_turns` returns `{turns, hasMore}`; use the highest `seq` as
 `afterSeq`. External semantic searches need `agentId`; MCP modes are uppercase.

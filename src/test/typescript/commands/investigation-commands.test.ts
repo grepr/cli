@@ -105,9 +105,8 @@ describe('Investigation command contracts', () => {
     [['investigation:transcript', 'run', '--format', 'csv'], 'preserve coverage'],
     [['investigation:memory:search', '--mode', 'semantic', '--query', 'timeout'], 'semantic search requires --agent-id'],
     [['investigation:memory:search', '--mode', 'timeline'], 'timeline requires --entity-tag'],
-    [['investigation:memory:search', '--mode', 'text', '--query', 'x', '--significance', 'BENIGN'], 'BENIGN is supported only in timeline mode'],
-    [['investigation:memory:search', '--mode', 'semantic', '--query', 'x', '--agent-id', 'agent', '--entity-tag', 'signal:type=x'], 'only entity:-prefixed tags'],
     [['investigation:memory:search', '--mode', 'text', '--query', 'x', '--recorded-after', 'yesterday'], 'recorded-after'],
+    [['investigation:memory:search', '--mode', 'timeline', '--entity-tag', 'entity:service=x', '--significance', 'NOPE'], 'Expected one of'],
   ])('rejects invalid arguments with the intended diagnostic: %s', async (args, expected) => {
     try { await run(...args as string[]); expect(process.exitCode).toBe(1); }
     catch (error) { expect(error).toBeInstanceOf(CommanderError); expect((error as Error).message).toContain(expected as string); }
@@ -116,12 +115,84 @@ describe('Investigation command contracts', () => {
     expect(output).toHaveLength(0);
   });
 
+  it('leaves tag-key canonicalization to the server in semantic mode', async () => {
+    await run('investigation:memory:search', '--mode', 'semantic', '--query', 'timeout', '--agent-id', 'agent',
+      '--entity-tag', 'service=ingestion', '--format', 'raw');
+    expect(await requests[0]?.json()).toMatchObject({ entityTags: { service: 'ingestion' } });
+  });
+
   it('preserves semantic degradation and builds timeline tag filters', async () => {
     fixture = { results: [], semanticSearchUnavailable: true, note: 'No index', preamble: 'Historical records' };
     await run('investigation:memory:search', '--mode', 'semantic', '--query', 'timeout', '--agent-id', 'agent', '--format', 'raw');
     expect(JSON.parse(output[0] ?? '')).toEqual(fixture);
     await run('investigation:memory:search', '--mode', 'timeline', '--entity-tag', 'entity:service=ingestion', '--limit', '5', '--format', 'raw');
-    expect(await requests[1]?.json()).toEqual({ mode: 'TIMELINE', entityTags: { 'entity:service': 'ingestion' }, limit: 5 });
+    expect(await requests[1]?.json()).toEqual({ mode: 'TIMELINE', entityTags: { 'entity:service': 'ingestion' }, limit: 5,
+      significances: [] });
+  });
+
+  it('sends the result-shape flags given and leaves the rest to the server defaults', async () => {
+    fixture = { results: [], preamble: 'Historical records' };
+    await run('investigation:memory:search', '--mode', 'semantic', '--query', 'timeout', '--agent-id', 'agent', '--format', 'raw');
+    expect(await requests[0]?.json()).toEqual({ mode: 'SEMANTIC', query: 'timeout', agentId: 'agent', entityTags: {},
+      significances: [] });
+    await run('investigation:memory:search', '--mode', 'semantic', '--query', 'timeout', '--agent-id', 'agent',
+      '--verbosity', 'full', '--include-vocabulary', '--significance', 'BENIGN',
+      '--significance', 'OBSERVATION', '--format', 'raw');
+    expect(await requests[1]?.json()).toEqual({ mode: 'SEMANTIC', query: 'timeout', agentId: 'agent', entityTags: {},
+      verbosity: 'FULL', includeVocabulary: true,
+      significances: ['BENIGN', 'OBSERVATION'] });
+  });
+
+  it('narrows text search to BENIGN, which every mode now returns', async () => {
+    fixture = { results: [], preamble: 'Historical records' };
+    await run('investigation:memory:search', '--mode', 'text', '--query', 'favicon', '--significance', 'BENIGN', '--format', 'raw');
+    expect(await requests[0]?.json()).toEqual({ mode: 'TEXT', query: 'favicon', entityTags: {},
+      significances: ['BENIGN'] });
+  });
+
+  it('tabulates the score and says when more memories matched than the limit', async () => {
+    fixture = { results: [{ investigationId: 'mem-1', title: 'ingestion 500s', matchedOn: 'SEMANTIC', score: 0.83 }],
+      hasMore: true, preamble: 'Historical records' };
+    await run('investigation:memory:search', '--mode', 'text', '--query', 'timeout', '--format', 'table');
+    const printed = output.join('\n');
+    expect(printed).toContain('score');
+    expect(printed).toContain('0.83');
+    expect(printed).toContain('More memories may match than --limit returned');
+  });
+
+  it('surfaces the note a search carries alongside its results', async () => {
+    fixture = { results: [{ investigationId: 'mem-1', title: 'ingestion 500s', matchedOn: 'SEMANTIC', score: 0.83 }],
+      hasMore: false, note: 'A caveat about these results.', preamble: 'Historical records' };
+    await run('investigation:memory:search', '--mode', 'semantic', '--query', 'timeout', '--agent-id', 'agent', '--format', 'table');
+    const printed = output.join('\n');
+    expect(printed).toContain('A caveat about these results.');
+    expect(printed).not.toContain('More memories may match than --limit returned');
+  });
+
+  it('reads one memory by id and lists its linked investigations oldest first, with their dates', async () => {
+    fixture = { memory: { investigationId: 'mem-1', title: 'ingestion 500s', matchedOn: 'LOOKUP',
+      rootCause: 'the producer buffer filled' },
+    recurrences: [{ investigationId: 'inv-2', linkedAt: '2026-10-01T00:00:00Z' },
+      { investigationId: 'inv-3', linkedAt: '2026-10-02T00:00:00Z' }], linkCount: 2 };
+    await run('investigation:memory:get', 'mem-1', '--format', 'raw');
+    expect(new URL(requests[0]?.url ?? '').pathname).toBe('/api/v1/agent-memory/mem-1');
+    expect(requests[0]?.method).toBe('GET');
+    expect(JSON.parse(output[0] ?? '')).toEqual(fixture);
+    const footer = errors.join('');
+    expect(footer).toContain('2 investigations linked to this memory as recurrences:');
+    expect(footer).toContain('inv-2 linked 2026-10-01T00:00:00Z');
+    expect(footer.indexOf('inv-2')).toBeLessThan(footer.indexOf('inv-3'));
+    expect(footer).not.toContain('not listed');
+  });
+
+  it('counts the linked investigations a memory\'s detail does not list', async () => {
+    fixture = { memory: { investigationId: 'mem-1', title: 'ingestion 500s', matchedOn: 'LOOKUP', recurrenceCount: 1 },
+      recurrences: [{ investigationId: 'inv-24', linkedAt: '2026-10-02T00:00:00Z' }], linkCount: 24 };
+    await run('investigation:memory:get', 'mem-1', '--format', 'raw');
+    const footer = errors.join('');
+    expect(footer).toContain('24 investigations linked to this memory as recurrences:');
+    expect(footer).toContain('23 earlier links not listed.');
+    expect(footer).toContain('inv-24 linked 2026-10-02T00:00:00Z');
   });
 
   it('keeps raw stdout clean with debug and writes the same payload to a file', async () => {

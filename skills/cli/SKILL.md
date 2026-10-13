@@ -60,7 +60,8 @@ Choose the appropriate specialized skill based on what you need to do:
 Inspect investigation outcomes, transcript messages/tool calls, recorded actions,
 and memories of related incidents. Supports both CLI and Grepr MCP reads.
 - Commands: `agent:list`, `agent:get`, `investigation:list`, `investigation:get`,
-  `investigation:turns`, `investigation:transcript`, `investigation:memory:search`
+  `investigation:turns`, `investigation:transcript`, `investigation:memory:search`,
+  `investigation:memory:get`
 - Use `--format raw` for evidence-preserving responses with pagination metadata.
 
 ### Job/Pipeline Management → `grepr:job-commands`

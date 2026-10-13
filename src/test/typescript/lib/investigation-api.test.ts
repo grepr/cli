@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'bun:test';
 import { GreprApiClient, ApiError } from '../../../main/typescript/lib/grepr-api-client.js';
 import { GreprAuth } from '../../../main/typescript/lib/auth.js';
 import { createApiClient } from '../../../main/typescript/lib/api-client-factory.js';
-import { InvestigationSummaryStatus, MemorySearchRequestMode } from '../../../main/typescript/openapi/openApiTypes.js';
+import { InvestigationSummaryStatus } from '../../../main/typescript/openapi/openApiTypes.js';
 
 const options = { orgName: 'acme', apiBaseUrl: 'https://example.test/api', authBaseUrl: 'https://auth.test',
   clientId: 'test', authMethod: 'none' as const, authCache: false, browser: false };
@@ -65,7 +65,7 @@ describe('Investigation API transport', () => {
       body = await request.json();
       return reply({ results: [], semanticSearchUnavailable: true, note: 'No index', preamble: 'Historical records', entityTagVocabulary: {} });
     });
-    const result = await new GreprApiClient(options).searchInvestigationMemory({ mode: MemorySearchRequestMode.SEMANTIC, query: 'timeout', agentId: 'agent-1', limit: 5 });
+    const result = await new GreprApiClient(options).searchInvestigationMemory({ mode: 'SEMANTIC', query: 'timeout', agentId: 'agent-1', limit: 5 });
     expect(body).toEqual({ mode: 'SEMANTIC', query: 'timeout', agentId: 'agent-1', limit: 5 });
     expect(result).toMatchObject({ results: [], semanticSearchUnavailable: true, note: 'No index', preamble: 'Historical records' });
   });

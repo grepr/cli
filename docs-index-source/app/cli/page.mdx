@@ -445,7 +445,7 @@ The Grepr CLI includes commands to:
 - Manage datasets for log storage and querying: `dataset:create`, `dataset:list`, `dataset:get`, `dataset:update`, `dataset:delete`.
 - Search and retrieve Grepr documentation: `docs:search`, `docs:get`.
 - Test Grok rules: `grok:parse`.
-- Read AI agents and their investigations: `agent:list`, `agent:get`, `investigation:list`, `investigation:get`, `investigation:turns`, `investigation:transcript`, `investigation:memory:search`.
+- Read AI agents and their investigations: `agent:list`, `agent:get`, `investigation:list`, `investigation:get`, `investigation:turns`, `investigation:transcript`, `investigation:memory:search`, `investigation:memory:get`.
 
 The following sections contain examples demonstrating how to use these commands. Most of these examples assume you have already saved a default configuration. If you haven't saved a default configuration, include the `--conf` option to specify a saved configuration when you run CLI commands. To learn how to create a default configuration, see [Configure the Grepr CLI](#cli-configuration).
 
@@ -1029,7 +1029,12 @@ grepr investigation:memory:search --mode semantic --agent-id <agent-id> --query 
 grepr investigation:memory:search --mode timeline --entity-tag entity:service=checkout
 ```
 
-A semantic search needs an agent id, because a query can only be compared inside the index that agent embeds into. A timeline search needs at least one entity tag. To learn what memories hold and how the modes differ, see [_](/ai-agents/memory#search-modes).
+```console copy
+# Read one memory in full, with the investigations linked to it as recurrences
+grepr investigation:memory:get <memory-id>
+```
+
+A semantic search needs an agent id, because a query can only be compared inside the index that agent embeds into, and it filters only on entity tags. A timeline search needs at least one entity tag. Search results leave out each memory's symptoms, root cause, ruled-out causes, and resolution unless you pass `--verbosity full`; to read one result in full, pass its id to `investigation:memory:get`. To learn what memories hold and how the modes differ, see [_](/ai-agents/memory#search-modes).
 
 ## Examples: Documentation commands
 

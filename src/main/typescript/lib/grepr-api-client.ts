@@ -39,7 +39,7 @@ import type {
   InvestigationSummaryStatus,
   SchemaAgentDetail, SchemaAgentRosterEntry, SchemaAgentSummary,
   SchemaInvestigationsList, SchemaInvestigationTranscript, SchemaTranscriptTurnsList,
-  SchemaMemorySearchRequest, SchemaMemorySearchResponse
+  SchemaMemoryDetail, SchemaMemorySearchRequest, SchemaMemorySearchResponse
 } from '@/openapi/openApiTypes'
 import { GreprAuth, ClientCredentialsAuth, NoAuth } from './auth.js'
 import {
@@ -191,6 +191,12 @@ export class GreprApiClient {
 
   async searchInvestigationMemory(body: SchemaMemorySearchRequest): Promise<SchemaMemorySearchResponse> {
     return requireReadData(await this.client.POST('/v1/agent-memory/search', { body }));
+  }
+
+  async getInvestigationMemory(memoryId: string): Promise<SchemaMemoryDetail> {
+    return requireReadData(await this.client.GET('/v1/agent-memory/{memoryId}', {
+      params: { path: { memoryId } }
+    }));
   }
 
   // Job Management Methods
