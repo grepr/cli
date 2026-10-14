@@ -147,6 +147,12 @@ Using the same example above, with **Preserve source** enabled, the result would
 
 The value is copied to `http_method`, but `request.method` remains in its original location.
 
+### Write a path as an array of attribute names [#array-paths]
+
+A source or target path can be written in two forms. In a dotted string, each `.` steps into a nested attribute, so `http.user.agent` means `http` → `user` → `agent`. In a JSON array, each entry is one attribute name, used exactly as written, so `["http", "user", "agent"]` is the same path.
+
+Because array entries are never split, the array form can also name an attribute whose name contains a dot. In `{"http": {"user.agent": "curl/8.4.0"}}`, a rule with source `["http", "user.agent"]` and target `user_agent` copies `curl/8.4.0` to `user_agent`.
+
 ### Conditional rename rules
 
 Each rename rule can include an optional filter query. When a filter is set, the rule only applies to log events that match the query. This allows you to define multiple rules for the same source attribute with different filters, so each rule targets a different subset of events.

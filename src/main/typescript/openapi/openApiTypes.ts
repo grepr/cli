@@ -5376,15 +5376,15 @@ export interface components {
        */
       preserveSource?: boolean;
       /**
-       * @description Source attribute path (dot-notation)
+       * @description Source attribute path: a dotted string ("resource.service" is resource → service), or an array of literal keys (["http", "user.agent"]).
        * @example resource.service
        */
-      source: string;
+      source: string | string[];
       /**
-       * @description Target attribute path (dot-notation)
+       * @description Target attribute path: a dotted string, or an array of literal keys.
        * @example _service
        */
-      target: string;
+      target: string | string[];
     };
     AttributeWildcardNode: {
       /**
@@ -27470,6 +27470,7 @@ export enum ReadFeatureFlags {
   MULTI_GROK_PARSER = "MULTI_GROK_PARSER",
   AUTH0_SSO_CONNECTION = "AUTH0_SSO_CONNECTION",
   TRINO_QUERY_ENGINE = "TRINO_QUERY_ENGINE",
+  REMAP_ARRAY_KEY_PATHS = "REMAP_ARRAY_KEY_PATHS",
   UNKNOWN = "UNKNOWN",
 }
 export enum ReadAnthropicType {
