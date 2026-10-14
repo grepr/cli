@@ -141,7 +141,7 @@ You can configure Grok parser rules in the Grepr UI when creating or editing a p
    1. In the **Filter which logs to parse with a query** field, enter your filter query. Only logs that match the query are parsed. If you leave this field empty, all logs are parsed. To learn about supported query syntaxes, see [Query log data in the Grepr data lake](/queries).
 1. (Optional) To configure advanced settings, click **Advanced Settings**.
 
-   - By default, the Grok parser extracts data from the `message` field in the input log events. To instead specify an attribute containing the message or other unstructured text, enter the attribute name in the **Extract from** field.
+   - By default, the Grok parser extracts data from the `message` field in the input log events. To instead specify an attribute containing the message or other unstructured text, enter the attribute name in the **Extract from** field. A nested attribute is written as a dotted path such as `error.message`, or as a JSON array of attribute names such as `["error", "message"]`; see [Write a path as an array of attribute names](/transforms/remapper#array-paths).
    - To configure Grok patterns that can be referenced in multiple parsing rules, enter them in the **Helper Rules** text box. Enter each pattern on a separate line.
 
    ![The Grok parser dialog with helper rules.](/images/pipelines/grok-dialog-helper-rules.png)

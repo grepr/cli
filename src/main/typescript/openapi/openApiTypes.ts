@@ -7386,8 +7386,8 @@ export interface components {
       };
     };
     GrokParser: {
-      /** @description Optional attribute to extract. Does nothing if it does not refer to a string attribute */
-      extractAttribute?: string;
+      /** @description Optional attribute to extract. Does nothing if it does not refer to a string attribute. A dotted string, or an array of literal keys. */
+      extractAttribute?: string | string[];
       /**
        * @default []
        * @example [
@@ -9595,8 +9595,8 @@ export interface components {
     };
     /** @description Ordered list of grok rule sets. Each rule set has its own predicate, optional extract attribute, parsing rules, and helper rules. Rule sets extracting from enriched attributes should be ordered after rule sets that populate those attributes. */
     MultiGrokRuleSet: {
-      /** @description Optional attribute to extract from. If null, extracts from the log message. Rules that extract from enriched attributes should be ordered after rules that populate those attributes. */
-      extractAttribute?: string;
+      /** @description Optional attribute to extract from. If null, extracts from the log message. Rules that extract from enriched attributes should be ordered after rules that populate those attributes. A dotted string, or an array of literal keys. */
+      extractAttribute?: string | string[];
       /**
        * @description Helper rules scoped to this rule set
        * @default []
