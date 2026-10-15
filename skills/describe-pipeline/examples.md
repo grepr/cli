@@ -83,7 +83,7 @@ other phase filters pass-through. Canonical shape, so UI-topology ops
   - predicate: `datadog-query` `-status:debug`
 
 ## Parsers
-- `grok-parser` `webapp_grok` — 3 rules, extracts `@latency_ms`
+- `grok-parser` `webapp_grok` — predicate: none — runs on every log; input: `message`; 3 rules, extracts `@latency_ms`
 
 ## Transforms
 - `log-reducer` `log_reducer`

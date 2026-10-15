@@ -25,7 +25,9 @@ Resolve the org config once and reuse it on every command — see the `grepr:cli
 Run `grepr:describe-pipeline <JOB_ID>` first. For backend detection (template vs raw
 graph) and which ops each backend supports, see `grepr:describe-pipeline`. Note:
 
-- Whether a `grok-parser` vertex already exists, and its name (drives Case A vs B below).
+- Each `grok-parser` vertex's name, predicate and input field (`extractAttribute`, else
+  `message`) — together they decide which logs and which text its rules see (drives the
+  op choice in step 4).
 - How many grok parsers exist (drives whether `parserName` is required).
 - The raw dataset ID, for sampling.
 - The existing grok rules, remapper reserved attributes, and reducer group-by — needed
@@ -80,11 +82,16 @@ field names, see `grepr:operations-reference`.
 
 | Pipeline state | Op | Notes |
 |---|---|---|
-| A grok parser already exists | `add-grok-rule` | `parserName` required only if >1 grok parser; rejected if 0 grok parsers |
-| No grok parser exists | `add-parser` (a `grok-parser`) | template-backed adds it to `input.parsers`; raw graphs insert the vertex into the parser chain |
+| A grok parser already sees the target text: its predicate matches the target logs (or it has none) and it reads the field holding the text | `add-grok-rule` | `parserName` required only if >1 grok parser; rejected if 0 grok parsers |
+| No grok parser, or none that sees the target text | `add-parser` (a `grok-parser`) scoped to the target logs | template-backed adds it to `input.parsers`; raw graphs insert the vertex into the parser chain (canonical UI shape only — see `grepr:describe-pipeline`) |
 
-`add-grok-rule` takes `pattern` (and optional `extractAttribute`). The new-parser shape
-carries its rules in `grokParsingRules` (and optional `grokHelperRules`).
+A parser runs its rules only on logs its predicate matches, so a rule added to a parser
+scoped to `service:payments` never sees `service:checkout` logs: the plan is accepted and
+the draft shows no new attributes.
+
+`add-grok-rule` takes `pattern` (and optional `extractAttribute`). `extractAttribute` is
+per parser, not per rule: setting it retargets every existing rule on that parser. The
+new-parser shape carries its rules in `grokParsingRules` (and optional `grokHelperRules`).
 
 Prefer scoping a new parser with a `predicate` (`{ "type":"datadog-query", "query":
 "source:checkout-service" }`) when the pattern only makes sense for one log shape.
@@ -114,7 +121,13 @@ means a collision slipped through.
 
 - **Matches nothing**: usually a regex escape issue — `\[` not `[`, `\(` not `(`; inside
   `%{regex("…")}` use a single backslash (`[^\]]`). Multiple spaces need `%{space}`, not a
-  literal space. Re-run `grepr:build-grok` against the samples.
+  literal space. In the JSON patch each backslash is escaped once (`\\[`), never twice.
+  Re-run `grepr:build-grok` against the samples.
+- **`grok:parse` matches but the draft shows no new attributes on the target logs**: check
+  the parser's predicate and input field. If no parser sees the target text, use
+  `add-parser` as in step 4. If the parser does see it, an earlier rule in the same parser
+  may match first — the first declared rule wins, and `add-grok-rule` appends. Use
+  `update-parser` with the new rule placed before that rule (`examples.md` #6).
 - **Matches everything (greedy)**: `%{data:foo}` consuming too much; use `%{notSpace:foo}`
   or `%{word:foo}`.
 - **`add-grok-rule` rejected, "no grok-parser found"**: zero grok parsers — you're in the

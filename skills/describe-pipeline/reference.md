@@ -73,13 +73,13 @@ pre_exceptions_filter → log_reducer → sinks
 | `clear-filter` | ✅ | ✅ | ❌ `unsupported raw job graph shape` |
 | `add-source` / `remove-source` | ✅ | ✅ | ❌ `unsupported raw job graph shape` |
 | `add-parser` / `remove-parser` | ✅ | ✅ | ❌ `unsupported raw job graph shape` |
+| `update-parser` | ✅ | ✅ | ❌ `unsupported raw job graph shape` |
 | `add-sink` / `remove-sink` / `set-raw-dataset` | ✅ | ✅ | ❌ `unsupported raw job graph shape` |
 | `set-input-field` / `unset-input-field` | ✅ | ❌ template-only | ❌ template-only |
 | `set-sql-transform` / `set-transform-chain` / `clear-transform-chain` | ✅ | ❌ template-only | ❌ template-only |
 
-This matrix reflects the current add-biased op surface. ENGT-4722 adds `update-*`
-(source/sink/parser) and per-entry `remove-*` ops; expect raw-graph narrowing/removal
-support to widen when it lands.
+`job:plan` also accepts `update-source` / `update-sink` and per-entry `remove-*` /
+`update-*` ops that this matrix doesn't list yet.
 
 Two op families:
 
@@ -89,9 +89,9 @@ Two op families:
   target vertex is unambiguous — i.e. exactly one reducer / grok parser /
   remapper to apply to.
 - **UI-topology ops** (`set-filter`, `clear-filter`, `add-source`,
-  `remove-source`, `add-parser`, `remove-parser`, `add-sink`, `remove-sink`,
-  `set-raw-dataset`) add, remove, or rewire vertices. They depend on the graph
-  matching the canonical UI shape.
+  `remove-source`, `add-parser`, `remove-parser`, `update-parser`, `add-sink`,
+  `remove-sink`, `set-raw-dataset`) add, remove, replace, or rewire vertices. They
+  depend on the graph matching the canonical UI shape.
 
 ## The canonical-UI-shape constraint
 

@@ -86,7 +86,9 @@ Include only populated fields — keep the output focused.
   query/predicate, time window / start / end (batch sources).
 - **Filters** (`logs-filter`) — name, position in the graph (which edge it sits
   on), predicate type and query string.
-- **Parsers** (`grok-parser`) — name, pattern/rule count, target attributes.
+- **Parsers** (`grok-parser`) — name, predicate type and query (missing predicate or
+  blank query: "none — runs on every log"), input field (`extractAttribute`; missing or
+  blank: `message`), pattern/rule count, target attributes.
 - **Remapper** (`log-attributes-remapper`) — `messageReservedAttributes` /
   `messageReservedAttributePaths`, `serviceReservedAttributes` / paths,
   `hostReservedAttributes` / paths, count of `attributeRemappingRules` (+ a

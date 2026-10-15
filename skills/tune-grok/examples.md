@@ -7,6 +7,8 @@ and fields. Hand the chosen patch file to `grepr:test-pipeline-change`.
 - [✅ Insert a new grok-parser vertex (raw job graph)](#2)
 - [❌ Over-matching pattern with no predicate](#3)
 - [❌ `add-grok-rule` on a pipeline with zero grok parsers](#4)
+- [❌ `add-grok-rule` onto a parser scoped to other logs](#5)
+- [✅ Move a new rule ahead of a rule that matches first](#6)
 
 ---
 
@@ -108,3 +110,59 @@ touch. Scope it with a `predicate` and replace `%{data}` with `%{notSpace}`/`%{w
 Why it fails: there is no grok-parser vertex to receive the rule, so `job:plan` rejects it
 with "no grok-parser found". This is the no-parser case — use `add-parser` (example 2) to
 introduce the grok-parser first, then add further rules with `add-grok-rule`.
+
+---
+
+## 5. ❌ `add-grok-rule` onto a parser scoped to other logs {#5}
+
+The pipeline's only grok parser, `payments_grok`, has predicate `service:payments`. The
+unparsed lines come from `service:checkout`.
+
+```json
+{
+  "operations": [
+    {
+      "op": "add-grok-rule",
+      "parserName": "payments_grok",
+      "pattern": "CheckoutAccess %{ipOrHost:client_ip_addr} \"%{word:http_method} %{notSpace:req_path}\" %{integer:http_status_code}"
+    }
+  ]
+}
+```
+
+Why it fails: a parser runs its rules only on logs its predicate matches, so checkout logs
+never reach this rule. `job:plan` accepts the patch and `grok:parse` matches the samples,
+but the draft shows no new attributes on checkout logs. Use `add-parser` with predicate
+`service:checkout` (example 2) instead of mixing two services' rules in one parser.
+
+---
+
+## 6. ✅ Move a new rule ahead of a rule that matches first {#6}
+
+`webapp_grok` already ends in a catch-all rule, so an access-log rule appended with
+`add-grok-rule` never wins. Reorder the rules with `update-parser`:
+
+```json
+{
+  "operations": [
+    {
+      "op": "update-parser",
+      "parser": {
+        "type": "grok-parser",
+        "name": "webapp_grok",
+        "predicate": { "type": "datadog-query", "query": "service:webapp" },
+        "grokParsingRules": [
+          "WebappAccess %{ipOrHost:client_ip_addr} \"%{word:http_method} %{notSpace:req_path}\" %{integer:http_status_code}",
+          "WebappCatchAll %{data:raw_line}"
+        ],
+        "grokHelperRules": []
+      }
+    }
+  ]
+}
+```
+
+Why: a parser tries its rules in order and the first match wins. `update-parser` replaces
+the parser with the same `name` in place, so copy every field from `job:get` (`predicate`,
+`extractAttribute`, `grokHelperRules`, the existing rules) and change only the order. It
+works on template-backed pipelines and raw graphs in the canonical UI shape.
