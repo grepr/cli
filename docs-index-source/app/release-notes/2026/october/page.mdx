@@ -6,33 +6,6 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in October 2026.
 
-## October 14, 2026
-
-{/* ENGT-4985 */}
-### Ask an assistant about your logs and pipelines
-
-You can now hold an ongoing conversation with a Grepr AI assistant from a dockable panel in the product. The assistant searches your logs, inspects your pipelines, and can apply changes for you, and it asks before any change takes effect, so you can allow it once, allow it for the rest of the conversation, or refuse it. Conversations are saved, so you can return to one later or carry an investigation an agent already ran into a chat. The assistant is part of AI agents, which are turned on for each organization individually. See [_](/ai-agents).
-
-{/* ENGT-6091 */}
-### Manage integrations and datasets with Terraform
-
-You can now create and manage your Datadog, Splunk, New Relic, Sumo Logic, OTLP, and data warehouse integrations, and the datasets inside them, with the Grepr Terraform provider, alongside the pipelines that use them. Reference an integration or dataset from a `grepr_pipeline` resource and Terraform creates them in order. The new resources need provider version 1.2.0. See [_](/admin/terraform-provider#tf-integrations-datasets).
-
-### Other improvements and fixes
-
-- {/* ENGT-6021 */} Span searches in the Trace Explorer return several times faster. Benchmarks show certain queries return 5x faster.
-- {/* ENGT-6024 */} You can now collect file statistics on every indexed column of a dataset's raw log table or raw span table, from **Advanced** in the dataset's settings, to make searches faster. See [_](/grepr-platform/indexed-columns#file-statistics).
-- {/* ENGT-5999 */} A SQL transform using `VARIANT_VALUE` now reports an invalid type, behavior, or default when you save the pipeline instead of when the job reads its first log, and a misspelled behavior such as `'DEFALT'` is rejected rather than ignored.
-- {/* ENGT-6074 */} An investigation link now opens the transcript over the agent's **Investigations** tab instead of on a separate page, so the list keeps its page, filters, and selection while you read a transcript and when you close it. Links you already posted keep working.
-- {/* ENGT-6066 */} The Terraform provider now reports that a pipeline's tags cannot be changed after creation, and lists the pipeline's current tags, instead of failing with an invalid plan.
-- {/* ENGT-5926 */} Fixed an issue where a literal open range in a Datadog-like query, such as `@code:[* TO *]`, matched every event instead of testing that the attribute exists, as it does in Datadog.
-- {/* ENGT-6084 */} Fixed an issue where a Datadog-like query that listed many quoted values for one field, such as the link from a reduced log summary to the logs behind it, failed with an `INTERNAL_ERROR_QUERY_ENGINE` error.
-- {/* ENGT-6074 */} Fixed several issues where an open investigation transcript showed fewer turns than the agent had written, including a missing final turn when a run finished between two refreshes, a stale transcript when you reopened a finished investigation, and stalled scrolling partway down a long transcript.
-- {/* ENGT-6074 */} Fixed an issue where a link to a deleted agent or investigation showed a session error, or sat on a loading spinner, instead of saying that it no longer exists.
-- {/* ENGT-5999 */} Fixed an issue where a `VARIANT_VALUE` default for a `DATE`, `TIMESTAMP`, or `TIMESTAMP_LTZ` path failed the job on the first log missing that path, and where a numeric default such as `'DEFAULT', 0` failed the pipeline when it was saved.
-- {/* ENGT-5822 */} Fixed an issue where a pipeline whose filter combined a large number of conditions with `AND` failed to start, and where two comparisons against `CURRENT_TIMESTAMP` in one query could read different times.
-- {/* ENGT-5958 */} Fixed an issue where an NRQL subquery matched different events than the same condition written at the top level, and where a subquery with no condition of its own matched nothing.
-
 ## October 6, 2026
 
 ### Other improvements and fixes
