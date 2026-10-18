@@ -81,7 +81,7 @@ The following is the default remapper configuration. The **Transformed attribute
 | `timestamp`                  | yes             | `date`, `@timestamp`, `T`, `syslog.timestamp`, `eventTime`, `_timestamp`, `Timestamp`, `published_date`, `timestamp`           |
 | `host`                       | yes             | `hostname`, `sourceIPAddress`, `host`, `kubernetes.host`, `syslog.hostname`                                                    |
 | `service`                    | yes             | `dd.service`, `kubernetes.labels.app`, `service`, `eventSource`, `kubernetes.labels.k8s-app`, `syslog.appname`                 |
-| `status`                     | yes             | `severity`, `level`, `syslog.severity`, `log.level`, `L`, `status`                                                             |
+| `status`                     | yes             | `log.level`, `level`, `status`, `severity`, `syslog.severity`, `L`                                                             |
 | `message`                    | no              | `msg`, `log`, `message`, `M`                                                                                                   |
 | `trace ID`                   | yes             | `dd.trace_id`, `contextMap.dd.trace_id`, `otelTraceId`                                                                         |
 

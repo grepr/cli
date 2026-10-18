@@ -8170,9 +8170,9 @@ export interface components {
        * @description Attributes to search for status values
        * @default [
        *       "log.level",
+       *       "level",
        *       "status",
        *       "severity",
-       *       "level",
        *       "syslog.severity",
        *       "L"
        *     ]
