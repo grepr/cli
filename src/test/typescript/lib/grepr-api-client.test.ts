@@ -175,6 +175,15 @@ describe('GreprApiClient createBackfillJob', () => {
   });
 });
 
+/** Returns the Request openapi-fetch handed to the mocked global fetch. */
+function issuedRequest(callIndex = 0): Request {
+  const request = mockFetch.mock.calls[callIndex]?.[0];
+  if (!(request instanceof Request)) {
+    throw new Error('Expected openapi-fetch to issue a Request');
+  }
+  return request;
+}
+
 describe('GreprApiClient with authMethod none', () => {
   it('sends requests with no Authorization header and never calls the oauth/client-credentials auth classes', async () => {
     vi.clearAllMocks();
@@ -185,8 +194,7 @@ describe('GreprApiClient with authMethod none', () => {
 
     await client.sendHeartbeat('irrelevant-token');
 
-    const [, options] = mockFetch.mock.calls[0] as [string, { headers: Record<string, string> }];
-    expect(options.headers).toEqual({ 'Content-Type': 'application/json' });
+    expect(issuedRequest().headers.get('Authorization')).toBeNull();
     expect(mockNoAuthGetAuthHeaders).toHaveBeenCalled();
     expect(mockGetAuthHeaders).not.toHaveBeenCalled();
   });
@@ -194,14 +202,11 @@ describe('GreprApiClient with authMethod none', () => {
 
 describe('GreprApiClient sendHeartbeat', () => {
   let client: InstanceType<typeof GreprApiClient>;
-  let config: ApiClientConfig;
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    config = API_CLIENT_CONFIG;
-
-    client = new GreprApiClient(config);
+    mockGetAuthHeaders.mockResolvedValue({ Authorization: 'Bearer test-token' });
+    client = new GreprApiClient(API_CLIENT_CONFIG);
   });
 
   afterEach(() => {
@@ -210,103 +215,80 @@ describe('GreprApiClient sendHeartbeat', () => {
 
   it('should send heartbeat token as raw string WITHOUT JSON encoding (no quotes)', async () => {
     const heartbeatToken = 'test-heartbeat-token-123';
-
-    // Mock successful response
     mockFetch.mockResolvedValueOnce(new Response('', { status: 202 }));
 
     await client.sendHeartbeat(heartbeatToken);
 
-    // Verify fetch was called with correct parameters
     expect(mockFetch).toHaveBeenCalledTimes(1);
-
-    const [url, options] = mockFetch.mock.calls[0] as [string, { method: string; headers: Record<string, string>; body: string }];
-
-    // Verify URL
-    expect(url).toBe('https://test.app.grepr.ai/api/v1/jobs/sync/heartbeat');
-
-    // Verify method and headers
-    expect(options.method).toBe('POST');
-    expect(options.headers).toEqual({
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer test-token'
-    });
-
-    // CRITICAL: Verify body is the raw string WITHOUT JSON encoding
-    expect(options.body).toBe(heartbeatToken);
-    expect(options.body).toBe('test-heartbeat-token-123');
+    const request = issuedRequest();
+    expect(request.url).toBe('https://test.app.grepr.ai/api/v1/jobs/sync/heartbeat');
+    expect(request.method).toBe('POST');
+    expect(request.headers.get('Content-Type')).toBe('application/json');
+    expect(request.headers.get('Authorization')).toBe('Bearer test-token');
+    // CRITICAL: the body is the raw token, not '"test-heartbeat-token-123"'
+    expect(await request.text()).toBe(heartbeatToken);
   });
 
   it('should send empty heartbeat token as empty string (not JSON empty string)', async () => {
-    const heartbeatToken = '';
-
     mockFetch.mockResolvedValueOnce(new Response('', { status: 202 }));
 
-    await client.sendHeartbeat(heartbeatToken);
+    await client.sendHeartbeat('');
 
-    const [, options] = mockFetch.mock.calls[0] as [string, any];
-
-    // Verify empty string is sent as-is, not as JSON empty string
-    expect(options.body).toBe('');
+    expect(await issuedRequest().text()).toBe('');
   });
 
   it('should send heartbeat token with special characters as raw string', async () => {
     const heartbeatToken = 'token-with-"quotes"-and-{brackets}';
-
     mockFetch.mockResolvedValueOnce(new Response('', { status: 202 }));
 
     await client.sendHeartbeat(heartbeatToken);
 
-    const [, options] = mockFetch.mock.calls[0] as [string, any];
-
-    // Verify special characters are sent as-is in the raw string
-    expect(options.body).toBe('token-with-"quotes"-and-{brackets}');
-  });
-
-  it('should include debug logging when debug is enabled', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-    // Create client with debug enabled
-    const debugConfig = { ...config, debug: true };
-    const debugClient = new GreprApiClient(debugConfig);
-
-    const heartbeatToken = 'debug-token';
-    mockFetch.mockResolvedValueOnce(new Response('', { status: 202 }));
-
-    await debugClient.sendHeartbeat(heartbeatToken);
-
-    // Verify debug logging shows the raw token, not JSON-encoded
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Sending heartbeat to'),
-      expect.objectContaining({
-        method: 'POST',
-        body: 'debug-token' // Raw string, not '"debug-token"'
-      })
-    );
-
-    consoleSpy.mockRestore();
+    expect(await issuedRequest().text()).toBe(heartbeatToken);
   });
 
   it('should throw error when heartbeat request fails', async () => {
-    const heartbeatToken = 'failing-token';
+    mockFetch.mockResolvedValueOnce(
+      new Response('Server Error Details', { status: 500, statusText: 'Internal Server Error' })
+    );
 
-    // Mock failed response with error body
-    const mockResponse = {
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error',
-      body: {
-        getReader: () => ({
-          read: () => Promise.resolve({ done: true, value: undefined })
-        })
-      },
-      text: () => Promise.resolve('Server Error Details')
-    };
-
-    mockFetch.mockResolvedValueOnce(mockResponse);
-
-    await expect(client.sendHeartbeat(heartbeatToken)).rejects.toThrow(
+    await expect(client.sendHeartbeat('failing-token')).rejects.toThrow(
       'Failed to send heartbeat: HTTP 500: Internal Server Error - Server Error Details'
     );
+  });
+});
+
+describe('GreprApiClient debug logging', () => {
+  const FULL_BEARER_TOKEN = 'eyJhbGciOiJSUzI1NiJ9.full-secret-payload.signature';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetAuthHeaders.mockResolvedValue({ Authorization: `Bearer ${FULL_BEARER_TOKEN}` });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetAllMocks();
+  });
+
+  /** Everything the client printed to stdout and stderr while debug was on. */
+  function capturedOutput(...spies: ReturnType<typeof vi.spyOn>[]): string {
+    return spies.flatMap(spy => spy.mock.calls.flat()).map(arg => JSON.stringify(arg)).join('\n');
+  }
+
+  it('never prints the full bearer token, for heartbeat or sync-job requests', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const client = new GreprApiClient({ ...API_CLIENT_CONFIG, debug: true });
+    mockFetch.mockResolvedValueOnce(new Response('', { status: 202 }));
+    mockFetch.mockResolvedValueOnce(new Response('{"jobState":"RUNNING"}\r\n', { status: 200 }));
+
+    await client.sendHeartbeat('debug-token');
+    await client.submitSyncJob({ name: 'draft' } as never);
+
+    const output = capturedOutput(logSpy, errorSpy);
+    expect(output).toContain('/v1/jobs/sync/heartbeat');
+    expect(output).toContain('[REDACTED]');
+    expect(output).not.toContain(FULL_BEARER_TOKEN);
   });
 });
 
@@ -332,6 +314,13 @@ describe('GreprApiClient submitSyncJob', () => {
     });
   }
 
+  /** A 200 response whose body hands out the given reader, so tests can script stream chunks and failures. */
+  function streamingResponse(reader: { read: ReturnType<typeof vi.fn> }): Response {
+    const response = new Response('', { status: 200 });
+    Object.defineProperty(response, 'body', { value: { getReader: () => reader } });
+    return response;
+  }
+
   it('ends the stream cleanly (no error) when the abort signal fires mid-stream', async () => {
     // A max-duration abort must surface already-streamed records as a clean
     // end, not a stream error — otherwise the draft would be read as failed.
@@ -345,7 +334,7 @@ describe('GreprApiClient submitSyncJob', () => {
           return Promise.reject(new Error('The operation was aborted'));
         }),
     };
-    mockFetch.mockResolvedValueOnce({ ok: true, body: { getReader: () => reader } });
+    mockFetch.mockResolvedValueOnce(streamingResponse(reader));
 
     const stream = await client.submitSyncJob({ name: 'draft' } as never, controller.signal);
 
@@ -354,7 +343,7 @@ describe('GreprApiClient submitSyncJob', () => {
 
   it('destroys the stream with the error when it fails without an abort', async () => {
     const reader = { read: vi.fn().mockRejectedValueOnce(new Error('network boom')) };
-    mockFetch.mockResolvedValueOnce({ ok: true, body: { getReader: () => reader } });
+    mockFetch.mockResolvedValueOnce(streamingResponse(reader));
 
     const stream = await client.submitSyncJob({ name: 'draft' } as never);
 

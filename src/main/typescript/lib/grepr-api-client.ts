@@ -86,6 +86,12 @@ function retryAfterMsFromResponse(response: Response | undefined): number | unde
   return Number.isNaN(dateMs) ? undefined : Math.max(0, dateMs - Date.now());
 }
 
+/** Formats a failed response as `HTTP <status>: <statusText>[ - <body>]` for the sync-job endpoints. */
+function httpFailureMessage(response: Response, error: unknown): string {
+  const body = typeof error === 'string' ? error : error === undefined ? '' : JSON.stringify(error);
+  return `HTTP ${response.status}: ${response.statusText}${body ? ' - ' + body : ''}`;
+}
+
 /** Preserve HTTP diagnostics, including empty error bodies, for investigation reads. */
 function requireReadData<T>(result: { data?: T; error?: unknown; response: Response }): T {
   if (!result.response.ok || result.data === undefined) {
@@ -643,30 +649,15 @@ export class GreprApiClient {
     return null;
   }
 
-  // Legacy methods for backward compatibility
   async sendHeartbeat(heartbeatToken: string): Promise<void> {
-    const baseUrl = this.auth.config.apiBaseUrl;
-    const urlOpts = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(await this.auth.getAuthHeaders()),
-      },
+    // The token is sent as the raw body, not JSON-encoded, so bypass the default serializer.
+    const { error, response } = await this.client.POST('/v1/jobs/sync/heartbeat', {
       body: heartbeatToken,
-    }
-    const url = `${baseUrl}/v1/jobs/sync/heartbeat`;
-    if (this.config.debug) {
-      console.log(`Sending heartbeat to ${url} with options:`, urlOpts);
-    }
-
-    const response = await fetch(url, urlOpts);
+      bodySerializer: body => body,
+    });
 
     if (!response.ok) {
-      let errorText = '';
-      if (response.body) {
-         errorText = await response.text();
-      }
-      throw new Error(`Failed to send heartbeat: HTTP ${response.status}: ${response.statusText}${errorText ? ' - ' + errorText : ''}`);
+      throw new Error(`Failed to send heartbeat: ${httpFailureMessage(response, error)}`);
     }
   }
 
@@ -708,7 +699,6 @@ export class GreprApiClient {
     return data;
   }
 
-  // Sync job submission for the existing sync command - using fetch directly due to streaming
   /**
    * POST a job to `/v1/jobs/sync` and stream the NDJSON response.
    *
@@ -717,31 +707,21 @@ export class GreprApiClient {
    *   so partial output already received is preserved.
    */
   async submitSyncJob(jobDefinition: SchemaCreateJob, signal?: AbortSignal): Promise<NodeJS.ReadableStream> {
-    const baseUrl = this.auth.config.apiBaseUrl;
-    const response = await fetch(`${baseUrl}/v1/jobs/sync`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(await this.auth.getAuthHeaders()),
-      },
-      body: JSON.stringify(jobDefinition),
+    const { data: webStream, error, response } = await this.client.POST('/v1/jobs/sync', {
+      body: jobDefinition,
+      parseAs: 'stream',
       signal,
     });
 
     if (!response.ok) {
-      let errorText = '';
-      if (response.body) {
-         errorText = await response.text();
-      }
-      throw new Error(`HTTP ${response.status}: ${response.statusText}${errorText ? ' - ' + errorText : ''}`);
+      throw new Error(httpFailureMessage(response, error));
     }
 
-    if (!response.body) {
+    if (!webStream) {
       throw new Error('No response body received');
     }
 
     // Convert Web ReadableStream to Node.js ReadableStream
-    const webStream = response.body;
     const { Readable } = await import('stream');
 
     // Create a Node.js readable stream from the web stream
