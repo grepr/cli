@@ -43,7 +43,7 @@ Don't see your provider in the list? Send a request to [support@grepr.ai](mailto
 
 You cannot change an integration's type after you create it. To move to a different provider, create a new integration and point your agents at it.
 
-![The Add LLM dialog for a Gemini integration, showing the type, team access, name, key, and token window fields.](/images/integrations/llm/add-llm-integration.png)
+![The Add LLM dialog for a Gemini integration, showing the type, team access, name, and key fields, with the token limits collapsed under Advanced.](/images/integrations/llm/add-llm-integration.png)
 
 Select the tab for your provider to see the fields it requires:
 
@@ -54,8 +54,8 @@ Select the tab for your provider to see the fields it requires:
     |---|---|
     | **Name** | A name for the integration, used to identify it when you configure an agent. |
     | **API Key** | Your Anthropic API key. |
-    | **Max tokens per window** | The total tokens that all agents using this integration can consume in each window. Leave empty for the default of 20,000,000. |
-    | **Max tokens window (hours)** | The length of the budget window. Leave empty for the default of 1 hour. |
+    | **Max tokens per window** | Under **Advanced**. The total tokens, counting input, cached input, and output tokens, that agent investigations using this integration can consume in each window. Leave empty for the default of 200,000,000. This is a safety net, not a spending cap: for firmer cost control, set a spend limit with your provider, on the project or workspace the API key belongs to or on the LiteLLM virtual key. |
+    | **Max tokens window (hours)** | Under **Advanced**. How often the token count starts over. Windows align to UTC and must divide 24 (1, 2, 3, 4, 6, 8, 12, or 24). Leave empty for the default of 1 hour. |
 
     An Anthropic integration serves as an agent's model. Anthropic does not supply embeddings, so an agent with memory turned on also needs a Gemini or OpenAI integration for its embedding model.
 
@@ -67,8 +67,8 @@ Select the tab for your provider to see the fields it requires:
     |---|---|
     | **Name** | A name for the integration, used to identify it when you configure an agent. |
     | **API Key** | Your Gemini API key. |
-    | **Max tokens per window** | The total tokens that all agents using this integration can consume in each window. Leave empty for the default of 20,000,000. |
-    | **Max tokens window (hours)** | The length of the budget window. Leave empty for the default of 1 hour. |
+    | **Max tokens per window** | Under **Advanced**. The total tokens, counting input, cached input, and output tokens, that agent investigations using this integration can consume in each window. Leave empty for the default of 200,000,000. This is a safety net, not a spending cap: for firmer cost control, set a spend limit with your provider, on the project or workspace the API key belongs to or on the LiteLLM virtual key. |
+    | **Max tokens window (hours)** | Under **Advanced**. How often the token count starts over. Windows align to UTC and must divide 24 (1, 2, 3, 4, 6, 8, 12, or 24). Leave empty for the default of 1 hour. |
 
     A Gemini integration can serve as both an agent's model and the embedding model for agent memory.
 
@@ -82,8 +82,8 @@ Select the tab for your provider to see the fields it requires:
     | **Gateway URL** | The base URL of your LiteLLM proxy, such as `https://litellm.example.com/team-a`. Required. |
     | **Virtual key** | The LiteLLM virtual key Grepr authenticates with. |
     | **Validate virtual key when saving** | Turn this on to have Grepr verify the virtual key against the gateway before it saves the integration. |
-    | **Max tokens per window** | The total tokens that all agents using this integration can consume in each window. Leave empty for the default of 20,000,000. |
-    | **Max tokens window (hours)** | The length of the budget window. Leave empty for the default of 1 hour. |
+    | **Max tokens per window** | Under **Advanced**. The total tokens, counting input, cached input, and output tokens, that agent investigations using this integration can consume in each window. Leave empty for the default of 200,000,000. This is a safety net, not a spending cap: for firmer cost control, set a spend limit with your provider, on the project or workspace the API key belongs to or on the LiteLLM virtual key. |
+    | **Max tokens window (hours)** | Under **Advanced**. How often the token count starts over. Windows align to UTC and must divide 24 (1, 2, 3, 4, 6, 8, 12, or 24). Leave empty for the default of 1 hour. |
 
     Grepr reaches whatever models your gateway exposes, so the model names available to an agent are the ones your LiteLLM configuration routes.
 

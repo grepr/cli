@@ -5096,8 +5096,8 @@ export interface components {
       readonly apiKey?: string;
       /**
        * Format: int64
-       * @description Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 20,000,000.
-       * @example 20000000
+       * @description Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 200,000,000.
+       * @example 200000000
        */
       integrationMaxTokens?: number;
       /**
@@ -7018,8 +7018,8 @@ export interface components {
       readonly apiKey?: string;
       /**
        * Format: int64
-       * @description Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 20,000,000.
-       * @example 20000000
+       * @description Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 200,000,000.
+       * @example 200000000
        */
       integrationMaxTokens?: number;
       /**
@@ -8005,8 +8005,8 @@ export interface components {
       baseUrl: string;
       /**
        * Format: int64
-       * @description Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 20,000,000.
-       * @example 20000000
+       * @description Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 200,000,000.
+       * @example 200000000
        */
       integrationMaxTokens?: number;
       /**
