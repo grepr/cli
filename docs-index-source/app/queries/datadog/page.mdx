@@ -31,8 +31,8 @@ service:web-app
 ## Case sensitivity rules
 
 - **Message searches** are case-insensitive.
-- **Tag searches** are case-sensitive.
-- **Attribute searches** are case-sensitive.
+- **Tag searches** are case-insensitive.
+- **Attribute searches** are case-sensitive, wildcard searches included.
 
 ## Search message fields
 
@@ -121,7 +121,7 @@ You generally cannot search for special characters in the message field. If you 
 
 ## Tag queries
 
-Tags in Grepr are key-value pairs that provide structured metadata about log entries. Tag searches are case-sensitive.
+Tags in Grepr are key-value pairs that provide structured metadata about log entries. Tag searches are case-insensitive, so `service:Web-App` matches `web-app`.
 
 ### Search tag values
 
@@ -229,6 +229,8 @@ Attributes are structured data fields extracted from log messages. Attribute sea
 -- Attribute values containing pattern
 @error.message:*timeout*
 ```
+
+A tag or attribute wildcard matches the whole value, so in a multi-line value `*` and `?` match line breaks too.
 
 ### Query nested attributes
 
@@ -425,7 +427,7 @@ For unsupported patterns, consider these alternatives:
 
 1. **Start simple**: Begin with basic queries and add complexity.
 2. **Check field names**: Verify tag and attribute names exist.
-3. **Test case sensitivity**: Remember tags and attributes are case-sensitive.
+3. **Test case sensitivity**: Remember attributes are case-sensitive, while messages and tags are not.
 4. **Use parentheses**: Group conditions clearly.
 
 ## Reference
@@ -465,7 +467,7 @@ Use parentheses to explicitly control precedence in complex queries.
   },
   {
     q: "Are message searches case-sensitive?",
-    a: "No, message searches are case-insensitive. A query like message:ERROR will match 'error', 'Error', 'ERROR', and all other case variations. However, tag and attribute searches are case-sensitive, so service:web-app will not match service:Web-App."
+    a: "No, message searches are case-insensitive. A query like message:ERROR will match 'error', 'Error', 'ERROR', and all other case variations. Tag searches are case-insensitive too, but attribute searches are case-sensitive, so @user.name:john will not match John."
   },
   {
     q: "What wildcards are supported in Datadog-like queries?",
