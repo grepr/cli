@@ -1,5 +1,5 @@
 ---
-description: Learn how the Grepr remapper is used to transform and standardize log event fields during pipeline processing.
+description: Learn how the Grepr remapper standardizes log event fields and maps raw status values to severities during pipeline processing.
 ---
 
 import { HiddenFAQ } from '@/components/HiddenFAQ'
@@ -90,6 +90,81 @@ You can toggle the **Preserve source** setting for each field in the pipelines U
 Tag mappings also support the preserve source option. You can configure whether the source attribute is kept or removed after its value is copied to a tag.
 
 For the full list of default configuration settings, see the [LogAttributesRemapper specification](/apis/api-spec#schema/LogAttributesRemapper).
+
+## Map status values to severities [#status-mapping]
+
+The remapper converts the raw value it finds in a status attribute, such as `WARN`, `err`, or `13`, to one of Grepr's standard severities: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `FATAL`. The event's `severity` field stores the number at the start of that severity's OpenTelemetry range, such as `13` for `WARN`. See [The Grepr processing and data models](/grepr-platform/grepr-model).
+
+### The default status mapping [#default-status-mapping]
+
+By default, the remapper recognizes the following names and the first three and first four characters of each name, such as `war` and `warn`:
+
+| Severity | Recognized names                                               |
+|:---------|:---------------------------------------------------------------|
+| `TRACE`  | `trace`                                                        |
+| `DEBUG`  | `debug`, `verbose`                                             |
+| `INFO`   | `informational`, `information`, `notice`, `success`, `pending` |
+| `WARN`   | `warning`                                                      |
+| `ERROR`  | `error`, `critical`, `failure`, `failed`, `failing`            |
+| `FATAL`  | `fatal`, `emergency`, `alert`                                  |
+
+Each name is recognized in lowercase, uppercase, and capitalized form, such as `error`, `ERROR`, and `Error`. Other casings, such as `eRRoR`, aren't recognized. A number from 1 to 24 is kept as its OpenTelemetry severity number, so a finer level such as `14`, which is `WARN2`, is preserved.
+
+### Define your own status mapping [#status-mapping-custom]
+
+To classify status values that the default mapping doesn't recognize, set the `statusMapping` field of the log attributes remapper. For each severity, list `exact` values and `prefixes`, and add `numberRanges` for numeric status values. Your mapping replaces the default mapping and isn't combined with it, so include every value you want classified.
+
+Grepr removes leading and trailing whitespace from a status value, then classifies it as follows:
+
+- A value equal to one of a severity's `exact` values gets that severity.
+- Otherwise, a value that starts with one of a severity's `prefixes` gets that severity. When several prefixes match, the longest one applies, so `emerg` takes precedence over `e` for `emergency`.
+- A whole number within one of the `numberRanges`, including both bounds, gets that range's severity. A range within 1 to 24 can set `severity` to `KEEP_NUMBER` to keep the matched number as the OpenTelemetry severity number.
+
+Matching is case-sensitive, so list each casing you expect, such as `e` and `E`. A string that contains a number, such as `"3"`, is matched only by `exact` values and `prefixes`. If nothing matches a value, the remapper tries the next attribute in the status attribute list.
+
+Because the order in which you list values doesn't matter, each value can appear only once among all `exact` values and once among all `prefixes`, and number ranges can't overlap. A value can be both an `exact` value and a prefix, in which case the exact match applies.
+
+To edit the status mapping in the pipelines UI, click **JSON Parser** in the navigation menu, click **Edit** next to **Attribute Remapper**, then select the **Status Remapping** tab. Type a value and press Enter to add it, or end it with `*` to add a prefix. To match a value that ends with a literal `*`, end it with `\*` instead. **Add all casings** adds the lowercase, uppercase, and capitalized forms of what you type; click a value marked **Aa** to see and remove each casing. To return to Grepr's default mapping, click **Reset to Defaults**.
+
+### Example status mapping [#status-mapping-example]
+
+An application logs its own levels, such as `SEV-CRIT` and `sev-lo`, and also logs syslog-style numeric levels from 0 to 7. The following mapping classifies both:
+
+```json
+{
+  "type": "log-attributes-remapper",
+  "statusMapping": {
+    "fatal": { "exact": ["SEV-HI", "SEV-CRIT"] },
+    "error": { "exact": ["sev-hi", "sev-err"] },
+    "debug": { "prefixes": ["sev-lo", "sev-dbg"] },
+    "info": { "prefixes": ["sev"] },
+    "numberRanges": [
+      { "min": 0, "max": 2, "severity": "FATAL" },
+      { "min": 3, "max": 3, "severity": "ERROR" },
+      { "min": 4, "max": 4, "severity": "WARN" },
+      { "min": 5, "max": 6, "severity": "INFO" },
+      { "min": 7, "max": 7, "severity": "DEBUG" }
+    ]
+  }
+}
+```
+
+This mapping classifies status values as follows:
+
+| Status value      | Severity     | Reason                                                     |
+|:------------------|:-------------|:-----------------------------------------------------------|
+| `"SEV-CRIT"`      | `FATAL`      | An exact value under `fatal`                               |
+| `"sev-dbg-cache"` | `DEBUG`      | `sev-dbg` is the longest matching prefix                   |
+| `"sev-mid"`       | `INFO`       | `sev` is the only matching prefix                          |
+| `4`               | `WARN`       | The number range for 4                                     |
+| `"Sev-Hi"`        | Not classified | Matching is case-sensitive and no prefix starts with `S` |
+| `"warning"`       | Not classified | The default mapping isn't part of this mapping           |
+
+When a value isn't classified, the remapper tries the next status attribute, and if none matches, the event keeps its existing severity.
+
+### Search by status after remapping [#status-search]
+
+In log searches, `status:error` matches events whose severity is `ERROR`, whichever raw value the mapping classified as `ERROR`. To search for a raw status value, such as one that your mapping classifies, search the attribute it arrived in, such as `@status:sev-mid` or `@level:sev-mid`. This works only while the remapper preserves the source status attribute, which it does by default.
 
 ## The remapper transform rename rules [#rename-rules]
 
