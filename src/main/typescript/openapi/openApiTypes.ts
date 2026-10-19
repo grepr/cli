@@ -11765,7 +11765,7 @@ export interface components {
     };
     /** @description The payload containing integration data. */
     S3DataWarehouse: {
-      /** @description The ARN of the role to assume when accessing the S3 bucket */
+      /** @description The ARN of the role Grepr assumes to access the S3 bucket. Leave it empty to use your organization's role, the only one Grepr's hosted sites accept; the bucket's resource policy must let that role in. It can't be changed after the integration is created. */
       assumeRoleArn?: string;
       /** @description The name of the S3 bucket to use for the data warehouse */
       bucketName: string;
