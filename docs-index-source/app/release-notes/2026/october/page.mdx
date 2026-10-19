@@ -6,6 +6,22 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in October 2026.
 
+## October 16, 2026
+
+{/* ENGT-5792 */}
+### Review and correct what your AI agents remember
+
+You can now see the memories every AI agent in your organization recorded on the new **Memories** page in the Agents area, filter them by entity tag, agent, significance, verdict, or text, and open one to read it with links to the investigations it came from. With permission to edit integrations, you can edit a memory, mark it wrong with a note, or delete it, and agents treat the root cause of a memory you marked wrong as ruled out. Each agent's **Memories** step also sets how much the agent searches its memory and which conclusions it records, and can start each investigation with the memories related to its triggering signals. See [_](/ai-agents/memory#review).
+
+### Other improvements and fixes
+
+- {/* ENGT-6088 */} Attribute remapping rules and the Grok parser's **Extract from** field can now name an attribute whose name contains a dot, such as `user.agent` in `{"http": {"user.agent": "curl/8.4.0"}}`, when you write the path as a JSON array of attribute names, such as `["http", "user.agent"]`. See [_](/transforms/remapper#array-paths).
+- {/* ENGT-6160 */} The AI assistant opens from the app bar, its model picker lists only text chat models and supports search, and you can copy a reply.
+- {/* ENGT-6036 */} Grepr now stores a `NaN`, infinite, or out-of-range number in an incoming log or span as null.
+- {/* ENGT-6150 */} Fixed an issue where a dataset or integration could not be deleted after you deleted a pipeline that used it, when an earlier update of that pipeline had failed.
+- {/* ENGT-6140 */} Fixed an issue where a search too long for the query engine, such as one containing a large pasted block of text, failed with an internal error that repeated the whole query. Log Explorer, Trace Explorer, **Analyze**, agent investigations, and the Grepr CLI now report that the query is too large so you can simplify it.
+- {/* ENGT-6166 */} Fixed an issue where a Datadog Agent payload that was within the size limit when compressed but too large after decompression, such as a large trace payload, failed with a 500 error instead of a 413 error.
+
 ## October 14, 2026
 
 {/* ENGT-4985 */}
