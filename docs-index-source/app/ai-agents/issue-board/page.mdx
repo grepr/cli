@@ -1,0 +1,58 @@
+---
+description: Learn how AI agents work on issues on the issue board, how to hand an issue to an agent, and how agents pick up Ready issues.
+---
+
+# Work on issues with AI agents
+
+An agent with **Works on issues** turned on files issues, works on them, and records what it found on the issue board. An agent works on an issue in an investigation started on that issue, called a _run_ on the issue. A run starts on an issue in one of two ways: you hand the issue to the agent, or the agent picks the issue up from the **Ready** column.
+
+## How an agent works on an issue [#how-it-works]
+
+When a run on an issue starts, the agent joins the issue as an assignee, and an issue in **Ready** moves to **In progress**. The issue page lists the issue's runs with their status and a link to each one, and the issue's card shows an agent whose run is waiting to start.
+
+When the run ends:
+
+- The agent's assignment is finished.
+- The agent posts a comment on the issue that says how the run ended, with a link to the run. The comment includes the run's summary unless the agent already commented on the issue or the run failed.
+- If the issue is still **In progress**, with no one assigned and no other run on it, the issue moves to **Triage**, where a person decides what happens next. To keep an issue **In progress**, add yourself to it with **Add me**.
+
+An agent can close an issue it's assigned to, or move it to **Monitoring**: the move finishes the agent's own assignment. Another assignee's active assignment prevents the move, unless a person closes the issue.
+
+The same rules apply to an agent that joins an issue during another investigation, such as one started by an alert.
+
+## Hand an issue to an agent [#hand-off]
+
+To hand an issue to an agent:
+
+1. On the issue page, click **Hand to an agent**.
+1. Choose the agent, and optionally add a note for it.
+1. To start the run ahead of the agent's other queued runs, select **Work on this next**. The run never stops a run that's already running.
+1. Click **Hand off**.
+
+You can hand an agent an open issue that the agent's service account can view and edit. The agent's page shows whose issues it works on. An agent that still has a run on the issue can't be handed it again: comment on the issue to steer the run, or cancel the run first.
+
+If the agent's run never starts, because it was discarded while waiting, failed to start, or was cancelled, the issue's history says so, with a link to the run.
+
+When you continue an investigation that was on an open issue, the new investigation works on that issue too, as if you handed the issue to the agent. If the issue is closed, the new investigation isn't on an issue.
+
+## Let an agent pick up Ready issues [#pickup]
+
+To let an agent pick up issues on its own, open the agent's **Memory and issues** section, turn on **Pick up Ready issues**, and choose which issues it takes: a priority, labels, entities, and teams. An issue must match every filter you set.
+
+The agent picks up issues in **Ready** that no one is assigned to and no run is on, most urgent first, then the one that has been in **Ready** the longest. It follows these rules:
+
+- It starts runs only in free run slots, and starts none while it has as many runs on issues as **Runs on issues at once**. Keep slots free for alerts and the issues people hand it.
+- It picks up only issues its service account can view and edit.
+- It doesn't pick up an issue again during the same stay in **Ready**.
+- Agents pick up an issue at most two times before a person acts on it again, by moving, changing, commenting on, or handing off the issue.
+- After three runs on issues in a row fail or never start, the agent picks up nothing for 30 minutes.
+
+Pausing an agent discards its runs on issues that are waiting to start, so that other agents can pick those issues up.
+
+## Let an agent put issues in Ready [#allow-ready]
+
+By default, an agent files issues in **Triage** for a person to review, and can't move an issue to **Ready**. To let an agent file issues in **Ready** and move issues there, choose **Allow Ready** in the agent's **Memory and issues** section. Agents whose pickup filters match an issue in **Ready** pick it up, and every agent can see the other agents' pickup filters, so an agent can label an issue for the agent that handles it.
+
+## Remove an agent from an issue [#remove]
+
+To take an agent off an issue, remove it from the issue's assignees. Its assignment ends and its runs on the issue are cancelled. Until someone hands it the issue again or unlocks the issue's assignees, the agent can only comment on the issue. If no one else is working on an issue that is **In progress**, the issue moves to **Triage**.

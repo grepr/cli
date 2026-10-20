@@ -1,5 +1,5 @@
 ---
-description: Turn on Grepr AI agent memory so an agent records what it concluded, counts recurrences, and searches past investigations during a new one.
+description: How a Grepr AI agent records what it concluded, counts recurrences, and searches past investigations, and how to add semantic search.
 ---
 
 import { Callout } from 'nextra/components'
@@ -17,7 +17,7 @@ Both halves show up in the investigation's tool calls. A memory search runs near
 
 The agent decides what to record and whether something is a recurrence. Grepr does not extract conclusions on its behalf or merge records by similarity, because the investigating agent is the only thing that saw the evidence.
 
-Memory is off until you turn it on and choose where the memories are stored.
+Every agent records memories unless you turn memory off, and every agent can search the memories your organization's agents recorded. Searching by meaning needs a store, which is optional. See [Add semantic search](#enable).
 
 ## What an agent records [#what-recorded]
 
@@ -50,9 +50,9 @@ Significance is how an agent classifies what it found, and a search can filter o
 
 Text and timeline searches find benign memories like any other memory, so an agent can notice that a given service has been triaged as benign many times. A semantic search finds a benign memory only when the agent that recorded it made it searchable by meaning. A search that is looking only for real problems can list the significances it wants and leave benign out.
 
-## Turn on memory [#enable]
+## Add semantic search [#enable]
 
-Memory needs somewhere to store its search index and a model to build that index with, so there are three things to set up.
+Without a store, an agent's memories are found by text and timeline searches. A store adds semantic search, which finds memories by meaning. A store needs somewhere to keep its search index and a model to build that index with, so there are three things to set up.
 
 ### Step 1: Create a vector index integration [#vector-index]
 
@@ -67,12 +67,15 @@ Memory embeds each record with a model from an LLM integration that provides emb
 
 An agent's reasoning model and its embedding model are separate choices. An agent can reason with one integration and embed with another.
 
-### Step 3: Turn on memory for the agent [#agent-memory]
+### Step 3: Set the agent's store [#agent-memory]
 
 1. On the agent's page, go to the **Memories** step.
-1. Turn on **Remember past investigations**.
-1. Under **Storage**, select the **Vector index integration**, the **Embedding credentials**, and the **Embedding model**.
+1. Under **Semantic search**, select the **Vector index integration**, the **Embedding credentials**, and the **Embedding model**.
 1. Save the agent.
+
+A store is the three settings together: set all of them, or clear all of them. Memories recorded before the agent had a store are found by text and timeline searches only.
+
+When you create an agent and leave its store empty, the agent takes the store your other agents use, if exactly one store is in use among the agents that record memories and you can view both of its integrations. Otherwise the agent has no store until you set one.
 
 ![The Memories step with memory turned on and the storage settings showing the vector index, credentials, and embedding model.](/images/ai-agents/agent-memory-settings.png)
 
@@ -95,6 +98,8 @@ A search runs in exactly one of three modes, and which mode fits depends on what
 | Timeline | Investigations about given entities, ordered by time. | What has been happening to this service recently? |
 
 Semantic search finds a past incident described in different words, which text search misses. Text search finds a literal, such as an error code or a host name, which semantic search can rank poorly. Timeline search needs entity tags rather than a query.
+
+A semantic search needs the agent it searches to have a store, and returns nothing for an agent without one. When an agent searches without choosing a mode, Grepr uses semantic when the searched agent has a store, and text otherwise.
 
 The modes also differ in how much they cover, which matters when you read an empty result:
 
@@ -153,11 +158,11 @@ Each line of the digest names the memory's ID, whether the agent recorded it, it
 
 The agent treats a digest that checked every triggering signal as its initial memory check, and searches again only for something the digest did not answer, such as older history. When the lookup could not check everything, the agent is told so and searches memory itself, unless its search budget is 0. That happens when the lookup fails, when a signal has no pattern or service tag to look up, when the trigger carries more than 10 tagged signals, or when more memories matched than **Max items** allows.
 
-The digest needs the memory search tool, because the agent reads a listed memory in full before it links its investigation to that memory. Turning on memory for an agent in the Grepr UI also gives it the search tool. A continuation of an earlier investigation does not get a digest, and searches memory itself instead.
+The agent reads a listed memory in full before it links its investigation to that memory. A continuation of an earlier investigation does not get a digest, and searches memory itself instead.
 
 ## Who can read and write memories [#scope]
 
-- Reads are organization-wide. Any agent can search any other agent's memories in your organization. Operational history is only useful shared, so an agent investigating a service finds what another agent concluded about the same service. Permission is uniform across the modes, but coverage is not: a semantic search still examines one agent at a time. See [How an agent searches its memory](#search-modes).
+- Reads are organization-wide. Any agent can search any other agent's memories in your organization, including an agent that records none of its own. Operational history is only useful shared, so an agent investigating a service finds what another agent concluded about the same service. Permission is uniform across the modes, but coverage is not: a semantic search still examines one agent at a time. See [How an agent searches its memory](#search-modes).
 - Writes are owner-only. A memory can be written or corrected only by the agent that ran the investigation, so one agent cannot overwrite another's conclusions.
 
 When an agent finds that a past memory describes what it is now seeing, it links its investigation to that memory, which raises the recurrence count rather than creating a near-duplicate record. Each contributing investigation counts once.
@@ -206,8 +211,8 @@ To learn more about the CLI, see [_](/cli).
     a: "One memory per investigation, holding a title, the symptoms, the root cause and the agent's confidence in it, the causes it ruled out, the resolution, a significance classification, entity tags, and a count of how many investigations reached the same conclusion."
   },
   {
-    q: "What do I need to turn on agent memory?",
-    a: "Three things: a vector index integration whose dimensions match your embedding model, an LLM integration that supplies the embedding model, and the embedding model name. Grepr creates the search index when you create the vector index integration. Saving the agent then checks that the embedding model works against that index, so a wrong model stops the save."
+    q: "What do I need for agent memory?",
+    a: "Nothing for recording and for text and timeline searches: every agent records memories unless you turn memory off. Semantic search needs a store, which is three things: a vector index integration whose dimensions match your embedding model, an LLM integration that supplies the embedding model, and the embedding model name. Grepr creates the search index when you create the vector index integration. Saving the agent then checks that the embedding model works against that index, so a wrong model stops the save."
   },
   {
     q: "How does an agent search its memory?",

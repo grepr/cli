@@ -327,7 +327,7 @@ export interface paths {
     };
     /**
      * List the agent roster
-     * @description Returns every agent configured for your organization, projected to just id and name — enough to decide whose recorded memory is worth searching.
+     * @description Returns every agent configured for your organization, projected to its id, name, description and pickup filters: enough to decide whose recorded memory is worth searching, or how to put an issue in Ready so an agent picks it up.
      */
     get: operations["roster"];
     put?: never;
@@ -398,6 +398,26 @@ export interface paths {
      * @description Returns the investigations the agent has run, newest first.
      */
     get: operations["investigations"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agents/{id}/issue-reach": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the issues an agent reads and works on
+     * @description Returns whose issues the agent reads, and whose it can be handed, pick up and change: every issue in your organization or those of some teams, from its service account's issue scopes.
+     */
+    get: operations["issueReach"];
     put?: never;
     post?: never;
     delete?: never;
@@ -480,7 +500,7 @@ export interface paths {
     get?: never;
     /**
      * Pause or resume an agent
-     * @description Sets the agent to PAUSED or ACTIVE. A paused agent runs no investigations: signals from every source are dropped, manual starts and resumes are refused, and queued investigations wait until the agent is resumed. Pipelines keep marking new patterns as sent, so after resuming, the agent usually reacts only to patterns that are new since then.
+     * @description Sets the agent to PAUSED or ACTIVE. A paused agent runs no investigations: signals from every source are dropped, manual starts and resumes are refused, and queued investigations wait until the agent is resumed, except those on an issue, which are discarded so other agents can take the issue. Pipelines keep marking new patterns as sent, so after resuming, the agent usually reacts only to patterns that are new since then.
      */
     put: operations["setState"];
     post?: never;
@@ -2839,7 +2859,7 @@ export interface paths {
     put?: never;
     /**
      * Start an investigation
-     * @description Triggers an agent investigation with optional free-form context and returns the new investigation id. The investigation is queued and runs asynchronously once the agent has a free concurrency slot.
+     * @description Triggers an agent investigation with optional free-form context and returns the new investigation id. The investigation is queued and runs asynchronously once the agent has a free concurrency slot. With issueId, a person hands the agent that issue, which becomes the investigation's subject and records the handoff in its history.
      */
     post: operations["start"];
     delete?: never;
@@ -3019,6 +3039,302 @@ export interface paths {
     post?: never;
     /** Delete an invitation */
     delete: operations["deleteInvitation"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/issues": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * File an issue
+     * @description Files a new issue on the organization's board. Search first and update an existing issue instead of filing a duplicate; this call never matches existing issues.
+     */
+    post: operations["create_14"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/issues/access": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get your issue access
+     * @description Returns which issues you may view and which you may edit: every issue in the organization, or those of some teams. Clients use it to show write controls; every request is still authorized on its own.
+     */
+    get: operations["access"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/issues/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Search issues
+     * @description Returns the issues matching every given filter, ranked by full-text relevance when a query is given and by latest sighting otherwise. By default, open issues plus those closed in the last 30 days.
+     */
+    post: operations["search_1"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/issues/titles": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get issue titles
+     * @description Returns the number and title of each issue named, one entry per id in the order sent. Repeat id, up to 100 times. An issue you can't see, or one that doesn't exist, comes back as hidden with nothing else.
+     */
+    get: operations["titles"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/issues/{idOrNumber}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get an issue
+     * @description Returns an issue with its assignees, its newest guidance comments, and its latest comments and history entries; the comments route pages every comment. Plain sightings are left out of that history; the issue's occurrence counts summarize them, and the history route pages them.
+     */
+    get: operations["get_16"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Update an issue
+     * @description Changes the given fields and leaves the rest. A person's change to priority, entities or teams locks that field against agents. A stale version is rejected with the current issue, so the caller can reapply its change.
+     */
+    patch: operations["update_12"];
+    trace?: never;
+  };
+  "/v1/issues/{idOrNumber}/assignees": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Join an issue
+     * @description Adds the caller as an active assignee. Joining a Ready issue moves it to In progress; joining again changes nothing, or reactivates a finished assignment.
+     */
+    post: operations["join"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/issues/{idOrNumber}/assignees/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Finish your assignment
+     * @description Marks the caller's own assignment done. Join again to pick the work back up.
+     */
+    patch: operations["finishAssignment"];
+    trace?: never;
+  };
+  "/v1/issues/{idOrNumber}/assignees/{assigneeKind}/{assigneeId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Remove an assignee
+     * @description Removes an assignee. People only; the removal stops agents from changing who is assigned.
+     */
+    delete: operations["removeAssignee"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/issues/{idOrNumber}/comments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List an issue's comments
+     * @description Returns an issue's comments, newest first.
+     */
+    get: operations["comments"];
+    put?: never;
+    /**
+     * Comment on an issue
+     * @description Posts a comment, on an open or closed issue. A person may make it guidance, advice every later investigation on the issue's entities weighs.
+     */
+    post: operations["comment"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/issues/{idOrNumber}/comments/{commentId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Edit a comment
+     * @description Replaces the body of a comment the caller wrote. People only. The history keeps the old text; editing a guidance comment changes the issue's version.
+     */
+    put: operations["editComment"];
+    post?: never;
+    /**
+     * Delete a comment
+     * @description Deletes a comment the caller wrote: it leaves the issue's comments, guidance and search. People only. The history keeps its text; deleting a guidance comment changes the issue's version.
+     */
+    delete: operations["deleteComment"];
+    options?: never;
+    head?: never;
+    /**
+     * Mark a comment as guidance
+     * @description Makes a person's comment guidance, advice agents weigh, or stops it being guidance. People only; an agent's comment can never be guidance.
+     */
+    patch: operations["setCommentGuidance"];
+    trace?: never;
+  };
+  "/v1/issues/{idOrNumber}/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List an issue's history
+     * @description Returns an issue's history entries, newest first. Repeat kind to return only those kinds, for example to leave out OCCURRED sightings.
+     */
+    get: operations["events"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/issues/{idOrNumber}/locks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Set an issue's locks
+     * @description Replaces the fields and labels locked against agent changes. Leaving a lock out unlocks it. People only.
+     */
+    put: operations["setLocks"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/issues/{idOrNumber}/occurrences": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record a sighting
+     * @description Links the calling investigation to the issue once and counts it. A sighting of a fixed or obsolete issue reopens it, and of a Monitoring issue moves it back to In progress, when the investigation started after the issue's last state change. A duplicate's sighting lands on its survivor. Only an agent's investigation can record one.
+     */
+    post: operations["recordOccurrence"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/issues/{idOrNumber}/transitions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Change an issue's state
+     * @description Moves an issue through its lifecycle: Triage, Ready, In progress, Waiting, Monitoring, Closed. Closing needs a resolution; Monitoring needs a revisit time or expiry; both need every assignee done unless a person forces it.
+     */
+    post: operations["transition"];
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -4234,9 +4550,17 @@ export interface components {
       changeApprovalMode: AgentConfigCreateChangeApprovalMode;
       /** @enum {string} */
       concurrencyLimitPolicy?: AgentConfigCreateConcurrencyLimitPolicy;
+      /** @description What the agent handles, shown to other agents when they list the agents; null for none. */
+      description?: string;
       enabledMcpIntegrations: components["schemas"]["AgentMcpIntegrations"][];
       enabledSkills: string[];
       enabledTools: string[];
+      /**
+       * @description Whether the agent may put issues in Ready; null falls back to REQUIRE_TRIAGE.
+       * @enum {string}
+       */
+      issueHandoffMode?: AgentConfigCreateIssueHandoffMode;
+      issuePickup?: components["schemas"]["AgentIssuePickup"];
       /**
        * Format: int32
        * @default 3
@@ -4254,6 +4578,8 @@ export interface components {
       name: string;
       serviceAccountId: string;
       systemPrompt: string;
+      /** @description Whether the agent files and works on issues; null means true. */
+      worksOnIssues?: boolean;
     };
     AgentConfigPayload: {
       /** Format: int64 */
@@ -4264,9 +4590,17 @@ export interface components {
       changeApprovalMode: AgentConfigCreateChangeApprovalMode;
       /** @enum {string} */
       concurrencyLimitPolicy?: AgentConfigCreateConcurrencyLimitPolicy;
+      /** @description What the agent handles, shown to other agents when they list the agents; null for none. */
+      description?: string;
       enabledMcpIntegrations: components["schemas"]["AgentMcpIntegrations"][];
       enabledSkills: string[];
       enabledTools: string[];
+      /**
+       * @description Whether the agent may put issues in Ready; null falls back to REQUIRE_TRIAGE.
+       * @enum {string}
+       */
+      issueHandoffMode?: AgentConfigCreateIssueHandoffMode;
+      issuePickup?: components["schemas"]["AgentIssuePickup"];
       /** Format: int32 */
       maxConcurrentInvestigations?: number;
       /** Format: int32 */
@@ -4277,6 +4611,8 @@ export interface components {
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       serviceAccountId: string;
       systemPrompt: string;
+      /** @description Whether the agent files and works on issues; every agent reads them. */
+      worksOnIssues?: boolean;
     };
     AgentConfigUpdate: {
       /** Format: int64 */
@@ -4287,9 +4623,17 @@ export interface components {
       changeApprovalMode: AgentConfigCreateChangeApprovalMode;
       /** @enum {string} */
       concurrencyLimitPolicy?: AgentConfigCreateConcurrencyLimitPolicy;
+      /** @description What the agent handles, shown to other agents; required, like worksOnIssues, and empty for none. */
+      description: string;
       enabledMcpIntegrations: components["schemas"]["AgentMcpIntegrations"][];
       enabledSkills: string[];
       enabledTools: string[];
+      /**
+       * @description Whether the agent may put issues in Ready; required, like worksOnIssues.
+       * @enum {string}
+       */
+      issueHandoffMode: AgentConfigCreateIssueHandoffMode;
+      issuePickup: components["schemas"]["AgentIssuePickup"];
       /** Format: int32 */
       maxConcurrentInvestigations?: number;
       /** Format: int32 */
@@ -4303,6 +4647,8 @@ export interface components {
       systemPrompt: string;
       /** Format: int32 */
       version?: number;
+      /** @description Whether the agent files and works on issues; required, since an update replaces the agent and an omitted switch would turn issue work off unnoticed. */
+      worksOnIssues: boolean;
     };
     AgentDetail: {
       agent?: components["schemas"]["AgentConfig"];
@@ -4317,6 +4663,31 @@ export interface components {
       failed?: number;
       /** Format: int32 */
       total?: number;
+    };
+    /** @description Whether an agent picks up Ready issues on its own, and which: the board's own filters, applied to Ready issues nobody is working on. The server checks the filters' limits and teams when the agent is saved. */
+    AgentIssuePickup: {
+      /** @description Whether the dispatcher starts the agent on Ready issues; it also needs Works on issues. */
+      enabled?: boolean;
+      /** @description Issues with every one of these entity keys, each with any of its values, as the issue search's entity filter; null or empty for any. */
+      entities?: {
+        [key: string]: string[];
+      };
+      /** @description Issues carrying every one of these labels; null or empty for any. */
+      labels?: string[];
+      /**
+       * Format: int32
+       * @description Pickup starts no run while the agent has this many runs on issues, queued or running, handed or picked up; people's handoffs aren't held to it, and pickups use the agent's run slots. Null for 1. At most the agent's concurrency limit, and below it when the agent discards work at its limit, so a slot stays free for alerts and handoffs.
+       */
+      maxRuns?: number;
+      /** @description `P0` to `P3`: issues of this priority or more urgent; null for any. */
+      priority?: string;
+      /** @description Issues on any of these teams; null or empty for any the agent can reach. */
+      teamIds?: string[];
+    };
+    /** @description Whose issues an agent reads and whose it can work on, from its service account's issue scopes. */
+    AgentIssueScopes: {
+      reads?: components["schemas"]["IssueScopeView"];
+      worksOn?: components["schemas"]["IssueScopeView"];
     };
     /** @description Processes native agent-harness OTel logs into canonical agent LogEvents. */
     AgentLogProcessor: {
@@ -4361,6 +4732,10 @@ export interface components {
       embeddingModel?: string;
       enabled?: boolean;
       policy?: components["schemas"]["AgentMemoryPolicy"];
+      /**
+       * @deprecated
+       * @description Ignored: every agent can search memories.
+       */
       searchTool?: boolean;
       signalTagMappings?: {
         [key: string]: {
@@ -4396,9 +4771,15 @@ export interface components {
       /** Format: int32 */
       failed?: number;
     };
+    /** @description What one agent may learn about another: enough to decide whose memory is worth querying, or how to put an issue in Ready so that agent picks it up, and nothing more. */
     AgentRosterEntry: {
+      /** @description What the agent handles, as its configuration says, or null when it says nothing. */
+      description?: string;
+      /** @description The agent's id, as named in a cross-agent memory search's `agentId`. */
       id?: string;
+      /** @description The agent's human-readable name. */
       name?: string;
+      picksUp?: components["schemas"]["PickupFilters"];
     };
     AgentSessionAnalytics: {
       analysisJobId: string;
@@ -5987,6 +6368,54 @@ export interface components {
     CreateChatResponse: {
       chatId?: string;
     };
+    /** @description Files a new issue. Creating never deduplicates: search first, and update or record an occurrence on an existing issue instead of filing a second one. The reporter, number and timestamps come from the caller and the server, never from the request. */
+    CreateIssueRequest: {
+      /**
+       * @description How sure the reporter is that the problem is real.
+       * @enum {string}
+       */
+      confidence: CreateIssueRequestConfidence;
+      /** @description The current understanding, in markdown, or null for none. */
+      description?: string;
+      /** @description The `entity:*` tags it concerns; an unprefixed key is put in the `entity:` namespace. */
+      entities?: {
+        [key: string]: string;
+      };
+      /** @description Things a person can open to check the claim. */
+      evidence?: components["schemas"]["IssueEvidence"][];
+      /**
+       * Format: date-time
+       * @description When the issue stops applying.
+       */
+      expiresAt?: string;
+      /** @description An optional free-form key for exact-match search. */
+      fingerprint?: string;
+      /** @description Categories; reuse the labels search reports as in use. */
+      labels?: string[];
+      /** @description Related pipelines, investigations, memories, suggestions and external tickets. */
+      links?: components["schemas"]["IssueLink"][];
+      /** @description The concrete next action and who it waits on. */
+      nextStep?: string;
+      /**
+       * @description How soon someone should act; agents must set it. A person who leaves it null files at `P2`, unlocked, so triage can set it.
+       * @enum {string}
+       */
+      priority?: CreateIssueRequestPriority;
+      /**
+       * Format: date-time
+       * @description When someone should check back.
+       */
+      revisitAt?: string;
+      /**
+       * @description The open state to file it in; null files it in `TRIAGE`. Agents may file only in `TRIAGE`, or `READY` when their handoff mode allows it.
+       * @enum {string}
+       */
+      state?: CreateIssueRequestState;
+      /** @description The teams that may see it; people only, from the teams they can edit issues of (any for an organization-wide person). Absent: a team-scoped person's own teams, and none for an organization-wide person, which keeps the issue to organization-wide users. */
+      teamIds?: string[];
+      /** @description One line naming the problem, not the symptom's timestamp. */
+      title: string;
+    };
     /** @description Attributes of the Grepr Job to create */
     CreateJob: {
       /**
@@ -6716,6 +7145,16 @@ export interface components {
     EarliestReadingStrategy: {
       type: "EarliestReadingStrategy";
     } & Omit<components["schemas"]["FileReadingStrategy"], "type">;
+    /** @description Replaces the body of a comment its author wrote; people only. */
+    EditIssueCommentRequest: {
+      /** @description The new markdown body. */
+      body: string;
+      /**
+       * Format: int32
+       * @description The version the edit was written against; a stale one is rejected with 409 and the current issue. Null edits against whatever is current.
+       */
+      version?: number;
+    };
     /** @description Full effective partition spec, including system-controlled rows. */
     EffectivePartitionField: {
       /** @description Logical column the row partitions by (built-in name or bare tag key). */
@@ -6999,6 +7438,16 @@ export interface components {
         [key: string]: string;
       };
       metricName?: components["schemas"]["MetricNameFilter"];
+    };
+    /** @description Marks the caller's own assignment done. To pick the work up again, join the issue again. */
+    FinishAssignmentRequest: {
+      /** @description What the caller did, or null. */
+      note?: string;
+      /**
+       * Format: int32
+       * @description The version the finish was decided against, or null for whatever is current.
+       */
+      version?: number;
     };
     FrontendConfig: {
       appBaseUrl?: string;
@@ -7749,6 +8198,550 @@ export interface components {
        */
       teamAssignments?: components["schemas"]["TeamAssignment"][];
     };
+    /** @description One durable problem or task on the organization's issue board. */
+    Issue: {
+      /**
+       * Format: date-time
+       * @description When it closed, or null while open.
+       */
+      closedAt?: string;
+      /**
+       * @description How sure the reporter is that the problem is real.
+       * @enum {string}
+       */
+      confidence?: CreateIssueRequestConfidence;
+      /**
+       * Format: date-time
+       * @description When it was filed.
+       */
+      createdAt?: string;
+      /** @description The current understanding, in markdown, kept current rather than appended to. */
+      description?: string;
+      /** @description The surviving issue, set exactly when resolved as `DUPLICATE`; null in a response when the reader can't see the survivor. */
+      duplicateOf?: string;
+      /** @description True in a response whose reader can't see the surviving issue. */
+      duplicateOfHidden?: boolean;
+      /** @description The `entity:*` tags it concerns, the same vocabulary as memory tags, sorted by key. */
+      entities?: {
+        [key: string]: string;
+      };
+      /** @description Things a person can open to check the claim. */
+      evidence?: components["schemas"]["IssueEvidence"][];
+      /**
+       * Format: date-time
+       * @description When the issue stops applying and closes as `EXPIRED`, or null.
+       */
+      expiresAt?: string;
+      /** @description An optional free-form key for exact-match search, or null. */
+      fingerprint?: string;
+      /**
+       * Format: date-time
+       * @description The first sighting, or null before any.
+       */
+      firstSeenAt?: string;
+      /** @description The issue id. */
+      id?: string;
+      /** @description Categories, such as `cost`, sorted. */
+      labels?: string[];
+      /**
+       * Format: date-time
+       * @description The latest sighting, or when it was filed.
+       */
+      lastSeenAt?: string;
+      /** @description Related pipelines, investigations, memories, suggestions and external tickets. */
+      links?: components["schemas"]["IssueLink"][];
+      locks?: components["schemas"]["IssueLocks"];
+      /** @description The concrete next action and who it waits on, or null. */
+      nextStep?: string;
+      /**
+       * Format: int32
+       * @description The short per-organization handle, shown as `#142`.
+       */
+      number?: number;
+      /**
+       * Format: int32
+       * @description How many investigations sighted it.
+       */
+      occurrenceCount?: number;
+      /**
+       * @description How soon someone should act.
+       * @enum {string}
+       */
+      priority?: CreateIssueRequestPriority;
+      /** @description Whether it reopened on a new sighting after being fixed; cleared on its next close. */
+      regressed?: boolean;
+      reporter?: components["schemas"]["IssueActor"];
+      /**
+       * @description Why it closed; set exactly when `state` is `CLOSED`.
+       * @enum {string}
+       */
+      resolution?: IssueResolution;
+      /**
+       * Format: date-time
+       * @description When someone should check back, or null. Then a Monitoring issue's watcher is started on it, or, with no watcher, it goes back to `READY`.
+       */
+      revisitAt?: string;
+      /**
+       * @description Where the issue is in its lifecycle.
+       * @enum {string}
+       */
+      state?: CreateIssueRequestState;
+      /**
+       * Format: date-time
+       * @description When the state last changed.
+       */
+      stateChangedAt?: string;
+      /** @description The teams that may see the issue, sorted. */
+      teamIds?: string[];
+      /** @description One line naming the problem. */
+      title?: string;
+      /**
+       * Format: date-time
+       * @description When it last changed.
+       */
+      updatedAt?: string;
+      /**
+       * Format: int32
+       * @description Bumped by every change to a field, the state, an assignment, a lock or the teams.
+       */
+      version?: number;
+      /** @description The agent watching it in `MONITORING`: the one that moved it there, started on it again when a sighting comes in or its revisit time passes. Null outside Monitoring. */
+      watchedBy?: string;
+    };
+    /** @description The issues the caller may view and edit. A client shows write controls from `edit`; the server still decides every request. An issue is in a scope when the scope is organization-wide, or when the issue names one of the scope's teams. An issue with no teams is only in organization-wide scopes. A person may give an issue the teams of their edit scope, or any team when it is organization-wide. */
+    IssueAccessScopes: {
+      edit?: components["schemas"]["IssueScopeView"];
+      view?: components["schemas"]["IssueScopeView"];
+    };
+    /** @description Who made a change to an issue. An agent is named by its own id and the investigation it acted in, never by the service account it authenticated as, since several agents may share one. */
+    IssueActor: {
+      /** @description The agent, for an agent actor; null otherwise. */
+      agentId?: string;
+      /** @description The person's user id, the agent's execution principal (its service account's token subject), or `system` for the server. */
+      id?: string;
+      /** @description The investigation the agent acted in, for an agent actor; null otherwise. */
+      investigationId?: string;
+      /**
+       * @description A person, an agent, or the server.
+       * @enum {string}
+       */
+      kind?: IssueActorKind;
+    };
+    /** @description Whose active assignments a search matches. A deleted agent's assignment never counts, as it does not block a close. */
+    IssueAssigneeFilter: {
+      /** @description The agent's or person's id, for `AGENT` and `PERSON` only. */
+      id?: string;
+      /**
+       * @description `ME` for the caller, `UNASSIGNED` for issues nobody is working on, or `AGENT`/`PERSON` for one assignee.
+       * @enum {string}
+       */
+      kind: IssueAssigneeFilterKind;
+    };
+    /** @description Someone working on an issue, as a search result names them. */
+    IssueAssigneeRef: {
+      /** @description The person's id, or the agent's. */
+      id?: string;
+      /**
+       * @description A person or an agent.
+       * @enum {string}
+       */
+      kind?: PathsV1IssuesIdOrNumberAssigneesAssigneeKindAssigneeIdDeleteParametersPathAssigneeKind;
+    };
+    /** @description An issue after a change to its assignees, with all of them. */
+    IssueAssignees: {
+      /** @description Its assignees, oldest first. */
+      assignments?: components["schemas"]["IssueAssignment"][];
+      issue?: components["schemas"]["Issue"];
+    };
+    /** @description One assignee of an issue. */
+    IssueAssignment: {
+      assignedBy?: components["schemas"]["IssueActor"];
+      /** @description Whether the assignee is an agent that has since been deleted; its assignment no longer keeps the issue out of Monitoring or Closed. */
+      assigneeDeleted?: boolean;
+      /** @description The person's user id or the agent's id. */
+      assigneeId?: string;
+      /**
+       * @description A person or an agent.
+       * @enum {string}
+       */
+      assigneeKind?: PathsV1IssuesIdOrNumberAssigneesAssigneeKindAssigneeIdDeleteParametersPathAssigneeKind;
+      /**
+       * Format: date-time
+       * @description When it was made.
+       */
+      createdAt?: string;
+      /** @description For an agent's assignment, the run that made it active, which it ends with; null for a person's. */
+      investigationId?: string;
+      /** @description A short note on its part, or null. */
+      note?: string;
+      /**
+       * @description Whether the assignee is still working on its part.
+       * @enum {string}
+       */
+      status?: IssueAssignmentStatus;
+      /**
+       * Format: date-time
+       * @description When it last changed.
+       */
+      updatedAt?: string;
+    };
+    /**
+     * @description How a change reached the server.
+     * @enum {string}
+     */
+    IssueChannel: IssueChannel;
+    /** @description A comment on an issue. A guidance comment, which only people write, is advice every later investigation on the issue's entities weighs; any other comment is a plain note. */
+    IssueComment: {
+      author?: components["schemas"]["IssueActor"];
+      /** @description The markdown body. */
+      body?: string;
+      channel?: components["schemas"]["IssueChannel"];
+      /**
+       * Format: date-time
+       * @description When it was written.
+       */
+      createdAt?: string;
+      /**
+       * Format: date-time
+       * @description When its author last changed the body, or null.
+       */
+      editedAt?: string;
+      /** @description Whether it is guidance, which agents weigh as advice. */
+      guidance?: boolean;
+      /**
+       * Format: date-time
+       * @description When it was marked guidance, or null.
+       */
+      guidanceSetAt?: string;
+      /** @description The user id of the person who marked it guidance, or null. */
+      guidanceSetBy?: string;
+      /** @description The comment id. */
+      id?: string;
+      /** @description The issue it is on. */
+      issueId?: string;
+      /** @description The locked field the comment proposes changing, as named in a `FIELD_LOCKED` error (`priority`, `label:cost`), or null. */
+      lockedFieldProposal?: string;
+    };
+    /** @description A page of an issue's comments, newest first. */
+    IssueCommentsPage: {
+      /** @description The comments on this page. */
+      items?: components["schemas"]["IssueComment"][];
+      /** @description Pass back as `cursor` for the next, older page; null on the last page. */
+      nextCursor?: string;
+    };
+    /** @description An issue with what a person or agent needs to act on it. */
+    IssueDetail: {
+      /** @description Its assignees. */
+      assignments?: components["schemas"]["IssueAssignment"][];
+      /** @description Its newest guidance comments, oldest first: at most 20, and 32768 bytes of their bodies, though the newest is always there. */
+      guidance?: components["schemas"]["IssueComment"][];
+      /**
+       * Format: int32
+       * @description How many older guidance comments that bound left out; `GET /v1/issues/{id}/comments` pages every comment.
+       */
+      guidanceOmitted?: number;
+      /** @description For each current guidance comment that agents were given, the investigations it was delivered to; a comment no longer guidance is not listed. */
+      guidanceReads?: components["schemas"]["IssueGuidanceReads"][];
+      issue?: components["schemas"]["Issue"];
+      /** @description Its latest comments, newest first, at most 20. */
+      recentComments?: components["schemas"]["IssueComment"][];
+      /** @description Its latest history entries, newest first, at most 20; `GET /v1/issues/{id}/events` pages older ones. */
+      recentEvents?: components["schemas"]["IssueEvent"][];
+      /** @description Its runs that haven't ended, oldest first: queued or working on it, handed, picked up or watching. */
+      runs?: components["schemas"]["IssueRun"][];
+    };
+    /** @description The body of an issue API error. `code` is the HTTP status, as in every Grepr error body; `error` says why, so a client or agent can react without parsing the message. */
+    IssueErrorResponse: {
+      /**
+       * Format: int32
+       * @description The HTTP status.
+       */
+      code?: number;
+      current?: components["schemas"]["Issue"];
+      /** @description The machine-readable reason, such as VERSION_CONFLICT. */
+      error?: string;
+      /** @description The locked fields, or the teams the caller cannot see or grant, when the error is about them. */
+      fields?: string[];
+      /** @description What went wrong, for a person. */
+      message?: string;
+    };
+    /** @description One entry in an issue's history. Every change to an issue writes exactly one, in the same transaction, so the history cannot disagree with the issue. */
+    IssueEvent: {
+      actor?: components["schemas"]["IssueActor"];
+      channel?: components["schemas"]["IssueChannel"];
+      /**
+       * Format: date-time
+       * @description When it happened.
+       */
+      createdAt?: string;
+      /** @description Each changed field's value before and after, keyed by field name. The description carries only its new text; its previous text is the `to` of the issue's previous entry that changed it. A `COMMENTED` entry carries the comment's id as `comment.to`. A `CREATED` entry by an agent carries, as `entitiesFilled.to`, the entities the server filled from the agent's investigation, beside the complete `entities`; it is absent when nothing was filled. */
+      diff?: {
+        [key: string]: components["schemas"]["IssueFieldChange"];
+      };
+      /** @description The event id. */
+      id?: string;
+      /** @description The issue that changed. */
+      issueId?: string;
+      /**
+       * @description What kind of change it was.
+       * @enum {string}
+       */
+      kind?: PathsV1IssuesIdOrNumberEventsGetParametersQueryKind;
+    };
+    /** @description A page of an issue's history, newest first. */
+    IssueEventsPage: {
+      /** @description The entries on this page. */
+      items?: components["schemas"]["IssueEvent"][];
+      /** @description Pass back as `cursor` for the next, older page; null on the last page. */
+      nextCursor?: string;
+    };
+    /** @description Something a person can open to check an issue's claim. */
+    IssueEvidence: {
+      /**
+       * Format: date-time
+       * @description Start of a log query's time range, or null.
+       */
+      from?: string;
+      /**
+       * @description What the evidence points at.
+       * @enum {string}
+       */
+      kind: IssueEvidenceKind;
+      /** @description A short description of what it shows, or null. */
+      label?: string;
+      /** @description The Grepr log query for LOG_QUERY, the event id for EVENT, or an http(s) URL for URL. */
+      target: string;
+      /**
+       * Format: date-time
+       * @description End of a log query's time range, or null.
+       */
+      to?: string;
+    };
+    /** @description One field's value before and after a change, as JSON. */
+    IssueFieldChange: {
+      from?: components["schemas"]["JsonNode"];
+      to?: components["schemas"]["JsonNode"];
+    };
+    /** @description Who locked a field and when, so the UI can say "set by Jad on Oct 3; agents can't change this". */
+    IssueFieldLock: {
+      /**
+       * Format: date-time
+       * @description When it was locked.
+       */
+      setAt?: string;
+      /** @description The user id of the person whose write locked it. */
+      setBy?: string;
+    };
+    /** @description One investigation whose agent was given a guidance comment in its known-issues context. */
+    IssueGuidanceRead: {
+      /** @description The investigation's agent, or null when the investigation no longer exists. */
+      agentId?: string;
+      /** @description The investigation. */
+      investigationId?: string;
+      /**
+       * Format: date-time
+       * @description When the guidance was delivered.
+       */
+      readAt?: string;
+    };
+    /** @description The investigations a guidance comment was delivered to. */
+    IssueGuidanceReads: {
+      /** @description The guidance comment. */
+      commentId?: string;
+      /** @description The latest deliveries, newest first, at most 3. */
+      latest?: components["schemas"]["IssueGuidanceRead"][];
+      /**
+       * Format: int32
+       * @description How many investigations it was delivered to.
+       */
+      readCount?: number;
+    };
+    /** @description A person's lock on one label: agents may not remove a label a person added, or add back one a person removed. */
+    IssueLabelLock: {
+      /**
+       * Format: date-time
+       * @description When it was locked.
+       */
+      setAt?: string;
+      /** @description The user id of the person whose write locked it. */
+      setBy?: string;
+      /**
+       * @description Whether the person added or removed the label.
+       * @enum {string}
+       */
+      state?: IssueLabelLockState;
+    };
+    /** @description A typed reference from an issue to something related. A link grants nothing: the linked page applies its own access checks. A link to an issue the reader can't see comes back with only its kind and `hidden`, so an issue reveals nothing about another team's. */
+    IssueLink: {
+      /** @description True for a link to an issue the reader can't see. Set only in responses. */
+      hidden?: boolean | null;
+      /**
+       * @description What the link points at.
+       * @enum {string}
+       */
+      kind: IssueLinkKind;
+      /** @description A short description, or null. */
+      label?: string;
+      /** @description Null only for a hidden issue link in a response. */
+      target?: string | null;
+    };
+    /** @description A linked object to find issues by, such as a pipeline or an investigation. */
+    IssueLinkRef: {
+      /**
+       * @description What the object is.
+       * @enum {string}
+       */
+      kind: IssueLinkKind;
+      /** @description Its id, or the URL for an external link. */
+      target: string;
+    };
+    /** @description The fields and labels people have locked against agent changes. `state` never locks. */
+    IssueLocks: {
+      /** @description The locked fields, each with who locked it and when. */
+      fields?: {
+        [key: string]: components["schemas"]["IssueFieldLock"];
+      };
+      /** @description The locked labels, keyed by label. */
+      labels?: {
+        [key: string]: components["schemas"]["IssueLabelLock"];
+      };
+    };
+    /** @description A run started on the issue that hasn't ended: handed to its agent by a person, or picked up from Ready. It holds the issue until it ends. */
+    IssueRun: {
+      /** @description The run's agent. */
+      agentId?: string;
+      /** @description The run's investigation id. */
+      investigationId?: string;
+      /**
+       * @description Where the run is: QUEUED, RUNNING, STOPPING, CANCELLING, or STOPPED and resumable.
+       * @enum {string}
+       */
+      status?: InvestigationSummaryStatus;
+    };
+    /** @description Which issues a principal may act on for one action: every issue in the organization, or those naming one of these teams. */
+    IssueScopeView: {
+      /** @description Whether the principal may act on every issue in the organization. */
+      orgWide?: boolean;
+      /** @description The teams whose issues the principal may act on, sorted; empty when `orgWide`. */
+      teamIds?: string[];
+    };
+    /** @description A compact issue row for the board and search results: everything a card or a list shows, without the description, evidence, links and locks that `GET /v1/issues/{idOrNumber}` returns. */
+    IssueSummary: {
+      /** @description Who is working on it, oldest first: active assignments, without a deleted agent's. */
+      assignees?: components["schemas"]["IssueAssigneeRef"][];
+      /**
+       * Format: int32
+       * @description How many comments it has, guidance included.
+       */
+      commentCount?: number;
+      /**
+       * @description How sure the reporter is that the problem is real.
+       * @enum {string}
+       */
+      confidence?: CreateIssueRequestConfidence;
+      /** @description The surviving issue, for a duplicate; null when the reader can't see it. */
+      duplicateOf?: string;
+      /** @description True when the reader can't see the surviving issue. */
+      duplicateOfHidden?: boolean;
+      /** @description The `entity:*` tags it concerns. */
+      entities?: {
+        [key: string]: string;
+      };
+      /**
+       * Format: date-time
+       * @description When it stops applying and closes, or null.
+       */
+      expiresAt?: string;
+      /**
+       * Format: int32
+       * @description How many of its comments are guidance from people.
+       */
+      guidanceCount?: number;
+      /** @description The issue id. */
+      id?: string;
+      /** @description Its categories. */
+      labels?: string[];
+      /**
+       * Format: date-time
+       * @description The latest sighting, or when it was filed.
+       */
+      lastSeenAt?: string;
+      /** @description Whether people have locked any field or label against agent changes. */
+      locked?: boolean;
+      /** @description The concrete next action, or null. */
+      nextStep?: string;
+      /**
+       * Format: int32
+       * @description The short per-organization handle.
+       */
+      number?: number;
+      /**
+       * Format: int32
+       * @description How many investigations sighted it.
+       */
+      occurrenceCount?: number;
+      /** @description The pipelines it concerns: its pipeline links' targets, then its `entity:pipeline`, without repeats. */
+      pipelineIds?: string[];
+      /**
+       * @description How soon someone should act.
+       * @enum {string}
+       */
+      priority?: CreateIssueRequestPriority;
+      /** @description Whether it reopened after being fixed. */
+      regressed?: boolean;
+      /**
+       * @description Why it closed, or null while open.
+       * @enum {string}
+       */
+      resolution?: IssueResolution;
+      /**
+       * Format: date-time
+       * @description When someone should check back, or null.
+       */
+      revisitAt?: string;
+      /** @description Its runs that haven't ended, oldest first: queued or working on it, handed, picked up or watching. */
+      runs?: components["schemas"]["IssueRun"][];
+      /**
+       * @description Where the issue is in its lifecycle.
+       * @enum {string}
+       */
+      state?: CreateIssueRequestState;
+      /** @description The teams that may see it. */
+      teamIds?: string[];
+      /** @description One line naming the problem. */
+      title?: string;
+      /**
+       * Format: date-time
+       * @description When it last changed.
+       */
+      updatedAt?: string;
+      /**
+       * Format: int32
+       * @description Its current version, for a follow-up update.
+       */
+      version?: number;
+      /** @description The agent watching it in Monitoring, or null. */
+      watchedBy?: string;
+    };
+    /** @description One issue's number and title, as a titles read answers each id it was sent. An issue the reader can't see, or one that doesn't exist, comes back as `{hidden: true}` alone, so the answer names nothing about it. */
+    IssueTitle: {
+      /** @description True when you can't see the issue, or it doesn't exist. */
+      hidden?: boolean | null;
+      /** @description Null when hidden. */
+      id?: string | null;
+      /**
+       * Format: int32
+       * @description Null when hidden.
+       */
+      number?: number | null;
+      /** @description Null when hidden. */
+      title?: string | null;
+    };
+    /** @description The answer to a titles read. */
+    IssueTitles: {
+      /** @description One entry per id sent, in the order sent. */
+      issues?: components["schemas"]["IssueTitle"][];
+    };
     ItemsCollectionAgentSuggestion: {
       /** @default [] */
       items?: components["schemas"]["AgentSuggestion"][];
@@ -7880,6 +8873,16 @@ export interface components {
       lastTriggeredAt: string;
       ruleEngineName: string;
       triggerId: string;
+    };
+    /** @description Joins an issue as an active assignee: an agent as itself, a person as themselves. Joining a Ready issue moves it to In progress; joining again after finishing makes the assignment active again. */
+    JoinIssueRequest: {
+      /** @description What the caller will do, or null. */
+      note?: string;
+      /**
+       * Format: int32
+       * @description The version the join was decided against, or null for whatever is current.
+       */
+      version?: number;
     };
     /** @description JSON file format. */
     JsonFileFormat: {
@@ -9103,10 +10106,10 @@ export interface components {
        */
       limit?: number;
       /**
-       * @default SEMANTIC
+       * @description The retrieval strategy. Leave it out for the server to pick: SEMANTIC when the agent searched has a semantic-search store and TEXT when it has none.
        * @enum {string}
        */
-      mode: MemorySearchRequestMode;
+      mode?: MemorySearchRequestMode;
       query?: string;
       /** Format: date-time */
       recordedAfter?: string;
@@ -10396,6 +11399,19 @@ export interface components {
        */
       type: PhraseNodeType;
     };
+    /** @description The filters an agent picks up Ready issues by; null means any. */
+    PickupFilters: {
+      /** @description Any of these values for each entity key. */
+      entities?: {
+        [key: string]: string[];
+      };
+      /** @description Every one of these labels. */
+      labels?: string[];
+      /** @description This priority or more urgent. */
+      priority?: string;
+      /** @description Any of these teams. */
+      teamIds?: string[];
+    };
     PipelineChangeRequest: {
       /** @description Whether to apply the change directly (true) or record it as a suggestion for a human to review (false). This expresses intent only: the server enforces the proposing agent's approval mode, so a suggest-only agent's change is always recorded as a suggestion no matter what is passed here. */
       autoApply?: boolean;
@@ -10460,6 +11476,20 @@ export interface components {
       date: string;
       /** @enum {string} */
       type: PlanType;
+    };
+    /** @description Posts a comment on an issue. Comments are allowed on closed issues too, so a person can leave guidance on an issue they closed as `IGNORED`. */
+    PostIssueCommentRequest: {
+      /** @description The markdown body. */
+      body: string;
+      /** @description Makes it guidance, advice every later investigation on the issue's entities weighs; people only. */
+      guidance?: boolean;
+      /** @description The locked field the comment proposes changing, named as in a `FIELD_LOCKED` error: a field such as `priority`, or `label:<label>`. */
+      lockedFieldProposal?: string;
+      /**
+       * Format: int32
+       * @description The version the comment was written against; a stale one is rejected with 409 and the current issue. Null posts against whatever is current.
+       */
+      version?: number;
     };
     PreserveAllAttributesMergeStrategy: {
       /** Format: int32 */
@@ -11847,6 +12877,58 @@ export interface components {
     } & (Omit<components["schemas"]["Data"], "resultType"> & {
       result?: Record<string, never>[];
     });
+    /** @description Filters for searching the issues the caller can see. Every filter is optional; all given filters must match. Results are ordered by full-text rank when `query` is given, else by latest sighting. */
+    SearchIssuesRequest: {
+      assignee?: components["schemas"]["IssueAssigneeFilter"];
+      /**
+       * Format: int32
+       * @description Include closed issues closed within this many days. Absent: 30 when `states` is absent, and no window when it is given.
+       */
+      closedWithinDays?: number;
+      /** @description The `nextCursor` of the previous page, sent with the same filters. */
+      cursor?: string;
+      /** @description Entity tags to match: every key must match, and any of a key's values matches it. An unprefixed key is put in the `entity:` namespace. */
+      entities?: {
+        [key: string]: string[];
+      };
+      /** @description Only issues with exactly this fingerprint. */
+      fingerprint?: string;
+      /** @description Only issues carrying every one of these labels. */
+      labels?: string[];
+      /**
+       * Format: int32
+       * @description The page size, at most 100; absent: 25.
+       */
+      limit?: number;
+      linkedTo?: components["schemas"]["IssueLinkRef"];
+      /**
+       * @description Only issues at this priority or more urgent.
+       * @enum {string}
+       */
+      priority?: CreateIssueRequestPriority;
+      /** @description Full-text search over titles, descriptions and comments. */
+      query?: string;
+      /** @description Only issues in these states. Absent: open issues plus those closed within `closedWithinDays`. */
+      states?: CreateIssueRequestState[];
+      /** @description Only issues one of these teams can see: linked to one of them, or shared with all teams. */
+      teamIds?: string[];
+      /**
+       * Format: date-time
+       * @description Only issues changed at or after this time.
+       */
+      updatedSince?: string;
+    };
+    /** @description A page of search results. Paging is best effort on a live board: an issue that changes between pages can move. */
+    SearchIssuesResponse: {
+      /** @description The matching issues on this page. */
+      items?: components["schemas"]["IssueSummary"][];
+      /** @description The labels most used on recent issues the caller can see, so a new issue reuses them; on the first page only, null after. */
+      labelsInUse?: string[];
+      /** @description Pass back as `cursor`, with the same filters, for the next page; null on the last page. */
+      nextCursor?: string;
+      /** @description Whether the search stopped after 500 rows; refine the filters to see the rest. */
+      truncated?: boolean;
+    };
     /** @description Secret wrapper for API responses */
     SecretApi: {
       /** @description The secret value */
@@ -11896,6 +12978,25 @@ export interface components {
     SetApiKeysRequest: {
       /** @description The complete desired set of API keys */
       keys: components["schemas"]["ApiKey"][];
+    };
+    /** @description Makes a person's comment guidance, or stops it being guidance; people only. */
+    SetCommentGuidanceRequest: {
+      /** @description Whether the comment is guidance, which agents weigh as advice. */
+      guidance: boolean;
+    };
+    /** @description Replaces an issue's locks; people only. A lock kept from before keeps who set it and when; a new one records the caller. Leaving a lock out unlocks it. */
+    SetIssueLocksRequest: {
+      /** @description The fields to keep locked. */
+      fields: SetIssueLocksRequestFields[];
+      /** @description The label locks to keep, keyed by label: `PRESENT` only for a label the issue has, `ABSENT` only for one it does not. */
+      labels: {
+        [key: string]: IssueLabelLockState;
+      };
+      /**
+       * Format: int32
+       * @description The version the lock set was read at; a stale one is rejected with 409.
+       */
+      version: number;
     };
     SeverityNode: {
       /**
@@ -12587,9 +13688,17 @@ export interface components {
     StartInvestigationRejectedResponse:
       | components["schemas"]["StartInvestigationResponse"]
       | components["schemas"]["StartInvestigationErrorResponse"];
+    /** @description Request body for the manual-trigger endpoint. The engineer's user identity is taken from the request's auth context, not the body. */
     StartInvestigationRequest: {
+      /** @description TSID of the agent to investigate. */
       agentId: string;
+      /** @description When set, hands the agent this issue (its TSID): the run's subject, which its known issues hold alone and whose history records the handoff. Only a person may hand off an issue, and a handoff can't be a continuation. `null` for a plain run. */
+      issueId?: string;
+      /** @description With `issueId`, true to have the agent work on the issue next: the run starts ahead of the agent's other queued runs, without stopping a running one. Allowed only with `issueId`; `null` or false for the usual place in the queue. */
+      next?: boolean;
+      /** @description When set, seeds the new investigation from this parent's journalled transcript — a continuation; the parent must belong to `agentId`. `null` for a fresh investigation. */
       parentInvestigationId?: string;
+      /** @description Free-form context for the agent's first turn, or `null`. */
       userProvidedContext?: string;
     };
     StartInvestigationResponse: {
@@ -13566,8 +14675,13 @@ export interface components {
       /** Format: int64 */
       sessionsUsing?: number;
     };
+    /** @description A user-selectable agent tool, surfaced so a UI can offer the set of tools an agent may enable. */
     ToolDescriptor: {
+      /** @description A short, human-readable summary of what the tool does. */
       description?: string;
+      /** @description The tool's name as people read it, such as "Query logs", or null where a catalog has none; left out of the JSON when null. */
+      label?: string;
+      /** @description The tool name, matching what the worker registers and validates against an agent's `enabledTools`. */
       name?: string;
     };
     Totals: {
@@ -13966,6 +15080,34 @@ export interface components {
       preParser?: components["schemas"]["ChainNode"];
       preWarehouse?: components["schemas"]["ChainNode"];
     };
+    /** @description Moves an issue to another state, checked against the state machine. */
+    TransitionIssueRequest: {
+      /** @description A comment posted with the transition, in the same transaction; required, with new evidence, when an agent reopens a `NOT_A_PROBLEM` issue. */
+      comment?: string;
+      /** @description The surviving issue's id or number; required exactly when `resolution` is `DUPLICATE`. */
+      duplicateOf?: string;
+      /** @description Evidence added to the issue with the transition. */
+      evidence?: components["schemas"]["IssueEvidence"][];
+      /** @description Lets a person move to Monitoring or Closed while assignees are still active; people only. */
+      force?: boolean;
+      /** @description Makes `comment` a guidance comment, which agents weigh; people only, so closing as `IGNORED` with guidance is one call. */
+      guidance?: boolean;
+      /**
+       * @description Why it closes; required when `to` is `CLOSED`, absent otherwise.
+       * @enum {string}
+       */
+      resolution?: IssueResolution;
+      /**
+       * @description The target state. Moving an open issue to the state it is already in changes no state but still applies `comment` and `evidence`; it rejects `resolution`, `duplicateOf` and `force`, which need a state change.
+       * @enum {string}
+       */
+      to: CreateIssueRequestState;
+      /**
+       * Format: int32
+       * @description The version the transition was decided against, or null to apply it to whatever is current.
+       */
+      version?: number;
+    };
     /**
      * @description Base class of all Triggers
      * @example {
@@ -14246,6 +15388,56 @@ export interface components {
     };
     Update: {
       name: string;
+    };
+    /** @description A partial update. An absent field is left unchanged, a present one is set, and an optional field named in `clear` is emptied. State, resolution and `duplicateOf` change only through transitions. */
+    UpdateIssueRequest: {
+      /** @description Optional fields to empty. */
+      clear?: UpdateIssueRequestClear[];
+      /**
+       * @description A new confidence.
+       * @enum {string}
+       */
+      confidence?: CreateIssueRequestConfidence;
+      /** @description A new description, replacing the old one. */
+      description?: string;
+      /** @description New entity tags, replacing the old ones; a person's change locks them. */
+      entities?: {
+        [key: string]: string;
+      };
+      /** @description New evidence, replacing the old list. */
+      evidence?: components["schemas"]["IssueEvidence"][];
+      /**
+       * Format: date-time
+       * @description A new expiry.
+       */
+      expiresAt?: string;
+      /** @description A new fingerprint. */
+      fingerprint?: string;
+      /** @description New labels, replacing the old list; a person's additions and removals lock those labels. */
+      labels?: string[];
+      /** @description New links, replacing the old list. */
+      links?: components["schemas"]["IssueLink"][];
+      /** @description A new next step. */
+      nextStep?: string;
+      /**
+       * @description A new priority; a person's change locks it against agents.
+       * @enum {string}
+       */
+      priority?: CreateIssueRequestPriority;
+      /**
+       * Format: date-time
+       * @description A new revisit time.
+       */
+      revisitAt?: string;
+      /** @description New teams; people only, adding or removing only teams they can edit issues of. */
+      teamIds?: string[];
+      /** @description A new title. */
+      title?: string;
+      /**
+       * Format: int32
+       * @description The version the change was made against; a stale one is rejected with 409 and the current issue.
+       */
+      version: number;
     };
     /** @description Attributes of the Grepr Job to update */
     UpdateJob: {
@@ -15131,6 +16323,8 @@ export type SchemaAgentConfigUpdate =
 export type SchemaAgentDetail = components["schemas"]["AgentDetail"];
 export type SchemaAgentInvestigationMetrics =
   components["schemas"]["AgentInvestigationMetrics"];
+export type SchemaAgentIssuePickup = components["schemas"]["AgentIssuePickup"];
+export type SchemaAgentIssueScopes = components["schemas"]["AgentIssueScopes"];
 export type SchemaAgentLogProcessor =
   components["schemas"]["AgentLogProcessor"];
 export type SchemaAgentMaxTokensStatus =
@@ -15311,6 +16505,8 @@ export type SchemaCreateChatRequest =
   components["schemas"]["CreateChatRequest"];
 export type SchemaCreateChatResponse =
   components["schemas"]["CreateChatResponse"];
+export type SchemaCreateIssueRequest =
+  components["schemas"]["CreateIssueRequest"];
 export type SchemaCreateJob = components["schemas"]["CreateJob"];
 export type SchemaCreateLogsBackfillJob =
   components["schemas"]["CreateLogsBackfillJob"];
@@ -15359,6 +16555,8 @@ export type SchemaDropNode = components["schemas"]["DropNode"];
 export type SchemaDropRule = components["schemas"]["DropRule"];
 export type SchemaEarliestReadingStrategy =
   components["schemas"]["EarliestReadingStrategy"];
+export type SchemaEditIssueCommentRequest =
+  components["schemas"]["EditIssueCommentRequest"];
 export type SchemaEffectivePartitionField =
   components["schemas"]["EffectivePartitionField"];
 export type SchemaEntityRef = components["schemas"]["EntityRef"];
@@ -15387,6 +16585,8 @@ export type SchemaFileFormat = components["schemas"]["FileFormat"];
 export type SchemaFileReadingStrategy =
   components["schemas"]["FileReadingStrategy"];
 export type SchemaFilterPrimitive = components["schemas"]["FilterPrimitive"];
+export type SchemaFinishAssignmentRequest =
+  components["schemas"]["FinishAssignmentRequest"];
 export type SchemaFrontendConfig = components["schemas"]["FrontendConfig"];
 export type SchemaGemini = components["schemas"]["Gemini"];
 export type SchemaGithubMcp = components["schemas"]["GithubMcp"];
@@ -15445,6 +16645,39 @@ export type SchemaInvestigationsList =
   components["schemas"]["InvestigationsList"];
 export type SchemaInvitationsList = components["schemas"]["InvitationsList"];
 export type SchemaInvitee = components["schemas"]["Invitee"];
+export type SchemaIssue = components["schemas"]["Issue"];
+export type SchemaIssueAccessScopes =
+  components["schemas"]["IssueAccessScopes"];
+export type SchemaIssueActor = components["schemas"]["IssueActor"];
+export type SchemaIssueAssigneeFilter =
+  components["schemas"]["IssueAssigneeFilter"];
+export type SchemaIssueAssigneeRef = components["schemas"]["IssueAssigneeRef"];
+export type SchemaIssueAssignees = components["schemas"]["IssueAssignees"];
+export type SchemaIssueAssignment = components["schemas"]["IssueAssignment"];
+export type SchemaIssueComment = components["schemas"]["IssueComment"];
+export type SchemaIssueCommentsPage =
+  components["schemas"]["IssueCommentsPage"];
+export type SchemaIssueDetail = components["schemas"]["IssueDetail"];
+export type SchemaIssueErrorResponse =
+  components["schemas"]["IssueErrorResponse"];
+export type SchemaIssueEvent = components["schemas"]["IssueEvent"];
+export type SchemaIssueEventsPage = components["schemas"]["IssueEventsPage"];
+export type SchemaIssueEvidence = components["schemas"]["IssueEvidence"];
+export type SchemaIssueFieldChange = components["schemas"]["IssueFieldChange"];
+export type SchemaIssueFieldLock = components["schemas"]["IssueFieldLock"];
+export type SchemaIssueGuidanceRead =
+  components["schemas"]["IssueGuidanceRead"];
+export type SchemaIssueGuidanceReads =
+  components["schemas"]["IssueGuidanceReads"];
+export type SchemaIssueLabelLock = components["schemas"]["IssueLabelLock"];
+export type SchemaIssueLink = components["schemas"]["IssueLink"];
+export type SchemaIssueLinkRef = components["schemas"]["IssueLinkRef"];
+export type SchemaIssueLocks = components["schemas"]["IssueLocks"];
+export type SchemaIssueRun = components["schemas"]["IssueRun"];
+export type SchemaIssueScopeView = components["schemas"]["IssueScopeView"];
+export type SchemaIssueSummary = components["schemas"]["IssueSummary"];
+export type SchemaIssueTitle = components["schemas"]["IssueTitle"];
+export type SchemaIssueTitles = components["schemas"]["IssueTitles"];
 export type SchemaItemsCollectionAgentSuggestion =
   components["schemas"]["ItemsCollectionAgentSuggestion"];
 export type SchemaItemsCollectionInvestigationSummary =
@@ -15502,6 +16735,7 @@ export type SchemaItemsCollectionVendorImportedException =
 export type SchemaJobAction = components["schemas"]["JobAction"];
 export type SchemaJobActionRule = components["schemas"]["JobActionRule"];
 export type SchemaJobAnomaly = components["schemas"]["JobAnomaly"];
+export type SchemaJoinIssueRequest = components["schemas"]["JoinIssueRequest"];
 export type SchemaJsonFileFormat = components["schemas"]["JsonFileFormat"];
 export type SchemaJsonLogEventMapper =
   components["schemas"]["JsonLogEventMapper"];
@@ -15663,6 +16897,7 @@ export type SchemaPeriodEntry = components["schemas"]["PeriodEntry"];
 export type SchemaPermissionReplyRequest =
   components["schemas"]["PermissionReplyRequest"];
 export type SchemaPhraseNode = components["schemas"]["PhraseNode"];
+export type SchemaPickupFilters = components["schemas"]["PickupFilters"];
 export type SchemaPipelineChangeRequest =
   components["schemas"]["PipelineChangeRequest"];
 export type SchemaPipelineChangeResult =
@@ -15672,6 +16907,8 @@ export type SchemaPipelineStatus = components["schemas"]["PipelineStatus"];
 export type SchemaPlan = components["schemas"]["Plan"];
 export type SchemaPlanChangeRequest =
   components["schemas"]["PlanChangeRequest"];
+export type SchemaPostIssueCommentRequest =
+  components["schemas"]["PostIssueCommentRequest"];
 export type SchemaPreserveAllAttributesMergeStrategy =
   components["schemas"]["PreserveAllAttributesMergeStrategy"];
 export type SchemaPresignedUploadUrlResponse =
@@ -15757,6 +16994,10 @@ export type SchemaSamplingAttributesMergeStrategy =
   components["schemas"]["SamplingAttributesMergeStrategy"];
 export type SchemaSamplingConfig = components["schemas"]["SamplingConfig"];
 export type SchemaScalarData = components["schemas"]["ScalarData"];
+export type SchemaSearchIssuesRequest =
+  components["schemas"]["SearchIssuesRequest"];
+export type SchemaSearchIssuesResponse =
+  components["schemas"]["SearchIssuesResponse"];
 export type SchemaSecretApi = components["schemas"]["SecretApi"];
 export type SchemaServiceAccountRead =
   components["schemas"]["ServiceAccountRead"];
@@ -15766,6 +17007,10 @@ export type SchemaServiceAccountsList =
   components["schemas"]["ServiceAccountsList"];
 export type SchemaSetApiKeysRequest =
   components["schemas"]["SetApiKeysRequest"];
+export type SchemaSetCommentGuidanceRequest =
+  components["schemas"]["SetCommentGuidanceRequest"];
+export type SchemaSetIssueLocksRequest =
+  components["schemas"]["SetIssueLocksRequest"];
 export type SchemaSeverityNode = components["schemas"]["SeverityNode"];
 export type SchemaShardingConfig = components["schemas"]["ShardingConfig"];
 export type SchemaSiblingMergeRule = components["schemas"]["SiblingMergeRule"];
@@ -15914,6 +17159,8 @@ export type SchemaTranscriptTurn = components["schemas"]["TranscriptTurn"];
 export type SchemaTranscriptTurnsList =
   components["schemas"]["TranscriptTurnsList"];
 export type SchemaTransforms = components["schemas"]["Transforms"];
+export type SchemaTransitionIssueRequest =
+  components["schemas"]["TransitionIssueRequest"];
 export type SchemaTrigger = components["schemas"]["Trigger"];
 export type SchemaTriggerActionOp = components["schemas"]["TriggerActionOp"];
 export type SchemaTriggerSignal = components["schemas"]["TriggerSignal"];
@@ -15932,6 +17179,8 @@ export type SchemaTypeInformationObject =
 export type SchemaUnparseableException =
   components["schemas"]["UnparseableException"];
 export type SchemaUpdate = components["schemas"]["Update"];
+export type SchemaUpdateIssueRequest =
+  components["schemas"]["UpdateIssueRequest"];
 export type SchemaUpdateJob = components["schemas"]["UpdateJob"];
 export type SchemaUpdateRole = components["schemas"]["UpdateRole"];
 export type SchemaUpdateServiceAccount =
@@ -16845,7 +18094,7 @@ export interface operations {
         statuses?: string[];
         /** @description Whether the investigation has recorded actions; absent for either */
         hasActions?: boolean;
-        /** @description Signal types to include; repeat for multiple. Absent for all. */
+        /** @description Triggers to include; repeat for multiple. Absent for all. ISSUE is a run started on an issue, handed by a person or picked up from the board; MANUAL is then a Run now only. */
         triggers?: PathsV1AgentsIdInvestigationsGetParametersQueryTriggers[];
       };
       header?: never;
@@ -16867,6 +18116,42 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  issueReach: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Issue reach retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentIssueScopes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent not found */
+      404: {
         headers: {
           [name: string]: unknown;
         };
@@ -23672,6 +24957,13 @@ export interface operations {
           "application/json": components["schemas"]["StartInvestigationResponse"];
         };
       };
+      /** @description An invalid continuation, or a handoff that is also a continuation or to an agent with no issue tools (a handoff's refusals carry an issue error body) */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
       /** @description Unauthorized */
       401: {
         headers: {
@@ -23679,8 +24971,22 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description Agent not found */
+      /** @description No permission to run investigations, or a handoff by anyone but a person, by a person who may not edit the issue, or to an agent that may not view and edit it */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent not found, or the handed issue doesn't exist or the caller can't see it */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The agent is paused or the continued investigation is still active, or a handoff of a closed issue or to an agent a person removed from it */
+      409: {
         headers: {
           [name: string]: unknown;
         };
@@ -24085,6 +25391,963 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  create_14: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateIssueRequest"];
+      };
+    };
+    responses: {
+      /** @description Issue filed */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Issue"];
+        };
+      };
+      /** @description Invalid issue, or a field only people may set */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No permission to file issues, or to share them with the given teams */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+    };
+  };
+  access: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Access retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueAccessScopes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  search_1: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SearchIssuesRequest"];
+      };
+    };
+    responses: {
+      /** @description Search results */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SearchIssuesResponse"];
+        };
+      };
+      /** @description Invalid filters, or a cursor from another search */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No permission to view issues */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  titles: {
+    parameters: {
+      query?: {
+        id?: string[];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Titles retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueTitles"];
+        };
+      };
+      /** @description More than 100 ids */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  get_16: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        idOrNumber: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Issue retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueDetail"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Issue not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  update_12: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        idOrNumber: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateIssueRequest"];
+      };
+    };
+    responses: {
+      /** @description Issue updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Issue"];
+        };
+      };
+      /** @description Invalid update, or a field only people may set */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No permission to edit the issue */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Issue not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Stale version, or a field a person locked */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+    };
+  };
+  join: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        idOrNumber: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["JoinIssueRequest"];
+      };
+    };
+    responses: {
+      /** @description Joined */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueAssignees"];
+        };
+      };
+      /** @description The issue is closed */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No permission to edit the issue */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Issue not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Stale version; the body carries the current issue */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+    };
+  };
+  finishAssignment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        idOrNumber: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FinishAssignmentRequest"];
+      };
+    };
+    responses: {
+      /** @description Finished */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueAssignees"];
+        };
+      };
+      /** @description The caller is not assigned */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No permission to edit the issue */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Issue not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Stale version; the body carries the current issue */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+    };
+  };
+  removeAssignee: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        idOrNumber: string;
+        assigneeKind: PathsV1IssuesIdOrNumberAssigneesAssigneeKindAssigneeIdDeleteParametersPathAssigneeKind;
+        assigneeId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Removed */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueAssignees"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not a person, or no permission to edit the issue */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Issue not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  comments: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        idOrNumber: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Comments retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueCommentsPage"];
+        };
+      };
+      /** @description Malformed cursor */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Issue not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  comment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        idOrNumber: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PostIssueCommentRequest"];
+      };
+    };
+    responses: {
+      /** @description Comment posted */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueComment"];
+        };
+      };
+      /** @description Guidance from an agent, or a bad proposal */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No permission to edit the issue */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Issue not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Stale version; the body carries the current issue */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+    };
+  };
+  editComment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        idOrNumber: string;
+        commentId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EditIssueCommentRequest"];
+      };
+    };
+    responses: {
+      /** @description Comment edited */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueComment"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not a person, not the comment's author, or no permission to edit */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Issue or comment not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The issue changed since the given version */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+    };
+  };
+  deleteComment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        idOrNumber: string;
+        commentId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Comment deleted */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not a person, not the comment's author, or no permission to edit */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Issue or comment not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  setCommentGuidance: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        idOrNumber: string;
+        commentId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SetCommentGuidanceRequest"];
+      };
+    };
+    responses: {
+      /** @description Comment updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueComment"];
+        };
+      };
+      /** @description The comment is an agent's */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not a person, or no permission to edit the issue */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Issue or comment not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  events: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+        kind?: PathsV1IssuesIdOrNumberEventsGetParametersQueryKind[];
+      };
+      header?: never;
+      path: {
+        idOrNumber: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description History retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueEventsPage"];
+        };
+      };
+      /** @description Malformed cursor, or one issued for other kinds */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Issue not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  setLocks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        idOrNumber: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SetIssueLocksRequest"];
+      };
+    };
+    responses: {
+      /** @description Locks set */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Issue"];
+        };
+      };
+      /** @description A label lock contradicts the issue's labels */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No permission, or not a person */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Issue not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Stale version */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+    };
+  };
+  recordOccurrence: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        idOrNumber: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Sighting recorded */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Issue"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not an agent's investigation, or no permission to edit the issue */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Issue not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description ISSUE_EXPIRED: file a new issue. VERSION_CONFLICT: the issue kept changing; retry once. INVALID_DUPLICATE: the issue it duplicates no longer exists */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+    };
+  };
+  transition: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        idOrNumber: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TransitionIssueRequest"];
+      };
+    };
+    responses: {
+      /** @description Issue transitioned */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Issue"];
+        };
+      };
+      /** @description The state machine does not allow the transition */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No permission, or a transition reserved for people */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Issue not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Stale version, active assignees, or an expired issue */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
       };
     };
   };
@@ -26875,12 +29138,32 @@ export enum PathsV1AgentSuggestionsGetParametersQueryStatus {
 }
 export enum PathsV1AgentsIdInvestigationsGetParametersQueryTriggers {
   MANUAL = "MANUAL",
+  ISSUE = "ISSUE",
   WEBHOOK_SIGNAL = "WEBHOOK_SIGNAL",
   LOG_PATTERN_SIGNAL = "LOG_PATTERN_SIGNAL",
+  PIPELINE_SIGNAL = "PIPELINE_SIGNAL",
 }
 export enum PathsV1FilesUploadPresignedUrlPostParametersQueryFormat {
   json = "json",
   plaintext = "plaintext",
+}
+export enum PathsV1IssuesIdOrNumberAssigneesAssigneeKindAssigneeIdDeleteParametersPathAssigneeKind {
+  PERSON = "PERSON",
+  AGENT = "AGENT",
+}
+export enum PathsV1IssuesIdOrNumberEventsGetParametersQueryKind {
+  CREATED = "CREATED",
+  UPDATED = "UPDATED",
+  TRANSITIONED = "TRANSITIONED",
+  LOCKS_CHANGED = "LOCKS_CHANGED",
+  COMMENTED = "COMMENTED",
+  GUIDANCE_CHANGED = "GUIDANCE_CHANGED",
+  COMMENT_EDITED = "COMMENT_EDITED",
+  COMMENT_DELETED = "COMMENT_DELETED",
+  ASSIGNMENT_CHANGED = "ASSIGNMENT_CHANGED",
+  OCCURRED = "OCCURRED",
+  HANDED_OFF = "HANDED_OFF",
+  RUN_NOT_STARTED = "RUN_NOT_STARTED",
 }
 export enum PathsV1JobsGetParametersQueryExecution {
   SYNCHRONOUS = "SYNCHRONOUS",
@@ -26937,6 +29220,10 @@ export enum AgentConfigCreateChangeApprovalMode {
 export enum AgentConfigCreateConcurrencyLimitPolicy {
   QUEUE = "QUEUE",
   DISCARD = "DISCARD",
+}
+export enum AgentConfigCreateIssueHandoffMode {
+  REQUIRE_TRIAGE = "REQUIRE_TRIAGE",
+  ALLOW_READY = "ALLOW_READY",
 }
 export enum AgentLogProcessorType {
   agent_log_processor = "agent-log-processor",
@@ -27157,6 +29444,25 @@ export enum ConditionNodeKind {
 export enum ConstantSamplingType {
   constant_sampling = "constant-sampling",
 }
+export enum CreateIssueRequestConfidence {
+  CONFIRMED = "CONFIRMED",
+  LIKELY = "LIKELY",
+  UNVERIFIED = "UNVERIFIED",
+}
+export enum CreateIssueRequestPriority {
+  P0 = "P0",
+  P1 = "P1",
+  P2 = "P2",
+  P3 = "P3",
+}
+export enum CreateIssueRequestState {
+  TRIAGE = "TRIAGE",
+  READY = "READY",
+  IN_PROGRESS = "IN_PROGRESS",
+  WAITING = "WAITING",
+  MONITORING = "MONITORING",
+  CLOSED = "CLOSED",
+}
 export enum CreateLogsBackfillJobDataType {
   logs = "logs",
 }
@@ -27286,6 +29592,51 @@ export enum InvestigationSummaryStatus {
   FAILED = "FAILED",
   CANCELLED = "CANCELLED",
   DISCARDED = "DISCARDED",
+}
+export enum IssueResolution {
+  FIXED = "FIXED",
+  DUPLICATE = "DUPLICATE",
+  NOT_A_PROBLEM = "NOT_A_PROBLEM",
+  IGNORED = "IGNORED",
+  OBSOLETE = "OBSOLETE",
+  EXPIRED = "EXPIRED",
+}
+export enum IssueActorKind {
+  PERSON = "PERSON",
+  AGENT = "AGENT",
+  SYSTEM = "SYSTEM",
+}
+export enum IssueAssigneeFilterKind {
+  ME = "ME",
+  UNASSIGNED = "UNASSIGNED",
+  AGENT = "AGENT",
+  PERSON = "PERSON",
+}
+export enum IssueAssignmentStatus {
+  ACTIVE = "ACTIVE",
+  DONE = "DONE",
+}
+export enum IssueChannel {
+  REST = "REST",
+  MCP = "MCP",
+  SYSTEM = "SYSTEM",
+}
+export enum IssueEvidenceKind {
+  LOG_QUERY = "LOG_QUERY",
+  EVENT = "EVENT",
+  URL = "URL",
+}
+export enum IssueLabelLockState {
+  PRESENT = "PRESENT",
+  ABSENT = "ABSENT",
+}
+export enum IssueLinkKind {
+  PIPELINE = "PIPELINE",
+  INVESTIGATION = "INVESTIGATION",
+  MEMORY = "MEMORY",
+  AGENT_SUGGESTION = "AGENT_SUGGESTION",
+  EXTERNAL = "EXTERNAL",
+  ISSUE = "ISSUE",
 }
 export enum JobActionRuleType {
   job_rule = "job-rule",
@@ -27605,12 +29956,19 @@ export enum ResourceFilterResourceType {
   SERVICE_ACCOUNT = "SERVICE_ACCOUNT",
   ORGANIZATION = "ORGANIZATION",
   BILLING = "BILLING",
+  ISSUE = "ISSUE",
 }
 export enum S3LogsFileSourceType {
   s3_file_source = "s3-file-source",
 }
 export enum SamplingAttributesMergeStrategyType {
   sample = "sample",
+}
+export enum SetIssueLocksRequestFields {
+  PRIORITY = "PRIORITY",
+  ENTITIES = "ENTITIES",
+  EXPIRES_AT = "EXPIRES_AT",
+  ASSIGNEES = "ASSIGNEES",
 }
 export enum SeverityNodeType {
   severity_node = "severity-node",
@@ -27808,6 +30166,7 @@ export enum TranscriptMessageRole {
   USER = "USER",
   ASSISTANT = "ASSISTANT",
   TOOL_RESULT = "TOOL_RESULT",
+  KNOWN_ISSUES = "KNOWN_ISSUES",
 }
 export enum TriggerActionOpType {
   trigger_action = "trigger-action",
@@ -27823,6 +30182,15 @@ export enum TrinoRawSpanSourceType {
 }
 export enum TrinoReducerLogSourceType {
   trino_reducer_log_source = "trino-reducer-log-source",
+}
+export enum UpdateIssueRequestClear {
+  NEXT_STEP = "NEXT_STEP",
+  REVISIT_AT = "REVISIT_AT",
+  EXPIRES_AT = "EXPIRES_AT",
+  EVIDENCE = "EVIDENCE",
+  LINKS = "LINKS",
+  LABELS = "LABELS",
+  FINGERPRINT = "FINGERPRINT",
 }
 export enum UsageStatusState {
   OK = "OK",

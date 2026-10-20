@@ -278,9 +278,9 @@ export class GreprQueryCLI {
   /**
    * When GREPR_ALLOWED_SUBCOMMANDS is set (sandboxed/embedded use), expose ONLY the whitelisted
    * subcommands: any command whose name does not start with an allowed prefix is removed, so it is
-   * both absent from `--help` and rejected as an unknown command on invocation (commander routes
-   * and renders help off this same array). Unset => no filtering (normal CLI); set-but-empty => no
-   * subcommands are exposed.
+   * absent from `--help` (commander routes and renders help off this same array), and a hidden
+   * stand-in takes its place that says it isn't available. Unset => no filtering (normal CLI);
+   * set-but-empty => no subcommands are exposed.
    */
   private applyCommandAllowlist(): void {
     const raw = process.env.GREPR_ALLOWED_SUBCOMMANDS;
@@ -302,8 +302,51 @@ export class GreprQueryCLI {
     // assertion is unavoidable here.
     const commands = this.program.commands as Command[];
     const allowedCommands = commands.filter((command) => isAllowed(command.name()));
+    const removedCommands = commands.filter((command) => !isAllowed(command.name()));
     commands.length = 0;
     commands.push(...allowedCommands);
+    this.addUnavailableStandIns(removedCommands, allowedCommands.map((command) => command.name()));
+  }
+
+  /**
+   * Registers a hidden stand-in under each removed command's name and aliases, so calling one says
+   * it isn't available, rather than failing as an unknown command or, with nothing allowed, as an
+   * unknown option of the root program (which sends an agent chasing its syntax). Hidden, the
+   * stand-ins stay out of help. The message names no reason beyond availability: tools, skills and
+   * the memory setting all shape the allowlist.
+   */
+  private addUnavailableStandIns(removed: Command[], available: string[]): void {
+    const program = this.program;
+    for (const command of removed) {
+      const refuse = (): never =>
+        program.error(
+          `error: grepr ${command.name()} isn't available to this agent. ` +
+            (available.length > 0
+              ? `Available grepr commands: ${available.join(', ')}.`
+              : 'No grepr commands are available to it.'),
+          { exitCode: 1, code: 'grepr.commandUnavailable' }
+        );
+      // A fresh command, never the removed one, so nothing the real command does can run. It takes
+      // any options; commander already allows extra arguments.
+      const standIn = new UnavailableCommand(command.name(), refuse)
+        .aliases(command.aliases())
+        .helpOption(false)
+        .allowUnknownOption()
+        .action(refuse);
+      program.addCommand(standIn, { hidden: true });
+    }
+  }
+}
+
+/** A command the allowlist removed: running it, or asking for its help, refuses instead. */
+class UnavailableCommand extends Command {
+  constructor(name: string, private readonly refuse: () => never) {
+    super(name);
+  }
+
+  // commander's `help <command>` calls the command's help() directly, past its options and action.
+  override help(): never {
+    return this.refuse();
   }
 }
 

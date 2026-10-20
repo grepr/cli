@@ -497,6 +497,12 @@ const pageMap = [
         type: "page",
         title: "Remember past investigations",
       },
+      {
+        name: "issue-board",
+        route: "/ai-agents/issue-board",
+        type: "page",
+        title: "Work on issues with AI agents",
+      },
     ],
   },
   {

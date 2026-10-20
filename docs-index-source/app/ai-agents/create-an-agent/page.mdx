@@ -18,7 +18,7 @@ Before you create an agent, you need:
 
 ## Create an agent [#create]
 
-On the **Agents** page, click **Create agent**. The **Create agent** wizard collects the agent's settings in six steps, and you can move between steps with **Back** and **Continue** or by clicking a step in the stepper. The agent is created when you click **Create agent** on the last step, so you can revise any step before then.
+On the **Agents** page, click **Create agent**. The **Create agent** wizard collects the agent's settings in five steps, and you can move between steps with **Back** and **Continue** or by clicking a step in the stepper. The agent is created when you click **Create agent** on the last step, so you can revise any step before then.
 
 ![The Agents page listing existing agents with their investigation activity, alongside the Create agent card.](/images/ai-agents/agents-gallery.png)
 
@@ -45,17 +45,15 @@ Investigations are long-running and tool-heavy, so the model you choose changes 
 
 The **Capabilities** step is where you choose the service account the agent acts as, the tools and skills it can use, the MCP servers it can call, and whether the pipeline changes it proposes need your approval. To learn more, see [_](/ai-agents/capabilities).
 
-### Step 4: Configure memory [#step4-memory]
+The step ends with the **Memory and issues** section, which is collapsed. Every new agent records memories and works on issues, so open the section to turn off **Remember past investigations** or **Works on issues**, to set the store for searching memories by meaning, or to choose **Allow Ready** so the agent can file issues in Ready and move issues there. Every agent can search and read memories and issues, whichever switches are on. To learn more about memory, see [_](/ai-agents/memory). To learn more about how agents work on issues and pick up Ready issues, see [_](/ai-agents/issue-board).
 
-The **Memory** step is where you decide whether the agent keeps and searches conclusions from its past investigations. To learn more, see [_](/ai-agents/memory).
-
-### Step 5: Subscribe to signal sources [#step5-subscriptions]
+### Step 4: Subscribe to signal sources [#step4-subscriptions]
 
 The **Subscriptions** step is where you connect the agent to the pipelines and Grepr Agent integrations whose signals it investigates. You can leave it empty and subscribe later from the agent's page. To learn more, see [_](/ai-agents/subscriptions).
 
-### Step 6: Review and create [#step6-review]
+### Step 5: Review and create [#step5-review]
 
-The **Review** step lists every setting you chose. Check the system prompt, the model, the abilities and tools, and the subscriptions, then click **Create agent**.
+The **Review** step lists every setting you chose. Check the system prompt, the model, the abilities and tools, what the agent does with memories and issues, and the subscriptions, then click **Create agent**.
 
 ![The Review step of the Create agent wizard, summarizing the name, system prompt, model, concurrency, sandbox, and abilities.](/images/ai-agents/create-agent-review.png)
 
@@ -125,7 +123,7 @@ When a token budget is exhausted, new investigations stop starting and resume wh
 An agent's settings are spread across the steps on its page, which hold the same fields as the wizard:
 
 - **Behavior** holds the name, the system prompt, the model, and the limits.
-- **Capabilities** holds the service account, the tools, the skills, the MCP integrations, and the change approval mode.
+- **Capabilities** holds the service account, the tools, the skills, the MCP integrations, the change approval mode, and the **Memory and issues** section, which holds whether the agent works on issues.
 - **Memories** holds the memory settings and, below them, the memories the agent recorded.
 
 Changes to the settings on these three steps are held until you click **Save Changes**, so you can revise several steps in one pass. To abandon them, click **Discard Changes**. Subscriptions are not part of this and apply as soon as you make them. Neither are changes to individual memories on the **Memories** step: an edit, a verdict, or a delete applies as soon as you confirm it, and **Discard Changes** does not undo it.
