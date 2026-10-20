@@ -1,6 +1,6 @@
 {
   "name": "@grepr/cli",
-  "version": "1.12.4-0c9a573",
+  "version": "1.12.4-72bc3a9",
   "description": "Official Grepr CLI tool for submitting synchronous batch jobs with OAuth authentication",
   "main": "build/dist/grepr.js",
   "type": "module",

@@ -1665,6 +1665,58 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/grepr-pipe": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List all Grepr pipe integrations
+     * @description Get all Grepr pipe integrations.
+     */
+    get: operations["listGreprPipeIntegrations"];
+    put?: never;
+    /**
+     * Create a Grepr pipe integration
+     * @description Creates a pipe that pipelines write log events into with a pipe sink and read them from with a pipe source.
+     */
+    post: operations["createGreprPipeIntegration"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/grepr-pipe/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get a Grepr pipe integration
+     * @description Get a Grepr pipe integration.
+     */
+    get: operations["getGreprPipeIntegration"];
+    /**
+     * Update a Grepr pipe integration.
+     * @description Updates a Grepr pipe integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
+     */
+    put: operations["updateGreprPipeIntegration"];
+    post?: never;
+    /**
+     * Delete a Grepr pipe integration
+     * @description Deletes a Grepr pipe integration and its topic. Rejected while a pipeline uses it. No-op if already deleted.
+     */
+    delete: operations["deleteGreprPipeIntegration"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/integrations/litellm": {
     parameters: {
       query?: never;
@@ -7565,6 +7617,37 @@ export interface components {
        */
       type: GreprMetricsSourceType;
     };
+    /** @description The payload containing integration data. */
+    GreprPipe: Record<string, never>;
+    /** @description Writes log events into a Grepr pipe integration. */
+    GreprPipeLogSink: {
+      /** @description Destination Grepr pipe integration in the pipeline's organization. */
+      integrationId: string;
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: GreprPipeLogSinkType;
+    };
+    GreprPipeLogSource: {
+      /** @description The integration id for the observability vendor. */
+      integrationId: string;
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Strategy for resetting Kafka consumer offset when no committed offset exists or has expired. EARLIEST reads from oldest available offset (prevents data loss on restart after retention period). LATEST skips to newest offset (current behavior).
+       * @default LATEST
+       * @enum {string}
+       */
+      offsetResetStrategy?: DatadogLogAgentSourceOffsetResetStrategy;
+      /**
+       * @description Reads log events that other pipelines write into a Grepr pipe. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: GreprPipeLogSourceType;
+    };
     GreprRawLogsSource: {
       /** @description The ID of the dataset to read data from. */
       datasetId: string;
@@ -8777,6 +8860,10 @@ export interface components {
     ItemsCollectionReadGithubMcp: {
       /** @default [] */
       items?: components["schemas"]["ReadGithubMcp"][];
+    };
+    ItemsCollectionReadGreprPipe: {
+      /** @default [] */
+      items?: components["schemas"]["ReadGreprPipe"][];
     };
     ItemsCollectionReadInvitation: {
       /** @default [] */
@@ -10855,6 +10942,8 @@ export interface components {
       | components["schemas"]["QuerySink"]
       | components["schemas"]["AgentSignalSink"]
       | components["schemas"]["DiscardingSink"]
+      | components["schemas"]["GreprPipeLogSource"]
+      | components["schemas"]["GreprPipeLogSink"]
       | components["schemas"]["DatadogMetricsSink"]
       | components["schemas"]["LegacyDatadogMetricsSink"]
       | components["schemas"]["AthenaAnalyticsSource"]
@@ -11956,6 +12045,43 @@ export interface components {
        */
       version: number;
     };
+    ReadGreprPipe: {
+      /**
+       * Format: date-time
+       * @description Timestamp when the integration was created.
+       */
+      readonly createdAt: string;
+      /** @description The integration id */
+      id: string;
+      /** @description List of job IDs associated with the integration. */
+      jobIds: string[];
+      /**
+       * @description Name of the integration.
+       * @example my_integration
+       */
+      name: string;
+      /** @description Organization ID of the integration. */
+      organizationId: string;
+      payload: components["schemas"]["GreprPipe"];
+      /** @description The team IDs that this integration is associated with. */
+      teamIds?: string[];
+      /**
+       * @description The type of the integration. This is used to determine the payload type.
+       * @enum {string}
+       */
+      type: ReadGreprPipeType;
+      /**
+       * Format: date-time
+       * @description Timestamp when the integration was last updated.
+       */
+      readonly updatedAt: string;
+      /**
+       * Format: int32
+       * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
+       * @example 0
+       */
+      version: number;
+    };
     ReadInvitation: {
       /** Format: date-time */
       createdAt?: string;
@@ -12183,6 +12309,8 @@ export interface components {
       maxDatadogIntegrations?: number;
       /** Format: int32 */
       maxGeminiIntegrations?: number;
+      /** Format: int32 */
+      maxGreprPipeIntegrations?: number;
       /** Format: int32 */
       maxLiteLlmIntegrations?: number;
       /** Format: int32 */
@@ -15979,6 +16107,30 @@ export interface components {
        */
       version: number;
     };
+    WriteGreprPipe: {
+      /**
+       * @description Name of the integration.
+       * @example my_integration
+       */
+      name: string;
+      payload: components["schemas"]["GreprPipe"];
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
+      teamIds?: string[];
+      /**
+       * @description The type of the integration. This is used to determine the payload type.
+       * @enum {string}
+       */
+      type: ReadGreprPipeType;
+      /**
+       * Format: int32
+       * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
+       * @example 0
+       */
+      version: number;
+    };
     WriteLiteLlm: {
       /**
        * @description Name of the integration.
@@ -16594,6 +16746,10 @@ export type SchemaGreprApiKey = components["schemas"]["GreprApiKey"];
 export type SchemaGreprJobGraph = components["schemas"]["GreprJobGraph"];
 export type SchemaGreprMetricsSource =
   components["schemas"]["GreprMetricsSource"];
+export type SchemaGreprPipe = components["schemas"]["GreprPipe"];
+export type SchemaGreprPipeLogSink = components["schemas"]["GreprPipeLogSink"];
+export type SchemaGreprPipeLogSource =
+  components["schemas"]["GreprPipeLogSource"];
 export type SchemaGreprRawLogsSource =
   components["schemas"]["GreprRawLogsSource"];
 export type SchemaGreprRawSpanSource =
@@ -16696,6 +16852,8 @@ export type SchemaItemsCollectionReadGemini =
   components["schemas"]["ItemsCollectionReadGemini"];
 export type SchemaItemsCollectionReadGithubMcp =
   components["schemas"]["ItemsCollectionReadGithubMcp"];
+export type SchemaItemsCollectionReadGreprPipe =
+  components["schemas"]["ItemsCollectionReadGreprPipe"];
 export type SchemaItemsCollectionReadInvitation =
   components["schemas"]["ItemsCollectionReadInvitation"];
 export type SchemaItemsCollectionReadJob =
@@ -16944,6 +17102,7 @@ export type SchemaReadDatadog = components["schemas"]["ReadDatadog"];
 export type SchemaReadDatadogMcp = components["schemas"]["ReadDatadogMcp"];
 export type SchemaReadGemini = components["schemas"]["ReadGemini"];
 export type SchemaReadGithubMcp = components["schemas"]["ReadGithubMcp"];
+export type SchemaReadGreprPipe = components["schemas"]["ReadGreprPipe"];
 export type SchemaReadInvitation = components["schemas"]["ReadInvitation"];
 export type SchemaReadJob = components["schemas"]["ReadJob"];
 export type SchemaReadLiteLlm = components["schemas"]["ReadLiteLlm"];
@@ -17231,6 +17390,7 @@ export type SchemaWriteDatadog = components["schemas"]["WriteDatadog"];
 export type SchemaWriteDatadogMcp = components["schemas"]["WriteDatadogMcp"];
 export type SchemaWriteGemini = components["schemas"]["WriteGemini"];
 export type SchemaWriteGithubMcp = components["schemas"]["WriteGithubMcp"];
+export type SchemaWriteGreprPipe = components["schemas"]["WriteGreprPipe"];
 export type SchemaWriteLiteLlm = components["schemas"]["WriteLiteLlm"];
 export type SchemaWriteNewRelic = components["schemas"]["WriteNewRelic"];
 export type SchemaWriteOpenAi = components["schemas"]["WriteOpenAi"];
@@ -21513,6 +21673,183 @@ export interface operations {
       };
       /** @description Integration not found. */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  listGreprPipeIntegrations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Integrations retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ItemsCollectionReadGreprPipe"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  createGreprPipeIntegration: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["WriteGreprPipe"];
+      };
+    };
+    responses: {
+      /** @description Integration created successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadGreprPipe"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration already exists. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadGreprPipe"];
+        };
+      };
+    };
+  };
+  getGreprPipeIntegration: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Integration retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadGreprPipe"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  updateGreprPipeIntegration: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["WriteGreprPipe"];
+      };
+    };
+    responses: {
+      /** @description Integration updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadGreprPipe"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration was modified or deleted concurrently. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  deleteGreprPipeIntegration: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Integration deleted successfully */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
         headers: {
           [name: string]: unknown;
         };
@@ -29553,6 +29890,12 @@ export enum GreprMetricsSourceMetrics {
 export enum GreprMetricsSourceType {
   grepr_metrics_source = "grepr-metrics-source",
 }
+export enum GreprPipeLogSinkType {
+  grepr_pipe_log_sink = "grepr-pipe-log-sink",
+}
+export enum GreprPipeLogSourceType {
+  grepr_pipe_log_source = "grepr-pipe-log-source",
+}
 export enum GreprRawLogsSourceType {
   grepr_raw_log_source = "grepr-raw-log-source",
 }
@@ -29898,6 +30241,9 @@ export enum ReadGeminiType {
 }
 export enum ReadGithubMcpType {
   github_mcp = "github-mcp",
+}
+export enum ReadGreprPipeType {
+  grepr_pipe = "grepr-pipe",
 }
 export enum ReadLiteLlmType {
   litellm = "litellm",
@@ -30281,6 +30627,7 @@ export const SOURCE_TYPES = new Set<string>([
   'datadog-metrics-cloud-source',
   'datadog-trace-agent-source',
   'grepr-metrics-source',
+  'grepr-pipe-log-source',
   'grepr-raw-log-source',
   'grepr-raw-span-source',
   'grepr-reducer-log-source',
@@ -30315,6 +30662,7 @@ export const SINK_TYPES = new Set<string>([
   'datadog-trace-sink',
   'discarding-sink',
   'event-dedup-iceberg-table-sink',
+  'grepr-pipe-log-sink',
   'legacy-datadog-metrics-sink',
   'logs-iceberg-table-sink',
   'logs-predicates-counter',
