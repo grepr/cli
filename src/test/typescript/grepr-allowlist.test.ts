@@ -50,7 +50,7 @@ function failureOf(args: string[]): CommanderError {
 
 const AVAILABLE =
   'Available grepr commands: query, job:list, job:get, dataset:list, dataset:get, dataset:create, '
-  + 'dataset:update, dataset:delete.';
+  + 'dataset:update, dataset:delete, dataset:table-config.';
 
 describe('GREPR_ALLOWED_SUBCOMMANDS command gating', () => {
   const originalEnv = process.env.GREPR_ALLOWED_SUBCOMMANDS;

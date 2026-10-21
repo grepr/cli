@@ -126,7 +126,25 @@ For automation, and for MCP clients that are not in the table and do not support
   The access token expires after 24 hours and has no refresh token, so your client cannot renew it automatically. When the token expires, obtain a new token and update your client configuration. For scheduled automation, obtain a new token at the start of each run.
 </Callout>
 
+## Use Grepr skills through the MCP server [#skills]
+
+The MCP server also provides _skills_: instructions that teach an AI assistant how to work with Grepr efficiently. The server lists each skill in the instructions it sends when your client connects, and serves each skill's files as MCP resources at `skill://<skill-name>/SKILL.md`. MCP clients that read resources, such as Claude Code, load a skill when your request matches it.
+
+The server provides the following skills:
+
+- `cli`: Installs, configures, and signs in to the Grepr CLI, and points to the other Grepr skills.
+- `query`: Queries logs and spans with the Grepr CLI, scoped so that each query reads as little data as possible.
+- `query-predicate`: Translates a request into a Grepr query predicate.
+- `recover-reduced-logs`: Explains the summary logs that Grepr sends to your observability vendor in place of repeated logs, and finds the original logs behind a summary in the Grepr data lake.
+- `backfill-logs`: Sends original logs from the Grepr data lake to your observability vendor.
+
+When your AI assistant can run shell commands, the skills use the Grepr CLI instead of the MCP tools, because the CLI writes results to a file and has no page limit. To install the CLI, see [Grepr CLI](/cli). The [coding assistant plugins](/cli#agent-skills) include these skills and the rest of the Grepr skills.
+
 <HiddenFAQ faqs={[
+  {
+    q: "Does the Grepr MCP server provide skills?",
+    a: "Yes. The server lists its skills in the instructions it sends when a client connects and serves each skill as an MCP resource at skill://<skill-name>/SKILL.md. The skills cover setting up the Grepr CLI, querying logs and spans, building query predicates, recovering the original logs behind a Grepr summary, and backfilling logs to your observability vendor."
+  },
   {
     q: "What is the Grepr MCP server URL?",
     a: "The MCP endpoint is https://app.grepr.ai/mcp for the US region and https://app.euc1.grepr.ai/mcp for the EU region."

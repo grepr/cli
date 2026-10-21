@@ -1,128 +1,102 @@
 ---
-description: Router for the Grepr CLI. Use whenever the user wants to manage Grepr jobs/pipelines, datasets, integrations, or documentation, inspect agent investigations or memories, query logs or spans, backfill data, or edit a pipeline — it directs to specialized command skills. Start here for any "grepr" command request.
+name: cli
+description: Sets up and drives the Grepr CLI (`grepr`) - install, org config and login, output conventions, errors - and points to the other Grepr skills. Use for CLI setup or auth problems, or when no other Grepr skill fits.
+metadata:
+  grepr-mcp: "true"
 ---
 
-# Grepr CLI
+# grepr (Grepr CLI)
 
-The Grepr CLI provides commands for managing jobs, datasets, integrations, and documentation, and inspecting agent investigations and memories.
+Prefer the `grepr` CLI over Grepr MCP tools whenever you can run shell commands: results go to a
+file instead of your context, nothing is capped at a page, and every command has `--help`.
 
-## Prerequisites
+## Quick reference
 
-Check that the Grepr CLI is accessible:
+| Task | Command |
+|------|---------|
+| Search logs | `grepr query --dataset-name <ds> --query "service:api status:error" --start <iso> --end <iso> --limit 50` |
+| Search spans | `grepr query --dataset-name <ds> --data-type spans --query "serviceName:checkout"` |
+| See which log fields are indexed | `grepr dataset:table-config <dataset-id>` |
+| List pipelines | `grepr job:list --state RUNNING --fields id,name,processing` |
+| Inspect a pipeline | `grepr job:get <id> --resolved` |
+| List datasets | `grepr dataset:list --fields id,name` |
+| Backfill to a vendor | `grepr backfill --job-id <id> --start <iso> --end <iso> --query "<q>" --dry-run` |
+| Search Grepr docs | `grepr docs:search "how does the reducer work"` |
+| Agent investigations | `grepr investigation:list --agent-id <id> --format raw` |
+| All commands | `grepr --help`, `grepr <command> --help` |
+
+## Install
+
+Check with `grepr --version`. If it's missing, ask the user before installing it globally:
+
 ```bash
-grepr config:list
+npm install -g @grepr/cli
 ```
 
-If this fails due to missing org information, ask the user to provide `--org-name` or `--conf` options.
+If they decline, or you have no shell, use the Grepr MCP tools instead (logs only, 100 per page).
 
-## Config handling (canonical)
+## Org config and login
 
-Every other skill defers here for this. Use the default config only when the user did
-not name another customer/org. If they did, resolve the matching saved config **once**
-(`grepr config:list` / `config:show`) and reuse that concrete `--conf <name>` value on
-every Grepr command for the rest of the workflow. Do not put placeholder
-`--conf <CONF>` text into commands before a real config name is known.
+Save the org once, then every command uses it:
 
-## General CLI Usage
-
-View all available commands:
-```
-!`grepr -h`
+```bash
+grepr --org-name <org> config:save <name> --default
+grepr dataset:list --fields id -f compact      # readiness check
 ```
 
-Common flags:
-- `--help` - Get help for any command (e.g., `grepr job:create --help`)
-- `-f, --format` - `compact` (one JSON object per line), `raw` (same), `csv`, `pretty`
-  (indented JSON), `table` (human). `json` is an alias for `compact`. Any other value is
-  rejected.
-- `--fields id,name,state` - keep only these field paths (list and get commands). Dot paths
-  work, e.g. `--fields id,jobGraph.vertices`.
-- `--debug` - Verbose output for troubleshooting
-- `--quiet` - Reduce noise (where available)
+The first API call (the readiness check) opens a browser login: tell the user first, or use the
+headless setup below when there's no browser. Tokens are cached in `~/.grepr/auth/` and refresh
+automatically; this login is separate from any Grepr MCP connection.
 
-### Output conventions
+In a Grepr agent sandbox (`GREPR_ALLOWED_SUBCOMMANDS` is set) the CLI is already authenticated
+and only the allowed subcommands exist: skip install and login.
 
-- **Prefer `-f compact` and `--fields`.** Sandboxes set `GREPR_OUTPUT_FORMAT=compact`, so the
-  default is already the JSON stream; pass `-f` only to ask for something else. Do NOT pass
-  `--format table`: it truncates nested values to 4 lines and is unparseable.
-- `compact`, `raw` and `csv` keep stdout a pure data stream; status lines and summaries go to
-  stderr. `table` and `pretty` are human formats and keep their chatter on stdout.
-- `compact` and `raw` emit **one JSON object per line**, so parse them per line
-  (`| jq -c .`, `| jq -s '.[]'`), never `| jq '.[]'`.
-- For large results write to a file with `-o out.ndjson`, then analyse it locally with duckdb
-  or jq. Prefer `-o` over a shell `>` redirect so only records reach the file.
+Use the default config unless the user names another org. If they do, resolve the matching saved
+config once (`grepr config:list`, `grepr config:show <name>`) and pass that same `--conf <name>` on
+every command for the rest of the workflow. Never put a placeholder `--conf` into a command.
 
-## Command Categories
+### Headless (CI, sandboxes, no browser)
 
-Choose the appropriate specialized skill based on what you need to do:
+```bash
+export GREPR_ORG_NAME=<org-name>
+export GREPR_AUTH_METHOD=client-credentials
+export GREPR_AUTH_BASE_URL=<oauth-issuer-url>
+export GREPR_CLIENT_ID=<m2m-client-id>
+export GREPR_CLIENT_SECRET=<m2m-client-secret>
+export GREPR_OUTPUT_FORMAT=compact
+```
 
-### Agent Investigations and Memory → `grepr:investigations`
-Inspect investigation outcomes, transcript messages/tool calls, recorded actions,
-and memories of related incidents. Supports both CLI and Grepr MCP reads.
-- Commands: `agent:list`, `agent:get`, `investigation:list`, `investigation:get`,
-  `investigation:turns`, `investigation:transcript`, `investigation:memory:search`,
-  `investigation:memory:get`
-- Use `--format raw` for evidence-preserving responses with pagination metadata.
+## Output conventions
 
-### Job/Pipeline Management → `grepr:job-commands`
-Manage Grepr jobs and pipelines.
-- List, view, create, update, delete jobs/pipelines
-- Commands: `job:list`, `job:get`, `job:create`, `job:update`, `job:delete`
+- `-f compact` (or `raw`) emits one JSON object per line: parse with `jq -c .`, never `jq '.[]'`.
+  Sandboxes default to it via `GREPR_OUTPUT_FORMAT=compact`.
+- `--fields id,name,state` keeps only those paths (dot paths work) on list and get commands.
+- Write large results to a file with `-o out.ndjson` and analyze the file; `-o` writes records
+  only, unlike a shell `>` redirect.
+- Avoid `-f table` for anything you parse: it truncates nested values.
+- Use `--limit` where a command has it instead of `head`/`tail`.
 
-### Dataset Management → `grepr:dataset-commands`
-Manage data lake datasets.
-- List, view, create, update, delete datasets
-- Commands: `dataset:list`, `dataset:get`, `dataset:create`, `dataset:update`, `dataset:delete`
+## Errors
 
-### Integration Management → `grepr:integration-commands`
-View vendor and storage integrations.
-- List and view integrations (Datadog, Splunk, S3, etc.)
-- Commands: `integration:list`, `integration:get`
+| Error | Fix |
+|-------|-----|
+| `grepr: command not found` | Ask the user, then `npm install -g @grepr/cli` |
+| Missing organization | `--org-name <org>`, or save a config with `config:save` |
+| 401 or a login loop | Delete the cached token in `~/.grepr/auth/` (`<org>.json`, or `<client-id>-m2m.json` for client credentials) and re-run |
+| 403 | The user's Grepr role lacks access to that resource |
+| Unknown option | `grepr <command> --help`; upgrade with `npm install -g @grepr/cli@latest` |
 
-### Documentation Search → `grepr:docs-commands`
-Search and retrieve Grepr documentation.
-- Semantic search over docs, API specs, schemas
-- Commands: `docs:search`, `docs:get`
+## Other skills
 
-### Query Data → `grepr:query`
-Query logs or spans from datasets or source pipelines with filters and time ranges.
-- Execute queries on the data lake
-- Command: `query`
+The Grepr plugin (`/plugin marketplace add grepr/cli`, then `/plugin install grepr@grepr-cli`) adds
+one skill per task; without it, use `grepr <command> --help`.
 
-### Backfill Data → `grepr:backfill-logs`
-Replay raw data-lake logs or spans to supported destinations.
-- Backfill, resend, or re-deliver data for a time range/query
-- Command: `backfill`
-
-### Build Grok Patterns → `grepr:build-grok`
-Build and test Grok patterns for log parsing.
-- Iterative pattern development workflow
-- Command: `grok:parse`
-
-### Inspect a Pipeline → `grepr:describe-pipeline`
-Read-only structural summary of a pipeline (sources, transforms, sinks,
-filters, reducer settings, topology). Run this before any edit.
-
-### Edit a Pipeline → intent skills + `grepr:test-pipeline-change`
-Pipeline edits are plan-first and never write to production without explicit
-approval. Pick the intent skill for the change, which builds a patch and
-routes it through the `grepr:test-pipeline-change` safety harness:
-- `grepr:tune-reduction` — fix high passthrough / bad reduction
-- `grepr:tune-grok` — fix grok parsing / extract attributes
-- `grepr:change-exceptions` — tune reducer exception bypass
-- `grepr:change-filtering` — drop logs at a pipeline phase
-- `grepr:change-source` — add / remove / replace a source
-- `grepr:change-sink` — change sinks, forwarding destinations, or datasets
-- `grepr:build-sql-transform` — author a Flink-SQL transform (redact, enrich, windowed logs-to-metrics); template-backed jobs only
-- `grepr:build-pipeline` — build a new pipeline from scratch
-- `grepr:debug-pipeline` — troubleshoot a misbehaving pipeline
-
-The harness flow uses: `job:plan` (build/preview the plan, `--dry-run` for a
-diff-only preview), `job:draft` (validate against live/replayed data, `-o`
-to capture NDJSON), `job:apply` (write to production after approval).
-
-## Notes
-
-- When executing multiple steps to answer the user's request, show the user what steps you're taking
-- Use the specialized skills above rather than calling this router skill directly
-- Avoid using head/tail commands; instead use `--limit` where available (check command help first)
+- Search data: `grepr:query`; aggregations: `grepr:sql-analytics`.
+- Logs missing or summarized in Datadog, New Relic, Splunk, Sumo, or an OTLP backend:
+  `grepr:recover-reduced-logs`. Backfills: `grepr:backfill-logs`.
+- Pipelines: read with `grepr:describe-pipeline`, troubleshoot with `grepr:debug-pipeline`. Change
+  them through an intent skill (`grepr:tune-*`, `grepr:change-*`, `grepr:build-*`) and the
+  `grepr:test-pipeline-change` harness; never apply without the user's explicit approval.
+- Datasets: `grepr:describe-datasets`. Agent investigations and memories: `grepr:investigations`.
+- Create, update, or delete jobs, datasets, or integrations: `grepr:job-commands`,
+  `grepr:dataset-commands`, `grepr:integration-commands`. Search the Grepr docs: `grepr:docs-commands`.

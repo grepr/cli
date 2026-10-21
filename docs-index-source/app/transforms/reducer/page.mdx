@@ -60,8 +60,8 @@ When the reducer generates a summary message for a pattern, it adds the followin
 | `grepr.rawLogsUrl` | A direct link to view all raw messages for this pattern in the Grepr data lake. |
 | `grepr.repeatCount` | The number of input messages included in the summary. This can be useful for metrics and [rewriting queries](/transforms/reducer/exceptions#rewrite-queries). |
 | `grepr.receivedTimestamp` | Milliseconds since the Unix epoch when the summary was emitted by Grepr. |
-| `grepr.firstTimeTimestamp` | Milliseconds since the Unix epoch of the first message in this summary. |
-| `grepr.lastTimeTimestamp` | Milliseconds since the Unix epoch of the last message in this summary. |
+| `grepr.firstTimestamp` | Milliseconds since the Unix epoch of the first message in this summary. |
+| `grepr.lastTimestamp` | Milliseconds since the Unix epoch of the last message in this summary. |
 
 ## Message types [#message-types]
 
@@ -94,7 +94,7 @@ After processing, each record is assigned a message type, and the `grepr.message
   },
   {
     q: "What information does a summary message include?",
-    a: "Each summary message includes grepr.patternId for pattern identification, grepr.repeatCount for the count of input messages aggregated, grepr.firstTimeTimestamp and grepr.lastTimeTimestamp for the first and last message timestamps in the summary, grepr.receivedTimestamp for when the summary was emitted, and grepr.rawLogsUrl for a direct link to the raw messages in the Grepr data lake."
+    a: "Each summary message includes grepr.patternId for pattern identification, grepr.repeatCount for the count of input messages aggregated, grepr.firstTimestamp and grepr.lastTimestamp for the first and last message timestamps in the summary, grepr.receivedTimestamp for when the summary was emitted, and grepr.rawLogsUrl for a direct link to the raw messages in the Grepr data lake."
   },
   {
     q: "Why might a message pass through without being aggregated?",

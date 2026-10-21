@@ -1,6 +1,9 @@
 ---
+name: backfill-logs
 description: Creates a manual logs or spans backfill job that replays raw data-lake data to vendor destinations. Use when the user wants to backfill, replay, resend, or re-deliver logs or spans — e.g. data missing from a vendor, recovering from a sink outage, or re-sending an incident time window.
 allowed-tools: Bash(grepr backfill), Bash(grepr query), Bash(grepr job:get), Bash(grepr job:list), Bash(grepr dataset:list), Bash(grepr integration:list), Bash(grepr docs:search), Bash(grepr --conf * backfill), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:list), Bash(grepr --conf * dataset:list), Bash(grepr --conf * integration:list), Bash(grepr --conf * docs:search), Bash(grep), Bash(jq), Bash(date), grepr:cli, grepr:query-predicate
+metadata:
+  grepr-mcp: "true"
 ---
 
 # Backfill Logs and Spans

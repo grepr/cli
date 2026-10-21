@@ -1,6 +1,9 @@
 ---
+name: query-predicate
 description: Translate user intent into one Grepr log or span query predicate and query type without executing it. Use when a Grepr query, backfill, or pipeline workflow needs to turn direct filters, observed symptoms, error reports, incident context, or debugging intent into values for --query and --query-type.
 allowed-tools: Read(references/*.md)
+metadata:
+  grepr-mcp: "true"
 ---
 
 # Build a Grepr query predicate

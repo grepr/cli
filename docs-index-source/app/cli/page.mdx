@@ -218,7 +218,8 @@ The following skills run CLI commands to manage resources and retrieve data:
 - `dataset-commands`: Manages data lake datasets.
 - `integration-commands`: Views vendor and storage integrations.
 - `docs-commands`: Searches the Grepr documentation.
-- `query-logs`: Queries data from datasets with filters and time ranges.
+- `query`: Queries data from datasets with filters and time ranges, scoped so that each query reads as little data as possible.
+- `recover-reduced-logs`: Explains the summary logs that Grepr sends to your observability vendor in place of repeated logs, and finds the original logs behind a summary in the Grepr data lake.
 - `backfill-logs`: Creates a manual backfill job that forwards raw logs from the Grepr data lake to your observability vendors. See [Backfill logs from the data lake to your vendors](#backfill).
 
 The following skills guide multi-step pipeline workflows. Before changing a pipeline, these skills validate the change with a plan, a readable diff, and a draft run against your data, and apply the change only after you approve it:
@@ -442,7 +443,7 @@ The Grepr CLI includes commands to:
 - Run queries against data in the Grepr data lake: `query`.
 - Forward raw logs from the Grepr data lake to your observability vendors: `backfill`.
 - Manage vendor and storage integrations: `integration:list`, `integration:get`.
-- Manage datasets for log storage and querying: `dataset:create`, `dataset:list`, `dataset:get`, `dataset:update`, `dataset:delete`.
+- Manage datasets for log storage and querying: `dataset:create`, `dataset:list`, `dataset:get`, `dataset:table-config`, `dataset:update`, `dataset:delete`.
 - Search and retrieve Grepr documentation: `docs:search`, `docs:get`.
 - Test Grok rules: `grok:parse`.
 - Read AI agents and their investigations: `agent:list`, `agent:get`, `investigation:list`, `investigation:get`, `investigation:turns`, `investigation:transcript`, `investigation:memory:search`, `investigation:memory:get`.
@@ -545,6 +546,22 @@ grepr dataset:get <dataset-id> -o app-logs-dataset.json
 ```
 
 Replace `<dataset-id>` with the unique identifier for the dataset to retrieve. You can find the dataset ID in the output of the `dataset:list` command.
+
+### Show the fields a dataset indexes
+
+Queries that filter on a dataset's indexed tags and attributes, and on its partition fields, read less data and run faster. To list a dataset's partition fields, indexed tags, and indexed attributes, use the `dataset:table-config` command. An entry with `excluded` set to `true` is not indexed. See [Indexed columns](/grepr-platform/indexed-columns).
+
+```console copy
+# Show the indexing settings of a dataset's raw logs table
+grepr dataset:table-config <dataset-id>
+```
+
+```console copy
+# Show only the partition fields and indexed fields, as JSON
+grepr dataset:table-config <dataset-id> -f compact --fields effectiveSpec,promotedTags,promotedAttributes
+```
+
+The command reads the raw logs table by default. To read the metric data table instead, add `--table metricdata_raw`.
 
 ### Create a dataset
 

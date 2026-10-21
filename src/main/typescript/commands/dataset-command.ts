@@ -1,7 +1,8 @@
 import { ListCommand, ListCommandOptions } from './list-command.js';
 import { CrudCommand, CrudCommandOptions, CrudCreateUpdateOptions } from './crud-command.js';
-import { logHumanFooter } from '../lib/output-format.js';
-import { CommandOption } from '../types.js';
+import { Command } from 'commander';
+import { logHumanFooter, parseFieldsArg, parseOutputFormat, resolveDefaultFormat } from '../lib/output-format.js';
+import { CommandOption, MergeConfiguration } from '../types.js';
 import { SchemaDatasetCreate, SchemaDatasetUpdate } from '../openapi/openApiTypes.js';
 
 // Dataset-specific interfaces extending the base interfaces
@@ -10,6 +11,10 @@ export type DatasetListCommandOptions = ListCommandOptions;
 export type DatasetCrudCommandOptions = CrudCommandOptions;
 
 export type DatasetCreateUpdateOptions = CrudCreateUpdateOptions;
+
+export interface DatasetTableConfigOptions extends DatasetCrudCommandOptions {
+  table: string;
+}
 
 /**
  * Dataset list command implementation using the new architecture
@@ -72,6 +77,39 @@ export class DatasetCrudCommand extends CrudCommand<DatasetCrudCommandOptions> {
 
   protected supportsDelete(): boolean {
     return true;
+  }
+
+  /**
+   * Registers the CRUD commands plus dataset:table-config, which shows what a dataset table indexes.
+   */
+  addToProgram(program: Command, mergeConfiguration: MergeConfiguration): void {
+    super.addToProgram(program, mergeConfiguration);
+    program
+      .command('dataset:table-config <id>')
+      .description("Show a dataset table's indexed (promoted) tags and attributes and its partition keys")
+      .option('--table <key>', 'Table key: logs_raw or metricdata_raw', 'logs_raw')
+      .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', parseOutputFormat, resolveDefaultFormat('pretty'))
+      .option('--fields <list>', 'Comma-separated field paths to keep (e.g. "promotedTags")', parseFieldsArg)
+      .action(async (datasetId: string, options: Record<string, unknown>, command: Command) => {
+        try {
+          const mergedGlobalOptions = await mergeConfiguration(command.parent?.opts() || {});
+          await this.executeTableConfig(datasetId, { ...mergedGlobalOptions, ...options } as DatasetTableConfigOptions);
+        } catch (error) {
+          console.error(`Error getting ${options.table} config for dataset ${datasetId}:`, (error as Error).message);
+          process.exit(1);
+        }
+      });
+  }
+
+  async executeTableConfig(datasetId: string, options: DatasetTableConfigOptions): Promise<void> {
+    try {
+      this.apiClient = this.createApiClient(options);
+      const config = await this.apiClient.getDatasetTableConfig(datasetId, options.table);
+      await this.formatAndOutputSingle((config ?? {}) as Record<string, unknown>, options);
+    } catch (error) {
+      console.error(`Error getting ${options.table} config for dataset ${datasetId}:`, (error as Error).message);
+      process.exit(1);
+    }
   }
 
   async executeGet(datasetId: string, options: DatasetCrudCommandOptions): Promise<void> {

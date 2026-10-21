@@ -13,6 +13,7 @@ import {
   SchemaCreateJob,
   SchemaDatasetCreate,
   SchemaDatasetRead,
+  SchemaTableConfigRead,
   SchemaDatasetUpdate,
   SchemaItemsCollectionReadDatadog,
   SchemaItemsCollectionReadDataWarehouse,
@@ -366,6 +367,20 @@ export class GreprApiClient {
 
     if (error) {
       throw new Error(`Failed to get dataset ${id}: ${JSON.stringify(error)}`);
+    }
+
+    return data;
+  }
+
+  async getDatasetTableConfig(id: string, tableKey: string): Promise<SchemaTableConfigRead | undefined> {
+    const { data, error } = await this.client.GET('/v1/datasets/{id}/{tableKey}/config', {
+      params: {
+        path: { id, tableKey },
+      },
+    });
+
+    if (error) {
+      throw new Error(`Failed to get ${tableKey} config for dataset ${id}: ${JSON.stringify(error)}`);
     }
 
     return data;

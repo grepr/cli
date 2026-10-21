@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'bun:test';
+import { Command } from 'commander';
 import { DatasetCrudCommand } from '../../../main/typescript/commands/dataset-command';
 
 // Mock the GreprApiClient
@@ -52,6 +53,7 @@ describe('DatasetCrudCommand', () => {
     command = new DatasetCrudCommand();
     mockApiClient = {
       getDataset: vi.fn(),
+      getDatasetTableConfig: vi.fn(),
       createDataset: vi.fn(),
       updateDataset: vi.fn(),
       deleteDataset: vi.fn(),
@@ -527,6 +529,61 @@ describe('DatasetCrudCommand', () => {
       await command.executeCreate(mockOptions);
 
       expect(mockApiClient.createDataset).toHaveBeenCalledWith(datasetWithoutName);
+    });
+  });
+  describe('executeTableConfig', () => {
+    const DATASET_ID = 'ds_123';
+    const TABLE_KEY = 'metricdata_raw';
+    const DEFAULT_TABLE_KEY = 'logs_raw';
+    const TABLE_CONFIG = { promotedTags: [{ key: 'region', column: 't_region', excluded: false }] };
+
+    it('test_executeTableConfig_tableKeyGiven_outputsThatTablesConfig', async () => {
+      mockApiClient.getDatasetTableConfig.mockResolvedValue(TABLE_CONFIG);
+      const options = { table: TABLE_KEY } as any;
+
+      await command.executeTableConfig(DATASET_ID, options);
+
+      expect(mockApiClient.getDatasetTableConfig).toHaveBeenCalledWith(DATASET_ID, TABLE_KEY);
+      expect((command as any).formatAndOutputSingle).toHaveBeenCalledWith(TABLE_CONFIG, options);
+    });
+
+    it('test_executeTableConfig_apiFails_exitsNonZero', async () => {
+      mockApiClient.getDatasetTableConfig.mockRejectedValue(new Error('404'));
+
+      await expect(command.executeTableConfig(DATASET_ID, { table: TABLE_KEY } as any))
+        .rejects.toThrow('process.exit called');
+      expect(mockProcessExit).toHaveBeenCalledWith(1);
+    });
+
+    it('test_tableConfigAction_noTableFlag_requestsLogsRaw', async () => {
+      mockApiClient.getDatasetTableConfig.mockResolvedValue(TABLE_CONFIG);
+      const program = new Command();
+      command.addToProgram(program, vi.fn().mockResolvedValue({}));
+
+      await program.parseAsync(['dataset:table-config', DATASET_ID], { from: 'user' });
+
+      expect(mockApiClient.getDatasetTableConfig).toHaveBeenCalledWith(DATASET_ID, DEFAULT_TABLE_KEY);
+    });
+
+    it('test_tableConfigAction_configResolutionFails_printsErrorAndExitsNonZero', async () => {
+      const program = new Command();
+      command.addToProgram(program, vi.fn().mockRejectedValue(new Error('Organization name is required')));
+
+      await expect(program.parseAsync(['dataset:table-config', DATASET_ID], { from: 'user' }))
+        .rejects.toThrow('process.exit called');
+      expect(consoleSpy.error).toHaveBeenCalledWith(
+        `Error getting ${DEFAULT_TABLE_KEY} config for dataset ${DATASET_ID}:`, 'Organization name is required');
+      expect(mockProcessExit).toHaveBeenCalledWith(1);
+    });
+
+    it('test_addToProgram_registersTableConfigWithLogsRawDefault', () => {
+      const program = new Command();
+
+      command.addToProgram(program, vi.fn());
+
+      const tableConfig = program.commands.find((c) => c.name() === 'dataset:table-config');
+      expect(tableConfig).toBeDefined();
+      expect(tableConfig?.opts().table).toBe('logs_raw');
     });
   });
 });
