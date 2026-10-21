@@ -7829,8 +7829,8 @@ export interface components {
        */
       type: GreprUploadedLogFileSourceType;
       /**
-       * @description Unique identifier for the upload. The full S3 path will be constructed as uploaded_files/{organizationId}/{uploadId} to ensure customers can only access their own uploads.
-       * @example abc123def456
+       * @description Unique identifier for the upload. The full S3 path will be constructed as uploaded_files/{organizationId}/{uploadId} to ensure customers can only access their own uploads. Use the uploadId returned by the file upload endpoint.
+       * @example 3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c
        */
       uploadId: string;
     };
@@ -11608,8 +11608,8 @@ export interface components {
        */
       presignedUrl?: string;
       /**
-       * @description Unique identifier for this upload
-       * @example abc123def456
+       * @description Unique identifier for this upload. Pass it as the uploadId of a grepr-uploaded-log-file-source to read the uploaded file.
+       * @example 3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c
        */
       uploadId?: string;
     };
