@@ -406,6 +406,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/agents/{id}/investigations/cancel-all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cancel every active investigation of an agent
+     * @description Marks every queued, running, and paused investigation of the agent as CANCELLING in one request. Cancellation is completed asynchronously. With pause=true, the agent is paused in the same transaction so it starts no new investigations.
+     */
+    post: operations["cancelAllAgentInvestigations"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/agents/{id}/investigations/cancellable-counts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Count an agent's active investigations
+     * @description Returns how many of the agent's investigations are queued, running, or paused, and so would be cancelled by cancel-all, and whether the caller is authorized to call cancel-all for the agent.
+     */
+    get: operations["countCancellableAgentInvestigations"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/agents/{id}/issue-reach": {
     parameters: {
       query?: never;
@@ -2934,6 +2974,46 @@ export interface paths {
      * @description Marks eligible investigations as CANCELLING in one organization-scoped request. Cancellation is completed asynchronously.
      */
     post: operations["batchCancelInvestigations"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/investigations/cancel-all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cancel every active investigation in the organization
+     * @description Marks every queued, running, and paused investigation of every agent in the organization as CANCELLING in one request. Cancellation is completed asynchronously. With pause=true, every active agent is paused in the same transaction so none starts new investigations; resume each agent to undo it.
+     */
+    post: operations["cancelAllInvestigations"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/investigations/cancellable-counts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Count the organization's active investigations
+     * @description Returns how many investigations across every agent in the organization are queued, running, or paused, and so would be cancelled by cancel-all, and whether the caller is authorized to call cancel-all.
+     */
+    get: operations["countCancellableInvestigations"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -6052,6 +6132,24 @@ export interface components {
        * @enum {string}
        */
       type: BucketPartitionTransformType;
+    };
+    CancelAllInvestigationsResponse: {
+      /** Format: int32 */
+      cancelling: number;
+      /** Format: int32 */
+      paused: number;
+    };
+    CancellableInvestigationCounts: {
+      /** Format: int32 */
+      paused: number;
+      /** Format: int32 */
+      queued: number;
+      /** Format: int32 */
+      running: number;
+    };
+    CancellableInvestigationsResponse: {
+      canCancel: boolean;
+      counts: components["schemas"]["CancellableInvestigationCounts"];
     };
     /** @description One node of the recursive chain tree. Every chain (and every nested chain) is rooted at a ChainNode; the recursion terminates at a DropNode or PassthroughNode leaf. */
     ChainNode: {
@@ -16621,6 +16719,12 @@ export type SchemaBucketAccessResult =
   components["schemas"]["BucketAccessResult"];
 export type SchemaBucketPartitionTransform =
   components["schemas"]["BucketPartitionTransform"];
+export type SchemaCancelAllInvestigationsResponse =
+  components["schemas"]["CancelAllInvestigationsResponse"];
+export type SchemaCancellableInvestigationCounts =
+  components["schemas"]["CancellableInvestigationCounts"];
+export type SchemaCancellableInvestigationsResponse =
+  components["schemas"]["CancellableInvestigationsResponse"];
 export type SchemaChainNode = components["schemas"]["ChainNode"];
 export type SchemaChangeFinding = components["schemas"]["ChangeFinding"];
 export type SchemaChatList = components["schemas"]["ChatList"];
@@ -18276,6 +18380,81 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  cancelAllAgentInvestigations: {
+    parameters: {
+      query?: {
+        /** @description Also pause the agent */
+        pause?: boolean;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cancellation requests recorded */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CancelAllInvestigationsResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  countCancellableAgentInvestigations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Counts retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CancellableInvestigationsResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Agent not found */
+      404: {
         headers: {
           [name: string]: unknown;
         };
@@ -25368,6 +25547,63 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  cancelAllInvestigations: {
+    parameters: {
+      query?: {
+        /** @description Also pause every active agent in the organization */
+        pause?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cancellation requests recorded */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CancelAllInvestigationsResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  countCancellableInvestigations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Counts retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CancellableInvestigationsResponse"];
+        };
       };
       /** @description Unauthorized */
       401: {
