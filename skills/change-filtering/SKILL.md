@@ -1,5 +1,5 @@
 ---
-description: Set, modify, or clear pipeline filters on a Grepr pipeline to drop unwanted logs (debug, health checks, vendor heartbeats) at a chosen phase — pre-parser, pre-warehouse, or pre-exceptions. Estimates drop volume first and routes through test-pipeline-change. Use for "add a filter", "drop these logs", "filter is too aggressive", or "stop filtering".
+description: Set, modify, or clear pipeline filters on a Grepr pipeline to drop unwanted logs (debug, health checks, vendor heartbeats) at a chosen phase — pre-parser, pre-warehouse, or pre-exceptions. Estimates drop volume first and routes through test-pipeline-change. In the UI these phases are the Pre-Parsing, Pre-Warehouse, and Pre-Reducer Actions steps. Use for "add a filter", "add an action", "drop these logs", "filter is too aggressive", or "stop filtering".
 allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:plan), Bash(grepr --conf * job:draft), Read, Write, grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query
 ---
 
@@ -25,16 +25,19 @@ Filters are phase-slotted, not arbitrary vertices: each phase holds at most one
 filter, and topology decides what gets dropped downstream. There are three phase
 slots. The phase names describe *where the filter sits*, not what it "protects" —
 verify the actual downstream effect against `describe-pipeline` before telling
-the user where logs land.
+the user where logs land. When pointing the user at the UI, use the UI step
+name; older docs and users say "pre-parsing filter", "post-parsing filter", and
+"post-warehouse filter" for the same three steps.
 
-| Phase | Position | Attributes available |
-|-------|----------|----------------------|
-| `pre-parser` | Before any parser. Cheapest drop point (JSON parse skipped on dropped logs). | Raw log fields only — parser/grok captures NOT yet present. |
-| `pre-exceptions` | On the path of logs bypassing the reducer (matched `logReducerExceptions`). Narrows the bypass. | Post-parser attributes. |
-| `pre-warehouse` | After the parser/remapper chain, before downstream branches. Often upstream of *both* warehouse sink and reducer. | Post-parser attributes. |
+| Phase | UI step | Position | Attributes available |
+|-------|---------|----------|----------------------|
+| `pre-parser` | Pre-Parsing Actions | Before any parser. Cheapest drop point (JSON parse skipped on dropped logs). | Raw log fields only — parser/grok captures NOT yet present. |
+| `pre-exceptions` | Pre-Reducer Actions | After masking, on the main path to the reducer, branching off after the warehouse fan-out. Sees every log; exception matching (`logReducerExceptions`) happens later, inside the reducer. | Post-parser attributes. |
+| `pre-warehouse` | Pre-Warehouse Actions | After the parser/remapper chain, before masking and the downstream branches. Upstream of *both* the warehouse sink and the reducer. | Post-parser attributes. |
 
-To filter immediately before the reducer, use `pre-warehouse` (usually upstream
-of the reducer); to narrow the reducer bypass, use `pre-exceptions`.
+To drop logs from both storage and the reducer, use `pre-warehouse`. To keep
+logs in the warehouse but drop them before the reducer and sinks, use
+`pre-exceptions`.
 
 Pick by what the predicate references:
 

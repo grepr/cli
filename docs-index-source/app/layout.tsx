@@ -276,7 +276,7 @@ const pageMap = [
         name: "filters",
         route: "/transforms/filter-events",
         type: "page",
-        title: "Filter events",
+        title: "Filter and transform with actions",
       },
       {
         name: "grok",

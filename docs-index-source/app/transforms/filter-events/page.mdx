@@ -1,115 +1,110 @@
 ---
-description: Learn how to use filters in a Grepr pipeline to include or exclude events, configure multiple processing paths, or transform events based on specific conditions.
+description: Use actions in a Grepr pipeline to drop or keep events by condition, drop late-arriving events, and process events with SQL.
 ---
 
 import { Callout } from 'nextra/components'
 import { HiddenFAQ } from '@/components/HiddenFAQ'
 
-# Filter events in a Grepr pipeline
+# Filter and transform events with actions
 
-You can use filter transforms in a Grepr pipeline to include or exclude log events based on specific conditions. Filters are configured using familiar query interfaces, such as the Datadog or New Relic log query-like syntaxes, or standard SQL.
+You can use _actions_ in a Grepr pipeline to decide what happens to log events at a specific point in the pipeline. With actions, you can:
 
-The filtering configuration options allow you to create simple to complex event routing scenarios, including selective application of transformations to a subset of events or routing different types of events to appropriate processing stages using flexible configuration options.
-
-## Filtering options
-
-The following is a summary of the options available when configuring filters in a Grepr pipeline:
-
+- Drop events, or keep only the events that match a condition.
 - Drop late-arriving events.
-- Pass all or only some events to the next step.
-- Process all or only some events using SQL before passing to a configurable pipeline step.
-- Pass all records to the next pipeline step and also through the SQL processing path.
+- Process all or some events with SQL, and send the results to a later pipeline step.
 
-### Drop late-arriving data
+Conditions use familiar query syntaxes, such as the Datadog-like syntax or the New Relic log query-like syntax. To learn more about the supported query syntaxes, see [Query log data in Grepr](/queries).
 
-You can configure a maximum threshold for the difference between the event and received timestamps. The threshold is configured using a duration in the ISO-8601 format. Events that exceed this threshold are dropped from the pipeline. This is useful for scenarios where timely data is critical, and late-arriving events could affect analysis or reporting.
+## Where actions run in a pipeline [#locations]
 
-### Pass events to the next pipeline step
+Actions are available at three locations in a pipeline. Each location is named for the pipeline step it runs before:
 
-You can configure filters to pass events to the next step in the pipeline. You can pass all events through to the next pipeline step, use a filter query to pass only events that meet specific conditions, or disable the passthrough of events with the option of passing the events for SQL processing.
+| Location | Runs before | CLI phase |
+| --- | --- | --- |
+| **Pre-Parsing Actions** | Parsing | `pre-parser` |
+| **Pre-Warehouse Actions** | Masking and the Data Lake | `pre-warehouse` |
+| **Pre-Reducer Actions** | Exceptions and the Reducer | `pre-exceptions` |
 
-Filter queries use familiar query syntax similar to that of popular observability platforms, such as Datadog and New Relic. To learn more about the supported query syntaxes, see [Query log data in Grepr](/queries).
-
-### Process events with SQL
-
-The SQL processing path allows you to define complex transformations using ANSI standard SQL queries. You define the SQL query to process events and the name of a view to contain the results of query processing. You can create multiple queries and views that process data sequentially, with each view able to reference input events through the `logs` input table or previously defined views. Based on the filter's location in the pipeline, the results of SQL processing can be routed to specific pipeline steps, such as the JSON or Grok parsers, the Data Lake, the Reducer, or directly to the pipeline Sinks.
-
-You can choose to process all events or only events that don't meet the criteria for passthrough to the next pipeline step. You can further select specific events for SQL processing using a filter query. This feature provides flexibility to apply SQL transformations only to relevant events.
-
-You can also choose to materialize the results of query processing for reuse in subsequent views, improving performance for complex transformation scenarios.
+Choose the earliest location that has the fields you need. An event dropped at **Pre-Parsing Actions** isn't parsed, stored, or reduced. An event dropped at **Pre-Warehouse Actions** is parsed but isn't stored in the data lake. An event dropped at **Pre-Reducer Actions** is stored in the data lake but isn't reduced or sent to your sinks.
 
 <Callout>
-  When you transform events using SQL, the results of processing replace the original event. If you want to retain all fields from the original event, include the wildcard character (`*`) in your `SELECT` statement. For example, to transform the severity while keeping all other fields: `SELECT *, CASE WHEN severity > 16 THEN 21 ELSE severity END as severity FROM logs`.
+  **Pre-Warehouse Actions** run before masking. Conditions and SQL at this location see the original values of any fields that your masking rules replace.
+</Callout>
+
+## Add actions to a pipeline [#add]
+
+1. In the Grepr UI, go to the details page for your pipeline.
+1. In the left pane, select **Pre-Parsing Actions**, **Pre-Warehouse Actions**, or **Pre-Reducer Actions**.
+1. Click **Add Action**, and then select one of the following:
+   - **Condition (If/Else)**: Sends events down different branches based on a query. See [Drop or keep events with conditions](#conditions).
+   - **SQL**: Processes events with SQL. See [Process events with SQL](#sql).
+   - **Drop late-arriving events**: Drops events that arrive too long after their timestamp. See [Drop late-arriving events](#late-data).
+1. To save the change to your pipeline, click **Apply Changes**.
+
+Before you apply a change, you can test it against live data with the Pipeline Log Viewer. See [Test pipeline changes with live edit](/tutorials/live-edit).
+
+## Drop or keep events with conditions [#conditions]
+
+A condition sends each event down exactly one branch. The first branch whose query matches the event handles it, and an event that matches no query goes to the **ELSE** branch.
+
+- To add a condition, enter a query in the **IF** row.
+- To test events against more queries, add **ELSE IF** branches. Branches are checked from top to bottom, so you can reorder them to change which query handles an event first.
+- Each branch ends with either **Drop**, which removes the events from the pipeline, or the next pipeline step, which sends the events on. To change how a branch ends, click its ending and select the other option.
+- To process the events on one branch with SQL, insert a SQL action into that branch.
+
+For example, to drop debug events and keep everything else, add a condition with the query `status:debug`, end the **IF** branch with **Drop**, and end the **ELSE** branch with the next pipeline step.
+
+## Process events with SQL [#sql]
+
+A SQL action processes events with ANSI standard SQL queries. Each SQL action contains one or more statements. Each statement has a name and a SQL query that reads input events from the `logs` table or from an earlier statement by its name.
+
+To send the results of a statement to a pipeline step, connect the statement to that step. Depending on the location of the action, you can send results to steps such as the parsers, the Data Lake, the Reducer, or the pipeline sinks. Statements that aren't connected to a step are available only to later statements.
+
+A SQL action doesn't remove events from the pipeline. Events continue to the rest of the branch, and the results of connected statements are sent to the connected steps in addition.
+
+<Callout>
+  The results of a SQL statement contain only the fields you select. To keep all fields from the original event, include the wildcard character (`*`) in your `SELECT` statement. For example, to transform the severity while keeping all other fields: `SELECT *, CASE WHEN severity > 16 THEN 21 ELSE severity END as severity FROM logs`.
 </Callout>
 
 To learn more about using SQL in Grepr pipelines, see [Transform events with SQL](/transforms/sql-transform).
 
-## Configure filters in the Grepr pipelines UI
+## Drop late-arriving events [#late-data]
 
-In the Grepr pipelines UI, filters are available in predefined locations in a pipeline. To add one of these filters to your pipeline:
+You can drop events whose received time is later than their event timestamp by more than a maximum duration. Enter the maximum duration in the ISO-8601 format, such as `PT48H` for 48 hours. This is useful when timely data is critical, and late-arriving events could affect analysis or reporting.
 
-1. In the Grepr pipelines UI, in the left-hand navigation menu, select the **Pre-parsing**, **Post-parsing**, or **Post-warehouse** filter to open the filter detail pane.
-1. In the filter detail pane, click the pencil icon to display the filter configuration form.
-
-   ![The pre-parsing filter configuration form with the default settings.](/images/pipelines/filter-edit-config.png)
-
-1. Configure the filtering and routing of events:
-   - In the **Max Lateness** field, optionally enter a duration in ISO-8601 format to drop late-arriving data.
-   - In the **Next Step Passthrough** section, to pass events to the next pipeline step, ensure that **Enable data passthrough to next step** is selected. To optionally select events for passthrough based on specific criteria, enter a query in the **Filter Query** field.
-   - If you don't need to apply transformations to events, click **Save**. Otherwise, select **Enable SQL processing** and select whether to process all events or only events that are not passed to the next step. Optionally enter a query in the **Filter Query** field to conditionally select events for SQL processing. This screenshot shows a filter configuration that passes events associated with `host-1` and `host-4` to the next pipeline step. All other events are processed using SQL.
-
-    ![The filter configuration form with settings to pass specific events to the next pipeline step, and process all other events using SQL.](/images/pipelines/filter-edit-config-passthrough.png)
-
-1. Configure how to process events with SQL:
-   - To optionally apply SQL processing to events that meet specific criteria, enter a query in the **SQL Filter Query** field.
-   - In the **SQL Views** section, click the plus sign to add one or more **SQL Input** definitions. In the **View name** field, enter a name for the view to contain the results of processing, and in the **SQL** field, enter the SQL query to process input events.
-   - Optionally select **Reuse calculation** to materialize the results of query processing for reuse in subsequent views.
-   - In the **Outputs** section, configure one or more pipeline steps to receive the results of SQL processing. This screenshot shows a configuration that selects events where the message includes `No data received` and saves them to a view named `no_data_messages`. The view is then routed to the pipeline sinks, which forward it to your observability platform or other destinations.
-
-    ![The filter configuration form with a SQL view that selects log events based on message content.](/images/pipelines/filter-edit-config-sqltransform.png)
-
-1. Click **Save**.
+The late-data rule applies to every event at that location, before any condition is checked.
 
 <HiddenFAQ faqs={[
   {
-    q: "What is event filtering and why would I use it?",
-    a: "Event filtering allows you to include or exclude log events from pipeline processing based on specific conditions. Use filtering to remove unwanted events, focus processing on relevant data, reduce volume, prevent sensitive data from flowing through the pipeline, or route different event types to different processing stages."
+    q: "What are actions in a Grepr pipeline?",
+    a: "Actions decide what happens to log events at a specific point in a pipeline. You can use actions to drop events, keep only events that match a condition, drop late-arriving events, or process events with SQL and send the results to a later pipeline step."
   },
   {
-    q: "Where are filters located in a Grepr pipeline?",
-    a: "Filters are available in predefined locations throughout a pipeline: Pre-parsing filter (before initial processing), Post-parsing filter (after Grok parsing), and Post-warehouse filter (after data lake storage). Each location allows you to filter at different stages of log processing."
+    q: "Where are actions located in a Grepr pipeline?",
+    a: "Actions are available at three locations, each named for the step it runs before: Pre-Parsing Actions run before parsing, Pre-Warehouse Actions run before masking and the data lake, and Pre-Reducer Actions run before exceptions and the reducer. In the Grepr CLI, these locations are the pre-parser, pre-warehouse, and pre-exceptions phases."
   },
   {
-    q: "What filtering options are available in Grepr?",
-    a: "Grepr provides options to drop late-arriving events, pass all or some events to the next pipeline step using query filters, process events with SQL before passing to a pipeline step, or pass all records to the next step while also routing some through SQL processing for enrichment."
+    q: "What happened to pipeline filters?",
+    a: "The pipeline steps named Pre-parsing filter, Post-parsing filter, and Post-warehouse filter are named Pre-Parsing Actions, Pre-Warehouse Actions, and Pre-Reducer Actions. They run at the same locations in the pipeline."
+  },
+  {
+    q: "How do I drop events I don't need?",
+    a: "Add a Condition (If/Else) action with a query that matches the events to drop, end the IF branch with Drop, and end the ELSE branch with the next pipeline step."
   },
   {
     q: "How do I filter out late-arriving events?",
-    a: "In the filter configuration, enter a Max Lateness value in ISO-8601 duration format. Events that arrive later than this duration after their timestamp are dropped from the pipeline. This is useful when timely data is critical and late data could affect analysis."
+    a: "Add the Drop late-arriving events action and enter a maximum duration in the ISO-8601 format. Events whose received time is later than their timestamp by more than this duration are dropped."
   },
   {
-    q: "What query languages does Grepr support for filtering?",
-    a: "Grepr supports multiple query syntaxes including Datadog log queries, New Relic log queries, and standard SQL. Choose the query language that matches your observability platform or preference."
+    q: "What query languages does Grepr support for conditions?",
+    a: "Conditions support multiple query syntaxes, including the Datadog-like syntax and the New Relic log query-like syntax. SQL actions use ANSI standard SQL."
   },
   {
-    q: "How do I create a simple filter to exclude events?",
-    a: "In the Pre-parsing, Post-parsing, or Post-warehouse filter, ensure 'Enable data passthrough to next step' is selected. Enter a filter query that matches events you want to keep. Events matching the query pass to the next step, while others are excluded or processed separately."
+    q: "Does a SQL action remove events from the pipeline?",
+    a: "No. Events continue to the rest of the branch after a SQL action. The results of each SQL statement that you connect to a pipeline step are sent to that step in addition."
   },
   {
     q: "Can I route different event types to different pipeline paths?",
-    a: "Yes. Use multiple SQL views in the filter's SQL processing path to route different events to different destinations. Each view can contain a different SQL query that processes a specific event type and routes it to appropriate pipeline steps."
-  },
-  {
-    q: "What is the difference between passthrough and SQL processing?",
-    a: "Passthrough sends events directly to the next pipeline step based on a filter query. SQL processing allows you to transform events using SQL statements before routing them to different pipeline steps. You can enable both to handle events in different ways simultaneously."
-  },
-  {
-    q: "How do I use SQL to transform events in a filter?",
-    a: "Enable SQL processing in the filter configuration, then create SQL views with names and SQL queries. Each view can process events and the results can be routed to pipeline steps like the Data Lake, Reducer, or Sinks. Reference input events using the 'logs' input table."
-  },
-  {
-    q: "What does the shouldMaterialize option do in filters?",
-    a: "When enabled, shouldMaterialize caches the results of a SQL view so subsequent SQL views can reuse the cached results instead of re-running the query. This improves performance when multiple views need the results of the same transformation."
+    a: "Yes. Use a condition with a branch for each event type, or add several SQL statements and connect each one to a different pipeline step."
   }
 ]} />
-

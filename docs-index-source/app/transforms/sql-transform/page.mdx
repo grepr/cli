@@ -56,7 +56,7 @@ When the SQL transform runs, it validates that:
 
 ## How do I use the SQL transform? [#sql-transform-usage]
 
-You use SQL transforms by adding them to your Grepr pipelines. To add a SQL transform to a pipeline in the Grepr UI, configure it in a pipeline filter configuration. See [Filter events in a Grepr pipeline](/transforms/filter-events).
+You use SQL transforms by adding them to your Grepr pipelines. To add a SQL transform to a pipeline in the Grepr UI, add a SQL action to one of the pipeline action locations. See [Process events with SQL](/transforms/filter-events#sql).
 
 To add a transform in the REST API, you define the SQL transform as part of the pipeline's job graph using a [SqlOperation](/apis/api-spec#schema/SqlOperation). The SqlOperation has the following schema:
 
@@ -210,7 +210,7 @@ Data ordering:
 
 ## Next steps
 
-- To learn about using the SQL transform in the Grepr pipeline UI, see [Filter events in a Grepr pipeline](/transforms/filter-events).
+- To learn about using the SQL transform in the Grepr pipeline UI, see [Filter and transform events with actions](/transforms/filter-events).
 - To learn about supported data types for the SQL transform, see [SQL transform supported data types](/transforms/sql-transform/data-types).
 - To see examples of using the SQL transform, see [SQL transform examples](/transforms/sql-transform/sql-transform-examples).
 - To learn about using supported SQL functions and operators, see [SQL transform functions and operators](/transforms/sql-transform/sql-functions).

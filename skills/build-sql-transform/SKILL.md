@@ -1,5 +1,5 @@
 ---
-description: Author a Flink-SQL transform on a Grepr log-reducer pipeline — reshape, enrich, or filter logs row-by-row, derive metric-shaped logs via windowed aggregation, or run arbitrary supported SQL. Emits a set-sql-transform patch into a template transform slot (pre-parser, pre-warehouse, pre-exceptions) and routes through test-pipeline-change. SQL transforms are TEMPLATE-BACKED ONLY. Use for "add a SQL transform", "transform/reshape logs with SQL", "logs to metrics", "aggregate logs with SQL". For an ad-hoc GROUP BY, count distinct, or cardinality question about existing data, use grepr:sql-analytics instead - that is a read-only query, not a pipeline change. For masking/redacting sensitive data, use grepr:change-masking (the masking operator) instead of SQL.
+description: Author a Flink-SQL transform on a Grepr log-reducer pipeline — reshape, enrich, or filter logs row-by-row, derive metric-shaped logs via windowed aggregation, or run arbitrary supported SQL. Emits a set-sql-transform patch into a template transform slot (pre-parser, pre-warehouse, pre-exceptions) and routes through test-pipeline-change. SQL transforms are TEMPLATE-BACKED ONLY. In the UI these slots are the Pre-Parsing, Pre-Warehouse, and Pre-Reducer Actions steps, where SQL is added as a SQL action. Use for "add a SQL transform", "add a SQL action", "transform/reshape logs with SQL", "logs to metrics", "aggregate logs with SQL". For an ad-hoc GROUP BY, count distinct, or cardinality question about existing data, use grepr:sql-analytics instead - that is a read-only query, not a pipeline change. For masking/redacting sensitive data, use grepr:change-masking (the masking operator) instead of SQL.
 allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr sql:validate), Bash(grepr docs:search), Bash(grepr docs:get), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:plan), Bash(grepr --conf * job:draft), Bash(grepr --conf * sql:validate), Bash(grepr --conf * docs:search), Bash(grepr --conf * docs:get), Read, Write, AskUserQuestion, grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query, grepr:docs-commands
 ---
 
@@ -129,16 +129,16 @@ this template — see `reference.md` for what that excludes.)
 If the user named one, use it. (`pre-aggregation` is **not** accepted.) Otherwise
 reason from two bounds and confirm against topology:
 
-| Phase | Reads | Sits |
-|-------|-------|------|
-| `pre-parser` | raw `message` only (pre-JSON/grok) | earliest; before the raw-storage branch (cheapest) |
-| `pre-warehouse` | parsed attributes + grok captures | after parser, before downstream branches |
-| `pre-exceptions` | parsed attributes | on the reducer-bypass (matched-exception) path |
+| Phase | UI step | Reads | Sits |
+|-------|---------|-------|------|
+| `pre-parser` | Pre-Parsing Actions | raw `message` only (pre-JSON/grok) | earliest; before the raw-storage branch (cheapest) |
+| `pre-warehouse` | Pre-Warehouse Actions | parsed attributes + grok captures | after parser, before downstream branches |
+| `pre-exceptions` | Pre-Reducer Actions | parsed attributes | after the warehouse fan-out, on the main path to the reducer (every log; exception matching happens later, inside the reducer) |
 
 - **Earliest possible** = what the SQL reads (needs a parsed attribute → must be
   post-parser; touches only raw `message` → `pre-parser`).
 - **Latest acceptable** = where the effect must land (must take effect *before
-  storage* → `pre-parser`; only reducer-bypass logs → `pre-exceptions`; general
+  storage* → `pre-parser`; after storage but before the reducer and sinks → `pre-exceptions`; general
   reshape → `pre-warehouse`).
 - **Value also lands in a parsed attribute** → do it at `pre-parser` on the raw
   text, so the parser emits already-clean attributes (avoids VARIANT rebuilding).

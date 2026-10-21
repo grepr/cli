@@ -38,7 +38,7 @@ Why this works: `path` is a raw tag present before parsing, so `pre-parser` is
 the cheapest drop point. The keep predicate `NOT (...)` keeps everything except
 the three health-check paths. `pre-warehouse` would also drop them (the tag is
 still present post-parse), just after paying the parse cost; `pre-exceptions`
-would only narrow the reducer-bypass path, not drop everywhere.
+would drop them only after they were already stored in the warehouse.
 
 <a id="raw-set-clear-filter"></a>
 ## ✅ Raw graph: tighten pre-warehouse, clear pre-exceptions

@@ -68,21 +68,20 @@ You can use a local file containing logs for testing instead of streaming live d
   - Although this example uses Datadog, you can use the live edit feature with any Grepr-supported observability platform. For the complete list of supported observability vendors, see [Supported integrations](/integrations/support-matrix).
 </Callout>
 
-In this example, you use the following steps to test a filter that removes any log messages received by your Grepr pipeline that are assigned the hostname `my-test-host-1`.
+In this example, you use the following steps to test an action that drops any log messages received by your Grepr pipeline that are assigned the hostname `my-test-host-1`.
 
 1. In the Grepr UI, go to the details page for your running pipeline.
-1. In the left pane, click **Pre-parsing filter** to open the filter configuration, and click **Add** next to **Filters**.
-1. Make sure **Query language** is set to **Datadog**, and enter the following expression in the **Query** field:
+1. In the left pane, click **Pre-Parsing Actions**, click **Add Action**, and select **Condition (If/Else)**.
+1. Make sure the query language is set to **Datadog**, and enter the following query in the **IF** row:
 
   ```bash copy
-  -host:my-test-host-1
+  host:my-test-host-1
   ```
 
-   ![The Pre-parsing filter configuration pane with the filter expression entered.](/images/pipelines/pre-parsing-filter-configuration.png)
-
-1. _Do not_ click **Apply Changes**. Before applying the changes to the production pipeline, use the live edit feature to test and validate the filter.
-1. In the lower right corner of the page, click the expand icon to open the **Pipeline Log Viewer** and click the play icon to create and start a temporary copy of your pipeline with the filter added.
-1. In the **Pipeline Log Viewer** left table, click a log message from `my-test-host-1`. The log detail pane opens. Because the filter removes the log messages from the pipeline, only the **LEFT** table view is displayed.
+1. End the **IF** branch with **Drop**, and leave the **ELSE** branch ending with the next pipeline step.
+1. _Do not_ click **Apply Changes**. Before applying the changes to the production pipeline, use the live edit feature to test and validate the action.
+1. In the lower right corner of the page, click the expand icon to open the **Pipeline Log Viewer** and click the play icon to create and start a temporary copy of your pipeline with the action added.
+1. In the **Pipeline Log Viewer** left table, click a log message from `my-test-host-1`. The log detail pane opens. Because the action drops the log messages from the pipeline, only the **LEFT** table view is displayed.
 
    ![The Pipeline Log Viewer log detail pane showing a message filtered out of the pipeline.](/images/pipelines/pipeline-log-viewer-filtered-message.png)
 
