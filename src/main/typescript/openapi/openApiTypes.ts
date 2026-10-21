@@ -3628,6 +3628,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/jobs/{id}/tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Update Job Tags
+     * @description Replaces all tags on the job's latest version. This does not create a new version or restart the job. Tags can be changed only while the pipeline is running or stopped. A job can have at most 10 tags; keys can be at most 64 characters and values at most 256.
+     */
+    put: operations["updateJobTags"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/llm-usage/{integrationId}": {
     parameters: {
       query?: never;
@@ -27278,6 +27298,66 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  updateJobTags: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Id of the job
+         * @example 0ABC12DEF4G
+         */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": {
+          [key: string]: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Tags updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadJob"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Job not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The pipeline is not running or stopped. */
+      409: {
         headers: {
           [name: string]: unknown;
         };

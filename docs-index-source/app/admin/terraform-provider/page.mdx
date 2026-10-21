@@ -154,7 +154,9 @@ To automatically import an existing pipeline without using the `import` command,
 
 ### Tags [#tf-pipeline-tags]
 
-Grepr sets the tags of a pipeline only when it creates the pipeline. The update API does not accept tags. For an existing pipeline, including a pipeline that you import, either leave `tags` unset or set it to the tags that the pipeline already has.
+Starting with provider version 1.3.0, the `tags` that you configure are the pipeline's complete set of tags. When you change them, Grepr updates the pipeline's tags without creating a new pipeline version or redeploying the pipeline. You can change a pipeline's tags only while the pipeline is running or stopped, so apply a tag change after any earlier update to the pipeline finishes. Tags that you leave out of the configuration are removed from the pipeline. To keep editing a pipeline that you created in the Grepr UI, include `grepr-ui-managed = "true"` in its tags. To keep a pipeline's existing tags, including for a pipeline that you import, leave `tags` unset.
+
+A pipeline can have up to 10 tags. Each key can be up to 64 characters long, and each value can be up to 256 characters long. Tag keys that start with `__grepr__` are reserved.
 
 ## Example: create a pipeline
 
@@ -248,7 +250,7 @@ The `grepr_pipeline` resource supports these attributes:
 | `job_graph_json`   | String         | Yes      | The job graph as a JSON string. Use `file()` to load from a JSON file or `jsonencode` to define inline.      |
 | `desired_state`    | String         | No       | The desired state: `RUNNING` or `STOPPED`. Defaults to `RUNNING`.                                            |
 | `team_ids`         | Set of Strings | No       | Team IDs to associate with this pipeline.                                                                    |
-| `tags`             | Map of Strings | No       | Custom tags. Grepr sets tags only when it creates the pipeline. See [Tags](#tf-pipeline-tags).               |
+| `tags`             | Map of Strings | No       | Custom tags. See [Tags](#tf-pipeline-tags).                                                                  |
 | `wait_for_state`   | Boolean        | No       | Wait for the pipeline to reach the desired state. Defaults to `true`.                                        |
 | `state_timeout`    | Number         | No       | Timeout in seconds for state transitions. Defaults to `600`.                                                 |
 | `rollback_enabled` | Boolean        | No       | Roll the pipeline back to its last stable configuration when an update fails. Defaults to `true`.            |
