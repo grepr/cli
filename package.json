@@ -1,6 +1,6 @@
 {
   "name": "@grepr/cli",
-  "version": "1.12.5-2e57f88",
+  "version": "1.12.6-f4cc8d6",
   "description": "Official Grepr CLI tool for submitting synchronous batch jobs with OAuth authentication",
   "main": "build/dist/grepr.js",
   "type": "module",
@@ -22,7 +22,7 @@
     "prepublishOnly": "node -e \"const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));delete p.packageManager;fs.writeFileSync('package.json',JSON.stringify(p,null,2))\" && bun run clean && bun run build",
     "pack": "bun run clean && bun run build && bun pm pack",
     "dist": "./scripts/create-distributions.sh",
-    "dist:fast": "bun run build:fast && ./scripts/create-distributions.sh",
+    "dist:fast": "bun run build:fast && CLI_ALREADY_BUILT=true ./scripts/create-distributions.sh",
     "link:local": "bun run build && bun link",
     "unlink:local": "bun unlink"
   },
