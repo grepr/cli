@@ -1,5 +1,5 @@
 ---
-description: Connect Claude or Claude Code to the Grepr MCP server with OAuth sign-in, or connect any MCP client with a service account access token.
+description: Connect Claude, Claude Code, Cursor, Codex, or ChatGPT to the Grepr MCP server with OAuth sign-in, or connect any MCP client with a service account token.
 ---
 
 import { Callout } from 'nextra/components'
@@ -20,7 +20,7 @@ The examples on this page use the US endpoint. If your organization is in the EU
 
 You can authenticate in two ways:
 
-- OAuth sign-in: You sign in interactively with your Grepr user account. Use this for Claude and Claude Code.
+- OAuth sign-in: You sign in interactively with your Grepr user account. Use this for Claude, Claude Code, Cursor, Codex, and ChatGPT.
 - Service account credentials: Your client authenticates as a Grepr service account. Use this for Claude Tag in Slack, for automation, and for MCP clients that do not support the OAuth sign-in flow.
 
 ## Sign in with OAuth
@@ -31,6 +31,9 @@ Grepr registers a dedicated OAuth client for each supported MCP client. To conne
 | --- | --- | --- |
 | Claude | `us3sBOgZj6hERktG9yZEVwujaJe3j9L0` | `HOnxCPNGnzdGlfXBM2sff0twoolRnDj9` |
 | Claude Code | `jlCTdLYzDkkTSc2I7MdI0SBw48AOdJM6` | `GlEIcfSbge5gqN4o918fLXKVONP2twBh` |
+| Cursor | `ol2iI3MgbY4gDMT1SbCDQHj5OA8K4bAg` | `XHHImmxqr9EihBqVOettpLhS6CxDBhoB` |
+| Codex | `QPTtqmepPCvjvAs4rJHfBwXC4HklKefA` | `V0JSLGp1GmySuCj8tJPGqTXXMuP6unRx` |
+| ChatGPT | `R3rgytuEh03CzvNrasYj8R3eeAaYVcAP` | `7GCueSSV94VNsv2TkLGnWiWlyoS3DQrA` |
 
 ### Claude
 
@@ -52,6 +55,60 @@ claude mcp add --transport http --client-id jlCTdLYzDkkTSc2I7MdI0SBw48AOdJM6 --c
 The `--callback-port 6280` flag is required. Without it, Claude Code picks a random port and the sign-in fails with a callback URL mismatch.
 
 Then open Claude Code, run `/mcp`, select `grepr`, and complete the sign-in flow in your browser with your Grepr user account.
+
+### Cursor
+
+Add the server with the Grepr client ID to `~/.cursor/mcp.json`, or to `.cursor/mcp.json` in a project:
+
+```json copy
+{
+  "mcpServers": {
+    "grepr": {
+      "url": "https://app.grepr.ai/mcp",
+      "auth": {
+        "CLIENT_ID": "ol2iI3MgbY4gDMT1SbCDQHj5OA8K4bAg"
+      }
+    }
+  }
+}
+```
+
+The `auth` block with `CLIENT_ID` is required. Without it, Cursor tries dynamic client registration, which Grepr does not support, and the sign-in fails. Do not add a client secret. Cursor uses fixed callback URLs that Grepr registers, so you do not need to set a callback port.
+
+Save the file and restart Cursor. The `grepr` server shows in **Customize** > **MCPs**. When Cursor prompts you to sign in, complete the sign-in flow in your browser with your Grepr user account.
+
+### Codex
+
+Add the server with the Grepr client ID and the fixed callback port to `~/.codex/config.toml`:
+
+```toml copy
+[mcp_servers.grepr]
+url = "https://app.grepr.ai/mcp"
+
+[mcp_servers.grepr.oauth]
+client_id = "QPTtqmepPCvjvAs4rJHfBwXC4HklKefA"
+callback_port = 6280
+```
+
+The `callback_port = 6280` setting is required. Without it, Codex picks a random port and the sign-in fails with a callback URL mismatch. Use the endpoint for your region exactly as the endpoint table writes it, with no trailing slash, because Codex builds its callback URL from the endpoint URL.
+
+Then sign in:
+
+```bash copy
+codex mcp login grepr
+```
+
+Complete the sign-in flow in your browser with your Grepr user account.
+
+### ChatGPT
+
+Your ChatGPT plan or workspace settings must allow custom MCP servers.
+
+1. In ChatGPT, go to **Plugins**, click **Add**, and select **Add custom MCP server**.
+1. Enter a name such as `Grepr`, and enter `https://app.grepr.ai/mcp` as the **Server URL**. Enter the endpoint for your region exactly as the endpoint table writes it, because ChatGPT builds its callback URL from it. Keep **OAuth** as the **Authentication**.
+1. Open **Advanced OAuth settings** and keep **User-Defined OAuth Client** as the **Registration method**. Enter `R3rgytuEh03CzvNrasYj8R3eeAaYVcAP` as the **OAuth client ID**, leave the client secret empty, and keep `none` as the **Token endpoint auth method**.
+1. Select **I understand and want to continue** and click **Create as a plugin**.
+1. When ChatGPT prompts you to sign in, complete the sign-in flow with your Grepr user account.
 
 ## Connect Claude Tag in Slack
 
@@ -154,8 +211,20 @@ When your AI assistant can run shell commands, the skills use the Grepr CLI inst
     a: "Add a custom connector in Claude with the URL https://app.grepr.ai/mcp, and enter the Grepr client ID for Claude under Advanced settings. Then sign in with your Grepr user account."
   },
   {
+    q: "How do I connect Cursor to Grepr?",
+    a: "Add the server to your Cursor mcp.json file with the URL https://app.grepr.ai/mcp and an auth block that contains the Grepr client ID for Cursor. Then restart Cursor and, when it prompts you, sign in with your Grepr user account."
+  },
+  {
+    q: "How do I connect Codex to Grepr?",
+    a: "Add the server to your Codex config.toml file with the URL https://app.grepr.ai/mcp, the Grepr client ID for Codex, and callback_port = 6280. Then run codex mcp login grepr and sign in with your Grepr user account."
+  },
+  {
+    q: "How do I connect ChatGPT to Grepr?",
+    a: "Add a custom MCP server in ChatGPT with the URL https://app.grepr.ai/mcp and OAuth authentication. Under Advanced OAuth settings, keep User-Defined OAuth Client as the registration method and enter the Grepr client ID for ChatGPT. Then sign in with your Grepr user account."
+  },
+  {
     q: "Why does the MCP sign-in fail with a callback URL mismatch?",
-    a: "Grepr registers exact OAuth callback URLs. Clients that open the sign-in flow on a local port must use port 6280, for example with the --callback-port 6280 flag in Claude Code."
+    a: "Grepr registers exact OAuth callback URLs. Claude Code and Codex must use port 6280. In Claude Code, set it with the --callback-port 6280 flag. In Codex, set callback_port = 6280 in config.toml. Cursor and ChatGPT use callback URLs that Grepr registers, so they need no callback setting. Codex and ChatGPT build the callback URL from the server URL, so enter the endpoint for your region exactly as the endpoint table writes it."
   },
   {
     q: "Can I use the Grepr MCP server without OAuth?",
