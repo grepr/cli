@@ -83,6 +83,12 @@ Build ONE patch covering all shapes:
 - Numeric measurements → `add-aggregation-strategy` (`attributePath`,
   single-element `strategies`: `sum`|`min`|`max`|`avg`). One strategy per path.
 
+Do not fix empty messages by changing the reducer's `tokenizationInput` (for
+example to `AUTO`). By default it then compares every attribute's value, and an
+attribute value is compared whole, not tokenized and masked like the message, so
+a text attribute with ids or numbers in it makes every log its own pattern and
+nothing reduces. Promote the text with `add-message-attribute` instead.
+
 For an empty-message fix, keep the first patch minimal unless you observed a
 separate over-aggregation problem. Do not add a group-by just because a field is
 present in the sample. Low-cardinality fields such as `status`/`result` are
@@ -135,7 +141,9 @@ trace/span/request IDs and path-param URLs (use `request.route`, not
 
 Write the patch to a fresh `patch-<short-tag>.json` (`{ "operations": [...] }`),
 then hand the patch file to `grepr:test-pipeline-change`, which plans, drafts,
-gates on approval, and applies. Report the before/after metrics (empty-message
+gates on approval, and applies. If the draft's reducer output still shows the
+empty-message logs as individual records, the patch did not fix them: revise it
+before reporting. Report the before/after metrics (empty-message
 %, reduction %, group cardinality) to the user and ask them to approve. This
 skill never PUTs directly.
 
