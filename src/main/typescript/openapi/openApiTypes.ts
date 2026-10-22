@@ -6547,7 +6547,7 @@ export interface components {
       confidence: CreateIssueRequestConfidence;
       /** @description The current understanding, in markdown, or null for none. */
       description?: string;
-      /** @description The `entity:*` tags it concerns; an unprefixed key is put in the `entity:` namespace. */
+      /** @description The `entity:*` tags it concerns; an unprefixed key is put in the `entity:` namespace. Keys are stored in lower case, and values as given; searches match both in any case. */
       entities?: {
         [key: string]: string;
       };
@@ -8422,7 +8422,7 @@ export interface components {
       duplicateOf?: string;
       /** @description True in a response whose reader can't see the surviving issue. */
       duplicateOfHidden?: boolean;
-      /** @description The `entity:*` tags it concerns, the same vocabulary as memory tags, sorted by key. */
+      /** @description The `entity:*` tags it concerns, the same vocabulary as memory tags, keys in lower case, sorted by key. */
       entities?: {
         [key: string]: string;
       };
@@ -8733,7 +8733,7 @@ export interface components {
       /** @description The user id of the person whose write locked it. */
       setBy?: string;
     };
-    /** @description One investigation whose agent was given a guidance comment in its known-issues context. */
+    /** @description One investigation whose agent was given a guidance comment: returned by its `get_issue`, or in the issue it was handed. */
     IssueGuidanceRead: {
       /** @description The investigation's agent, or null when the investigation no longer exists. */
       agentId?: string;
@@ -13128,12 +13128,12 @@ export interface components {
       assignee?: components["schemas"]["IssueAssigneeFilter"];
       /**
        * Format: int32
-       * @description Include closed issues closed within this many days. Absent: 30 when `states` is absent, and no window when it is given.
+       * @description Include closed issues closed within this many days. Absent: 30 when `states` is absent, with those closed as IGNORED or NOT_A_PROBLEM kept at any age, and no window when it is given. Given, it's exact.
        */
       closedWithinDays?: number;
       /** @description The `nextCursor` of the previous page, sent with the same filters. */
       cursor?: string;
-      /** @description Entity tags to match: every key must match, and any of a key's values matches it. An unprefixed key is put in the `entity:` namespace. */
+      /** @description Entity tags to match: every key must match, and any of a key's values matches it. Keys and values match in any case. An unprefixed key is put in the `entity:` namespace. */
       entities?: {
         [key: string]: string[];
       };
@@ -13152,9 +13152,9 @@ export interface components {
        * @enum {string}
        */
       priority?: CreateIssueRequestPriority;
-      /** @description Full-text search over titles, descriptions and comments. */
+      /** @description Words to search the whole issue for, comments included, split and stemmed as the issue is, so checkout-api is also checkout and api: an issue matches when it has any one of them, and those with the most, above all in their title, fingerprint and entities, come first. */
       query?: string;
-      /** @description Only issues in these states. Absent: open issues plus those closed within `closedWithinDays`. */
+      /** @description Only issues in these states. Absent: open issues plus those closed within `closedWithinDays`, and, when that is absent too, those closed as IGNORED or NOT_A_PROBLEM at any age. */
       states?: CreateIssueRequestState[];
       /** @description Only issues one of these teams can see: linked to one of them, or shared with all teams. */
       teamIds?: string[];
@@ -13938,7 +13938,7 @@ export interface components {
     StartInvestigationRequest: {
       /** @description TSID of the agent to investigate. */
       agentId: string;
-      /** @description When set, hands the agent this issue (its TSID): the run's subject, which its known issues hold alone and whose history records the handoff. Only a person may hand off an issue, and a handoff can't be a continuation. `null` for a plain run. */
+      /** @description When set, hands the agent this issue (its TSID): the run's subject, which its first message holds and whose history records the handoff. Only a person may hand off an issue, and a handoff can't be a continuation. `null` for a plain run. */
       issueId?: string;
       /** @description With `issueId`, true to have the agent work on the issue next: the run starts ahead of the agent's other queued runs, without stopping a running one. Allowed only with `issueId`; `null` or false for the usual place in the queue. */
       next?: boolean;

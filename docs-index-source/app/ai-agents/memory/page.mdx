@@ -131,6 +131,8 @@ The webhook mapping reads the service and host from field names Grepr expects. I
 
 Consistent tag values matter more than complete ones. A service tagged `checkout` in some memories and `checkout-svc` in others splits its history in two, and a timeline search finds only half. An agent can ask a search for the tag values already in use in your organization, so an agent that checks before recording reuses existing values rather than inventing new ones.
 
+Case doesn't split a history: `Service=Checkout` and `service=checkout` are the same tag.
+
 ## Set how an agent uses its memory [#policy]
 
 The **Retrieval policy** settings on the agent's **Memories** step tell the agent how much to search and what to record. Grepr adds them to the agent's instructions, so you do not restate them in the agent's own prompt.

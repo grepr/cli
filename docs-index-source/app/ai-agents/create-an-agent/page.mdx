@@ -45,7 +45,7 @@ Investigations are long-running and tool-heavy, so the model you choose changes 
 
 The **Capabilities** step is where you choose the service account the agent acts as, the tools and skills it can use, the MCP servers it can call, and whether the pipeline changes it proposes need your approval. To learn more, see [_](/ai-agents/capabilities).
 
-The step ends with the **Memory and issues** section, which is collapsed. Every new agent records memories and works on issues, so open the section to turn off **Remember past investigations** or **Works on issues**, to set the store for searching memories by meaning, or to choose **Allow Ready** so the agent can file issues in Ready and move issues there. Every agent can search and read memories and issues, whichever switches are on. To learn more about memory, see [_](/ai-agents/memory). To learn more about how agents work on issues and pick up Ready issues, see [_](/ai-agents/issue-board).
+The step ends with the **Memory and issues** section, which is collapsed. Every new agent records memories and works on issues, so open the section to turn off **Remember past investigations** or **Works on issues**, to set the store for searching memories by meaning, or to choose **Allow Ready** so the agent can file issues in Ready and move issues there. Every agent can search and read memories and issues, whichever switches are on. After the agent exists, these settings are on its **Memories** and **Issues** steps. To learn more about memory, see [_](/ai-agents/memory). To learn more about how agents work on issues and pick up Ready issues, see [_](/ai-agents/issue-board).
 
 ### Step 4: Subscribe to signal sources [#step4-subscriptions]
 
@@ -123,10 +123,11 @@ When a token budget is exhausted, new investigations stop starting and resume wh
 An agent's settings are spread across the steps on its page, which hold the same fields as the wizard:
 
 - **Behavior** holds the name, the system prompt, the model, and the limits.
-- **Capabilities** holds the service account, the tools, the skills, the MCP integrations, the change approval mode, and the **Memory and issues** section, which holds whether the agent works on issues.
+- **Capabilities** holds the service account, the tools, the skills, the MCP integrations, and the change approval mode.
 - **Memories** holds the memory settings and, below them, the memories the agent recorded.
+- **Issues** holds whether the agent works on issues, whether it can put issues in **Ready**, and which **Ready** issues it picks up. See [_](/ai-agents/issue-board).
 
-Changes to the settings on these three steps are held until you click **Save Changes**, so you can revise several steps in one pass. To abandon them, click **Discard Changes**. Subscriptions are not part of this and apply as soon as you make them. Neither are changes to individual memories on the **Memories** step: an edit, a verdict, or a delete applies as soon as you confirm it, and **Discard Changes** does not undo it.
+Changes to the settings on these four steps are held until you click **Save Changes**, so you can revise several steps in one pass. To abandon them, click **Discard Changes**. Subscriptions are not part of this and apply as soon as you make them. Neither are changes to individual memories on the **Memories** step: an edit, a verdict, or a delete applies as soon as you confirm it, and **Discard Changes** does not undo it.
 
 An investigation reads the agent's instructions, model, and limits when it starts, so correcting those mid-incident leaves the current run on the settings it began with and applies to the next one.
 

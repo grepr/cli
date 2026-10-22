@@ -6,6 +6,14 @@ description: Learn how AI agents work on issues on the issue board, how to hand 
 
 An agent with **Works on issues** turned on files issues, works on them, and records what it found on the issue board. An agent works on an issue in an investigation started on that issue, called a _run_ on the issue. A run starts on an issue in one of two ways: you hand the issue to the agent, or the agent picks the issue up from the **Ready** column.
 
+An agent's issue settings are on its **Issues** step: **Works on issues**, whether it can put issues in **Ready**, and which **Ready** issues it picks up. When you create an agent, they're in the wizard's **Memory and issues** section.
+
+## How an agent finds issues [#finding-issues]
+
+Before an agent acts on a problem or files an issue, it searches the board for the problem and reads what it finds, including guidance comments. The search also finds issues people closed as **Ignored** or **Not a problem**, so an agent doesn't redo work a person ruled out. The issue page shows which runs each guidance comment was given to.
+
+An issue's entities, such as `entity:service=checkout`, say what the problem is. When an agent files an issue from an alert, it names at least one entity from the alert.
+
 ## How an agent works on an issue [#how-it-works]
 
 When a run on an issue starts, the agent joins the issue as an assignee, and an issue in **Ready** moves to **In progress**. The issue page lists the issue's runs with their status and a link to each one, and the issue's card shows an agent whose run is waiting to start.
@@ -37,7 +45,7 @@ When you continue an investigation that was on an open issue, the new investigat
 
 ## Let an agent pick up Ready issues [#pickup]
 
-To let an agent pick up issues on its own, open the agent's **Memory and issues** section, turn on **Pick up Ready issues**, and choose which issues it takes: a priority, labels, entities, and teams. An issue must match every filter you set.
+To let an agent pick up issues on its own, open the agent's **Issues** step, turn on **Pick up Ready issues**, and choose which issues it takes: a priority, labels, entities, and teams. An issue must match every filter you set. Labels are the dependable way to route issues to an agent.
 
 The agent picks up issues in **Ready** that no one is assigned to and no run is on, most urgent first, then the one that has been in **Ready** the longest. It follows these rules:
 
@@ -51,7 +59,7 @@ Pausing an agent discards its runs on issues that are waiting to start, so that 
 
 ## Let an agent put issues in Ready [#allow-ready]
 
-By default, an agent files issues in **Triage** for a person to review, and can't move an issue to **Ready**. To let an agent file issues in **Ready** and move issues there, choose **Allow Ready** in the agent's **Memory and issues** section. Agents whose pickup filters match an issue in **Ready** pick it up, and every agent can see the other agents' pickup filters, so an agent can label an issue for the agent that handles it.
+By default, an agent files issues in **Triage** for a person to review, and can't move an issue to **Ready**. To let an agent file issues in **Ready** and move issues there, choose **Allow Ready** on the agent's **Issues** step. Agents whose pickup filters match an issue in **Ready** pick it up, and every agent can see the other agents' pickup filters, so an agent can label an issue for the agent that handles it.
 
 ## Remove an agent from an issue [#remove]
 

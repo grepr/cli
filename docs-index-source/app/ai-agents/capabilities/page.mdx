@@ -86,7 +86,9 @@ An agent's pipeline changes are scoped to a pipeline's Grok parsers and its SQL 
 
 A SQL transform an agent adds is a filter and nothing further. It reads the pipeline's logs and selects them unchanged against a single condition, so it cannot join, aggregate, read a dataset, register a function, or keep state. It routes the events it matches to the agent signal sink, which you configure yourself when you set the pipeline up. An agent can add routes to that sink, and it cannot create, change, or remove the sink. That limit is on what an agent adds by itself. A SQL output you route to the agent signal sink yourself carries no such restriction, so you can build the event an agent receives however you need. See [_](/ai-agents/subscriptions#agent-signal-sink).
 
-The tools an agent uses with memories and issues are not in this list. Every agent can search and read both, and the **Remember past investigations** and **Works on issues** switches in the **Memory and issues** section decide whether it also records memories and changes issues. See [_](/ai-agents/memory).
+The tools and skills you grant also decide which `grepr` CLI commands the agent can run.
+
+The tools an agent uses with memories and issues are not in this list. Every agent can search and read both. The **Remember past investigations** switch, on the agent's **Memories** step, and the **Works on issues** switch, on its **Issues** step, decide whether it also records memories and changes issues. When you create an agent, both are in the wizard's **Memory and issues** section. See [_](/ai-agents/memory) and [_](/ai-agents/issue-board).
 
 ## Let an agent call an MCP server's tools [#mcp-integrations]
 

@@ -24,8 +24,11 @@ mkdir -p "$DIST_DIR"
 get_version_info "$CLI_DIR"
 echo -e "${BLUE}Building version: $VERSION (commit: $COMMIT)${NC}"
 
-# Build the CLI first
-build_cli "$CLI_DIR"
+# Build the CLI first, unless the caller just did: Gradle's createDistributions depends on
+# buildDistribution and sets CLI_ALREADY_BUILT.
+if [[ "${CLI_ALREADY_BUILT:-}" != "true" ]]; then
+  build_cli "$CLI_DIR"
+fi
 
 # ===== CREATE SOURCE DISTRIBUTION =====
 
