@@ -6,6 +6,42 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in October 2026.
 
+## October 21, 2026
+
+{/* ENGT-6049 */}
+### Pass log events between pipelines with Grepr pipes
+
+You can now create a Grepr pipe on the **Integrations** page and use it to carry log events from one pipeline to another. A pipe sink in the sending pipeline writes events into the pipe, and a pipe source in the receiving pipeline reads them unchanged.
+
+{/* ENGT-6102, ENGT-6191, ENGT-6205 */}
+### Track and work issues with AI agents on the issue board
+
+You can now track problems on the issue board, where people and AI agents file, work, and close issues together, and the board refreshes while you watch it. You can hand an open issue to an agent from the issue page, or let an agent pick up issues from the **Ready** column on its own, filtered by priority, label, entity, and team. When a run ends, the agent posts a comment on the issue that says how it ended. See [_](/ai-agents/issue-board).
+
+### Other improvements and fixes
+
+- {/* ENGT-6172 */} You can now add, change, and remove a pipeline's tags from its details page without restarting the pipeline, and filter the **Pipelines** page by tag.
+- {/* ENGT-6050 */} You can now define your own mapping from status values to severities on the attributes remapper's **Status Remapping** tab. See [_](/transforms/remapper#status-mapping-custom).
+- {/* ENGT-5957, ENGT-5930, ENGT-6041, ENGT-6042, ENGT-6047, ENGT-6062, ENGT-6076 */} A Datadog-like `*:` search matches its term as a whole word in the message and in every tag and attribute value, the same way a bare term matches the message. See [_](/queries/datadog).
+- {/* ENGT-6190 */} You can now cancel every queued, running, and paused investigation for one agent or for your whole organization with **Cancel active** on the agent's page or the **Agents** page, and pause the affected agents in the same step. See [_](/ai-agents/investigations).
+- {/* ENGT-6198 */} The filter step in the log pipeline editor has a redesigned layout. See [_](/transforms/filter-events).
+- {/* ENGT-6140 */} Searches can be longer and contain more terms, and searches for many values of one field run faster.
+- {/* ENGT-6237 */} Searches that filter on a dotted attribute, such as `@http.request.method`, run faster.
+- {/* ENGT-5664 */} Pipeline updates are faster when several steps of the pipeline use the same integration or dataset.
+- {/* ENGT-6184 */} You can now chat with the AI assistant on an Anthropic LLM integration as well as a Gemini one, and pick a model tier, such as Opus or Sonnet, instead of a model name. See [_](/integrations/llm).
+- {/* ENGT-6184 */} An LLM integration that leaves **Max tokens per window** empty now allows 200,000,000 tokens per window instead of 20,000,000, and both budget fields are under **Advanced** on the integration form. See [_](/integrations/llm#max-tokens).
+- {/* ENGT-6184 */} The AI assistant opens from a button in the bottom-right corner of the page instead of the app bar.
+- {/* ENGT-6109 */} Fixed an issue where a pipeline stopped for more than a day could fail to start again, and such a pipeline now starts without its saved state, so reducer patterns and in-progress aggregations start over.
+- {/* ENGT-6174 */} Fixed an issue where updating or stopping a pipeline under heavy load failed after five minutes when Grepr could not save its state in time, and the pipeline now resumes from its most recent checkpoint, which might send some logs to your vendor a second time.
+- {/* ENGT-6218 */} Fixed an issue where, in rare circumstances, a pipeline you stopped could keep running.
+- {/* ENGT-6089 */} Fixed an issue where some NRQL-like queries on raw logs failed with an error that a column could not be found.
+- {/* ENGT-6215 */} Fixed an issue where a search that listed several hundred values in one `OR` list failed to run.
+- {/* ENGT-6193 */} Fixed an issue where logs that an external trigger or the trace sampler marked to skip aggregation were still aggregated in newly created pipelines.
+- {/* ENGT-6196 */} Fixed an issue where, after you ran a search with a relative time range in Log Explorer or Trace Explorer, typing in the search box could hide results that were already loaded.
+- {/* ENGT-6288 */} Fixed an issue where a filter you typed in live edit was saved into a template-based log pipeline when you clicked **Apply**.
+- {/* ENGT-6170 */} Fixed an issue where **Start** on a failed or deleted pipeline opened the stop dialog, and where renaming an unsaved pipeline opened the create dialog.
+- {/* ENGT-6138, ENGT-6210, ENGT-6212, ENGT-6249, ENGT-6251, ENGT-6323 */} Security fixes.
+
 ## October 16, 2026
 
 {/* ENGT-5792 */}
