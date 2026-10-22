@@ -13,11 +13,15 @@ import { Analytics } from "@vercel/analytics/next";
 const envIconSuffix = process.env.VERCEL ? "" : "-local";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://docs.grepr.ai"),
   title: {
     default: "Grepr Documentation",
     template: "%s - Grepr Docs",
   },
   description: "Grepr observability engine documentation",
+  twitter: {
+    card: "summary_large_image",
+  },
   icons: {
     icon: [
       { url: `/favicon${envIconSuffix}.svg`, type: "image/svg+xml" },

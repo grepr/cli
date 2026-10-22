@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "API Specification - Grepr Docs",
+  title: "API Specification",
   description: "Grepr API specification and documentation",
 };
 
