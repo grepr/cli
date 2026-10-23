@@ -187,7 +187,10 @@ describe('BackfillCommand', () => {
     const greprUrl = new URL(printed.greprUrl ?? '');
     expect(greprUrl.origin).toBe('https://test.app.grepr.ai');
     expect(greprUrl.pathname).toBe('/jobs');
-    expect(greprUrl.searchParams.get('uiFilters.name')).toMatch(/^backfill_/);
+    expect([greprUrl.searchParams.get('view'), greprUrl.searchParams.get('backfill')]).toEqual([
+      'backfills',
+      'job_backfill',
+    ]);
     expect(printed.vendorLinks).toHaveLength(1);
     expect(printed.vendorLinks?.[0]?.integrationId).toBe('dd_1');
     expect(printed.vendorLinks?.[0]?.label).toBe('View in Datadog');

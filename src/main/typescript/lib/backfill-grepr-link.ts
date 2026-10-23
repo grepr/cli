@@ -1,17 +1,17 @@
 import type { SchemaReadJob } from '../openapi/openApiTypes.js';
 
 /**
- * Builds a link to the Grepr Jobs page filtered to the newly created backfill.
+ * Builds a link to the newly created backfill on the Grepr Jobs page's Backfills tab.
  * The UI origin is only inferred when the configured API URL has the standard
  * terminal `/api` path segment. Root `app.*` hosts are scoped to the configured
  * organization; already scoped `<org>.app.*` hosts are preserved.
  */
 export function buildBackfillGreprUrl(
-  job: Pick<SchemaReadJob, 'name'>,
+  job: Pick<SchemaReadJob, 'id'>,
   apiBaseUrl: string | undefined,
   orgName: string
 ): string | undefined {
-  if (!apiBaseUrl || !job.name || !orgName) {
+  if (!apiBaseUrl || !job.id || !orgName) {
     return undefined;
   }
 
@@ -34,6 +34,7 @@ export function buildBackfillGreprUrl(
   url.pathname = `${apiPath.slice(0, -'/api'.length)}/jobs`;
   url.search = '';
   url.hash = '';
-  url.searchParams.set('uiFilters.name', job.name);
+  url.searchParams.set('view', 'backfills');
+  url.searchParams.set('backfill', job.id);
   return url.toString();
 }

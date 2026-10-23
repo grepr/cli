@@ -3628,6 +3628,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/jobs/{id}/progress": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get a backfill's progress
+     * @description Gets what a logs backfill is doing: waiting, selecting its events with Athena, or sending them, with how many it has read and each vendor has received. Read live while the backfill runs; the final counts once it ends.
+     */
+    get: operations["getBackfillProgress"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/jobs/{id}/tags": {
     parameters: {
       query?: never;
@@ -6077,6 +6097,45 @@ export interface components {
        */
       type: BackfillJobActionType;
     };
+    /** @description What a logs backfill is doing, and how far it is. */
+    BackfillProgress: {
+      /**
+       * Format: int64
+       * @description The bytes the backfill's current query has scanned.
+       */
+      bytesScanned?: number;
+      /**
+       * @description The events each vendor confirmed receiving, by vendor integration id.
+       * @default {}
+       */
+      eventsDelivered?: {
+        [key: string]: number;
+      };
+      /**
+       * Format: int64
+       * @description The events read so far.
+       */
+      eventsRead?: number;
+      /**
+       * Format: int64
+       * @description The events selected to send, once they are. A vendor can receive fewer, since events it already has are skipped.
+       */
+      eventsTotal?: number;
+      /** @description Why the backfill failed, when it did. */
+      failureReason?: string;
+      /**
+       * @description What the backfill is doing.
+       * @enum {string}
+       */
+      phase: BackfillProgressPhase;
+      /**
+       * Format: int64
+       * @description How long the backfill's current query has queued and run.
+       */
+      selectingMillis?: number;
+      /** @description Why the backfill is waiting, when it is. */
+      waitingReason?: string;
+    };
     BatchCancelInvestigationsRequest: {
       investigationIds: string[];
     };
@@ -6240,6 +6299,8 @@ export interface components {
       awsAccountId: string;
       /** @description The name of the S3 bucket to use for the data warehouse */
       bucketName: string;
+      /** @description The organization's name, which names its folder under the bucket's query-results prefix. The stack expires that folder's query results after a day. */
+      orgName: string;
       /** @description The AWS region the bucket must be created in. Matches the region the Grepr deployment is running in. */
       region: string;
       /** @description The IAM role name for the data warehouse integration */
@@ -6684,7 +6745,7 @@ export interface components {
         [key: string]: components["schemas"]["Any"];
       };
       /**
-       * @description Vendor integration IDs, if any, whose prior delivery the backfill skips. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.
+       * @description Vendor integration IDs, if any, whose prior delivery the backfill skips: exactly the integrations the sinks send to, or empty. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.
        * @default []
        */
       vendorSinkIntegrationIds?: string[];
@@ -9889,7 +9950,7 @@ export interface components {
         [key: string]: components["schemas"]["Any"];
       };
       /**
-       * @description Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join.
+       * @description Vendor integration IDs, if any, whose prior delivery the backfill source skips: exactly the integrations the sinks send to, or empty when the source does no per-vendor dedup join.
        * @default []
        */
       vendorSinkIntegrationIds?: string[];
@@ -16725,6 +16786,7 @@ export type SchemaAverageAttributesMergeStrategy =
   components["schemas"]["AverageAttributesMergeStrategy"];
 export type SchemaBackfillJobAction =
   components["schemas"]["BackfillJobAction"];
+export type SchemaBackfillProgress = components["schemas"]["BackfillProgress"];
 export type SchemaBatchCancelInvestigationsRequest =
   components["schemas"]["BatchCancelInvestigationsRequest"];
 export type SchemaBatchCancelInvestigationsResponse =
@@ -26961,6 +27023,11 @@ export interface operations {
         name?: string[];
         /** @description Optional filter to fetch specific jobs by id */
         id?: string[];
+        /**
+         * @description Optional filter to fetch only jobs carrying every given tag, each as key:value
+         * @example type:backfill
+         */
+        tag?: string[];
       };
       header?: never;
       path?: never;
@@ -27298,6 +27365,46 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getBackfillProgress: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /**
+         * @description Id of the backfill
+         * @example 0ABC12DEF4G
+         */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Progress retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BackfillProgress"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No logs backfill has this id. */
+      404: {
         headers: {
           [name: string]: unknown;
         };
@@ -30029,6 +30136,19 @@ export enum AverageAttributesMergeStrategyType {
 }
 export enum BackfillJobActionType {
   backfill_job_action = "backfill-job-action",
+}
+export enum BackfillProgressPhase {
+  PENDING = "PENDING",
+  WAITING = "WAITING",
+  STARTING = "STARTING",
+  FINDING_CUTOFF = "FINDING_CUTOFF",
+  EXPORTING = "EXPORTING",
+  SENDING = "SENDING",
+  NOTHING_TO_SEND = "NOTHING_TO_SEND",
+  FINISHED = "FINISHED",
+  FAILED = "FAILED",
+  CANCELLED = "CANCELLED",
+  DELETED = "DELETED",
 }
 export enum BucketPartitionTransformType {
   bucket = "bucket",

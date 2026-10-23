@@ -2,12 +2,14 @@ import { describe, expect, it } from 'bun:test';
 import { buildBackfillGreprUrl } from '../../../main/typescript/lib/backfill-grepr-link.js';
 import type { SchemaReadJob } from '../../../main/typescript/openapi/openApiTypes.js';
 
-function job(name = 'backfill_2026_07_09t12_34_56_000z'): Pick<SchemaReadJob, 'name'> {
-  return { name };
+const JOB_ID = '0s0g0vyy0d0cy';
+
+function job(id = JOB_ID): Pick<SchemaReadJob, 'id'> {
+  return { id };
 }
 
 describe('buildBackfillGreprUrl', () => {
-  it('test_buildBackfillGreprUrl_productionUrlFiltersByJobName', () => {
+  it('test_buildBackfillGreprUrl_productionUrl_opensTheBackfillOnTheBackfillsTab', () => {
     const result = buildBackfillGreprUrl(
       job(),
       'https://acme.app.grepr.ai/api',
@@ -17,7 +19,10 @@ describe('buildBackfillGreprUrl', () => {
     const url = new URL(result ?? '');
     expect(url.origin).toBe('https://acme.app.grepr.ai');
     expect(url.pathname).toBe('/jobs');
-    expect(url.searchParams.get('uiFilters.name')).toBe(job().name);
+    expect([url.searchParams.get('view'), url.searchParams.get('backfill')]).toEqual([
+      'backfills',
+      JOB_ID,
+    ]);
   });
 
   it('test_buildBackfillGreprUrl_stagingRootHostAddsOrganizationSubdomain', () => {
@@ -34,7 +39,7 @@ describe('buildBackfillGreprUrl', () => {
 
   it('test_buildBackfillGreprUrl_localRootHostAddsOrganizationAndPreservesPortAndPathPrefix', () => {
     const result = buildBackfillGreprUrl(
-      job('backfill with spaces'),
+      job('id with spaces'),
       'http://app.grepr.localhost:7665/grepr/api/',
       'greprlocal'
     );
@@ -42,7 +47,7 @@ describe('buildBackfillGreprUrl', () => {
     const url = new URL(result ?? '');
     expect(url.origin).toBe('http://greprlocal.app.grepr.localhost:7665');
     expect(url.pathname).toBe('/grepr/jobs');
-    expect(url.searchParams.get('uiFilters.name')).toBe('backfill with spaces');
+    expect(url.searchParams.get('backfill')).toBe('id with spaces');
   });
 
   it('test_buildBackfillGreprUrl_clearsApiQueryAndHash', () => {
@@ -54,7 +59,7 @@ describe('buildBackfillGreprUrl', () => {
 
     const url = new URL(result ?? '');
     expect(url.hash).toBe('');
-    expect([...url.searchParams.keys()]).toEqual(['uiFilters.name']);
+    expect([...url.searchParams.keys()]).toEqual(['view', 'backfill']);
   });
 
   it('test_buildBackfillGreprUrl_unsupportedApiUrlReturnsUndefined', () => {
