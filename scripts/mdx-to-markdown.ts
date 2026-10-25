@@ -31,6 +31,8 @@ import { readFileSync, existsSync } from 'fs';
 import {
   Callout,
   Tabs,
+  Pre,
+  Code,
   Cards,
   HiddenFAQ,
   ApiSpecPage,
@@ -310,6 +312,9 @@ export async function mdxToMarkdown(
         '.jpg': 'empty',
         '.gif': 'empty',
         '.svg': 'empty',
+        // Styles don't affect the text; components like SqlFunctionReference import CSS modules.
+        '.css': 'empty',
+        '.module.css': 'empty',
       };
 
       return opts;
@@ -330,6 +335,8 @@ export async function mdxToMarkdown(
   const stubComponents = {
     Callout,
     Tabs,
+    Pre,
+    Code,
     Cards,
     HiddenFAQ,
     ApiSpecPage,
@@ -360,28 +367,20 @@ export async function mdxToMarkdown(
     `
   );
 
-  let MDXContent: React.ComponentType<Record<string, unknown>>;
-  try {
-    MDXContent = getMDXModule(jsxRuntime, stubComponents, React);
-  } catch {
-    // If evaluation fails, return null — the file likely has
-    // dynamic content that can't be statically rendered
-    return null;
-  }
+  // Evaluation and rendering errors propagate rather than returning null: the caller then
+  // indexes the raw source with a warning, instead of silently dropping the page (a component
+  // without a stub here once kept the whole Amazon S3 integration page out of search).
+  const MDXContent: React.ComponentType<Record<string, unknown>> | undefined =
+    getMDXModule(jsxRuntime, stubComponents, React);
 
   if (!MDXContent) {
     return null;
   }
 
   // Render to static HTML using our stub components
-  let html: string;
-  try {
-    html = renderToStaticMarkup(
-      React.createElement(MDXContent, { components: stubComponents })
-    );
-  } catch {
-    return null;
-  }
+  const html = renderToStaticMarkup(
+    React.createElement(MDXContent, { components: stubComponents })
+  );
 
   if (!html || html.trim() === '') {
     return null;

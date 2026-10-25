@@ -1,6 +1,6 @@
 {
   "name": "@grepr/cli",
-  "version": "1.13.0-2632478",
+  "version": "1.14.0-c683869",
   "description": "Official Grepr CLI tool for submitting synchronous batch jobs with OAuth authentication",
   "main": "build/dist/grepr.js",
   "type": "module",
@@ -36,18 +36,16 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@xenova/transformers": "^2.17.0",
     "axios": "^1.15.2",
     "chalk": "^5.3.0",
     "commander": "^11.1.0",
     "dayjs": "^1.11.18",
     "fs-extra": "^11.1.1",
     "open": "^9.1.0",
-    "openapi-fetch": "^0.15.0",
-    "patch-package": "^8.0.1",
-    "vectra": "^0.9.0"
+    "openapi-fetch": "^0.15.0"
   },
   "devDependencies": {
+    "@huggingface/tokenizers": "0.2.0",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.0.0",
     "@types/react": "^19.2.14",
@@ -58,6 +56,7 @@
     "eslint": "^8.57.0",
     "glob": "^10.3.0",
     "mdx-bundler": "^10.1.1",
+    "onnxruntime-web": "1.30.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "rehype-parse": "^9.0.1",

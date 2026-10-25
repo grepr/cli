@@ -52,7 +52,7 @@ grepr docs:search "query syntax" --format pretty
 ### Retrieve full document
 ```bash
 # After finding a relevant doc with search
-grepr docs:get "doc://apis/job-creation-guide.mdx"
+grepr docs:get "doc://apis/job-creation-guide/page.mdx"
 ```
 
 ### Find API schema

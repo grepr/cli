@@ -51,6 +51,24 @@ TabsComponent.Tab = Tab;
 export const Tabs = TabsComponent;
 
 /* ------------------------------------------------------------------ */
+/*  nextra/components — Pre / Code (hand-written code blocks)         */
+/* ------------------------------------------------------------------ */
+
+interface CodeBlockProps {
+  children?: ReactNode;
+  'data-language'?: string;
+}
+
+export function Pre({ children }: CodeBlockProps): React.ReactElement {
+  return React.createElement('pre', null, children);
+}
+
+/** Carries the language as `language-*` so the Markdown conversion emits a tagged fence. */
+export function Code({ children, 'data-language': language }: CodeBlockProps): React.ReactElement {
+  return React.createElement('code', language ? { className: `language-${language}` } : null, children);
+}
+
+/* ------------------------------------------------------------------ */
 /*  nextra/components — Cards / Cards.Card                            */
 /* ------------------------------------------------------------------ */
 
