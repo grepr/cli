@@ -3,9 +3,10 @@
 /**
  * Build-time script to generate the documentation search index.
  *
- * This script runs during the build (`bun run build`) and creates a Vectra vector database index
- * of all documentation files. The index is bundled with the CLI distribution,
- * making documentation search available offline with zero setup.
+ * This script runs during the build (`bun run build`). It vendors the embedding runtime and model
+ * (see search-runtime-assets.ts), then splits every documentation file into chunks and embeds
+ * them into one index file. Both are bundled with the CLI distribution, making documentation
+ * search available offline with zero setup.
  *
  * Architecture decisions:
  *
@@ -16,15 +17,16 @@
  *    - Smaller npm package (no need to bundle raw docs)
  *    - Guaranteed consistency (index always matches CLI version)
  *
- * 2. **Model choice**: We use the same model (Xenova/all-MiniLM-L6-v2) for both
- *    build-time indexing and runtime search. This ensures embeddings are
+ * 2. **Model choice**: We use the same embedder (all-MiniLM-L6-v2, see text-embedder.ts) for
+ *    both build-time indexing and runtime search. This ensures embeddings are
  *    comparable. Using different models would break semantic similarity.
  *
- * 3. **Chunking configuration**: Documents are split into 512-token chunks with
- *    50-token overlap. This balances:
- *    - Search granularity (smaller chunks = more precise results)
- *    - Context preservation (overlap prevents information loss at boundaries)
- *    - Model limits (512 tokens fits within model's max input)
+ * 3. **Chunking configuration**: Documents are split into chunks of at most 254 model tokens
+ *    (256 with the [CLS]/[SEP] markers) that repeat up to 32 tokens of the previous chunk.
+ *    256 is the input length the model is used at by sentence-transformers; longer inputs
+ *    dilute the mean-pooled embedding, and past 512 the model truncates them. Chunks are
+ *    counted with the model's own tokenizer, so every chunk fits. Each chunk is embedded
+ *    after its page title and section headings (see headingContext in docs-index.ts).
  *
  * 4. **Excluded content**: Release notes are excluded because they:
  *    - Change frequently and bloat the index
@@ -35,22 +37,27 @@
  * - SKIP_DOCS_INDEX=true: Skip index generation for faster dev builds
  *
  * Output:
- * - Index directory: build/dist/docs-index/
- * - Index contents: Vectra database files (vectors, metadata, etc.)
+ * - Index: build/dist/docs-index/index.json (documents, chunk spans and vectors; see docs-index.ts)
+ * - Runtime and model: build/dist/vendor/
  */
 
-import { LocalDocumentIndex } from 'vectra';
 import { glob } from 'glob';
 import { readFileSync, existsSync, rmSync } from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { execSync } from 'child_process';
-import { TransformersEmbeddings } from '../src/main/typescript/lib/transformers-embeddings.js';
+import { ChildProcess, execSync, fork } from 'child_process';
+import { DocType, IndexedChunk, IndexedDocument, chunkText, headingContext, writeDocsIndex } from '../src/main/typescript/lib/docs-index.js';
+import { MiniLmEmbedder } from '../src/main/typescript/lib/text-embedder.js';
+import { vendorSearchRuntime } from './search-runtime-assets.js';
 import { mdxToMarkdown } from './mdx-to-markdown.js';
 import { resolveDocsDir } from './docs-source.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const CHUNK_TOKENS = 254;
+const CHUNK_OVERLAP_TOKENS = 32;
 
 async function buildDocsIndex(): Promise<void> {
   if (process.env.SKIP_DOCS_INDEX === 'true') {
@@ -67,31 +74,24 @@ async function buildDocsIndex(): Promise<void> {
   const indexPath = path.resolve(__dirname, '../build/dist/docs-index');
   console.log(`Index path: ${indexPath}\n`);
 
-  const embeddings = new TransformersEmbeddings('Xenova/all-MiniLM-L6-v2', 512);
-  await embeddings.initialize();
+  const vendorDir = await vendorSearchRuntime(path.resolve(__dirname, '..'));
 
   // The index is generated output. Recreate it so local builds cannot reuse a
-  // stale or previously empty catalog and accidentally publish it.
+  // stale or previously empty index and accidentally publish it.
   rmSync(indexPath, { recursive: true, force: true });
 
-  const docs = new LocalDocumentIndex({
-    folderPath: indexPath,
-    embeddings,
-    chunkingConfig: {
-      chunkSize: 512,
-      chunkOverlap: 50,
-      keepSeparators: true
-    }
-  });
-
-  console.log('Creating new index...');
-  await docs.createIndex({ version: 1 });
+  const documents: IndexedDocument[] = [];
+  const addDocument = (uri: string, text: string, docType: DocType) => {
+    documents.push({ uri, docType, text });
+  };
 
   const mdxFiles = glob.sync('**/*.mdx', {
     cwd: docsPath,
-    ignore: '**/release-notes/**'
+    // apis/api-spec.mdx only mounts a client-side Redoc viewer; the OpenAPI spec it shows is
+    // indexed below as api:// and schema:// documents.
+    ignore: ['**/release-notes/**', 'apis/api-spec.mdx']
   });
-  console.log(`Found ${mdxFiles.length} documentation files (excluding release-notes)\n`);
+  console.log(`Found ${mdxFiles.length} documentation files (excluding release-notes and the API spec viewer)\n`);
 
   let indexed = 0;
   let skipped = 0;
@@ -118,7 +118,7 @@ async function buildDocsIndex(): Promise<void> {
       content = rawSource;
     }
 
-    await docs.upsertDocument(uri, content, 'md', { docType: 'doc' });
+    addDocument(uri, content, 'doc');
     process.stdout.write(' ✓\n');
   }
 
@@ -136,14 +136,48 @@ async function buildDocsIndex(): Promise<void> {
   }
 
   const openApiDocsPath = path.resolve(__dirname, '../build/dist/openapi-docs');
-  if (!existsSync(openApiDocsPath)) {
+  if (existsSync(openApiDocsPath)) {
+    collectOpenApiDocuments(openApiDocsPath, addDocument);
+  } else {
     console.warn('⚠ OpenAPI docs directory not found, skipping API indexing');
-    console.log(`\n✓ Documentation index built successfully!`);
-    console.log(`  Indexed ${indexed - skipped} documents`);
-    console.log(`  Index location: ${indexPath}`);
-    return;
   }
 
+  if (documents.length === 0) {
+    throw new Error('Documentation index is empty; refusing to complete the CLI build');
+  }
+
+  const embedder = new MiniLmEmbedder(vendorDir);
+  await embedder.initialize();
+  const spans = documents.flatMap(document =>
+    chunkText(document.text, text => embedder.countTokens(text), CHUNK_TOKENS, CHUNK_OVERLAP_TOKENS)
+      .map(({ start, end }) => ({ document, start, end })));
+
+  const started = Date.now();
+  // The heading path is embedded with each chunk but not stored: excerpts stay verbatim slices.
+  const vectors = await embedInParallel(
+    spans.map(({ document, start, end }) => `${headingContext(document.text, start)}\n${document.text.slice(start, end)}`),
+    vendorDir
+  );
+  const chunks: IndexedChunk[] = spans.map((span, i) => {
+    const vector = vectors[i];
+    if (!vector) {
+      throw new Error(`No embedding returned for chunk ${i}`);
+    }
+    return { ...span, vector };
+  });
+  console.log(`\nEmbedded ${chunks.length} chunks in ${((Date.now() - started) / 1000).toFixed(0)}s`);
+
+  await writeDocsIndex(indexPath, { documents, chunks });
+
+  console.log(`\n✓ Documentation index built successfully!`);
+  console.log(`  Total documents: ${documents.length}`);
+  console.log(`  Index location: ${indexPath}`);
+}
+
+function collectOpenApiDocuments(
+  openApiDocsPath: string,
+  addDocument: (uri: string, text: string, docType: DocType) => void
+): void {
   const apiFiles = glob.sync('api/**/*.md', {
     cwd: openApiDocsPath
   });
@@ -169,7 +203,7 @@ async function buildDocsIndex(): Promise<void> {
     const uri = `api://${file.replace(/\.md$/, '')}`;
 
     process.stdout.write(`[${++apiIndexed}/${visibleApiFiles.length}] Indexing API: ${file}...`);
-    await docs.upsertDocument(uri, content, 'md', { docType: 'api' });
+    addDocument(uri, content, 'api');
     process.stdout.write(' ✓\n');
   }
 
@@ -180,21 +214,52 @@ async function buildDocsIndex(): Promise<void> {
     const uri = `schema://${file.replace(/\.md$/, '').replace(/^schemas\//, '')}`;
 
     process.stdout.write(`[${++schemaIndexed}/${schemaFiles.length}] Indexing schema: ${file}...`);
-    await docs.upsertDocument(uri, content, 'md', { docType: 'schema' });
+    addDocument(uri, content, 'schema');
     process.stdout.write(' ✓\n');
   }
 
-  console.log(`\n✓ Documentation index built successfully!`);
-  console.log(`  Documentation files: ${indexed - skipped}`);
-  console.log(`  API operations: ${visibleApiFiles.length}`);
-  console.log(`  Schemas: ${schemaFiles.length}`);
-  console.log(`  Total documents: ${(indexed - skipped) + visibleApiFiles.length + schemaFiles.length}`);
-  console.log(`  Index location: ${indexPath}`);
+  console.log(`\n✓ OpenAPI documents collected: ${visibleApiFiles.length} operations, ${schemaFiles.length} schemas`);
+}
 
-  const documentCount = (await docs.listDocuments()).length;
-  if (documentCount === 0) {
-    throw new Error('Documentation index is empty; refusing to complete the CLI build');
+/**
+ * Embeds texts across forked processes. Embedding is single-threaded WebAssembly, so a single
+ * process would take minutes for the few thousand chunks in the docs. Each process holds its own
+ * runtime and model (a few hundred MB), so the count is capped rather than one per CPU.
+ */
+const MAX_EMBEDDING_PROCESSES = 8;
+
+async function embedInParallel(texts: string[], vendorDir: string): Promise<Float32Array[]> {
+  const processes = Math.max(1, Math.min(os.availableParallelism(), MAX_EMBEDDING_PROCESSES, Math.ceil(texts.length / 100)));
+  const shardSize = Math.ceil(texts.length / processes);
+  console.log(`\nEmbedding ${texts.length} chunks in ${processes} processes...`);
+
+  const shards = Array.from({ length: processes }, (_, i) => texts.slice(i * shardSize, (i + 1) * shardSize));
+  const children: ChildProcess[] = [];
+  try {
+    return (await Promise.all(shards.map(shard => embedInChildProcess(shard, vendorDir, children)))).flat();
+  } catch (error) {
+    // Stop the other workers rather than leave them embedding after the build has failed.
+    children.forEach(child => child.kill());
+    throw error;
   }
+}
+
+function embedInChildProcess(texts: string[], vendorDir: string, children: ChildProcess[]): Promise<Float32Array[]> {
+  return new Promise((resolve, reject) => {
+    const child = fork(path.join(__dirname, 'embed-chunks-worker.ts'), [vendorDir], { serialization: 'advanced' });
+    children.push(child);
+    child.once('message', (vectors: unknown) => {
+      if (Array.isArray(vectors) && vectors.every(vector => vector instanceof Float32Array)) {
+        resolve(vectors);
+      } else {
+        reject(new Error('Embedding worker sent something other than vectors'));
+      }
+    });
+    child.once('error', reject);
+    // Settles nothing once the vectors have arrived; otherwise the worker died without sending them.
+    child.once('exit', code => reject(new Error(`Embedding worker exited with code ${code} before sending vectors`)));
+    child.send(texts);
+  });
 }
 
 buildDocsIndex().catch((error) => {

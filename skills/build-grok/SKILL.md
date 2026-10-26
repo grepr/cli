@@ -283,7 +283,9 @@ jq --arg rule 'ErrorLogRule %{HTTPDATE:timestamp} \[%{word:log_level}\] %{data:m
 
 !`grepr docs:get doc://transforms/grok/page.mdx | sed 's/^#/##/'`
 
-!`grepr docs:get doc://transforms/grok/data-matchers/page.mdx | sed 's/^#/##/'`
+!`grepr docs:get doc://transforms/grok/datadog-matchers/page.mdx | sed 's/^#/##/'`
+
+!`grepr docs:get doc://transforms/grok/logstash-matchers/page.mdx | sed 's/^#/##/'`
 
 !`grepr docs:get doc://transforms/grok/transformers/page.mdx | sed 's/^#/##/'`
 

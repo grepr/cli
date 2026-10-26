@@ -1,28 +1,40 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
-import { DocsSearch, InitializableEmbeddings } from '../../../main/typescript/lib/docs-search.js';
-import { EmbeddingsResponse, LocalDocumentIndex } from 'vectra';
-import { mkdirSync, rmSync } from 'fs';
+import { DocsSearch } from '../../../main/typescript/lib/docs-search.js';
+import { DocType, IndexedChunk, IndexedDocument, chunkText, writeDocsIndex } from '../../../main/typescript/lib/docs-index.js';
+import { TextEmbedder } from '../../../main/typescript/lib/text-embedder.js';
+import { rmSync } from 'fs';
 import path from 'path';
 
-class TestEmbeddings implements InitializableEmbeddings {
-  public readonly maxTokens = 512;
+/** Embeds text as which of a few keywords it mentions; one token per whitespace-separated word. */
+class TestEmbedder implements TextEmbedder {
   public initializeCalls = 0;
 
   async initialize(): Promise<void> {
     this.initializeCalls++;
   }
 
-  async createEmbeddings(inputs: string | string[]): Promise<EmbeddingsResponse> {
+  async embed(text: string): Promise<Float32Array> {
     const keywords = ['grok', 'job', 'pipeline', 'datadog', 'integration', 'schema', 'api', 'log'];
-    const values = Array.isArray(inputs) ? inputs : [inputs];
-    return {
-      status: 'success',
-      output: values.map(value => {
-        const normalized = value.toLowerCase();
-        return keywords.map(keyword => normalized.includes(keyword) ? 1 : 0.01);
-      })
-    };
+    const normalized = text.toLowerCase();
+    const vector = Float32Array.from(keywords, keyword => normalized.includes(keyword) ? 1 : 0.01);
+    const norm = Math.hypot(...vector);
+    return vector.map(value => value / norm);
   }
+
+  countTokens(text: string): number {
+    return text.split(/\s+/).filter(word => word.length > 0).length;
+  }
+}
+
+async function writeTestIndex(indexPath: string, embedder: TextEmbedder, entries: [string, string, DocType][]): Promise<void> {
+  const documents: IndexedDocument[] = entries.map(([uri, text, docType]) => ({ uri, text, docType }));
+  const chunks: IndexedChunk[] = [];
+  for (const document of documents) {
+    for (const { start, end } of chunkText(document.text, text => embedder.countTokens(text), 254, 32)) {
+      chunks.push({ document, start, end, vector: await embedder.embed(document.text.slice(start, end)) });
+    }
+  }
+  await writeDocsIndex(indexPath, { documents, chunks });
 }
 
 describe('DocsSearch Type Filtering Integration', () => {
@@ -31,93 +43,30 @@ describe('DocsSearch Type Filtering Integration', () => {
 
   beforeAll(async () => {
     tempIndexPath = path.resolve('build', `docs-search-test-${Date.now()}`);
-    mkdirSync(tempIndexPath, { recursive: true });
 
-    const embeddings = new TestEmbeddings();
-    await embeddings.initialize();
+    const embedder = new TestEmbedder();
+    await writeTestIndex(tempIndexPath, embedder, [
+      ['doc://getting-started.mdx', 'Getting Started\n\nLearn how to create your first job pipeline in Grepr.', 'doc'],
+      ['doc://integrations/datadog.mdx', 'Datadog Integration Guide\n\nConnect Grepr to your Datadog account for seamless log forwarding.', 'doc'],
+      ['doc://parsers/grok.mdx', 'Grok Parser Documentation\n\nUse grok patterns to parse unstructured logs into structured data.', 'doc'],
+      ['api://Job/createJob', 'Create Job\n\nPOST /api/v1/jobs\n\nCreates a new job pipeline with the specified configuration.', 'api'],
+      ['api://Job/updateJob', 'Update Job\n\nPUT /api/v1/jobs/{id}\n\nUpdates an existing job pipeline configuration.', 'api'],
+      ['api://Job/listJobs', 'List Jobs\n\nGET /api/v1/jobs\n\nRetrieves a list of all job pipelines.', 'api'],
+      ['schema://GrokParser', 'GrokParser Schema\n\nDefines the structure for grok parser configuration including pattern and field mappings.', 'schema'],
+      ['schema://JobConfiguration', 'JobConfiguration Schema\n\nDefines the structure for job pipeline configuration.', 'schema'],
+      ['schema://DatadogIntegration', 'DatadogIntegration Schema\n\nDefines the configuration structure for Datadog integration setup.', 'schema'],
+      [
+        'doc://table-test.mdx',
+        '# Table Example\n\n' +
+          '| Column A | Column B | Column C |\n' +
+          '| --- | --- | --- |\n' +
+          '| value1 | value2 | value3 |\n' +
+          '| foo | bar | baz |',
+        'doc'
+      ]
+    ]);
 
-    const index = new LocalDocumentIndex({
-      folderPath: tempIndexPath,
-      embeddings
-    });
-
-    await index.createIndex({ version: 1 });
-
-    await index.upsertDocument(
-      'doc://getting-started.mdx',
-      'Getting Started\n\nLearn how to create your first job pipeline in Grepr.',
-      'md',
-      { docType: 'doc' }
-    );
-
-    await index.upsertDocument(
-      'doc://integrations/datadog.mdx',
-      'Datadog Integration Guide\n\nConnect Grepr to your Datadog account for seamless log forwarding.',
-      'md',
-      { docType: 'doc' }
-    );
-
-    await index.upsertDocument(
-      'doc://parsers/grok.mdx',
-      'Grok Parser Documentation\n\nUse grok patterns to parse unstructured logs into structured data.',
-      'md',
-      { docType: 'doc' }
-    );
-
-    await index.upsertDocument(
-      'api://Job/createJob',
-      'Create Job\n\nPOST /api/v1/jobs\n\nCreates a new job pipeline with the specified configuration.',
-      'md',
-      { docType: 'api' }
-    );
-
-    await index.upsertDocument(
-      'api://Job/updateJob',
-      'Update Job\n\nPUT /api/v1/jobs/{id}\n\nUpdates an existing job pipeline configuration.',
-      'md',
-      { docType: 'api' }
-    );
-
-    await index.upsertDocument(
-      'api://Job/listJobs',
-      'List Jobs\n\nGET /api/v1/jobs\n\nRetrieves a list of all job pipelines.',
-      'md',
-      { docType: 'api' }
-    );
-
-    await index.upsertDocument(
-      'schema://GrokParser',
-      'GrokParser Schema\n\nDefines the structure for grok parser configuration including pattern and field mappings.',
-      'md',
-      { docType: 'schema' }
-    );
-
-    await index.upsertDocument(
-      'schema://JobConfiguration',
-      'JobConfiguration Schema\n\nDefines the structure for job pipeline configuration.',
-      'md',
-      { docType: 'schema' }
-    );
-
-    await index.upsertDocument(
-      'schema://DatadogIntegration',
-      'DatadogIntegration Schema\n\nDefines the configuration structure for Datadog integration setup.',
-      'md',
-      { docType: 'schema' }
-    );
-
-    await index.upsertDocument(
-      'doc://table-test.mdx',
-      '# Table Example\n\n' +
-        '| Column A | Column B | Column C |\n' +
-        '| --- | --- | --- |\n' +
-        '| value1 | value2 | value3 |\n' +
-        '| foo | bar | baz |',
-      'md',
-      { docType: 'doc' }
-    );
-
-    docsSearch = new DocsSearch(tempIndexPath, embeddings);
+    docsSearch = new DocsSearch(tempIndexPath, embedder);
     await docsSearch.initialize();
   });
 
@@ -355,12 +304,12 @@ describe('DocsSearch Type Filtering Integration', () => {
 
   describe('getDocument', () => {
     it('test_getDocument_shouldNotInitializeEmbeddings', async () => {
-      const embeddings = new TestEmbeddings();
-      const retrieval = new DocsSearch(tempIndexPath, embeddings);
+      const embedder = new TestEmbedder();
+      const retrieval = new DocsSearch(tempIndexPath, embedder);
 
       await retrieval.getDocument('doc://getting-started.mdx');
 
-      expect(embeddings.initializeCalls).toBe(0);
+      expect(embedder.initializeCalls).toBe(0);
     });
 
     it('test_getDocument_existingUri_shouldReturnFullDocumentText', async () => {
@@ -455,5 +404,96 @@ describe('DocsSearch Type Filtering Integration', () => {
         ).toBe(true);
       });
     });
+  });
+});
+
+describe('DocsSearch excerpts', () => {
+  const indexPath = path.resolve('build', `docs-search-excerpts-test-${Date.now()}`);
+  const filler = (count: number): string =>
+    Array.from({ length: count }, (_, i) => `Paragraph ${i} talks about \`config\` | tables | and --flags.\n`).join('');
+  const longText = filler(200) + 'The datadog integration forwards logs.\n' + filler(200);
+  let docsSearch: DocsSearch;
+
+  beforeAll(async () => {
+    const embedder = new TestEmbedder();
+    await writeTestIndex(indexPath, embedder, [
+      ['doc://long.mdx', longText, 'doc'],
+      ['doc://short.mdx', 'Datadog setup in one line.', 'doc']
+    ]);
+    docsSearch = new DocsSearch(indexPath, embedder);
+  });
+
+  afterAll(() => {
+    rmSync(indexPath, { recursive: true, force: true });
+  });
+
+  it('test_search_longDocument_shouldReturnVerbatimExcerptsWithinBudget', async () => {
+    const results = await docsSearch.search('datadog integration', { contextTokens: 300, maxChunks: 50 });
+    const long = results.find(result => result.uri === 'doc://long.mdx');
+
+    expect(long).toBeDefined();
+    expect(long?.sections.length).toBeGreaterThan(0);
+    expect(long?.sections.length).toBeLessThanOrEqual(3);
+    for (const section of long?.sections ?? []) {
+      expect(longText.includes(section.text)).toBe(true);
+      expect(section.tokenCount).toBeLessThanOrEqual(300);
+    }
+    expect(long?.sections[0]?.text).toContain('datadog integration');
+  });
+
+  it('test_search_overlappingChunks_shouldNotRepeatTextAcrossExcerpts', async () => {
+    const results = await docsSearch.search('datadog integration', { contextTokens: 50, maxChunks: 50 });
+    const sections = results.find(result => result.uri === 'doc://long.mdx')?.sections ?? [];
+    const spans = sections.map(section => {
+      const start = longText.indexOf(section.text);
+      return { start, end: start + section.text.length };
+    });
+
+    expect(sections.length).toBeGreaterThan(1);
+    for (const a of spans) {
+      for (const b of spans) {
+        expect(a === b || a.end <= b.start || b.end <= a.start).toBe(true);
+      }
+    }
+  });
+
+  it('test_search_budgetSmallerThanChunk_shouldKeepWholeMatchingChunk', async () => {
+    const results = await docsSearch.search('datadog integration', { contextTokens: 50, maxChunks: 50 });
+    const best = results.find(result => result.uri === 'doc://long.mdx')?.sections[0];
+
+    expect(best?.text).toContain('datadog integration');
+    expect(longText.includes(best?.text ?? '-')).toBe(true);
+  });
+
+  it('test_search_documentWithinBudget_shouldReturnWholeDocument', async () => {
+    const results = await docsSearch.search('datadog', { contextTokens: 100 });
+
+    expect(results.find(result => result.uri === 'doc://short.mdx')?.sections.map(section => section.text))
+      .toEqual(['Datadog setup in one line.']);
+  });
+});
+
+describe('DocsSearch keyword blending', () => {
+  const indexPath = path.resolve('build', `docs-search-keyword-test-${Date.now()}`);
+
+  afterAll(() => {
+    rmSync(indexPath, { recursive: true, force: true });
+  });
+
+  it('test_search_embeddingTie_shouldBeBrokenByExactTerm', async () => {
+    // TestEmbedder sees "job" in both, so their embeddings are identical; only "heartbeat" tells them apart.
+    const embedder = new TestEmbedder();
+    await writeTestIndex(indexPath, embedder, [
+      ['api://Jobs/submitSyncJob', 'Submit a synchronous job.', 'api'],
+      ['api://Jobs/heartbeatSyncJob', 'Heartbeat a synchronous job so it stays alive.', 'api']
+    ]);
+    const search = new DocsSearch(indexPath, embedder);
+
+    const results = await search.search('job heartbeat', { type: 'api' });
+
+    expect(results.map(result => result.uri)).toEqual(['api://Jobs/heartbeatSyncJob', 'api://Jobs/submitSyncJob']);
+    for (const result of results) {
+      expect(result.score).toBeLessThanOrEqual(1);
+    }
   });
 });

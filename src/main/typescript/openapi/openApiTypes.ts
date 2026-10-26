@@ -7510,7 +7510,7 @@ export interface components {
       conditionIds: string[];
       /**
        * Format: ISO-8601
-       * @description The duration for which the associated conditions will be active.
+       * @description How long the conditions this trigger activates stay active. A condition expires at the trigger's time plus this duration. For an event-predicate trigger, that time is the processing time at which it matches an event. For an external-source trigger, it's the notification's timestamp. A firing that carries the same variables, with the same values, as the firing that started an active condition doesn't start another one, whatever its __timestamp: the active condition keeps the later of the two expiries, and its job actions don't run again. An event-predicate trigger adds __severity to each firing from a log event, so a firing from an event of another severity starts another condition, which runs the job actions again. The rule engine applies a condition's event actions only to events whose timestamp is before the expiry. Once processing time passes a condition's expiry, a cleanup retires it. The cleanup runs while the rule engine handles events and notifications, at most once a second, so until it runs, a late event stamped before the expiry still gets the condition's event actions. A retired condition applies to no event, whatever its timestamp, and the trigger firing after that starts a new condition, which runs its job actions again.
        * @example PT20.345S
        */
       duration: string;
@@ -7606,7 +7606,7 @@ export interface components {
       conditionIds: string[];
       /**
        * Format: ISO-8601
-       * @description The duration for which the associated conditions will be active.
+       * @description How long the conditions this trigger activates stay active. A condition expires at the trigger's time plus this duration. For an event-predicate trigger, that time is the processing time at which it matches an event. For an external-source trigger, it's the notification's timestamp. A firing that carries the same variables, with the same values, as the firing that started an active condition doesn't start another one, whatever its __timestamp: the active condition keeps the later of the two expiries, and its job actions don't run again. An event-predicate trigger adds __severity to each firing from a log event, so a firing from an event of another severity starts another condition, which runs the job actions again. The rule engine applies a condition's event actions only to events whose timestamp is before the expiry. Once processing time passes a condition's expiry, a cleanup retires it. The cleanup runs while the rule engine handles events and notifications, at most once a second, so until it runs, a late event stamped before the expiry still gets the condition's event actions. A retired condition applies to no event, whatever its timestamp, and the trigger firing after that starts a new condition, which runs its job actions again.
        * @example PT20.345S
        */
       duration: string;
@@ -15433,7 +15433,7 @@ export interface components {
       conditionIds: string[];
       /**
        * Format: ISO-8601
-       * @description The duration for which the associated conditions will be active.
+       * @description How long the conditions this trigger activates stay active. A condition expires at the trigger's time plus this duration. For an event-predicate trigger, that time is the processing time at which it matches an event. For an external-source trigger, it's the notification's timestamp. A firing that carries the same variables, with the same values, as the firing that started an active condition doesn't start another one, whatever its __timestamp: the active condition keeps the later of the two expiries, and its job actions don't run again. An event-predicate trigger adds __severity to each firing from a log event, so a firing from an event of another severity starts another condition, which runs the job actions again. The rule engine applies a condition's event actions only to events whose timestamp is before the expiry. Once processing time passes a condition's expiry, a cleanup retires it. The cleanup runs while the rule engine handles events and notifications, at most once a second, so until it runs, a late event stamped before the expiry still gets the condition's event actions. A retired condition applies to no event, whatever its timestamp, and the trigger firing after that starts a new condition, which runs its job actions again.
        * @example PT20.345S
        */
       duration: string;
