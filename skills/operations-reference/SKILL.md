@@ -46,7 +46,7 @@ Operations (exact field names matter — field mistakes fail during
 | `add-source` / `remove-source` | `source` / `name` (not `sourceName`) | Add or remove source vertices. A proposal leaving zero sources is rejected. |
 | `add-sink` / `remove-sink` | `target` (`vendor`\|`processed-logs`), `sink` / `name?` | Add or remove a sink. `vendor` adds a vendor log sink (optionally with a gating `filter`); `processed-logs` sets the single reduced-logs iceberg sink. |
 | `set-raw-dataset` | `datasetId` | Point the raw-logs dataset at a different dataset ID. |
-| `set-input-field` / `unset-input-field` | `path`, `value` / `path` | Template-input escape hatch only (dot-notation, object keys not array indices); rejected on raw job graphs. |
+| `set-input-field` / `unset-input-field` | `path`, `value` / `path` | Template-input escape hatch only (dot-notation, object keys not array indices); rejected on raw job graphs. The first segment must be a template input field (`sources`, `sinks`, `parsers`, `reducer`, `transforms`, …), and a key under `transforms` must be a slot (`preParser`, `preWarehouse`, `preExceptions`, not the phase names), or `job:plan` rejects the op. Edit filters with `set-filter` / `clear-filter` and transform chains with `set-transform-chain`. |
 
 Every `phase`-bearing op above (`set-filter`, `clear-filter`,
 `set-transform-chain`, `clear-transform-chain`, `set-sql-transform`) accepts

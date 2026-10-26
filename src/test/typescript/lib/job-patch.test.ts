@@ -82,6 +82,26 @@ const datadogPredicate = (query: string): SchemaDatadogQueryPredicate => ({
   query,
 });
 
+// Listed literally so a new template input field or transform slot changes these tests on purpose.
+const TEMPLATE_INPUT_FIELDS = [
+  'agentSignalSink', 'conditionalDatasets', 'confirmedDeliveryEnabled', 'datasetId', 'draftSource', 'exceptions',
+  'masking', 'parsers', 'processedLogsSink', 'processedLogsSinkFilter', 'rawSinkConfig', 'reducer', 'sampler',
+  'sinks', 'sources', 'transforms',
+];
+const TRANSFORM_SLOTS = ['preExceptions', 'preParser', 'preWarehouse'];
+
+const INPUT_FIELD_ERROR_HINT =
+  'Edit filters with set-filter / clear-filter and transform chains with set-transform-chain. ' +
+  'If the field is newer than this CLI, upgrade it: npm install -g @grepr/cli@latest.';
+
+const notATemplateInputField = (index: number, opName: string, field: string): string =>
+  `Operation ${index} (${opName}): "${field}" is not a template input field, so the template would ignore this edit. ` +
+  `Template input fields: ${TEMPLATE_INPUT_FIELDS.join(', ')}. ${INPUT_FIELD_ERROR_HINT}`;
+
+const notATransformSlot = (index: number, opName: string, slot: string): string =>
+  `Operation ${index} (${opName}): "transforms.${slot}" is not a transform slot, so the template would ignore this edit. ` +
+  `Transform slots: ${TRANSFORM_SLOTS.join(', ')}. ${INPUT_FIELD_ERROR_HINT}`;
+
 describe('parsePatch', () => {
   it('test_parsePatch_validShape_shouldReturnPatch', () => {
     const patch = parsePatch({ operations: [{ op: 'add-message-attribute', attributePath: 'body.action' }] });
@@ -113,9 +133,72 @@ describe('parsePatch', () => {
   });
 
   it('test_parsePatch_setInputFieldFalsyValue_shouldPass', () => {
-    // `value: false` is a defined value and must not be rejected as missing.
-    const patch = parsePatch({ operations: [{ op: 'set-input-field', path: 'a.b', value: false }] });
+    // `value: 0` is a defined value and must not be rejected as missing.
+    const patch = parsePatch({ operations: [{ op: 'set-input-field', path: 'reducer.dedupThreshold', value: 0 }] });
     expect(patch.operations).toHaveLength(1);
+  });
+
+  // ENGT-6305: an edit to the removed `filters` slot planned, drafted and changed nothing.
+  it.each([
+    ['set-input-field', 'filters.pre-parser.predicate.query', 'filters'],
+    ['unset-input-field', 'filters', 'filters'],
+    ['set-input-field', 'input.filters.pre-parser', 'filters'],
+    ['set-input-field', 'input', 'input'],
+    ['set-input-field', 'sources[0].name', 'sources[0]'],
+    ['set-input-field', 'sinks[0]', 'sinks[0]'],
+    ['unset-input-field', 'sinks[0].filter', 'sinks[0]'],
+    ['set-input-field', 'toString', 'toString'],
+    ['set-input-field', '__proto__.x', '__proto__'],
+  ])('test_parsePatch_%s_%s_shouldRejectAsNotATemplateInputField', (opName, path, field) => {
+    const operation = opName === 'set-input-field' ? { op: opName, path, value: 1 } : { op: opName, path };
+    expect(() => parsePatch({ operations: [operation] })).toThrow(notATemplateInputField(0, opName, field));
+  });
+
+  it('test_parsePatch_inputFieldOnEveryTemplateInputField_shouldPass', () => {
+    const operations = [...TEMPLATE_INPUT_FIELDS, 'input.reducer.dedupThreshold', 'transforms.preParser'].flatMap(path => [
+      { op: 'set-input-field', path, value: 1 },
+      { op: 'unset-input-field', path },
+    ]);
+    expect(parsePatch({ operations })).toEqual({ operations } as never);
+  });
+
+  // A filter phase name in place of its slot plans and drafts as a no-op, like `filters`.
+  it.each([
+    ['set-input-field', 'transforms.pre-parser', 'pre-parser'],
+    ['set-input-field', 'input.transforms.pre-warehouse.kind', 'pre-warehouse'],
+    ['unset-input-field', 'transforms.pre-exceptions', 'pre-exceptions'],
+    ['set-input-field', 'transforms.', ''],
+    ['set-input-field', 'transforms.toString', 'toString'],
+    ['set-input-field', 'transforms.__proto__.x', '__proto__'],
+  ])('test_parsePatch_%s_%s_shouldRejectAsNotATransformSlot', (opName, path, slot) => {
+    const operation = opName === 'set-input-field' ? { op: opName, path, value: 1 } : { op: opName, path };
+    expect(() => parsePatch({ operations: [operation] })).toThrow(notATransformSlot(0, opName, slot));
+  });
+
+  it('test_parsePatch_setWholeTransformsWithPhaseNameKey_shouldRejectAsNotATransformSlot', () => {
+    const operation = {
+      op: 'set-input-field',
+      path: 'transforms',
+      value: { preParser: { kind: 'passthrough-node' }, 'pre-warehouse': { kind: 'drop-node' } },
+    };
+    expect(() => parsePatch({ operations: [operation] })).toThrow(notATransformSlot(0, 'set-input-field', 'pre-warehouse'));
+  });
+
+  it('test_parsePatch_inputFieldOnEveryTransformSlot_shouldPass', () => {
+    const operations = [
+      ...TRANSFORM_SLOTS.flatMap(slot => [
+        { op: 'set-input-field', path: `transforms.${slot}.kind`, value: 'drop-node' },
+        { op: 'unset-input-field', path: `input.transforms.${slot}` },
+      ]),
+      {
+        op: 'set-input-field',
+        path: 'transforms',
+        value: Object.fromEntries(TRANSFORM_SLOTS.map(slot => [slot, { kind: 'passthrough-node' }])),
+      },
+      { op: 'set-input-field', path: 'transforms', value: {} },
+      { op: 'unset-input-field', path: 'transforms' },
+    ];
+    expect(parsePatch({ operations })).toEqual({ operations } as never);
   });
 });
 
@@ -1228,24 +1311,25 @@ describe('classifyPatch', () => {
 
   it('test_classify_setInputFieldOnKnownSourceField_touchesSource', () => {
     expect(
-      classifyPatch({ operations: [{ op: 'set-input-field', path: 'sources[0].name', value: 's' }] }),
+      classifyPatch({ operations: [{ op: 'set-input-field', path: 'draftSource.name', value: 's' }] }),
     ).toBe('source');
   });
 
-  it('test_classify_setInputFieldOnUnknownField_failsClosedToMixed', () => {
-    // An input field in none of the known source/sink/transform sets must not
-    // fall through to the least-gated `transform` label; it classifies `mixed`
-    // so the change routes to a conservative, source-preserving draft.
-    expect(
-      classifyPatch({ operations: [{ op: 'set-input-field', path: 'someNewlyAddedField.nested', value: 1 }] }),
-    ).toBe('mixed');
+  it.each([
+    ['set-input-field', { op: 'set-input-field', path: 'someNewlyAddedField.nested', value: 1 }],
+    ['unset-input-field', { op: 'unset-input-field', path: 'someNewlyAddedField' }],
+  ] as const)('test_classify_%sOnUnknownField_shouldThrow', (opName, operation) => {
+    // parsePatch rejects these, so only an unparsed patch reaches here; it must
+    // not be classified as if it edited a real input.
+    expect(() =>
+      classifyPatch({ operations: [{ op: 'add-group-by', attributePath: 'x' }, operation] }),
+    ).toThrow(notATemplateInputField(1, opName, 'someNewlyAddedField'));
   });
 
-  it('test_classify_unsetInputFieldOnUnknownField_failsClosedToMixed', () => {
-    // unset-input-field shares the fail-closed path; cover its discriminant too.
-    expect(
-      classifyPatch({ operations: [{ op: 'unset-input-field', path: 'someNewlyAddedField' }] }),
-    ).toBe('mixed');
+  it('test_classify_setInputFieldOnUnknownTransformSlot_shouldThrow', () => {
+    expect(() =>
+      classifyPatch({ operations: [{ op: 'set-input-field', path: 'transforms.pre-parser', value: {} }] }),
+    ).toThrow(notATransformSlot(0, 'set-input-field', 'pre-parser'));
   });
 });
 

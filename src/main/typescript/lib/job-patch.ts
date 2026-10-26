@@ -147,9 +147,11 @@ export type JobPatchOp =
     }
   // Escape hatches for template-input fields the semantic ops don't cover.
   // `path` is dot-notation from the `input` root over object keys only
-  // (`sinks.0` is a key, not an index); template-only. Bracket notation
-  // (`sinks[0]`) is unsupported: splitPath only splits on `.`, so it becomes a
-  // single literal key and silently fails to resolve.
+  // (`sinks.0` is a key, not an index); template-only. Its first segment must be
+  // a template input field, matched exactly, or parsePatch rejects the op; under
+  // `transforms`, so must the slot.
+  // Bracket notation is unsupported: a bracketed first segment fails that check,
+  // and below it splitPath only splits on `.`, so `x[0]` is one literal key.
   | {
       op: 'set-input-field';
       /** Sets the field; intermediates must already exist (throws otherwise). */
@@ -453,6 +455,10 @@ function isKnownPatchOpName(opName: string): opName is JobPatchOp['op'] {
   return Object.prototype.hasOwnProperty.call(REQUIRED_OP_FIELDS, opName);
 }
 
+function isTemplateInputField(field: string): field is keyof SchemaLogReducerTemplateInput {
+  return Object.prototype.hasOwnProperty.call(INPUT_FIELD_TOUCHES, field);
+}
+
 function assertValidPatchOperation(op: unknown, index: number): asserts op is JobPatchOp {
   if (!isRecord(op) || typeof op['op'] !== 'string') {
     throw new Error(`Operation ${index} must be an object with a string "op" field`);
@@ -469,11 +475,12 @@ function assertValidPatchOperation(op: unknown, index: number): asserts op is Jo
 }
 
 /**
- * Validate the patch file shape, including each op's name and required fields, so
- * a typo'd or under-specified op (e.g. `add-group-by` with no `attributePath`)
- * fails cleanly at the file boundary rather than deep inside `applyPatch` with a
- * confusing internal error. `applyPatch` still does the deeper
- * semantic/target-conditional validation.
+ * Validate the patch file shape, including each op's name and required fields and
+ * that a `set/unset-input-field` path names a template input field (and, under
+ * `transforms`, a slot), so a typo'd or
+ * under-specified op (e.g. `add-group-by` with no `attributePath`) fails cleanly at
+ * the file boundary rather than deep inside `applyPatch` with a confusing internal
+ * error. `applyPatch` still does the deeper semantic/target-conditional validation.
  */
 export function parsePatch(raw: unknown): JobPatch {
   if (raw === null || typeof raw !== 'object') {
@@ -490,6 +497,9 @@ export function parsePatch(raw: unknown): JobPatch {
   for (let i = 0; i < operations.length; i++) {
     const op = operations[i];
     assertValidPatchOperation(op, i);
+    if (op.op === 'set-input-field' || op.op === 'unset-input-field') {
+      templateInputField(op, i);
+    }
     parsedOperations.push(op);
   }
   return { operations: parsedOperations };
@@ -2447,7 +2457,7 @@ function applySetRawDataset(input: SchemaLogReducerTemplateInput, datasetId: str
 
 /** Returns limitation strings for the user-facing draft preamble; non-empty when the patch touches sinks (external delivery is not verified). */
 export function draftVerificationLimitations(patch: JobPatch): string[] {
-  return patch.operations.some(op => touchesSinkConfig(op))
+  return patch.operations.some(touchesSinkConfig)
     ? ['Sink/data-lake output edits are submitted for graph/upstream verification only; external sink delivery is not verified.']
     : [];
 }
@@ -2456,10 +2466,10 @@ export function draftVerificationLimitations(patch: JobPatch): string[] {
 export function classifyPatch(patch: JobPatch): PatchClassification {
   let source = false;
   let sink = false;
-  for (const op of patch.operations) {
-    if (touchesSourceConfig(op)) source = true;
-    if (touchesSinkConfig(op)) sink = true;
-  }
+  patch.operations.forEach((op, index) => {
+    if (touchesSourceConfig(op, index)) source = true;
+    if (touchesSinkConfig(op, index)) sink = true;
+  });
   if (source && sink) return 'mixed';
   if (source) return 'source';
   if (sink) return 'sink';
@@ -2469,9 +2479,9 @@ export function classifyPatch(patch: JobPatch): PatchClassification {
 /**
  * What a write to each top-level `templateInputs.input` field touches. Keyed by
  * `keyof SchemaLogReducerTemplateInput` so the compiler forces every schema
- * field to be classified — a new field is a build error here, not a silent
- * `unknown`. `datasetId` is the raw-logs dataset (semantic equivalent of
- * set-raw-dataset).
+ * field to be classified — a new field is a build error here. Its keys are also
+ * the only fields `set/unset-input-field` accept. `datasetId` is the raw-logs
+ * dataset (semantic equivalent of set-raw-dataset).
  */
 const INPUT_FIELD_TOUCHES: Record<keyof SchemaLogReducerTemplateInput, 'source' | 'sink' | 'transform'> = {
   sources: 'source',
@@ -2492,35 +2502,71 @@ const INPUT_FIELD_TOUCHES: Record<keyof SchemaLogReducerTemplateInput, 'source' 
   masking: 'transform',
 };
 
+const TEMPLATE_INPUT_FIELDS = Object.keys(INPUT_FIELD_TOUCHES).sort();
+
 /**
- * Classify a generic `set/unset-input-field` path by its top-level field.
- * Fails closed: an unrecognized field returns `unknown`, which callers treat as
- * touching both source and sink so the change routes to a conservative
- * (source-preserving, non-replay) draft rather than being misclassified
- * `transform` and previewed on a chain that never exercises it.
+ * The template's `transforms` slots, keyed by `keyof SchemaTransforms` so the compiler forces
+ * every slot to be listed. They're the only keys `set/unset-input-field` accept under
+ * `transforms`; the filter phase names (`pre-parser`, ...) aren't slots.
  */
-function classifyInputPath(path: string): 'source' | 'sink' | 'transform' | 'unknown' {
-  const top = (stripInputRoot(path).split('.')[0] ?? '').split('[')[0] ?? '';
-  return (top in INPUT_FIELD_TOUCHES) ? INPUT_FIELD_TOUCHES[top as keyof SchemaLogReducerTemplateInput] : 'unknown';
+const TRANSFORM_SLOTS: Record<keyof SchemaTransforms, true> = {
+  preParser: true,
+  preWarehouse: true,
+  preExceptions: true,
+};
+
+const TRANSFORM_SLOT_NAMES = Object.keys(TRANSFORM_SLOTS).sort();
+
+const INPUT_FIELD_ERROR_HINT =
+  'Edit filters with set-filter / clear-filter and transform chains with set-transform-chain. ' +
+  'If the field is newer than this CLI, upgrade it: npm install -g @grepr/cli@latest.';
+
+type InputFieldOp = Extract<JobPatchOp, { op: 'set-input-field' | 'unset-input-field' }>;
+
+/**
+ * The top-level template input field a generic `set/unset-input-field` path edits: its first
+ * segment, matched exactly against the schema's own fields. Under `transforms`, the slot (the
+ * path's second segment, or each key of a whole `transforms` value) must be a real slot too.
+ * Anything else throws. The server stores an unknown key and the template never reads it, so
+ * the edit would plan and draft cleanly while changing nothing.
+ */
+function templateInputField(op: InputFieldOp, index: number): keyof SchemaLogReducerTemplateInput {
+  const [top = '', slot] = stripInputRoot(op.path).split('.');
+  if (!isTemplateInputField(top)) {
+    throw new Error(
+      `Operation ${index} (${op.op}): "${top}" is not a template input field, so the template would ignore this edit. ` +
+        `Template input fields: ${TEMPLATE_INPUT_FIELDS.join(', ')}. ${INPUT_FIELD_ERROR_HINT}`,
+    );
+  }
+  if (top === 'transforms') {
+    const wholeValue = op.op === 'set-input-field' && isRecord(op.value) ? Object.keys(op.value) : [];
+    for (const key of slot === undefined ? wholeValue : [slot]) {
+      if (!Object.prototype.hasOwnProperty.call(TRANSFORM_SLOTS, key)) {
+        throw new Error(
+          `Operation ${index} (${op.op}): "transforms.${key}" is not a transform slot, so the template would ignore this edit. ` +
+            `Transform slots: ${TRANSFORM_SLOT_NAMES.join(', ')}. ${INPUT_FIELD_ERROR_HINT}`,
+        );
+      }
+    }
+  }
+  return top;
 }
 
-function touchesSourceConfig(op: JobPatchOp): boolean {
+function touchesSourceConfig(op: JobPatchOp, index: number): boolean {
   switch (op.op) {
     case 'add-source':
     case 'remove-source':
     case 'update-source':
       return true;
     case 'set-input-field':
-    case 'unset-input-field': {
-      const cls = classifyInputPath(op.path);
-      return cls === 'source' || cls === 'unknown';
-    }
+    case 'unset-input-field':
+      return INPUT_FIELD_TOUCHES[templateInputField(op, index)] === 'source';
     default:
       return false;
   }
 }
 
-function touchesSinkConfig(op: JobPatchOp): boolean {
+function touchesSinkConfig(op: JobPatchOp, index: number): boolean {
   switch (op.op) {
     case 'add-sink':
     case 'remove-sink':
@@ -2528,10 +2574,8 @@ function touchesSinkConfig(op: JobPatchOp): boolean {
     case 'set-raw-dataset':
       return true;
     case 'set-input-field':
-    case 'unset-input-field': {
-      const cls = classifyInputPath(op.path);
-      return cls === 'sink' || cls === 'unknown';
-    }
+    case 'unset-input-field':
+      return INPUT_FIELD_TOUCHES[templateInputField(op, index)] === 'sink';
     default:
       return false;
   }

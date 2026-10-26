@@ -447,6 +447,15 @@ describe('parsePlan / loadPlanFromFile', () => {
     }))).not.toThrow();
   });
 
+  it('test_parsePlan_patchEditsUnknownInputField_shouldThrow', () => {
+    // A plan written before ENGT-6305 recorded this edit as `mixed`, so the
+    // not-an-input check is the only reason job:draft / job:apply reject it.
+    expect(() => parsePlan(validPlan({
+      classification: 'mixed',
+      patch: { operations: [{ op: 'set-input-field', path: 'filters.pre-parser.predicate.query', value: 'x' }] },
+    }))).toThrow(/Operation 0 \(set-input-field\): "filters" is not a template input field/);
+  });
+
   it('test_parsePlan_invalidCurrent_shouldThrow', () => {
     expect(() => parsePlan(validPlan({ current: null }))).toThrow(/current.*object/);
     expect(() => parsePlan(validPlan({ current: [] }))).toThrow(/current.*object/);
