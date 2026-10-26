@@ -6,6 +6,24 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in October 2026.
 
+## October 24, 2026
+
+{/* ENGT-6180 */}
+### Faster backfills of large log volumes
+
+Backfills of large log volumes run faster, and large and unlimited backfills that used to run out of resources or time out now complete. A backfill with a limit no longer stops after sending only part of it. The **Jobs** page has a new **Backfills** tab that shows each backfill's progress through selecting events and sending them, and how many events each vendor received. When you start a backfill, click **Track progress** in the confirmation message to open it there. See [_](/cli#backfill).
+
+### Other improvements and fixes
+
+- {/* ENGT-6341 */} You can now connect Cursor, Codex, and ChatGPT to the Grepr MCP server with OAuth sign-in. See [_](/apis/mcp).
+- {/* ENGT-6239 */} An agent's issue settings are on a new **Issues** step of the agent's page, and agents search the issue board for issues related to the problem they are investigating instead of starting from a list of known issues. See [_](/ai-agents/issue-board#finding-issues).
+- {/* ENGT-6239 */} Searching the issue board matches words in an issue's title, description, labels, entities, and recent comments, and lists the best matches first.
+- {/* ENGT-6239 */} Memory tag filters on the **Memories** page and in agents' memory searches ignore case, so `service:Checkout` finds memories tagged `service:checkout`.
+- {/* ENGT-6339 */} An issue's comments are listed newest first, directly under the comment box, with **Show older comments** at the bottom.
+- {/* ENGT-6180 */} The data warehouse CloudFormation template expires the query results Grepr writes to your bucket after one day.
+- {/* ENGT-6287 */} Fixed an issue where an AI agent's investigation or chat reply could end on interim text, such as "Let me check", while the agent was still working.
+- {/* ENGT-6285 */} Fixed an issue where live edit could stop applying a pipeline's masking and reducer patterns to the logs it showed.
+
 ## October 21, 2026
 
 {/* ENGT-6049 */}
