@@ -16,11 +16,6 @@ export interface ApiClientFactoryOptions {
   browser: boolean;
 }
 
-/** The API base URL for an org when none is configured. */
-export function defaultApiBaseUrl(orgName: string): string {
-  return `https://${orgName}.app.grepr.ai/api`;
-}
-
 /**
  * Factory function to create GreprApiClient instances
  * Shared across all command types to ensure DRY principle
@@ -28,7 +23,7 @@ export function defaultApiBaseUrl(orgName: string): string {
 export function createApiClient(options: ApiClientFactoryOptions): GreprApiClient {
   const clientConfig = {
     orgName: options.orgName,
-    apiBaseUrl: options.apiBaseUrl || defaultApiBaseUrl(options.orgName),
+    apiBaseUrl: options.apiBaseUrl || `https://${options.orgName}.app.grepr.ai/api`,
     authBaseUrl: options.authBaseUrl || `https://${options.orgName}.app.grepr.ai/auth`,
     authMethod: options.authMethod ?? 'oauth',
     clientId: options.clientId || 'default-client-id',

@@ -46,7 +46,6 @@ vi.mock('../../../main/typescript/lib/auth.js', () => ({
 // Import after mocking
 const { GreprApiClient } = await import('../../../main/typescript/lib/grepr-api-client.js');
 import type { ApiClientConfig } from '../../../main/typescript/types.js';
-import { parseEndpoint, type ApiPath } from '../../../main/typescript/lib/api-request.js';
 import {
   CreateLogsBackfillJobDataType,
   DatadogQueryPredicateType,
@@ -404,75 +403,5 @@ describe('GreprApiClient updateJob rollback default', () => {
     await client.updateJob('123', { name: 'job' } as never, false);
 
     expect(requestedUrl()).toContain('rollbackEnabled=false');
-  });
-});
-
-describe('GreprApiClient rawRequest', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('test_rawRequest_sendsAuthorizedRequestAndReturnsTextBody', async () => {
-    const client = new GreprApiClient({ ...API_CLIENT_CONFIG, apiBaseUrl: 'https://test.app.grepr.ai/api/' });
-    mockFetch.mockResolvedValueOnce(new Response('{"ok":true}', {
-      status: 201,
-      headers: { 'x-request-id': 'r1' }
-    }));
-
-    const result = await client.rawRequest('POST', parseEndpoint('/v1/datasets').path, {
-      query: [['a', '1'], ['a', '2']],
-      body: '{"name":"x"}',
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-    const request = mockFetch.mock.calls[0]?.[0];
-    if (!(request instanceof Request)) {
-      throw new Error('Expected rawRequest to issue a Request');
-    }
-    expect(request.method).toBe('POST');
-    expect(request.url).toBe('https://test.app.grepr.ai/api/v1/datasets?a=1&a=2');
-    expect(request.headers.get('authorization')).toBe('Bearer test-token');
-    expect(request.headers.get('content-type')).toBe('application/json');
-    expect(await request.text()).toBe('{"name":"x"}');
-    expect(result.status).toBe(201);
-    expect(result.body).toBe('{"ok":true}');
-    expect(result.headers.get('x-request-id')).toBe('r1');
-  });
-
-  it('test_rawRequest_debug_logsRedactedAuthHeader', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockGetAuthHeaders.mockResolvedValueOnce({ 'Authorization': 'Bearer abcdefgh-secret-part' });
-    const client = new GreprApiClient({ ...API_CLIENT_CONFIG, debug: true });
-    mockFetch.mockResolvedValueOnce(new Response('', { status: 204 }));
-
-    await client.rawRequest('GET', parseEndpoint('/v1/jobs').path);
-
-    const logged = JSON.stringify(errorSpy.mock.calls);
-    errorSpy.mockRestore();
-    expect(logged).toContain('abcdefgh...[REDACTED]');
-    expect(logged).not.toContain('secret-part');
-  });
-
-  it.each(['.evil.com/x', '//evil.com/x'])('test_rawRequest_nonAbsolutePath_%s_isRefusedWithoutSending', async (path) => {
-    const client = new GreprApiClient({ ...API_CLIENT_CONFIG, apiBaseUrl: 'https://test.app.grepr.ai' });
-
-    // Forged on purpose: parseEndpoint never yields these, and rawRequest must not trust that alone.
-    await expect(client.rawRequest('GET', path as ApiPath)).rejects.toThrow('absolute API path');
-
-    expect(mockFetch).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    [200, '{"startTimeNanos":1234567890123456789,"ratio":1.0}'],
-    [400, '{"message":"bad field","value":1234567890123456789}'],
-    [502, '<html>bad gateway</html>'],
-  ])('test_rawRequest_status%s_returnsBodyByteForByte', async (status, body) => {
-    const client = new GreprApiClient(API_CLIENT_CONFIG);
-    mockFetch.mockResolvedValueOnce(new Response(body, { status, headers: { 'Content-Type': 'application/json' } }));
-
-    const result = await client.rawRequest('GET', parseEndpoint('/v1/jobs').path);
-
-    expect(result.status).toBe(status);
-    expect(result.body).toBe(body);
   });
 });

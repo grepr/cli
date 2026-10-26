@@ -21,10 +21,10 @@ import { MergeConfiguration, CommandOptionsRecord } from '../types.js';
  *   them as-is. This makes the command simple and perfect for piping to other tools
  *   (e.g., AI assistants, markdown processors).
  *
- * - **Direct lookup**: Uses `DocsSearch.getDocument()`, which returns the document's
- *   indexed text by URI without loading the embedding model. This is cheaper than
- *   query-based retrieval and returns the whole document in order rather than
- *   excerpts in relevance order.
+ * - **Option A retrieval**: Uses direct document lookup via `DocsSearch.getDocument()`
+ *   which internally calls `listDocuments()` and `renderAllSections()`. This is more
+ *   efficient than query-based retrieval and returns sections in document order
+ *   rather than relevance order.
  *
  * - **Clean output**: No headers, colors, or formatting. Just the raw markdown
  *   content. This is intentional for scriptability and AI integration.

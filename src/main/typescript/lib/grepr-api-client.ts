@@ -1,6 +1,5 @@
 // CLI API client using openapi-fetch with the same patterns as the frontend
 import createClient from 'openapi-fetch'
-import type { ApiPath, HttpMethod } from './api-request.js'
 import {
   paths,
   ReadDatadogType,
@@ -63,19 +62,6 @@ function redactSensitiveHeaders(headers: Headers): Record<string, string> {
     result.authorization = auth.replace(/(Bearer\s+\S{8})\S+/, '$1...[REDACTED]');
   }
   return result;
-}
-
-export interface RawRequestOptions {
-  query?: [string, string][];
-  body?: string;
-  headers?: Record<string, string>;
-}
-
-export interface RawResponse {
-  status: number;
-  statusText: string;
-  headers: Headers;
-  body: string;
 }
 
 /** API error with response status and Retry-After metadata for retry logic. */
@@ -149,66 +135,22 @@ export class GreprApiClient {
     // noinspection JSUnusedGlobalSymbols
     this.client.use({
       onRequest: async ({ request }) => {
-        await this.authorizeRequest(request);
+        const headers = await this.auth.getAuthHeaders(request.signal);
+        Object.entries(headers).forEach(([key, value]) => {
+          request.headers.set(key, value);
+        });
+        if (config.debug) {
+          console.error('Request:', request.method, request.url);
+          console.error('Headers:', redactSensitiveHeaders(request.headers));
+        }
       },
 
       onResponse: async ({ response }) => {
-        this.logResponse(response);
+        if (config.debug) {
+          console.error('Response:', response.status, response.url);
+        }
       }
     });
-  }
-
-  /**
-   * Adds auth headers to a request and debug-logs it (redacted): the one place the bearer token is
-   * attached, shared by the typed client's middleware and {@link rawRequest}.
-   */
-  private async authorizeRequest(request: Request): Promise<void> {
-    const headers = await this.auth.getAuthHeaders(request.signal);
-    Object.entries(headers).forEach(([key, value]) => {
-      request.headers.set(key, value);
-    });
-    if (this.config.debug) {
-      console.error('Request:', request.method, request.url);
-      console.error('Headers:', redactSensitiveHeaders(request.headers));
-    }
-  }
-
-  private logResponse(response: Response): void {
-    if (this.config.debug) {
-      console.error('Response:', response.status, response.url);
-    }
-  }
-
-  /**
-   * Sends an arbitrary request relative to the API base URL (e.g. `/v1/jobs`) with the same auth and
-   * debug redaction as the typed client. Used by `grepr api`; `path` must come from its endpoint
-   * parser. The body is returned as the exact text received, success or not.
-   */
-  async rawRequest(method: HttpMethod, path: ApiPath, options: RawRequestOptions = {}): Promise<RawResponse> {
-    // The base URL is joined to the path as text, so anything but an absolute path could change the
-    // host the token is sent to. ApiPath already guarantees this; keep the invariant local too.
-    if (!path.startsWith('/') || path.startsWith('//')) {
-      throw new Error(`rawRequest needs an absolute API path, got "${path}"`);
-    }
-    const baseUrl = this.config.apiBaseUrl.replace(/\/+$/, '');
-    const query = new URLSearchParams(options.query ?? []).toString();
-    const request = new Request(`${baseUrl}${path}${query ? `?${query}` : ''}`, {
-      method,
-      headers: options.headers,
-      body: options.body,
-    });
-    await this.authorizeRequest(request);
-    // grepr api sends paths the generated client can't name. The token is still attached and
-    // redacted only by authorizeRequest, the same code the typed client's middleware runs.
-    // eslint-disable-next-line no-restricted-globals
-    const response = await fetch(request);
-    this.logResponse(response);
-    return {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-      body: await response.text(),
-    };
   }
 
   /**

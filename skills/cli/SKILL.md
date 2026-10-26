@@ -100,5 +100,3 @@ one skill per task; without it, use `grepr <command> --help`.
 - Datasets: `grepr:describe-datasets`. Agent investigations and memories: `grepr:investigations`.
 - Create, update, or delete jobs, datasets, or integrations: `grepr:job-commands`,
   `grepr:dataset-commands`, `grepr:integration-commands`. Search the Grepr docs: `grepr:docs-commands`.
-- Any other API endpoint no command covers: `grepr:api` (local CLI only; not available in a Grepr
-  agent sandbox).

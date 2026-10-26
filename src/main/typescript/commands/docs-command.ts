@@ -1,5 +1,4 @@
 import { Command, InvalidArgumentError } from 'commander';
-import v8 from 'v8';
 import { ICommand } from '../lib/command-registry.js';
 import { DocsSearch, SearchResult } from '../lib/docs-search.js';
 import chalk from 'chalk';
@@ -20,7 +19,7 @@ export interface DocsSearchOptions {
   color?: boolean;
   /** Whether to suppress progress messages */
   quiet?: boolean;
-  /** Token budget per excerpt; an excerpt is at least one whole matching chunk (default: 300, ~1200 characters) */
+  /** Number of tokens of context to show per section (default: 300, ~1200 characters) */
   context?: string;
   /** Filter results by document type: doc (default, user docs), all, api (API operations), schema (data schemas) */
   type?: 'all' | 'doc' | 'api' | 'schema';
@@ -99,35 +98,6 @@ export function resolveDocsDefaultFormat(): DocsFormat {
   return isMachineReadable(resolveDefaultFormat('table')) ? 'json' : 'pretty';
 }
 
-/**
- * Makes V8 compile WebAssembly with its baseline compiler only (--liftoff-only). Otherwise V8
- * recompiles the 14 MB embedding runtime with its optimizing compiler: ~120 MB more memory per
- * search, for speed that embedding one query never needs.
- *
- * Setting the flag from inside the process works through Node 23. From Node 24 on it is ignored
- * and has to be on the command line, so there (outside Windows, where execve is unavailable) this
- * replaces the process with the same command started with the flag; nothing is left running. If
- * that fails, the search carries on here at the higher memory cost. Bun runs JavaScriptCore, which
- * has no such flag.
- */
-function useBaselineWebAssemblyCompiler(): void {
-  if (process.versions.bun || process.execArgv.includes('--liftoff-only')) {
-    return;
-  }
-  const nodeMajor = Number(process.versions.node.split('.')[0]);
-  if (nodeMajor < 24) {
-    v8.setFlagsFromString('--liftoff-only');
-    return;
-  }
-  if ('execve' in process && typeof process.execve === 'function' && process.platform !== 'win32') {
-    try {
-      process.execve(process.execPath, [process.execPath, '--liftoff-only', ...process.execArgv, ...process.argv.slice(1)]);
-    } catch {
-      // For example a sandbox that forbids exec: search anyway.
-    }
-  }
-}
-
 export class DocsSearchCommand implements ICommand {
   getCommandName(): string {
     return 'docs:search';
@@ -145,11 +115,10 @@ export class DocsSearchCommand implements ICommand {
       .option('-l, --limit <n>', 'Number of results to return', '5')
       .option('--threshold <score>', 'Minimum relevance score (0.0-1.0)', '0.0')
       .option('-f, --format <type>', 'Output format (pretty, json, compact)', parseDocsFormat, resolveDocsDefaultFormat())
-      .option('-c, --context <tokens>', 'Token budget per excerpt; an excerpt is at least one whole matching chunk (default: 300)', '300')
+      .option('-c, --context <tokens>', 'Tokens of context per section (default: 300)', '300')
       .option('-t, --type <filter>', 'Filter by type: doc (default), all, api, schema', 'doc')
       .option('--no-color', 'Disable colored output')
       .action(async (query: string, options: CommandOptionsRecord, command: Command) => {
-        useBaselineWebAssemblyCompiler();
         try {
           // Merge global options (--quiet, --debug, --timezone, etc.) so they
           // reach the subcommand, matching the pattern used by every other

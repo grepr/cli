@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'bun:test';
 import { DocsSearchCommand, parseDocsFormat, resolveDocsDefaultFormat } from '../../../../src/main/typescript/commands/docs-command.js';
-import { SearchResult, TextSection } from '../../../../src/main/typescript/lib/docs-search.js';
+import { SearchResult } from '../../../../src/main/typescript/lib/docs-search.js';
+import { DocumentTextSection } from 'vectra';
 
 const consoleSpy = {
   log: vi.spyOn(console, 'log').mockImplementation(() => {}),
@@ -10,7 +11,7 @@ const consoleSpy = {
 describe('DocsSearchCommand', () => {
   let command: DocsSearchCommand;
 
-  const mockSection: TextSection = {
+  const mockSection: DocumentTextSection = {
     text: '# Getting Started\n\nThis is a tutorial about creating pipelines with detailed instructions.',
     tokenCount: 15,
     score: 0.85

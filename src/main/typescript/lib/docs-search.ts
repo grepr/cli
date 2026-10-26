@@ -1,17 +1,7 @@
+import { EmbeddingsModel, LocalDocumentIndex, DocumentTextSection, MetadataFilter } from 'vectra';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { DocsIndex, IndexedChunk, IndexedDocument, docsIndexExists, readDocsIndex } from './docs-index.js';
-import { KeywordScorer } from './keyword-scorer.js';
-import { MiniLmEmbedder, TextEmbedder } from './text-embedder.js';
-
-/** An excerpt of a matching document, cut verbatim from its text. */
-export interface TextSection {
-  text: string;
-  /** Model tokens in text */
-  tokenCount: number;
-  /** Similarity of the best-matching chunk the excerpt covers */
-  score: number;
-}
+import { TransformersEmbeddings } from './transformers-embeddings.js';
 
 /**
  * Represents a single search result from the documentation index.
@@ -21,8 +11,8 @@ export interface SearchResult {
   score: number;
   /** Document URI in format 'doc://path/to/file.mdx', 'api://operation', or 'schema://SchemaName' */
   uri: string;
-  /** Excerpts of the document around the matching chunks, most relevant first */
-  sections: TextSection[];
+  /** Rendered text sections from the document */
+  sections: DocumentTextSection[];
 }
 
 /**
@@ -33,33 +23,23 @@ export interface SearchOptions {
   limit?: number;
   /** Minimum relevance score for results (0.0-1.0, default: 0.0) */
   threshold?: number;
-  /** Number of best-matching chunks grouped into document results (default: 40) */
+  /** Maximum number of document chunks to search (default: 20) */
   maxChunks?: number;
   /** Filter results by document type (default: all) */
   type?: 'all' | 'doc' | 'api' | 'schema';
-  /** Token budget per excerpt; an excerpt is still at least one whole matching chunk (default: 300) */
+  /** Number of tokens of context to show per section (default: 300) */
   contextTokens?: number;
 }
 
-/** Excerpts returned per matching document. */
-const MAX_SECTIONS = 3;
-
-/**
- * How much keyword (BM25) relevance counts next to embedding similarity in a chunk's score.
- * Swept from 0 to 1 on two labelled query sets (100 queries): both do well between 0.2 and 0.3,
- * and the set whose queries deliberately avoid the docs' own wording falls off above 0.3.
- */
-const KEYWORD_WEIGHT = 0.25;
-
-interface ChunkMatch {
-  chunk: IndexedChunk;
-  score: number;
+export interface InitializableEmbeddings extends EmbeddingsModel {
+  initialize(): Promise<void>;
 }
 
 /**
  * Semantic search engine for Grepr documentation.
  *
- * Key architectural decisions:
+ * This class provides high-level search functionality over a pre-built Vectra index
+ * of documentation files. Key architectural decisions:
  *
  * 1. **Build-time indexing**: The documentation index is generated at build time
  *    by scripts/build-docs-index.ts and bundled with the CLI distribution. This
@@ -72,28 +52,26 @@ interface ChunkMatch {
  *    location (build/dist/lib/), pointing to build/dist/docs-index/. This works
  *    both during development and after npm publication.
  *
- * 4. **Exhaustive matching**: The index holds a few thousand chunks, so a query is
- *    compared against every one of them; there is no approximate-nearest-neighbour
- *    structure to build or tune.
+ * 4. **Two-stage filtering**: Vectra returns top-K results by similarity, then we
+ *    apply threshold filtering. This ensures we always consider the most relevant
+ *    documents even if they're below threshold.
  */
 export class DocsSearch {
-  private index: DocsIndex | null = null;
-  private keywordScorer: KeywordScorer | null = null;
+  private index: LocalDocumentIndex | null = null;
   private indexPath: string;
-  private embedder: TextEmbedder;
+  private embeddings: InitializableEmbeddings;
 
   /**
    * Creates a new DocsSearch instance.
    *
-   * The constructor sets up paths and creates the embedder, but does
+   * The constructor sets up paths and creates the embeddings provider, but does
    * NOT load the model or index yet (lazy initialization).
    *
    * @param indexPath - Optional path to the index directory. If not provided,
    *                    defaults to the bundled docs-index directory relative to
    *                    this file. Used primarily for testing with temporary indices.
-   * @param embedder - Optional embedder; must be the one the index was built with.
    */
-  constructor(indexPath?: string, embedder?: TextEmbedder) {
+  constructor(indexPath?: string, embeddings?: InitializableEmbeddings) {
     if (indexPath) {
       this.indexPath = indexPath;
     } else {
@@ -102,56 +80,68 @@ export class DocsSearch {
       this.indexPath = path.resolve(__dirname, '../docs-index');
     }
 
-    this.embedder = embedder ?? new MiniLmEmbedder();
+    this.embeddings = embeddings ?? new TransformersEmbeddings('Xenova/all-MiniLM-L6-v2', 512);
   }
 
-  private async openIndex(): Promise<DocsIndex> {
+  private async openIndex(): Promise<LocalDocumentIndex> {
     if (this.index) {
       return this.index;
     }
 
-    if (!(await docsIndexExists(this.indexPath))) {
+    const index = new LocalDocumentIndex({
+      folderPath: this.indexPath,
+      embeddings: this.embeddings
+    });
+
+    if (!(await index.isIndexCreated())) {
       throw new Error(
         'Documentation index not found. The CLI package may be corrupted. ' +
         'Please reinstall the CLI: npm install -g @grepr/cli'
       );
     }
 
-    this.index = await readDocsIndex(this.indexPath);
-    return this.index;
+    this.index = index;
+    return index;
   }
 
   /**
    * Initializes the search engine by loading the embedding model and opening the index.
    *
    * This method is idempotent - multiple calls have no effect after the first successful
-   * initialization.
+   * initialization. It performs the following steps:
+   * 1. Loads the Transformers.js embedding model (downloads on first run)
+   * 2. Opens the Vectra index from the bundled docs-index directory
+   * 3. Verifies the index exists and is valid
    *
    * @throws Error if the index is not found or corrupted. This typically indicates
    *         a corrupted CLI installation and the user should reinstall.
    */
-  async initialize(): Promise<DocsIndex> {
-    await this.embedder.initialize();
+  async initialize(): Promise<LocalDocumentIndex> {
+    await this.embeddings.initialize();
     return this.openIndex();
   }
 
   /**
    * Performs semantic search over the documentation.
    *
-   * The search process:
+   * This method converts the query text into an embedding vector and finds the most
+   * similar documents in the index using cosine similarity. The search process:
    *
-   * 1. Scores every chunk of the requested type by cosine similarity to the embedded query,
-   *    blended with its keyword (BM25) relevance; see KEYWORD_WEIGHT
-   * 2. Keeps the `maxChunks` best chunks and groups them by document
-   * 3. Scores each document by its best kept chunk, and returns the top `limit`. Averaging
-   *    instead would rank a long page below a short one whenever the long page also had
-   *    weaker matching chunks; on a 60-query labelled set it cost 25 points of top-1 accuracy.
-   * 4. Drops documents scoring below `threshold`
-   * 5. Renders up to three excerpts per document around its matching chunks
+   * 1. Auto-initializes if not already initialized
+   * 2. Generates embedding for the query text
+   * 3. Performs vector similarity search via Vectra
+   * 4. Filters results by threshold (if specified)
+   * 5. Renders document sections with minimal context (focused excerpts)
+   * 6. Returns formatted results sorted by relevance
    *
-   * Note on threshold filtering: We apply threshold AFTER the top-`limit` cut.
+   * Note on threshold filtering: We apply threshold AFTER Vectra's top-K search.
    * This means if limit=5 and threshold=0.7, we might return fewer than 5 results
    * if some of the top 5 don't meet the threshold.
+   *
+   * Note on section rendering: We use 300 tokens per section (roughly 1200 characters)
+   * to show focused, relevant excerpts rather than large chunks that include
+   * irrelevant content from the start of the document. This matches our 512-token
+   * chunking strategy during indexing.
    *
    * @param query - Natural language search query
    * @param options - Search customization options
@@ -168,58 +158,57 @@ export class DocsSearch {
       contextTokens = 300
     } = options;
 
-    const queryVector = await this.embedder.embed(query);
-    const keywordScores = this.keywordScores(index, query);
-    const searched = index.chunks
-      .map((chunk, i) => ({ chunk, keywordScore: keywordScores[i] ?? 0 }))
-      .filter(({ chunk }) => type === 'all' || chunk.document.docType === type);
-    // Scaled so the best searched chunk scores 1, putting keyword relevance on the same footing as
-    // cosine similarity whatever the query's length or the --type filter.
-    const bestKeywordScore = Math.max(0, ...searched.map(({ keywordScore }) => keywordScore));
-    const matches: ChunkMatch[] = searched
-      .map(({ chunk, keywordScore }) => {
-        const keyword = bestKeywordScore > 0 ? keywordScore / bestKeywordScore : 0;
-        const blended = (dotProduct(queryVector, chunk.vector) + KEYWORD_WEIGHT * keyword) / (1 + KEYWORD_WEIGHT);
-        // Cosine similarity can be slightly negative; clamping keeps scores in the 0-1 range
-        // --threshold is documented with, so the default threshold of 0 never drops every result.
-        return { chunk, score: Math.max(0, blended) };
-      })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, maxChunks);
+    const filter = this.buildMetadataFilter(type);
 
-    const matchesByDocument = new Map<IndexedDocument, ChunkMatch[]>();
-    for (const match of matches) {
-      const documentMatches = matchesByDocument.get(match.chunk.document) ?? [];
-      documentMatches.push(match);
-      matchesByDocument.set(match.chunk.document, documentMatches);
+    const results = await index.queryDocuments(query, {
+      maxDocuments: limit,
+      maxChunks,
+      filter
+    });
+
+    const formatted: SearchResult[] = [];
+    for (const result of results) {
+      if (result.score < threshold) {
+        continue;
+      }
+
+      const sections = await result.renderSections(contextTokens, 3, true);
+
+      formatted.push({
+        score: result.score,
+        uri: result.uri,
+        sections
+      });
     }
 
-    return [...matchesByDocument]
-      .map(([document, documentMatches]) => ({ document, documentMatches, score: bestScore(documentMatches) }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit)
-      .filter(result => result.score >= threshold)
-      .map(({ document, documentMatches, score }) => ({
-        score,
-        uri: document.uri,
-        sections: this.renderSections(document, documentMatches, contextTokens)
-      }));
-  }
-
-  /**
-   * BM25 relevance of every chunk to the query, in index order. The scorer is built on first use;
-   * over the bundled docs that takes a few tens of milliseconds.
-   */
-  private keywordScores(index: DocsIndex, query: string): number[] {
-    this.keywordScorer ??= new KeywordScorer(index.chunks.map(chunk => chunk.document.text.slice(chunk.start, chunk.end)));
-    return this.keywordScorer.score(query);
+    return formatted;
   }
 
   /**
    * Retrieves the full content of a document by its URI.
    *
-   * This returns the complete document text exactly as indexed, not just the
-   * excerpts a search shows, and does not load the embedding model.
+   * This method fetches the complete raw text of a document, not just the top
+   * matching sections from a search. It's designed for retrieving complete
+   * documentation after finding it via search.
+   *
+   * Implementation details:
+   *
+   * 1. **Direct lookup**: Calls `listDocuments()` to get all indexed documents,
+   *    then finds the matching URI. This is more efficient than query-based
+   *    retrieval because it avoids unnecessary similarity calculations.
+   *
+   * 2. **Raw text loading**: Uses `loadText()` to read the original document text
+   *    directly from disk, bypassing Vectra's `renderAllSections()` which runs text
+   *    through a GPT-3 tokenizer encode/decode round-trip that corrupts special
+   *    characters (e.g., pipe characters in GFM tables become `\|`).
+   *
+   * Performance: This method loads the entire document list into memory once,
+   * which is acceptable since the index is immutable and relatively small (tens
+   * to hundreds of documents). For larger indices, consider adding a caching layer.
+   *
+   * Alternative considered (Option B): Query-based retrieval using `queryDocuments()`
+   * was rejected because it returns sections in relevance order rather than document
+   * order, which would break the natural flow of documentation.
    *
    * @param uri - Document URI in format 'doc://path/to/file.mdx'
    * @returns Complete document content as markdown text
@@ -228,12 +217,28 @@ export class DocsSearch {
   async getDocument(uri: string): Promise<string> {
     const index = await this.openIndex();
 
-    const doc = index.documents.find(d => d.uri === uri);
+    const docs = await index.listDocuments();
+    const doc = docs.find(d => d.uri === uri);
+
     if (!doc) {
       throw new Error(`Document not found: ${uri}`);
     }
 
-    return doc.text;
+    return doc.loadText();
+  }
+
+  /**
+   * Builds a metadata filter for the specified document type.
+   *
+   * @param type - Type filter to apply
+   * @returns Metadata filter for Vectra query, or undefined for 'all'
+   */
+  private buildMetadataFilter(type: 'all' | 'doc' | 'api' | 'schema'): MetadataFilter | undefined {
+    if (type === 'all') {
+      return undefined;
+    }
+
+    return { docType: type };
   }
 
   /**
@@ -246,79 +251,11 @@ export class DocsSearch {
   async getIndexStats(): Promise<{ documentCount: number; indexPath: string }> {
     const index = await this.openIndex();
 
+    const stats = await index.listDocuments();
+
     return {
-      documentCount: index.documents.length,
+      documentCount: stats.length,
       indexPath: this.indexPath
     };
   }
-
-  /**
-   * Cuts up to MAX_SECTIONS excerpts from a document.
-   *
-   * A document that fits in maxTokens is returned whole. Otherwise matching chunks that
-   * overlap or touch are merged into one excerpt while the result fits in maxTokens, each excerpt
-   * is scored by the best chunk it covers, and the best excerpts are returned.
-   *
-   * The best excerpt is never cut inside a chunk: a chunk's score does not say where in it the
-   * match is, so trimming it could drop exactly the passage that matched. Lower-ranked excerpts
-   * only lose lines already shown above them. Excerpts are slices of the original text, so code,
-   * tables and punctuation come back unchanged.
-   */
-  private renderSections(document: IndexedDocument, matches: ChunkMatch[], maxTokens: number): TextSection[] {
-    const textTokens = this.embedder.countTokens(document.text);
-    if (textTokens <= maxTokens) {
-      return [{ text: document.text, tokenCount: textTokens, score: bestScore(matches) }];
-    }
-
-    const spans: { start: number; end: number; matches: ChunkMatch[] }[] = [];
-    for (const match of [...matches].sort((a, b) => a.chunk.start - b.chunk.start)) {
-      const span = spans[spans.length - 1];
-      const mergedEnd = Math.max(span?.end ?? 0, match.chunk.end);
-      if (span && match.chunk.start <= span.end &&
-          this.embedder.countTokens(document.text.slice(span.start, mergedEnd)) <= maxTokens) {
-        span.end = mergedEnd;
-        span.matches.push(match);
-      } else {
-        spans.push({ start: match.chunk.start, end: match.chunk.end, matches: [match] });
-      }
-    }
-
-    // Neighbouring chunks share a few lines. Keep the best excerpts whole and trim the shared lines
-    // from lower-ranked ones, so no text is shown twice and the best match is never cut.
-    const excerpts: { start: number; end: number; score: number }[] = [];
-    for (const span of spans.map(s => ({ ...s, score: bestScore(s.matches) })).sort((a, b) => b.score - a.score)) {
-      for (const shown of excerpts) {
-        if (shown.start <= span.start && span.start < shown.end) {
-          span.start = shown.end;
-        }
-        if (shown.start < span.end && span.end <= shown.end) {
-          span.end = shown.start;
-        }
-      }
-      if (span.start < span.end) {
-        excerpts.push(span);
-      }
-      if (excerpts.length === MAX_SECTIONS) {
-        break;
-      }
-    }
-
-    return excerpts.map(({ start, end, score }) => {
-      const text = document.text.slice(start, end);
-      return { text, tokenCount: this.embedder.countTokens(text), score };
-    });
-  }
-}
-
-/** Cosine similarity, given unit-length vectors. */
-function dotProduct(a: Float32Array, b: Float32Array): number {
-  let sum = 0;
-  for (let i = 0; i < a.length; i++) {
-    sum += (a[i] ?? 0) * (b[i] ?? 0);
-  }
-  return sum;
-}
-
-function bestScore(matches: ChunkMatch[]): number {
-  return Math.max(...matches.map(match => match.score));
 }

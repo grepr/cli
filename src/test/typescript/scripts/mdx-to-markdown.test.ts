@@ -227,37 +227,6 @@ describe('mdxToMarkdown', () => {
     expect(result, 'should contain JSON tab content').toContain('JSON configuration here.');
   });
 
-  it('test_mdxToMarkdown_preAndCodeComponents_shouldRenderFencedCodeBlock', async () => {
-    const source = [
-      "import { Code, Pre } from 'nextra/components'",
-      '',
-      '# Bucket policy',
-      '',
-      '<Pre data-filename="bucket-policy.json" data-language="json">',
-      '  <Code data-language="json">{\'{"Version": "2012-10-17"}\'}</Code>',
-      '</Pre>',
-    ].join('\n');
-
-    const filePath = writeMdxFile(docsDir, 'test-pre-code/page.mdx', source);
-    const result = await mdxToMarkdown(source, { docsDir, filePath });
-
-    expect(result, 'should contain a json fenced block').toContain('```json\n{"Version": "2012-10-17"}\n```');
-  });
-
-  it('test_mdxToMarkdown_componentWithoutStub_shouldThrowInsteadOfReturningNull', async () => {
-    const source = [
-      "import { Steps } from 'nextra/components'",
-      '',
-      '# Page',
-      '',
-      '<Steps>Unstubbed component content</Steps>',
-    ].join('\n');
-
-    const filePath = writeMdxFile(docsDir, 'test-unstubbed/page.mdx', source);
-
-    await expect(mdxToMarkdown(source, { docsDir, filePath })).rejects.toThrow('Element type is invalid');
-  });
-
   it('test_mdxToMarkdown_cardsComponent_shouldRenderTitleLinks', async () => {
     const source = [
       "import { Cards } from 'nextra/components'",

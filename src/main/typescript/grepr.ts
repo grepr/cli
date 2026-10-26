@@ -24,7 +24,6 @@ import { BackfillCommand } from './commands/backfill-command.js';
 import { AgentCommand } from './commands/agent-command.js';
 import { InvestigationCommand } from './commands/investigation-command.js';
 import { InvestigationMemoryCommand } from './commands/investigation-memory-command.js';
-import { ApiCommand } from './commands/api-command.js';
 import type { CliOptions } from './types.js';
 import { parseAuthMethod, parseEnvUrl, parseQueryEngine, parseUrl } from './lib/option-parsers.js';
 
@@ -232,9 +231,6 @@ export class GreprQueryCLI {
     // Register docs commands
     this.commandRegistry.register(new DocsSearchCommand());
     this.commandRegistry.register(new DocsGetCommand());
-
-    // Register the generic API command, for endpoints without a dedicated command
-    this.commandRegistry.register(new ApiCommand());
   }
 
   /**
