@@ -105,14 +105,6 @@ jobs:
       - name: Run tests
         run: bun run test
 
-      - name: Create distributions
-        run: |
-          echo "Creating distribution packages..."
-          bun run dist
-
-          echo "Created distributions:"
-          ls -la build/customer-distributions/
-
       - name: Publish to npm
         env:
           VERSION: ${{ needs.check-version.outputs.version }}
@@ -150,9 +142,6 @@ jobs:
             This release was automatically synced from grepr-server and published to npm.
 
             See commit history for detailed changes.
-          files: |
-            build/customer-distributions/grepr-v${{ needs.check-version.outputs.version }}.tar.gz
-            build/customer-distributions/grepr-source-v${{ needs.check-version.outputs.version }}.tar.gz
           draft: false
           prerelease: ${{ contains(needs.check-version.outputs.version, '-') }}
 
