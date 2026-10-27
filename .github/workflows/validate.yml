@@ -9,7 +9,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Validate plugin.json
         run: |
@@ -58,8 +58,12 @@ jobs:
               echo "$f: missing 'description:' in frontmatter"
               fail=1
             fi
-            if echo "$frontmatter" | grep -q '^name: '; then
-              echo "$f: has 'name:' in frontmatter — this breaks plugin namespacing (see anthropics/claude-code#43695)"
+            # The Grepr MCP server requires name to equal the skill directory, and
+            # Claude Code still namespaces such a skill as grepr:<name>.
+            name=$(echo "$frontmatter" | sed -n 's/^name: *//p')
+            dir=$(basename "$(dirname "$f")")
+            if [ -n "$name" ] && [ "$name" != "$dir" ]; then
+              echo "$f: 'name: $name' must match the skill directory '$dir'"
               fail=1
             fi
           done
