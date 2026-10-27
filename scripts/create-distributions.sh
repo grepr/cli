@@ -78,7 +78,7 @@ if [ ! -f "$CLI_DIR/BUILD.md" ]; then
 
 ## Prerequisites
 
-- **Node.js 20.0.0 or higher** - [Download here](https://nodejs.org/)
+- **Node.js 22.23.4 or later on Node.js 22, 24.22.1 or later on Node.js 24, or 26.12.1 or later** - [Download here](https://nodejs.org/)
 - **npm or yarn** - Usually comes with Node.js
 - **TypeScript** - Installed automatically as dev dependency
 

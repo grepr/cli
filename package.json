@@ -1,6 +1,6 @@
 {
   "name": "@grepr/cli",
-  "version": "1.14.1-056e43b",
+  "version": "1.14.2-c2964c9",
   "description": "Official Grepr CLI tool for submitting synchronous batch jobs with OAuth authentication",
   "main": "build/dist/grepr.js",
   "type": "module",
@@ -88,7 +88,7 @@
     "@eslint/eslintrc/js-yaml": "^4.2.0"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.23.4 <23 || >=24.22.1 <25 || >=26.12.1"
   },
   "keywords": [
     "grepr",

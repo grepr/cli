@@ -298,6 +298,7 @@ describe('GreprApiClient submitSyncJob', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetAuthHeaders.mockResolvedValue({ Authorization: 'Bearer test-token' });
     client = new GreprApiClient(API_CLIENT_CONFIG);
   });
 
@@ -410,6 +411,7 @@ describe('GreprApiClient updateJob rollback default', () => {
 describe('GreprApiClient rawRequest', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetAuthHeaders.mockResolvedValue({ Authorization: 'Bearer test-token' });
   });
 
   it('test_rawRequest_sendsAuthorizedRequestAndReturnsTextBody', async () => {
