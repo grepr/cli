@@ -84,8 +84,7 @@ const datadogPredicate = (query: string): SchemaDatadogQueryPredicate => ({
 
 // Listed literally so a new template input field or transform slot changes these tests on purpose.
 const TEMPLATE_INPUT_FIELDS = [
-  'agentSignalSink', 'conditionalDatasets', 'confirmedDeliveryEnabled', 'datasetId', 'draftSource', 'exceptions',
-  'masking', 'parsers', 'processedLogsSink', 'processedLogsSinkFilter', 'rawSinkConfig', 'reducer', 'sampler',
+  'agentSignalSink', 'conditionalDatasets', 'datasetId', 'draftSource', 'exceptions', 'masking', 'parsers', 'processedLogsSink', 'processedLogsSinkFilter', 'rawSinkConfig', 'reducer', 'sampler',
   'sinks', 'sources', 'transforms',
 ];
 const TRANSFORM_SLOTS = ['preExceptions', 'preParser', 'preWarehouse'];
@@ -1109,25 +1108,13 @@ describe('applyPatch — add-sink / remove-sink / set-raw-dataset (template)', (
     expect((readInputFromUpdate(update) as { datasetId?: string }).datasetId).toBe('new_raw_ds');
   });
 
-  it('test_setRawDataset_syncsRawSinkConfigOverride', () => {
-    // rawSinkConfig.datasetId overrides input.datasetId for the raw sink, so
-    // set-raw-dataset must update it too or the raw sink keeps the old dataset.
-    const job = makeTemplateJob({ datasetId: 'old_ds', rawSinkConfig: { datasetId: 'old_ds' } as never });
-    const update = applyPatch(job, { operations: [{ op: 'set-raw-dataset', datasetId: 'new_raw_ds' }] });
-    const input = readInputFromUpdate(update) as { datasetId?: string; rawSinkConfig?: { datasetId?: string } };
-    expect(input.datasetId).toBe('new_raw_ds');
-    expect(input.rawSinkConfig?.datasetId).toBe('new_raw_ds');
-  });
-
-  it('test_setRawDataset_leavesRawSinkConfigWithoutDatasetUntouched', () => {
-    // rawSinkConfig present but with no datasetId override: input.datasetId applies,
-    // so there is nothing to sync and no datasetId key is added.
+  it('test_setRawDataset_leavesRawSinkConfigUntouched', () => {
+    // The raw sink always writes input.datasetId, so rawSinkConfig doesn't change.
     const job = makeTemplateJob({ datasetId: 'old_ds', rawSinkConfig: { name: 'raw_data_sink_x' } as never });
     const update = applyPatch(job, { operations: [{ op: 'set-raw-dataset', datasetId: 'new_raw_ds' }] });
-    const input = readInputFromUpdate(update) as { datasetId?: string; rawSinkConfig?: { datasetId?: string; name?: string } };
+    const input = readInputFromUpdate(update) as { datasetId?: string; rawSinkConfig?: { name?: string } };
     expect(input.datasetId).toBe('new_raw_ds');
-    expect(input.rawSinkConfig?.datasetId).toBeUndefined();
-    expect(input.rawSinkConfig?.name).toBe('raw_data_sink_x');
+    expect(input.rawSinkConfig).toEqual({ name: 'raw_data_sink_x' });
   });
 
   it('test_addSink_invalidTarget_shouldThrow', () => {
@@ -1204,18 +1191,18 @@ describe('draftVerificationLimitations', () => {
     ).toHaveLength(1);
   });
 
-  it('test_draftLimitations_setInputFieldOnRawSinkConfigDatasetId_reportsLimitation', () => {
-    // rawSinkConfig overrides the raw-logs iceberg sink (dataset, name,
-    // partitioning). Redirecting raw-logs writes is sink-touching even though
-    // the field name doesn't contain "sink" with a trailing 's'.
+  it('test_draftLimitations_setInputFieldOnRawSinkConfigName_reportsLimitation', () => {
+    // rawSinkConfig overrides the raw-logs iceberg sink (name, partitioning).
+    // Changing it is sink-touching even though the field name doesn't contain
+    // "sink" with a trailing 's'.
     expect(
-      draftVerificationLimitations({ operations: [{ op: 'set-input-field', path: 'rawSinkConfig.datasetId', value: 'other_ds' }] }),
+      draftVerificationLimitations({ operations: [{ op: 'set-input-field', path: 'rawSinkConfig.name', value: 'other_sink' }] }),
     ).toHaveLength(1);
   });
 
   it('test_draftLimitations_setInputFieldOnRawSinkConfigRoot_reportsLimitation', () => {
     expect(
-      draftVerificationLimitations({ operations: [{ op: 'set-input-field', path: 'rawSinkConfig', value: { datasetId: 'd' } }] }),
+      draftVerificationLimitations({ operations: [{ op: 'set-input-field', path: 'rawSinkConfig', value: { name: 'd' } }] }),
     ).toHaveLength(1);
   });
 
@@ -1276,7 +1263,7 @@ describe('classifyPatch', () => {
 
   it('test_classify_setInputFieldOnRawSinkConfig_touchesSink', () => {
     expect(
-      classifyPatch({ operations: [{ op: 'set-input-field', path: 'rawSinkConfig.datasetId', value: 'other' }] }),
+      classifyPatch({ operations: [{ op: 'set-input-field', path: 'rawSinkConfig.name', value: 'other' }] }),
     ).toBe('sink');
   });
 

@@ -272,7 +272,7 @@ export type JobPatchOp =
     }
   | {
       op: 'set-raw-dataset';
-      /** New raw-logs dataset ID. Template: `input.datasetId` (and `rawSinkConfig.datasetId` when that override is set). Raw job-graph: `datasetId` on the raw data-lake `logs-iceberg-table-sink` (matched by name prefix). */
+      /** New raw-logs dataset ID. Template: `input.datasetId`. Raw job-graph: `datasetId` on the raw data-lake `logs-iceberg-table-sink` (matched by name prefix). */
       datasetId: string;
     }
   // Per-entry removals: the inverse of the append-only `add-*` reducer/remapper
@@ -2446,13 +2446,6 @@ function applyRemoveSink(
 
 function applySetRawDataset(input: SchemaLogReducerTemplateInput, datasetId: string): void {
   input.datasetId = datasetId;
-  // rawSinkConfig.datasetId is an override that takes precedence over input.datasetId
-  // for the raw sink, so when it is set, update it too or the raw sink keeps writing
-  // to the old dataset.
-  const rawSinkConfig = input.rawSinkConfig;
-  if (rawSinkConfig?.datasetId != null) {
-    rawSinkConfig.datasetId = datasetId;
-  }
 }
 
 /** Returns limitation strings for the user-facing draft preamble; non-empty when the patch touches sinks (external delivery is not verified). */
@@ -2493,7 +2486,6 @@ const INPUT_FIELD_TOUCHES: Record<keyof SchemaLogReducerTemplateInput, 'source' 
   rawSinkConfig: 'sink',
   datasetId: 'sink',
   conditionalDatasets: 'sink',
-  confirmedDeliveryEnabled: 'sink',
   reducer: 'transform',
   parsers: 'transform',
   transforms: 'transform',

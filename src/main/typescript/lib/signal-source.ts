@@ -156,7 +156,7 @@ async function inferTemplateJobSource(
   switch (template.name) {
     case LOG_REDUCER_TEMPLATE_NAME: {
       const logsInput = input as SchemaLogReducerTemplateInput | undefined;
-      const datasetId = logsInput?.datasetId ?? logsInput?.rawSinkConfig?.datasetId;
+      const datasetId = logsInput?.datasetId;
       if (!datasetId) {
         throw new Error('Log reducer template has no raw logs dataset');
       }

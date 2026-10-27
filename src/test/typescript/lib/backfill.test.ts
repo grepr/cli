@@ -672,7 +672,7 @@ describe('resolveBackfillInputs', () => {
     expect(client.getJob).toHaveBeenCalledWith('job_1');
   });
 
-  it('test_resolveBackfillInputs_prefersTemplateDatasetIdOverRawSinkConfig', async () => {
+  it('test_resolveBackfillInputs_templateUsesItsDatasetId', async () => {
     const sourceJob = {
       id: 'job_1',
       name: 'pipeline',
@@ -686,7 +686,6 @@ describe('resolveBackfillInputs', () => {
           templateInputs: {
             input: {
               datasetId: 'ds_default',
-              rawSinkConfig: { datasetId: 'ds_raw' },
               sinks: [
                 { sink: { type: DatadogLogSinkType.datadog_log_sink, name: 'dd', integrationId: 'dd_1' } },
                 { sink: { type: SplunkLogSinkType.splunk_log_sink, name: 'splunk', integrationId: 'splunk_1' } }
@@ -995,41 +994,4 @@ describe('resolveBackfillInputs', () => {
     }, client)).rejects.toThrow(/does not match source job type logs/);
   });
 
-  it('test_resolveBackfillInputs_templateFallsBackToRawSinkConfigDatasetId', async () => {
-    const sourceJob = {
-      id: 'job_1',
-      name: 'pipeline',
-      teamIds: ['team_template_source'],
-      jobGraph: {
-        vertices: [{
-          type: TemplateOperationType.template_operation,
-          name: 'log_reducer_template',
-          templateId: LOG_REDUCER_TEMPLATE.id,
-          templateVersion: LOG_REDUCER_TEMPLATE.version,
-          templateInputs: {
-            input: {
-              rawSinkConfig: { datasetId: 'ds_fallback' },
-              sinks: [
-                { sink: { type: DatadogLogSinkType.datadog_log_sink, name: 'dd', integrationId: 'dd_1' } }
-              ],
-              exceptions: [],
-              parsers: [],
-              reducer: { type: 'log-reducer', name: 'log_reducer', delimiters: [], enabledMasks: [], masks: [] },
-              sources: []
-            }
-          }
-        }],
-        edges: []
-      }
-    } as SchemaReadJob;
-    const client = apiClient({
-      getDataset: vi.fn(async id => ({ id, name: id } as never)),
-      getJob: vi.fn(async () => sourceJob),
-      getIntegrationById: vi.fn(async id => datadog(id))
-    });
-
-    const resolved = await resolveBackfillInputs({ jobId: 'job_1', ...recentBackfillRange() }, client);
-    expect(resolved.datasetId).toBe('ds_fallback');
-    expect(client.getDataset).toHaveBeenCalledWith('ds_fallback');
-  });
 });

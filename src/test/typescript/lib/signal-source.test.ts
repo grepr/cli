@@ -276,16 +276,6 @@ describe('resolveSignalSource job-derived mode', () => {
     expect(client.getTemplate).toHaveBeenCalledWith('tpl_logs', 16);
   });
 
-  it('test_resolveSignalSource_fallsBackToTheLogTemplateRawSinkConfigDataset', async () => {
-    const client = apiClient({
-      getJob: vi.fn(async () => job([
-        templateVertex('tpl_logs', 16, { rawSinkConfig: { datasetId: 'ds_from_raw_config' } })
-      ]))
-    });
-    const resolved = await resolveSignalSource({ jobId: 'job_1' }, client);
-    expect(resolved.datasetId).toBe('ds_from_raw_config');
-  });
-
   it('test_resolveSignalSource_throwsWhenTheLogTemplateHasNoDataset', async () => {
     const client = apiClient({
       getJob: vi.fn(async () => job([templateVertex('tpl_logs', 16, {})]))

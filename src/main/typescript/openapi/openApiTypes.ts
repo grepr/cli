@@ -6495,12 +6495,12 @@ export interface components {
       /** @default [] */
       actionRules: components["schemas"]["ActionRule"][];
     };
-    /** @description Non-terminal — events matching `predicate` route into `thenAction`; non-matching events route into `elseAction`. `lateDataDuration` is honored only when this node is the root of a stage's slot. */
+    /** @description Non-terminal — events matching `predicate` route into `thenAction`; non-matching events route into `elseAction`. `lateDataDuration`, on any ConditionNode, applies to the events reaching it. */
     ConditionNode: {
       elseAction: components["schemas"]["ChainNode"];
       /**
        * Format: ISO-8601
-       * @description Optional ISO-8601 maximum allowed lateness applied at the chain's entry filter. Honored only when this is the root node of a stage's slot; values set on a nested ConditionNode are ignored by the templates-layer compiler.
+       * @description Optional ISO-8601 maximum allowed lateness, applied to the events reaching this node before its predicate. Honored on any ConditionNode, a slot's root or a nested one.
        * @example PT20.345S
        */
       lateDataDuration?: string;
@@ -9801,12 +9801,7 @@ export interface components {
       agentSignalSink?: components["schemas"]["AgentSignalSink"];
       /** @description Conditional routing of raw logs to datasets. Logs will match the filters in order, and once a log matches a filter, it will not attempt to match other filters in the list. If a log matches none of the filters, it is written to the default dataset. A default dataset must be set when conditional routing is configured. */
       conditionalDatasets?: components["schemas"]["ConditionalDataLakeConfig"][];
-      /**
-       * @description When true (ENGT-3898), vendor log sinks are non-terminal: delivered records are written to a confirmed-delivery dedup sink so only logs actually accepted by the vendor are marked sent. Defaults to false during gradual rollout.
-       * @default false
-       */
-      confirmedDeliveryEnabled?: boolean;
-      /** @description The unique identifier for the dataset. When absent, no raw logs will be stored. At least one of `datasetId` or `sinks` must be provided for non-draft pipelines. */
+      /** @description The unique identifier for the dataset. When absent, no raw logs will be stored. At least one of `datasetId`, `sinks` or `processedLogsSink` must be provided, in drafts too. */
       datasetId?: string;
       draftSource?: components["schemas"]["Operation"];
       /** @description A list of template-specific exceptions to apply in log reducer. */
@@ -9819,7 +9814,7 @@ export interface components {
       rawSinkConfig?: components["schemas"]["RawLogsSinkConfig"];
       reducer: components["schemas"]["LogReducer"];
       sampler?: components["schemas"]["LogsEventSampler"];
-      /** @description A list of template log sinks, each specific to a vendor with optional filter configuration. When absent, reduced logs will not be forwarded. At least one of `sinks` or `datasetId` must be provided for non-draft pipelines. */
+      /** @description A list of template log sinks, each specific to a vendor with optional filter configuration. When absent, reduced logs will not be forwarded. At least one of `datasetId`, `sinks` or `processedLogsSink` must be provided, in drafts too. A SQL output routed to `sinks` needs a sink here or `processedLogsSink`, and a metric SQL output needs a Datadog log sink here. */
       sinks?: components["schemas"]["TemplateLogSink"][];
       /** @description A list of data sources, each conforming to one of the defined source types. */
       sources: components["schemas"]["Operation"][];
@@ -11978,8 +11973,6 @@ export interface components {
     };
     /** @description Optional configuration overrides for the raw logs iceberg table sink. */
     RawLogsSinkConfig: {
-      /** @description Override the dataset ID for the raw logs sink. */
-      datasetId?: string;
       /** @description Flag to enable dynamic partitioning for log tables. */
       enableDynamicPartitioning?: boolean;
       /** @description Override the sink vertex name. */
@@ -14872,17 +14865,15 @@ export interface components {
        */
       traceIdTagKeys?: string[];
       /**
-       * Sampled Trace Marker Tag Key
-       * @description The key for the tag added to events of sampled traces to signal downstream operations differentiated processing.
-       * @default grepr.tracesampler
-       * @example tracesampler
+       * Sampled Trace Marker Tag Key (Deprecated)
+       * @deprecated
+       * @description Deprecated and ignored: the template tags events of sampled traces grepr.skipaggregation: trace-sampled, so the reducer passes them unaggregated.
        */
       traceSamplerTagKey?: string;
       /**
-       * Sampled Trace Marker Tag Value
-       * @description The value for the tag added to events of sampled traces to signal downstream operations differentiated processing.
-       * @default sampled
-       * @example sampled
+       * Sampled Trace Marker Tag Value (Deprecated)
+       * @deprecated
+       * @description Deprecated and ignored: the template tags events of sampled traces grepr.skipaggregation: trace-sampled, so the reducer passes them unaggregated.
        */
       traceSamplerTagValue?: string;
       /**
