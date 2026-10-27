@@ -1,5 +1,5 @@
 ---
-description: Learn how AI agents work on issues on the issue board, how to hand an issue to an agent, and how agents pick up Ready issues.
+description: Learn what issue states mean, how AI agents work on issues on the issue board, how to hand an issue to an agent, and how agents pick up Ready issues.
 ---
 
 # Work on issues with AI agents
@@ -7,6 +7,55 @@ description: Learn how AI agents work on issues on the issue board, how to hand 
 An agent with **Works on issues** turned on files issues, works on them, and records what it found on the issue board. An agent works on an issue in an investigation started on that issue, called a _run_ on the issue. A run starts on an issue in one of two ways: you hand the issue to the agent, or the agent picks the issue up from the **Ready** column.
 
 An agent's issue settings are on its **Issues** step: **Works on issues**, whether it can put issues in **Ready**, and which **Ready** issues it picks up. When you create an agent, they're in the wizard's **Memory and issues** section.
+
+## Issue states [#states]
+
+Every issue is in one of six states, and the board has a column for each one. By default, the **Closed** column shows issues closed in the last 7 days. To move an issue, drag its card to another column, use the move menu on its card, or click its state on the issue page. You can move an open issue to any other open state. Agents can too, except that an agent moves an issue to **Ready** only when it's allowed to. See [Let an agent put issues in Ready](#allow-ready).
+
+A _sighting_ records that a problem happened again: when an agent's investigation, such as one started by an alert, finds a problem that an issue already tracks, the agent records a sighting on that issue. Only agents record sightings, so an issue gets them only while an agent investigates that problem.
+
+| State | What it means | How issues move |
+| --- | --- | --- |
+| **Triage** | Filed, but not yet confirmed or prioritized. A person decides what happens next. | Agents file issues here, or in **Ready** when they're allowed to. Issues also come back here from **In progress** and **Closed**, as described for those states. |
+| **Ready** | Confirmed and waiting for someone to take it on. | The first person or agent to join it, such as with **Add me**, moves it to **In progress**. Agents with pickup turned on pick up the issues that match their filters. |
+| **In progress** | Someone is working on it. | When an agent's run on it ends or an agent is removed from it, and no one is left working on it, the issue moves to **Triage**. When you click **Finish my part**, the issue stays where it is, for you to move. |
+| **Waiting** | Blocked on a person or an outside event. | The issue stays here until someone moves it or its expiry passes. When the blocker clears, move the issue to where the work stands, such as **Ready** or **In progress**. |
+| **Monitoring** | A fix is in, and you're watching for the problem to come back. | See [Monitor a fix](#monitoring). |
+| **Closed** | Done, with a resolution that says why. | See [Close and reopen an issue](#close). |
+
+An open issue can have an _expiry_, set in **Expires at**. When the expiry passes, Grepr closes the issue as **Expired**. If an agent set the expiry and someone is still working on the issue, the issue closes after they finish. **Expires at** on the issue page then names who the issue is waiting for, and if you're one of them, you can click **Finish my part** there. To end someone else's assignment, remove them from the issue's assignees.
+
+### Monitor a fix [#monitoring]
+
+Move an issue to **Monitoring** when a fix is in and you want to confirm that the problem doesn't come back. A **Monitoring** issue needs an expiry or a revisit time. If it has neither when you move it, you set an expiry: if nothing else happens, the issue closes as **Expired** at that time. An agent can also set a _revisit time_, when it checks on the issue again.
+
+Every other assignee must finish before an issue moves to **Monitoring**, and the move finishes your own assignment. To move the issue while someone is still working on it, choose **Move anyway**: they stay assigned and keep working on it.
+
+An agent that moves an issue to **Monitoring** watches it, shown as **Watching** on the card and **Watched by** on the issue page. On a new sighting, or when the revisit time comes, Grepr starts a run of that agent on the issue. The agent checks whether the fix holds and moves the issue to where the work stands. A sighting doesn't move a **Monitoring** issue by itself.
+
+An issue loses its watcher when it leaves **Monitoring**, when the agent can no longer work on the issue, or when you click **Remove** next to **Watched by**, which removes the agent from the issue. See [Remove an agent from an issue](#remove). If no agent watches a **Monitoring** issue, it moves back to **Ready** at its revisit time, so that an agent with pickup can check it again. Without a revisit time, it stays in **Monitoring** until its expiry.
+
+### Close and reopen an issue [#close]
+
+When you close an issue, you choose a resolution:
+
+| Resolution | When to use it | On a new sighting |
+| --- | --- | --- |
+| **Fixed** | The problem is resolved. | The issue reopens in **Triage**, marked **Regressed**. |
+| **Duplicate** | Another issue tracks the same problem. You choose that issue. | The sighting is recorded on the issue it duplicates. |
+| **Not a problem** | The behavior is expected this time. | The sighting is counted, and the issue stays closed. |
+| **Ignored** | The problem never needs action. Only people can choose this resolution, such as with **Ignore from now on** on the issue page. | The sighting is counted, and the issue stays closed. |
+| **Obsolete** | What the issue was about no longer exists. | The issue reopens in **Triage**, while its expiry, if it has one, is still ahead. |
+| **Expired** | Grepr sets this resolution when the issue's expiry passes. | Agents can't record sightings on it, so they file a new issue instead. |
+
+Closing an issue as **Fixed** clears its expiry, so a new sighting reopens it however long after the fix it comes.
+
+Every other assignee must finish before an issue closes. To close it anyway, choose **Close anyway**, which finishes their assignments.
+
+You can reopen a closed issue to **Triage** or **Ready**, with these rules:
+
+- Only people can reopen an issue closed as **Ignored** or **Expired**. To reopen an **Expired** issue, or any issue whose expiry has passed, first clear or extend its expiry.
+- An agent can reopen an issue closed as **Not a problem** only when it comments with evidence that the issue doesn't already have.
 
 ## How an agent finds issues [#finding-issues]
 
@@ -24,7 +73,7 @@ When the run ends:
 - The agent posts a comment on the issue that says how the run ended, with a link to the run. The comment includes the run's summary unless the agent already commented on the issue or the run failed.
 - If the issue is still **In progress**, with no one assigned and no other run on it, the issue moves to **Triage**, where a person decides what happens next. To keep an issue **In progress**, add yourself to it with **Add me**.
 
-An agent can close an issue it's assigned to, or move it to **Monitoring**: the move finishes the agent's own assignment. Another assignee's active assignment prevents the move, unless a person closes the issue.
+An agent can close an issue it's assigned to, or move it to **Monitoring** and watch it. Either move finishes the agent's own assignment. Another assignee's active assignment prevents the move, and only a person can move the issue anyway. See [Monitor a fix](#monitoring) and [Close and reopen an issue](#close).
 
 The same rules apply to an agent that joins an issue during another investigation, such as one started by an alert.
 
