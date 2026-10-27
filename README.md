@@ -16,7 +16,7 @@ The Grepr command-line tool (`@grepr/cli`) and agent plugins that let Claude Cod
 
 ### Requirements
 
-- Node.js 20.0.0 or higher
+- Node.js 22.23.4 or later on Node.js 22, 24.22.1 or later on Node.js 24, or 26.12.1 or later
 
 ### Install
 
