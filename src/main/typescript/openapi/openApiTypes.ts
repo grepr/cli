@@ -3342,7 +3342,11 @@ export interface paths {
     get: operations["get_17"];
     put?: never;
     post?: never;
-    delete?: never;
+    /**
+     * Delete an issue
+     * @description Deletes an issue with its comments, history, assignees and sightings. People only. It can't be undone, and the issue's number isn't reused. An issue that others are closed as duplicates of can't be deleted until they're reopened or closed another way; the refusal names the ones the caller can see. Links to it from other issues read as hidden.
+     */
+    delete: operations["delete_15"];
     options?: never;
     head?: never;
     /**
@@ -26619,6 +26623,60 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  delete_15: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        idOrNumber: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Issue deleted; the body is the issue as it was */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Issue"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not a person, or no permission to edit the issue */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
+      };
+      /** @description Issue not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Other issues are closed as duplicates of it */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IssueErrorResponse"];
+        };
       };
     };
   };
