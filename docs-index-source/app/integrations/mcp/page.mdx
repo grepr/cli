@@ -32,10 +32,11 @@ The tools an agent gains depend on the server you connect:
 |---|---|
 | Datadog MCP | Read monitors, dashboards, logs, and metrics from your Datadog organization. |
 | GitHub MCP | Read and change repository content, issues, pull requests, and workflow runs. |
+| Jira MCP | Read, search, comment on, create, transition, and assign issues on your Jira Cloud site. |
 | PagerDuty MCP | Read and act on incidents, services, and schedules. |
 | Slack MCP | Read and post messages in the channels the token can reach. |
 
-Each integration has a server URL you set, so you can point one at a self-hosted or regional endpoint rather than the vendor's.
+Each integration has a server URL you set, so you can point one at a self-hosted or regional endpoint rather than the vendor's. The Jira MCP is the exception. Its server URL must be on `mcp.atlassian.com`, so Grepr sends its credential only to Atlassian.
 
 Don't see an MCP in the list? Send a request to [support@grepr.ai](mailto:support@grepr.ai).
 
@@ -54,7 +55,7 @@ Every type has a **Name** field, which identifies the integration when you confi
 
 The credential decides what the agent can do through that MCP. Grepr passes it through as you supply it, so give the token minimal access for what the agent needs. Select the tab for the MCP you are connecting.
 
-<Tabs items={['Datadog MCP', 'GitHub MCP', 'PagerDuty MCP', 'Slack MCP']}>
+<Tabs items={['Datadog MCP', 'GitHub MCP', 'Jira MCP', 'PagerDuty MCP', 'Slack MCP']}>
   <Tabs.Tab>
 
     | Field | Value |
@@ -79,6 +80,31 @@ The credential decides what the agent can do through that MCP. Grepr passes it t
     Create the token in GitHub under **Settings** > **Developer settings** > **Personal access tokens**. A fine-grained token is the better choice, because you can limit it to the repositories the agent works in.
 
     Grant the token access to the repository content, issues, pull requests, and workflow runs the agent needs. An agent that only reads code needs read access alone, and an agent that opens pull requests needs write access to contents and pull requests. To learn more, see [Managing your personal access tokens](https://docs.github.com/en/authentication/keeping-your-account-secure/managing-your-personal-access-tokens) in the GitHub documentation.
+
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+
+    | Field | Value |
+    |---|---|
+    | **MCP Server URL** | `https://mcp.atlassian.com/v2/mcp?tools=all`. |
+    | **Jira site URL** | The web URL of your Jira Cloud site, such as `https://<your-site>.atlassian.net`. It must be an HTTPS URL. |
+    | **Service account API token** | An API token of an Atlassian service account. Grepr sends it as a Bearer token. |
+
+    The Jira MCP connects to the Atlassian Rovo MCP server. This server supports Jira Cloud only. It does not support Jira Data Center.
+
+    Before you create the integration, do these steps in Atlassian:
+
+    1. An Atlassian organization admin must turn on API token authentication for the Rovo MCP server. In Atlassian Administration, go to **Connectors** > **Atlassian MCP server** > **Authentication**, and select **Allow API token authentication**.
+    1. Create a service account for the agent. Give it the **User** role on the Jira app of your site.
+    1. Create an API token for the service account with these scopes: `read:jira:agent-interface`, `search:jira:agent-interface`, and `write:jira:agent-interface`.
+    1. Give the service account access only to the Jira projects the agent needs. Do not give it access to Jira Service Management projects, because a comment there can go to your customers by email.
+
+    A new Jira MCP integration on an agent can only read until someone turns on its write tools. After that, an investigation runs those tools with no approval step, and the logs and alerts it reads can contain text that tries to steer the agent. The projects and scopes of the service account are what limit the agent. Keep the token to the three scopes above. With more scopes, **All tools** on an agent also gives Confluence, Compass, or delete tools.
+
+    When you save the API token, Grepr checks it with Atlassian. Grepr stores the token only when Atlassian accepts it and it gives access to Jira tools.
+
+    Grepr uses the **Jira site URL** to make links to the issues that an agent creates, comments on, transitions, or edits. An action has a link only when the Atlassian result names the issue key.
 
   </Tabs.Tab>
 
@@ -113,6 +139,8 @@ The credential decides what the agent can do through that MCP. Grepr passes it t
 Creating an integration does not give any agent access to it. You enable an integration on each agent, and you choose which of the server's tools that agent can call. Two agents can therefore share one integration with different tool allowances.
 
 The tool allowance lives on the agent, not on the integration. To set it, go to the agent's **Capabilities** step, find the integration in the **MCP integrations** table, and edit its allowed tools. Grepr reads the tool list from the server, marks each tool as read only or writing, and lets you allow all tools or only the ones you select. To learn more, see [_](/ai-agents/capabilities#mcp-integrations).
+
+When you enable a Jira MCP integration on an agent, its allowed tools start as a set that only reads: it gets, searches, and lists Jira issues, comments, change history, and transitions. To let the agent comment on, create, transition, or edit issues, edit its allowed tools, select **Only the tools I choose**, and select the tools marked **Writes** that you want, such as `addOrEditJiraIssueComment`, `createJiraIssue`, `transitionJiraIssue`, or `editJiraIssue`.
 
 An agent can enable at most one GitHub MCP integration. The agent's `github_code` tool also requires an enabled GitHub MCP integration, because that is how it reaches source code.
 

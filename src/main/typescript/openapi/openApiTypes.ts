@@ -1757,6 +1757,78 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/jira-mcp": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List all Jira MCP integrations
+     * @description Get all Jira MCP server integrations for your organization. This will contain masked credentials if present.
+     */
+    get: operations["list_11"];
+    put?: never;
+    /**
+     * Create a Jira MCP integration
+     * @description Creates an integration to connect to a Jira MCP server.
+     */
+    post: operations["create_9"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/jira-mcp/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get a Jira MCP integration
+     * @description Get a Jira MCP integration by ID.
+     */
+    get: operations["get_11"];
+    /**
+     * Update a Jira MCP integration.
+     * @description Updates a Jira MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
+     */
+    put: operations["update_7"];
+    post?: never;
+    /**
+     * Delete a Jira MCP integration
+     * @description Deletes a Jira MCP integration. This will delete the associated credential as well. No-op if already deleted.
+     */
+    delete: operations["delete_9"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/integrations/jira-mcp/{id}/api-key": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Creates or updates a Jira MCP integration credential
+     * @description Creates the Atlassian service account API token for a Jira MCP integration if it doesn't exist and updates it otherwise. Unless validateKeysOnSave is false, the credential is checked against the Atlassian MCP server first and is not stored if Atlassian refuses it or it gives no Jira tools.
+     */
+    put: operations["upsertApiKey_5"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/integrations/litellm": {
     parameters: {
       query?: never;
@@ -1990,13 +2062,13 @@ export interface paths {
      * List all OpenAI integrations
      * @description Get all OpenAI integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_13"];
+    get: operations["list_14"];
     put?: never;
     /**
      * Create an OpenAI integration
      * @description Creates an integration to connect to OpenAI.
      */
-    post: operations["create_11"];
+    post: operations["create_12"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2014,18 +2086,18 @@ export interface paths {
      * Get an OpenAI integration
      * @description Get an OpenAI integration by ID.
      */
-    get: operations["get_13"];
+    get: operations["get_14"];
     /**
      * Update an OpenAI integration.
      * @description Updates an OpenAI integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_9"];
+    put: operations["update_10"];
     post?: never;
     /**
      * Delete an OpenAI integration
      * @description Deletes an OpenAI integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_11"];
+    delete: operations["delete_12"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2043,7 +2115,7 @@ export interface paths {
      * Creates or updates an OpenAI integration API key
      * @description Creates an API key for an OpenAI integration if it doesn't exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update.
      */
-    put: operations["upsertApiKey_7"];
+    put: operations["upsertApiKey_8"];
     post?: never;
     delete?: never;
     options?: never;
@@ -2158,13 +2230,13 @@ export interface paths {
      * List all PagerDuty MCP integrations
      * @description Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.
      */
-    get: operations["list_11"];
+    get: operations["list_12"];
     put?: never;
     /**
      * Create a PagerDuty MCP integration
      * @description Creates an integration to connect to a PagerDuty MCP server.
      */
-    post: operations["create_9"];
+    post: operations["create_10"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2182,18 +2254,18 @@ export interface paths {
      * Get a PagerDuty MCP integration
      * @description Get a PagerDuty MCP integration by ID.
      */
-    get: operations["get_11"];
+    get: operations["get_12"];
     /**
      * Update a PagerDuty MCP integration.
      * @description Updates a PagerDuty MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_7"];
+    put: operations["update_8"];
     post?: never;
     /**
      * Delete a PagerDuty MCP integration
      * @description Deletes a PagerDuty MCP integration. This will delete the associated API key as well. No-op if already deleted.
      */
-    delete: operations["delete_9"];
+    delete: operations["delete_10"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2211,7 +2283,7 @@ export interface paths {
      * Creates or updates a PagerDuty MCP integration API key
      * @description Creates an API key for a PagerDuty MCP integration if it doesn't exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update.
      */
-    put: operations["upsertApiKey_5"];
+    put: operations["upsertApiKey_6"];
     post?: never;
     delete?: never;
     options?: never;
@@ -2339,13 +2411,13 @@ export interface paths {
      * List all S3 Vector Index integrations
      * @description Retrieves all S3 Vector Index integrations for the organization.
      */
-    get: operations["list_14"];
+    get: operations["list_15"];
     put?: never;
     /**
      * Create an S3 Vector Index integration
      * @description Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.
      */
-    post: operations["create_12"];
+    post: operations["create_13"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2363,18 +2435,18 @@ export interface paths {
      * Get an S3 Vector Index integration
      * @description Retrieves an S3 Vector Index integration.
      */
-    get: operations["get_14"];
+    get: operations["get_15"];
     /**
      * Update an S3 Vector Index integration
      * @description Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.
      */
-    put: operations["update_10"];
+    put: operations["update_11"];
     post?: never;
     /**
      * Delete an S3 Vector Index integration
      * @description Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn't exist.
      */
-    delete: operations["delete_12"];
+    delete: operations["delete_13"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2391,13 +2463,13 @@ export interface paths {
      * List all Slack MCP integrations
      * @description Get all Slack MCP server integrations for your organization. This will contain masked tokens if present.
      */
-    get: operations["list_12"];
+    get: operations["list_13"];
     put?: never;
     /**
      * Create a Slack MCP integration
      * @description Creates an integration to connect to a Slack MCP server.
      */
-    post: operations["create_10"];
+    post: operations["create_11"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2415,18 +2487,18 @@ export interface paths {
      * Get a Slack MCP integration
      * @description Get a Slack MCP integration by ID.
      */
-    get: operations["get_12"];
+    get: operations["get_13"];
     /**
      * Update a Slack MCP integration.
      * @description Updates a Slack MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_8"];
+    put: operations["update_9"];
     post?: never;
     /**
      * Delete a Slack MCP integration
      * @description Deletes a Slack MCP integration. This will delete the associated token as well. No-op if already deleted.
      */
-    delete: operations["delete_10"];
+    delete: operations["delete_11"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2444,7 +2516,7 @@ export interface paths {
      * Creates or updates a Slack MCP integration token
      * @description Creates a token for a Slack MCP integration if it doesn't exist and updates it otherwise. If the token is updated while the integration is being used by a pipeline, the new token will be picked at pipeline restart, rescaling or an update.
      */
-    put: operations["upsertApiKey_6"];
+    put: operations["upsertApiKey_7"];
     post?: never;
     delete?: never;
     options?: never;
@@ -2667,13 +2739,13 @@ export interface paths {
      * List webhook integrations
      * @description Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.
      */
-    get: operations["list_15"];
+    get: operations["list_16"];
     put?: never;
     /**
      * Create a webhook integration
      * @description Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).
      */
-    post: operations["create_13"];
+    post: operations["create_14"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2691,18 +2763,18 @@ export interface paths {
      * Get a webhook integration
      * @description Get a webhook integration by ID.
      */
-    get: operations["get_15"];
+    get: operations["get_16"];
     /**
      * Update a webhook integration
      * @description Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
      */
-    put: operations["update_11"];
+    put: operations["update_12"];
     post?: never;
     /**
      * Delete a webhook integration
      * @description Deletes a webhook integration. No-op if already deleted.
      */
-    delete: operations["delete_13"];
+    delete: operations["delete_14"];
     options?: never;
     head?: never;
     patch?: never;
@@ -3189,7 +3261,7 @@ export interface paths {
      * File an issue
      * @description Files a new issue on the organization's board. Search first and update an existing issue instead of filing a duplicate; this call never matches existing issues.
      */
-    post: operations["create_14"];
+    post: operations["create_15"];
     delete?: never;
     options?: never;
     head?: never;
@@ -3267,7 +3339,7 @@ export interface paths {
      * Get an issue
      * @description Returns an issue with its assignees, its newest guidance comments, and its latest comments and history entries; the comments route pages every comment. Plain sightings are left out of that history; the issue's occurrence counts summarize them, and the history route pages them.
      */
-    get: operations["get_16"];
+    get: operations["get_17"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3277,7 +3349,7 @@ export interface paths {
      * Update an issue
      * @description Changes the given fields and leaves the rest. A person's change to priority, entities or teams locks that field against agents. A stale version is rejected with the current issue, so the caller can reapply its change.
      */
-    patch: operations["update_12"];
+    patch: operations["update_13"];
     trace?: never;
   };
   "/v1/issues/{idOrNumber}/assignees": {
@@ -4514,7 +4586,7 @@ export interface paths {
      * List all users
      * @description Get all users in the system.
      */
-    get: operations["list_16"];
+    get: operations["list_17"];
     put?: never;
     /**
      * Create a new user
@@ -9048,6 +9120,10 @@ export interface components {
       /** @default [] */
       items?: components["schemas"]["ReadInvitation"][];
     };
+    ItemsCollectionReadJiraMcp: {
+      /** @default [] */
+      items?: components["schemas"]["ReadJiraMcp"][];
+    };
     ItemsCollectionReadJob: {
       items?: components["schemas"]["ReadJob"][];
     };
@@ -9115,6 +9191,27 @@ export interface components {
     ItemsCollectionVendorImportedException: {
       /** @default [] */
       items?: components["schemas"]["VendorImportedException"][];
+    };
+    /** @description The payload containing integration data. */
+    JiraMcp: {
+      /** @description Masked API key for the MCP server. */
+      readonly apiKey?: string;
+      /**
+       * @description MCP server endpoint URL.
+       * @example https://mcp.notion.so/v1
+       */
+      serverUrl: string;
+      /**
+       * @description Web URL of the Jira Cloud site, used to link to issues the agent writes (e.g. https://acme.atlassian.net).
+       * @example https://acme.atlassian.net
+       */
+      siteUrl: string;
+      /**
+       * @description Indicates whether to validate the API key when saving.
+       * @default true
+       * @example true
+       */
+      validateKeysOnSave?: boolean;
     };
     /** @description Base class of all Job Actions */
     JobAction: {
@@ -12274,6 +12371,43 @@ export interface components {
        * @default []
        */
       teamAssignments?: components["schemas"]["TeamAssignment"][];
+    };
+    ReadJiraMcp: {
+      /**
+       * Format: date-time
+       * @description Timestamp when the integration was created.
+       */
+      readonly createdAt: string;
+      /** @description The integration id */
+      id: string;
+      /** @description List of job IDs associated with the integration. */
+      jobIds: string[];
+      /**
+       * @description Name of the integration.
+       * @example my_integration
+       */
+      name: string;
+      /** @description Organization ID of the integration. */
+      organizationId: string;
+      payload: components["schemas"]["JiraMcp"];
+      /** @description The team IDs that this integration is associated with. */
+      teamIds?: string[];
+      /**
+       * @description The type of the integration. This is used to determine the payload type.
+       * @enum {string}
+       */
+      type: ReadJiraMcpType;
+      /**
+       * Format: date-time
+       * @description Timestamp when the integration was last updated.
+       */
+      readonly updatedAt: string;
+      /**
+       * Format: int32
+       * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
+       * @example 0
+       */
+      version: number;
     };
     /** @description Attributes of the Grepr Job */
     ReadJob: {
@@ -16303,6 +16437,30 @@ export interface components {
        */
       version: number;
     };
+    WriteJiraMcp: {
+      /**
+       * @description Name of the integration.
+       * @example my_integration
+       */
+      name: string;
+      payload: components["schemas"]["JiraMcp"];
+      /**
+       * @description The team IDs that this integration is associated with.
+       * @default []
+       */
+      teamIds?: string[];
+      /**
+       * @description The type of the integration. This is used to determine the payload type.
+       * @enum {string}
+       */
+      type: ReadJiraMcpType;
+      /**
+       * Format: int32
+       * @description Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a '409 Conflict' will be returned.
+       * @example 0
+       */
+      version: number;
+    };
     WriteLiteLlm: {
       /**
        * @description Name of the integration.
@@ -17035,6 +17193,8 @@ export type SchemaItemsCollectionReadGreprPipe =
   components["schemas"]["ItemsCollectionReadGreprPipe"];
 export type SchemaItemsCollectionReadInvitation =
   components["schemas"]["ItemsCollectionReadInvitation"];
+export type SchemaItemsCollectionReadJiraMcp =
+  components["schemas"]["ItemsCollectionReadJiraMcp"];
 export type SchemaItemsCollectionReadJob =
   components["schemas"]["ItemsCollectionReadJob"];
 export type SchemaItemsCollectionReadLiteLlm =
@@ -17069,6 +17229,7 @@ export type SchemaItemsCollectionTemplate =
   components["schemas"]["ItemsCollectionTemplate"];
 export type SchemaItemsCollectionVendorImportedException =
   components["schemas"]["ItemsCollectionVendorImportedException"];
+export type SchemaJiraMcp = components["schemas"]["JiraMcp"];
 export type SchemaJobAction = components["schemas"]["JobAction"];
 export type SchemaJobActionRule = components["schemas"]["JobActionRule"];
 export type SchemaJobAnomaly = components["schemas"]["JobAnomaly"];
@@ -17283,6 +17444,7 @@ export type SchemaReadGemini = components["schemas"]["ReadGemini"];
 export type SchemaReadGithubMcp = components["schemas"]["ReadGithubMcp"];
 export type SchemaReadGreprPipe = components["schemas"]["ReadGreprPipe"];
 export type SchemaReadInvitation = components["schemas"]["ReadInvitation"];
+export type SchemaReadJiraMcp = components["schemas"]["ReadJiraMcp"];
 export type SchemaReadJob = components["schemas"]["ReadJob"];
 export type SchemaReadLiteLlm = components["schemas"]["ReadLiteLlm"];
 export type SchemaReadNewRelic = components["schemas"]["ReadNewRelic"];
@@ -17570,6 +17732,7 @@ export type SchemaWriteDatadogMcp = components["schemas"]["WriteDatadogMcp"];
 export type SchemaWriteGemini = components["schemas"]["WriteGemini"];
 export type SchemaWriteGithubMcp = components["schemas"]["WriteGithubMcp"];
 export type SchemaWriteGreprPipe = components["schemas"]["WriteGreprPipe"];
+export type SchemaWriteJiraMcp = components["schemas"]["WriteJiraMcp"];
 export type SchemaWriteLiteLlm = components["schemas"]["WriteLiteLlm"];
 export type SchemaWriteNewRelic = components["schemas"]["WriteNewRelic"];
 export type SchemaWriteOpenAi = components["schemas"]["WriteOpenAi"];
@@ -22111,6 +22274,228 @@ export interface operations {
       };
     };
   };
+  list_11: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Integrations retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ItemsCollectionReadJiraMcp"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  create_9: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["WriteJiraMcp"];
+      };
+    };
+    responses: {
+      /** @description Integration created successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadJiraMcp"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration already exists. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadJiraMcp"];
+        };
+      };
+    };
+  };
+  get_11: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Integration retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadJiraMcp"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  update_7: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["WriteJiraMcp"];
+      };
+    };
+    responses: {
+      /** @description Integration updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadJiraMcp"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration was modified or deleted concurrently. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  delete_9: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Integration deleted successfully */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  upsertApiKey_5: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["SecretApi"];
+      };
+    };
+    responses: {
+      /** @description Credential upserted successfully. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Atlassian refused the credential, could not be reached, or gave no Jira tools. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Integration not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   list_8: {
     parameters: {
       query?: never;
@@ -22727,7 +23112,7 @@ export interface operations {
       };
     };
   };
-  list_13: {
+  list_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -22754,7 +23139,7 @@ export interface operations {
       };
     };
   };
-  create_11: {
+  create_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -22794,7 +23179,7 @@ export interface operations {
       };
     };
   };
-  get_13: {
+  get_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -22830,7 +23215,7 @@ export interface operations {
       };
     };
   };
-  update_9: {
+  update_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -22877,7 +23262,7 @@ export interface operations {
       };
     };
   };
-  delete_11: {
+  delete_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -22904,7 +23289,7 @@ export interface operations {
       };
     };
   };
-  upsertApiKey_7: {
+  upsertApiKey_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -23236,7 +23621,7 @@ export interface operations {
       };
     };
   };
-  list_11: {
+  list_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -23263,7 +23648,7 @@ export interface operations {
       };
     };
   };
-  create_9: {
+  create_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -23303,7 +23688,7 @@ export interface operations {
       };
     };
   };
-  get_11: {
+  get_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -23339,7 +23724,7 @@ export interface operations {
       };
     };
   };
-  update_7: {
+  update_8: {
     parameters: {
       query?: never;
       header?: never;
@@ -23386,7 +23771,7 @@ export interface operations {
       };
     };
   };
-  delete_9: {
+  delete_10: {
     parameters: {
       query?: never;
       header?: never;
@@ -23413,7 +23798,7 @@ export interface operations {
       };
     };
   };
-  upsertApiKey_5: {
+  upsertApiKey_6: {
     parameters: {
       query?: never;
       header?: never;
@@ -23729,7 +24114,7 @@ export interface operations {
       };
     };
   };
-  list_14: {
+  list_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -23756,7 +24141,7 @@ export interface operations {
       };
     };
   };
-  create_12: {
+  create_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -23794,7 +24179,7 @@ export interface operations {
       };
     };
   };
-  get_14: {
+  get_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -23830,7 +24215,7 @@ export interface operations {
       };
     };
   };
-  update_10: {
+  update_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -23870,7 +24255,7 @@ export interface operations {
       };
     };
   };
-  delete_12: {
+  delete_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -23897,7 +24282,7 @@ export interface operations {
       };
     };
   };
-  list_12: {
+  list_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -23924,7 +24309,7 @@ export interface operations {
       };
     };
   };
-  create_10: {
+  create_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -23964,7 +24349,7 @@ export interface operations {
       };
     };
   };
-  get_12: {
+  get_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -24000,7 +24385,7 @@ export interface operations {
       };
     };
   };
-  update_8: {
+  update_9: {
     parameters: {
       query?: never;
       header?: never;
@@ -24047,7 +24432,7 @@ export interface operations {
       };
     };
   };
-  delete_10: {
+  delete_11: {
     parameters: {
       query?: never;
       header?: never;
@@ -24074,7 +24459,7 @@ export interface operations {
       };
     };
   };
-  upsertApiKey_6: {
+  upsertApiKey_7: {
     parameters: {
       query?: never;
       header?: never;
@@ -24665,7 +25050,7 @@ export interface operations {
       };
     };
   };
-  list_15: {
+  list_16: {
     parameters: {
       query?: {
         /** @description Only return integrations targeting this agent. */
@@ -24695,7 +25080,7 @@ export interface operations {
       };
     };
   };
-  create_13: {
+  create_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -24733,7 +25118,7 @@ export interface operations {
       };
     };
   };
-  get_15: {
+  get_16: {
     parameters: {
       query?: never;
       header?: never;
@@ -24769,7 +25154,7 @@ export interface operations {
       };
     };
   };
-  update_11: {
+  update_12: {
     parameters: {
       query?: never;
       header?: never;
@@ -24816,7 +25201,7 @@ export interface operations {
       };
     };
   };
-  delete_13: {
+  delete_14: {
     parameters: {
       query?: never;
       header?: never;
@@ -26042,7 +26427,7 @@ export interface operations {
       };
     };
   };
-  create_14: {
+  create_15: {
     parameters: {
       query?: never;
       header?: never;
@@ -26201,7 +26586,7 @@ export interface operations {
       };
     };
   };
-  get_16: {
+  get_17: {
     parameters: {
       query?: never;
       header?: never;
@@ -26237,7 +26622,7 @@ export interface operations {
       };
     };
   };
-  update_12: {
+  update_13: {
     parameters: {
       query?: never;
       header?: never;
@@ -29628,7 +30013,7 @@ export interface operations {
       };
     };
   };
-  list_16: {
+  list_17: {
     parameters: {
       query?: {
         page?: number;
@@ -30675,6 +31060,9 @@ export enum ReadGithubMcpType {
 }
 export enum ReadGreprPipeType {
   grepr_pipe = "grepr-pipe",
+}
+export enum ReadJiraMcpType {
+  jira_mcp = "jira-mcp",
 }
 export enum ReadLiteLlmType {
   litellm = "litellm",
