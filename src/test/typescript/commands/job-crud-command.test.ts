@@ -131,7 +131,7 @@ describe('JobCrudCommand', () => {
   describe('executeGet Method', () => {
     const mockOptions = {
       quiet: false,
-      format: 'pretty' as const,
+      format: 'table' as const,
       apiBaseUrl: 'https://api.test.com',
       authMethod: 'oauth' as const,
       headerName: 'X-Test-Token',
@@ -168,6 +168,16 @@ describe('JobCrudCommand', () => {
       expect(consoleSpy.log).toHaveBeenCalledWith(
         expect.stringContaining('Name: test-job')
       );
+    });
+
+    it('test_executeGet_prettyFormat_shouldPrintOnlyTheData', async () => {
+      mockApiClient.getJob.mockResolvedValue({ id: '123', name: 'test-job' });
+
+      await command.executeGet('123', { ...mockOptions, format: 'pretty' });
+
+      expect((command as any).formatAndOutputSingle).toHaveBeenCalledTimes(1);
+      expect(consoleSpy.log).not.toHaveBeenCalledWith(expect.stringContaining('Job Details:'));
+      expect(consoleSpy.error).not.toHaveBeenCalledWith(expect.stringContaining('Job Details:'));
     });
 
     it('test_executeGet_jobNotFound_shouldLogErrorAndExit', async () => {

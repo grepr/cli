@@ -5,6 +5,7 @@ import { GreprApiClient } from '../lib/api-client.js';
 import { createApiClient, ApiClientFactoryOptions } from '../lib/api-client-factory.js';
 import {
   logHumanFooter,
+  logHumanSummary,
   OutputFormat,
   parseFieldsArg,
   parseOutputFormat,
@@ -159,7 +160,7 @@ export abstract class ListCommand<T extends ListCommandOptions> implements IComm
     const data = options.fields ? projectFields(rows, options.fields) : rows;
     if (!data || data.length === 0) {
       if (!options.quiet) {
-        logHumanFooter(options.format, `No ${dataType} found.`);
+        logHumanFooter(this.resolveFormat(options), `No ${dataType} found.`);
       }
       return;
     }
@@ -210,12 +211,8 @@ export abstract class ListCommand<T extends ListCommandOptions> implements IComm
     ].join('\n');
   }
 
-  /**
-   * Show query summary if not in quiet mode. Routes to stderr in
-   * machine-readable formats so the stdout stream stays parseable.
-   */
   protected showQuerySummary(options: T, resultCount: number): void {
     if (options.quiet) return;
-    logHumanFooter(options.format, this.generateQuerySummary(options, resultCount));
+    logHumanSummary(this.resolveFormat(options), this.generateQuerySummary(options, resultCount));
   }
 }

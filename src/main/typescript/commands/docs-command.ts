@@ -88,14 +88,14 @@ export function parseDocsFormat(value: string): DocsFormat {
 }
 
 /**
- * Pick the default rendering from GREPR_OUTPUT_FORMAT. The env var selects a
+ * Pick the default rendering from the shared default-format rules. They select a
  * CLASS of output rather than a literal format name, because this command's
  * names do not line up with the record-oriented ones: any machine-readable
- * setting resolves to this command's JSON rendering, and any human setting to
+ * result resolves to this command's JSON rendering, and any human result to
  * its prose. An explicit `-f` still names a docs format directly and wins.
  */
 export function resolveDocsDefaultFormat(): DocsFormat {
-  // 'table' as the fallback stands for "no env var set", which means prose.
+  // 'table' stands for "no env var, no agent run, stdout is a terminal", which means prose.
   return isMachineReadable(resolveDefaultFormat('table')) ? 'json' : 'pretty';
 }
 

@@ -1,12 +1,15 @@
 import { describe, it, expect, afterEach, vi } from 'bun:test';
 import {
+  isAgentRun,
   isMachineReadable,
   logHumanFooter,
+  logHumanSummary,
   parseFieldsArg,
   parseOutputFormat,
   projectFields,
   resolveDefaultFormat
 } from '../../../main/typescript/lib/output-format.js';
+import { restoreStdoutTerminal, setStdoutTerminal } from '../stdout-terminal.js';
 
 const originalFormatEnv = process.env.GREPR_OUTPUT_FORMAT;
 
@@ -21,6 +24,8 @@ function setFormatEnv(value: string | undefined): void {
 
 afterEach(() => {
   setFormatEnv(originalFormatEnv);
+  delete process.env.CLAUDECODE;
+  restoreStdoutTerminal();
 });
 
 describe('parseOutputFormat', () => {
@@ -34,6 +39,11 @@ describe('parseOutputFormat', () => {
 
   it('test_parseOutputFormat_json_shouldAliasToCompact', () => {
     expect(parseOutputFormat('json')).toBe('compact');
+  });
+
+  it('test_parseOutputFormat_objectPrototypeKey_shouldThrow', () => {
+    expect(() => parseOutputFormat('constructor')).toThrow();
+    expect(() => parseOutputFormat('__proto__')).toThrow();
   });
 
   it('test_parseOutputFormat_mixedCaseAndPadding_shouldNormalize', () => {
@@ -52,16 +62,31 @@ describe('parseOutputFormat', () => {
 });
 
 describe('resolveDefaultFormat', () => {
-  it('test_resolveDefaultFormat_envUnset_shouldReturnCommandDefault', () => {
+  it('test_resolveDefaultFormat_terminalEnvUnset_shouldReturnCommandDefault', () => {
+    setStdoutTerminal(true);
     setFormatEnv(undefined);
     expect(resolveDefaultFormat('table')).toBe('table');
     expect(resolveDefaultFormat('pretty')).toBe('pretty');
   });
 
+  it('test_resolveDefaultFormat_notTerminal_shouldReturnCompact', () => {
+    setStdoutTerminal(false);
+    setFormatEnv(undefined);
+    expect(resolveDefaultFormat('table')).toBe('compact');
+    expect(resolveDefaultFormat('pretty')).toBe('compact');
+  });
+
   it('test_resolveDefaultFormat_envSet_shouldOverrideCommandDefault', () => {
+    setStdoutTerminal(true);
     setFormatEnv('compact');
     expect(resolveDefaultFormat('table')).toBe('compact');
     expect(resolveDefaultFormat('pretty')).toBe('compact');
+  });
+
+  it('test_resolveDefaultFormat_envSetNotTerminal_shouldUseEnvFormat', () => {
+    setStdoutTerminal(false);
+    setFormatEnv('table');
+    expect(resolveDefaultFormat('pretty')).toBe('table');
   });
 
   it('test_resolveDefaultFormat_envAlias_shouldResolve', () => {
@@ -69,7 +94,8 @@ describe('resolveDefaultFormat', () => {
     expect(resolveDefaultFormat('table')).toBe('compact');
   });
 
-  it('test_resolveDefaultFormat_envEmpty_shouldReturnCommandDefault', () => {
+  it('test_resolveDefaultFormat_envEmptyInTerminal_shouldReturnCommandDefault', () => {
+    setStdoutTerminal(true);
     setFormatEnv('');
     expect(resolveDefaultFormat('raw')).toBe('raw');
   });
@@ -82,17 +108,47 @@ describe('resolveDefaultFormat', () => {
   });
 });
 
+describe('agent runs', () => {
+  it('test_resolveDefaultFormat_agentRunInTerminal_shouldReturnCompact', () => {
+    setStdoutTerminal(true);
+    setFormatEnv(undefined);
+    process.env.CLAUDECODE = '1';
+    expect(resolveDefaultFormat('table')).toBe('compact');
+    expect(resolveDefaultFormat('pretty')).toBe('compact');
+  });
+
+  it('test_resolveDefaultFormat_agentRunWithEnvFormat_shouldUseEnvFormat', () => {
+    setStdoutTerminal(true);
+    setFormatEnv('table');
+    process.env.CLAUDECODE = '1';
+    expect(resolveDefaultFormat('pretty')).toBe('table');
+  });
+
+  it('test_isAgentRun_agentVars_shouldDetectEachAgent', () => {
+    expect(isAgentRun({ AI_AGENT: 'claude-code_2.1_agent' })).toBe(true);
+    expect(isAgentRun({ CODEX_THREAD_ID: 'thread-1' })).toBe(true);
+    expect(isAgentRun({ CURSOR_AGENT: '1' })).toBe(true);
+    expect(isAgentRun({ GEMINI_CLI: '1' })).toBe(true);
+    expect(isAgentRun({ OPENCODE: '1' })).toBe(true);
+  });
+
+  it('test_isAgentRun_emptyOrUnrelatedVars_shouldBeFalse', () => {
+    expect(isAgentRun({})).toBe(false);
+    expect(isAgentRun({ CLAUDECODE: '', CODEX_CI: '' })).toBe(false);
+    expect(isAgentRun({ CURSOR_TRACE_ID: 'trace-1', TERM_PROGRAM: 'vscode' })).toBe(false);
+  });
+});
+
 describe('isMachineReadable', () => {
-  it('test_isMachineReadable_streamFormats_shouldBeTrue', () => {
+  it('test_isMachineReadable_jsonAndCsvFormats_shouldBeTrue', () => {
     expect(isMachineReadable('compact')).toBe(true);
     expect(isMachineReadable('raw')).toBe(true);
+    expect(isMachineReadable('pretty')).toBe(true);
     expect(isMachineReadable('csv')).toBe(true);
   });
 
-  it('test_isMachineReadable_humanFormats_shouldBeFalse', () => {
+  it('test_isMachineReadable_table_shouldBeFalse', () => {
     expect(isMachineReadable('table')).toBe(false);
-    expect(isMachineReadable('pretty')).toBe(false);
-    expect(isMachineReadable(undefined)).toBe(false);
   });
 });
 
@@ -153,28 +209,31 @@ describe('projectFields', () => {
   });
 });
 
-describe('logHumanFooter', () => {
+describe('human output routing', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('test_logHumanFooter_machineReadableFormat_shouldWriteToStderr', () => {
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+  function route(log: (format: string, message: string) => void, format: string): { stdout: number; stderr: number } {
+    const stdout = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const stderr = vi.spyOn(console, 'error').mockImplementation(() => {});
+    log(format, 'status');
+    const calls = { stdout: stdout.mock.calls.length, stderr: stderr.mock.calls.length };
+    vi.restoreAllMocks();
+    return calls;
+  }
 
-    logHumanFooter('compact', 'Querying logs dataset 0abc');
-
-    expect(error).toHaveBeenCalledWith('Querying logs dataset 0abc');
-    expect(log).not.toHaveBeenCalled();
+  it('test_logHumanSummary_perFormat_shouldPrintOnlyForTable', () => {
+    expect(route(logHumanSummary, 'table')).toEqual({ stdout: 1, stderr: 0 });
+    for (const format of ['pretty', 'compact', 'raw', 'csv']) {
+      expect(route(logHumanSummary, format)).toEqual({ stdout: 0, stderr: 0 });
+    }
   });
 
-  it('test_logHumanFooter_humanFormat_shouldWriteToStdout', () => {
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    logHumanFooter('table', 'Querying logs dataset 0abc');
-
-    expect(log).toHaveBeenCalledWith('Querying logs dataset 0abc');
-    expect(error).not.toHaveBeenCalled();
+  it('test_logHumanFooter_perFormat_shouldUseStdoutOnlyForTable', () => {
+    expect(route(logHumanFooter, 'table')).toEqual({ stdout: 1, stderr: 0 });
+    for (const format of ['pretty', 'compact', 'raw', 'csv']) {
+      expect(route(logHumanFooter, format)).toEqual({ stdout: 0, stderr: 1 });
+    }
   });
 });

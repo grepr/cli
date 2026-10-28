@@ -3,7 +3,7 @@ import { open, writeFile } from 'node:fs/promises';
 import type { CliOptions, CommandOptionsRecord, MergeConfiguration } from '../types.js';
 import { JsonFormatter } from './json-formatter.js';
 import { readErrorMessage } from './read-error.js';
-import { logHumanFooter, type OutputFormat } from './output-format.js';
+import { logHumanFooter, parseOutputFormat, resolveDefaultFormat, type OutputFormat } from './output-format.js';
 
 export interface ReadOutputOptions {
   format: OutputFormat;
@@ -14,8 +14,19 @@ export interface ReadOutputOptions {
 export function readCommand(program: Command, name: string, description: string,
   format: OutputFormat = 'pretty'): Command {
   return program.command(name).description(description)
-    .addOption(new Option('-f, --format <format>', 'Output format; pretty/raw/compact preserve the full JSON response')
-      .choices(['table', 'pretty', 'raw', 'compact', 'csv']).default(format));
+    .addOption(new Option('-f, --format <format>',
+      'Output format (table, csv, pretty, raw, compact); pretty/raw/compact preserve the full JSON response')
+      .argParser(parseOutputFormat).default(resolveDefaultFormat(format)));
+}
+
+/**
+ * Table and csv drop data that this read must keep. A format from -f fails with the message. A
+ * format from GREPR_OUTPUT_FORMAT changes to pretty, so that a global setting does not block it.
+ */
+export function requireJsonFormat(command: Command, options: ReadOutputOptions, message: string): void {
+  if (options.format !== 'table' && options.format !== 'csv') return;
+  if (command.getOptionValueSource('format') === 'cli') throw new Error(message);
+  options.format = 'pretty';
 }
 
 export function readAction(command: Command, merge: MergeConfiguration,
@@ -72,8 +83,7 @@ export async function writeReadOutput(value: object, options: ReadOutputOptions,
   }
   if (options.output) await writeFile(options.output, `${text}\n`);
   else console.log(text);
-  // These read commands preserve a single JSON value even in pretty format.
-  if (footer && !options.quiet) logHumanFooter(options.format === 'pretty' ? 'raw' : options.format, footer);
+  if (footer && !options.quiet) logHumanFooter(options.format, footer);
 }
 
 /** Sequential writes honor stdout/file backpressure and keep each stream event intact. */

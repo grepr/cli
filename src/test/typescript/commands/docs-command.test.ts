@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'bun:test';
 import { DocsSearchCommand, parseDocsFormat, resolveDocsDefaultFormat } from '../../../../src/main/typescript/commands/docs-command.js';
 import { SearchResult, TextSection } from '../../../../src/main/typescript/lib/docs-search.js';
+import { restoreStdoutTerminal, setStdoutTerminal } from '../stdout-terminal.js';
 
 const consoleSpy = {
   log: vi.spyOn(console, 'log').mockImplementation(() => {}),
@@ -309,11 +310,19 @@ describe('resolveDocsDefaultFormat', () => {
 
   afterEach(() => {
     setFormatEnv(original);
+    restoreStdoutTerminal();
   });
 
-  it('test_resolveDocsDefaultFormat_envUnset_shouldBeProse', () => {
+  it('test_resolveDocsDefaultFormat_envUnsetInTerminal_shouldBeProse', () => {
+    setStdoutTerminal(true);
     setFormatEnv(undefined);
     expect(resolveDocsDefaultFormat()).toBe('pretty');
+  });
+
+  it('test_resolveDocsDefaultFormat_envUnsetNotTerminal_shouldBeJson', () => {
+    setStdoutTerminal(false);
+    setFormatEnv(undefined);
+    expect(resolveDocsDefaultFormat()).toBe('json');
   });
 
   it('test_resolveDocsDefaultFormat_machineReadableEnv_shouldBeJson', () => {
@@ -325,12 +334,13 @@ describe('resolveDocsDefaultFormat', () => {
     expect(resolveDocsDefaultFormat()).toBe('json');
     setFormatEnv('csv');
     expect(resolveDocsDefaultFormat()).toBe('json');
+    setFormatEnv('pretty');
+    expect(resolveDocsDefaultFormat()).toBe('json');
   });
 
-  it('test_resolveDocsDefaultFormat_humanEnv_shouldBeProse', () => {
+  it('test_resolveDocsDefaultFormat_humanEnvNotTerminal_shouldBeProse', () => {
+    setStdoutTerminal(false);
     setFormatEnv('table');
-    expect(resolveDocsDefaultFormat()).toBe('pretty');
-    setFormatEnv('pretty');
     expect(resolveDocsDefaultFormat()).toBe('pretty');
   });
 

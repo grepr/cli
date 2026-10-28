@@ -5,7 +5,7 @@ import { createApiClient } from './api-client-factory.js';
 import { HeartbeatManager } from './heartbeat.js';
 import { JsonFormatter, JsonFormatterOptions } from './json-formatter.js';
 import { NDJsonStreamParser } from './parser.js';
-import { isMachineReadable, OutputFormat, resolveDefaultFormat } from './output-format.js';
+import { isMachineReadable, logHumanFooter, OutputFormat, resolveDefaultFormat } from './output-format.js';
 import { FormattableCommandOptions, ProcessStats, HEARTBEAT_EVENTS, STREAM_EVENTS, LogEventData } from '../types.js';
 import { SchemaCreateJob } from '../openapi/openApiTypes.js';
 
@@ -89,7 +89,7 @@ export class StreamingJobExecutor {
     this.heartbeatManager.on(HEARTBEAT_EVENTS.REQUEST, (token: string) => {
       if (options.debug && !options.quiet) {
         if (this.formatter) {
-          console.log(this.formatter.formatHeartbeatStatus('RECEIVED', `token: ${token.substring(0, 8)}...`));
+          logHumanFooter(this.formatter.options.format, this.formatter.formatHeartbeatStatus('RECEIVED', `token: ${token.substring(0, 8)}...`));
         }
       }
     });
@@ -98,7 +98,7 @@ export class StreamingJobExecutor {
       this.stats.heartbeatsSent++;
       if (options.debug && !options.quiet) {
         if (this.formatter) {
-          console.log(this.formatter.formatHeartbeatStatus('SENT', `token: ${token.substring(0, 8)}...`));
+          logHumanFooter(this.formatter.options.format, this.formatter.formatHeartbeatStatus('SENT', `token: ${token.substring(0, 8)}...`));
         }
       }
     });
@@ -112,7 +112,7 @@ export class StreamingJobExecutor {
     this.heartbeatManager.on(HEARTBEAT_EVENTS.RETRY, (attempt: number, maxRetries: number, error: Error) => {
       if (!options.quiet) {
         if (this.formatter) {
-          console.log(this.formatter.formatHeartbeatStatus('RETRY', `${attempt}/${maxRetries}: ${error.message}`));
+          logHumanFooter(this.formatter.options.format, this.formatter.formatHeartbeatStatus('RETRY', `${attempt}/${maxRetries}: ${error.message}`));
         }
       }
     });
@@ -245,9 +245,10 @@ export class StreamingJobExecutor {
   private setupGracefulShutdown(): void {
     const shutdown = async (signal: string): Promise<void> => {
       if (this.formatter) {
-        console.log(`\n${this.formatter.formatConnectionStatus('DISCONNECTED', `Received ${signal}, shutting down...`)}`);
+        logHumanFooter(this.formatter.options.format,
+          `\n${this.formatter.formatConnectionStatus('DISCONNECTED', `Received ${signal}, shutting down...`)}`);
       } else {
-        console.log(`\nReceived ${signal}, shutting down...`);
+        console.error(`\nReceived ${signal}, shutting down...`);
       }
 
       if (this.heartbeatManager) {
@@ -417,9 +418,9 @@ export class StreamingJobExecutor {
     this.completionStarted = false;
     this.outputFileError = null;
 
-    // Machine-readable formats (compact, raw, csv) suppress job-state chatter by default
+    // Machine-readable formats (compact, raw, pretty, csv) suppress job-state chatter by default
     // so callers piping to jq/CSV-parsers don't see interleaved status lines. Explicit
-    // --no-job-state always wins. Human-readable formats (table, pretty) keep chatter on.
+    // --no-job-state always wins. Only table keeps chatter on.
     this.showJobState = options.jobState !== false && !isMachineReadable(this.resolveFormat(options));
 
     if (!options.quiet && this.showJobState) {

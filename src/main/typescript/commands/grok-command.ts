@@ -3,7 +3,7 @@ import { ICommand } from '../lib/command-registry.js';
 import { GreprApiClient } from '../lib/api-client.js';
 import { createApiClient, ApiClientFactoryOptions } from '../lib/api-client-factory.js';
 import { JsonFormatter, JsonFormatterOptions } from '../lib/json-formatter.js';
-import { logHumanFooter, OutputFormat, parseOutputFormat, resolveDefaultFormat } from '../lib/output-format.js';
+import { logHumanFooter, logHumanSummary, OutputFormat, parseOutputFormat, resolveDefaultFormat } from '../lib/output-format.js';
 import { parseIntArg } from '../lib/option-parsers.js';
 import { SchemaGrokParseResponse, SchemaGrokParseBatchRequest, GrokParserType } from '../openapi/openApiTypes.js';
 import { MergeConfiguration, CommandOptionsRecord } from '../types.js';
@@ -24,6 +24,8 @@ export interface GrokParseCommandOptions extends ApiClientFactoryOptions {
   maxDepth?: number;
   maxLines?: number;
 }
+
+type ResolvedGrokOptions = GrokParseCommandOptions & { format: OutputFormat };
 
 /**
  * Grok parse command implementation for testing Grok patterns against log samples
@@ -87,7 +89,8 @@ export class GrokParseCommand implements ICommand {
   /**
    * Execute the grok parse operation
    */
-  async execute(options: GrokParseCommandOptions): Promise<void> {
+  async execute(commandOptions: GrokParseCommandOptions): Promise<void> {
+    const options: ResolvedGrokOptions = { ...commandOptions, format: commandOptions.format ?? resolveDefaultFormat('raw') };
     try {
       this.apiClient = this.createApiClient(options);
 
@@ -111,7 +114,7 @@ export class GrokParseCommand implements ICommand {
           const singleResult = result.data.results[i];
           if (singleResult) {
             if (result.data.results.length > 1 && !options.quiet) {
-              logHumanFooter(options.format, `\n=== Sample ${i + 1} ===`);
+              logHumanSummary(options.format, `\n=== Sample ${i + 1} ===`);
             }
 
             await this.formatAndOutput(singleResult, options);
@@ -127,7 +130,7 @@ export class GrokParseCommand implements ICommand {
         }
       } else {
         if (!options.quiet) {
-          console.log('No data returned from grok parsing API.');
+          logHumanFooter(options.format, 'No data returned from grok parsing API.');
         }
       }
 
@@ -195,9 +198,9 @@ export class GrokParseCommand implements ICommand {
   /**
    * Setup formatter for output
    */
-  private setupFormatter(options: GrokParseCommandOptions): void {
+  private setupFormatter(options: ResolvedGrokOptions): void {
     const formatterOptions: JsonFormatterOptions = {
-      format: (options.format as OutputFormat) || 'raw',
+      format: options.format,
       showTimestamps: options.timestamps !== false,
       colorize: options.color !== false && process.stdout.isTTY && !options.output,
       sortBy: 'rule:asc',
@@ -218,11 +221,11 @@ export class GrokParseCommand implements ICommand {
    */
   private async formatAndOutput(
     data: SchemaGrokParseResponse | null,
-    options: GrokParseCommandOptions
+    options: ResolvedGrokOptions
   ): Promise<void> {
     if (!data) {
       if (!options.quiet) {
-        console.log('No results from grok parsing.');
+        logHumanFooter(options.format, 'No results from grok parsing.');
       }
       return;
     }
@@ -270,14 +273,14 @@ export class GrokParseCommand implements ICommand {
   /**
    * Show parsing summary
    */
-  private showParsingSummary(data: SchemaGrokParseResponse, options: GrokParseCommandOptions): void {
+  private showParsingSummary(data: SchemaGrokParseResponse, options: ResolvedGrokOptions): void {
     if (!options.quiet) {
       const hasMatch = !!data.match;
       const attributeCount = data.attributes ? Object.keys(data.attributes).length : 0;
       const tagCount = data.tags ? Object.keys(data.tags).length : 0;
       const topLevelFieldCount = data.topLevelFields ? Object.keys(data.topLevelFields).length : 0;
 
-      logHumanFooter(options.format, `\nGrok Parse Summary:
+      logHumanSummary(options.format, `\nGrok Parse Summary:
 - Match successful: ${hasMatch ? 'Yes' : 'No'}
 - Matching rule: ${data.matchingRuleName || 'None'}
 - Attributes extracted: ${attributeCount}
@@ -289,13 +292,13 @@ export class GrokParseCommand implements ICommand {
   /**
    * Show batch parsing summary
    */
-  private showBatchSummary(results: SchemaGrokParseResponse[], options: GrokParseCommandOptions): void {
+  private showBatchSummary(results: SchemaGrokParseResponse[], options: ResolvedGrokOptions): void {
     if (!options.quiet) {
       const totalSamples = results.length;
       const successfulMatches = results.filter(r => r.match).length;
       const failedMatches = totalSamples - successfulMatches;
 
-      logHumanFooter(options.format, `\n=== Batch Summary ===
+      logHumanSummary(options.format, `\n=== Batch Summary ===
 - Total samples processed: ${totalSamples}
 - Successful matches: ${successfulMatches}
 - Failed matches: ${failedMatches}

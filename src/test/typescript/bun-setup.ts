@@ -10,6 +10,14 @@
  * Wired in via `bunfig.toml` (`[test] preload`).
  */
 import { vi, jest } from 'bun:test'
+import { AGENT_ENV_VARS, OUTPUT_FORMAT_ENV } from '../../main/typescript/lib/output-format.js'
+
+// A local run inside a coding agent inherits its env vars, and a developer shell
+// can set the output format env var. Both change default output formats. Remove
+// them so that tests behave the same as in CI.
+for (const name of [...AGENT_ENV_VARS, OUTPUT_FORMAT_ENV]) {
+  Reflect.deleteProperty(process.env, name)
+}
 
 interface ViExtensions {
   mocked?: <T>(value: T) => T

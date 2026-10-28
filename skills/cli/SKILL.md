@@ -68,8 +68,12 @@ export GREPR_OUTPUT_FORMAT=compact
 
 ## Output conventions
 
-- `-f compact` (or `raw`) emits one JSON object per line: parse with `jq -c .`, never `jq '.[]'`.
-  Sandboxes default to it via `GREPR_OUTPUT_FORMAT=compact`.
+- Output defaults to `compact` JSON when an agent runs the CLI or stdout is not a terminal.
+  Do not add `-f` unless you need another format.
+- List, get and query commands emit one JSON object per line in `compact`: parse with
+  `jq -c .`, never `jq '.[]'`. `agent:*` and `investigation:*` emit one JSON document, but
+  `investigation:turns --follow` emits one JSON event per line.
+- Do not append `2>&1`. Errors and status lines reach you on stderr without it.
 - `--fields id,name,state` keeps only those paths (dot paths work) on list and get commands.
 - Write large results to a file with `-o out.ndjson` and analyze the file; `-o` writes records
   only, unlike a shell `>` redirect.

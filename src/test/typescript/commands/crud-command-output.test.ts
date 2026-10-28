@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'bun:test';
+import { stripVTControlCharacters } from 'node:util';
 import { CrudCommand, CrudCommandOptions } from '../../../main/typescript/commands/crud-command.js';
 
 class TestCrudCommand extends CrudCommand<CrudCommandOptions> {
@@ -47,7 +48,7 @@ describe('CrudCommand.formatAndOutputSingle', () => {
   });
 
   function loggedOutput(): string {
-    return logSpy.mock.calls.map(call => String(call[0])).join('\n');
+    return stripVTControlCharacters(logSpy.mock.calls.map(call => String(call[0])).join('\n'));
   }
 
   it('test_formatAndOutputSingle_tableFormat_shouldRenderTheRow', async () => {
@@ -131,8 +132,15 @@ describe('CrudCommand success messages', () => {
     expect(errorSpy).toHaveBeenCalledTimes(3);
   });
 
-  it('test_successMessages_humanFormat_shouldStayOnStdout', () => {
+  it('test_successMessages_prettyFormat_shouldGoToStderr', () => {
     helpers({ ...baseOptions, quiet: false, format: 'pretty' });
+
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it('test_successMessages_tableFormat_shouldStayOnStdout', () => {
+    helpers({ ...baseOptions, quiet: false, format: 'table' });
 
     expect(logSpy).toHaveBeenCalledTimes(3);
     expect(errorSpy).not.toHaveBeenCalled();

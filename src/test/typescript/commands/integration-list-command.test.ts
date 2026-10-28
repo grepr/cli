@@ -778,8 +778,9 @@ describe('IntegrationListCommand', () => {
         expect.any(String)
       );
 
-      // Verify success message was logged
-      expect(consoleSpy.log).toHaveBeenCalledWith('✓ Output written to /tmp/test-integrations.json');
+      // Pretty output is JSON, so the status line goes to stderr.
+      expect(consoleSpy.error).toHaveBeenCalledWith('✓ Output written to /tmp/test-integrations.json');
+      expect(consoleSpy.log).not.toHaveBeenCalledWith('✓ Output written to /tmp/test-integrations.json');
     });
 
     it('test_formatAndOutput_fsWriteFileFails_shouldThrowError', async () => {

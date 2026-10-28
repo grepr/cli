@@ -230,6 +230,19 @@ describe('Investigation command contracts', () => {
     expect(result.coverage).toMatchObject({ lastSeq: 49, turnCount: 50, limitReached: true, hasMore: true });
   });
 
+  it('exports a transcript as pretty JSON when GREPR_OUTPUT_FORMAT is table', async () => {
+    vi.mocked(globalThis.fetch).mockImplementation(async input => {
+      const url = new URL(new Request(input).url);
+      const body = url.pathname.endsWith('/transcript')
+        ? { investigationId: 'run', status: 'COMPLETED' } : { turns: [{ seq: 0 }], hasMore: false };
+      return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
+    });
+    process.env.GREPR_OUTPUT_FORMAT = 'table';
+    try { await run('investigation:transcript', 'run'); } finally { delete process.env.GREPR_OUTPUT_FORMAT; }
+    expect(JSON.parse(output.join('\n')).turns).toEqual([{ seq: 0 }]);
+    expect(process.exitCode ?? 0).toBe(0);
+  });
+
   it('streams intact tool evidence to a file, times out locally, and removes its signal listener', async () => {
     vi.mocked(globalThis.fetch).mockImplementation(async input => {
       const url = new URL(new Request(input).url);

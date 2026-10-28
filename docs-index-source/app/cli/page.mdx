@@ -368,9 +368,20 @@ Options:
 
 ## Output formats
 
-By default, the Grepr CLI outputs results in a formatted table, but you can choose other output formats with the `--format` option. The following output formats are supported:
+When you run the CLI in a terminal, the list commands, `query`, and `job:create` print a table, and the get commands print pretty JSON. When the output goes to a pipe or a file, or when an AI coding agent runs the CLI, every command that has the `--format` option prints compact JSON, except `docs:search`, which prints its JSON rendering. In every JSON format, the output contains only JSON, and status messages go to standard error. To choose another output format, use the `--format` option. The following output formats are supported:
 
-### Table format (default)
+### Compact format
+
+Single-line JSON without indentation, one object for each line:
+
+```json
+{"id":"abc123","eventTimestamp":"2025-10-19T18:00:00Z","message":"Error"}
+{"id":"def456","eventTimestamp":"2025-10-19T18:01:00Z","message":"Request completed"}
+```
+
+`json` is an alias for `compact`.
+
+### Table format
 
 Displays results in a formatted table with:
 - Column wrapping (80 characters max).
@@ -423,14 +434,6 @@ def456,"10/19/2025, 6:01:00 PM","Request completed","{""service"":[""web-api""]}
 ```
 
 The CSV format is useful for data analysis tasks, importing events into spreadsheets, and data pipelines. Complex JSON data is transformed by properly escaping nested objects and arrays.
-
-### Compact format
-
-Single-line JSON without indentation:
-
-```json
-{"id":"abc123","eventTimestamp":"2025-10-19T18:00:00Z","message":"Error"}
-```
 
 ### Supported commands
 
@@ -704,7 +707,7 @@ The following fields are required when you create a job definition:
 
 The CLI automatically manages the creation of either synchronous or asynchronous jobs based on the `execution` field.
 
-When you run a `query` command or a `job:create` command, the CLI displays the status of the job in real-time. The following table describes the possible job status values:
+When you run a `query` command or a `job:create` command in a terminal, the CLI displays the status of the job in real-time. The status appears only in the table format. The following table describes the possible job status values:
 
 | Status | Description |
 |----------------|---------------------------------------|
@@ -1187,7 +1190,7 @@ grepr --conf dev integration:list
   },
   {
     q: "What output formats does the CLI support?",
-    a: "The CLI supports table (default), pretty (JSON with colors), raw (newline-delimited JSON), CSV, and compact (single-line JSON) output formats."
+    a: "The CLI supports compact, table, pretty, raw, and CSV output formats. In a terminal, table is the default for the list commands, query, and job:create, and pretty, which is indented JSON with colors, is the default for the get commands. When the output goes to a pipe or a file, or an AI coding agent runs the CLI, the default is compact, which is single-line JSON. Raw is newline-delimited JSON."
   },
   {
     q: "How do I save a CLI configuration?",

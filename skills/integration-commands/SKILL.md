@@ -26,10 +26,8 @@ If this fails, ask the user to provide `--org-name` or `--conf` options.
 
 ## General Usage Notes
 
-- Output defaults to `compact` in a sandbox (`GREPR_OUTPUT_FORMAT`); pass `-f` only to ask
-  for something else. `compact`/`raw` emit one JSON object per line, so parse per line
-  (`| jq -c .`), never `| jq '.[]'`. Avoid `--format table`: it truncates nested values.
-- Use `--fields id,name,state` to keep only the fields you need.
+- Output is one JSON object per line: parse with `jq -c .`, never `jq '.[]'`. The `grepr:cli`
+  skill has the other output conventions (`-f`, `--fields`, `-o`).
 - Integrations include both vendor integrations (Datadog, Splunk, etc.) and storage integrations (S3, etc.)
 - Creating/updating integrations is done through the Grepr UI or API, not the CLI
 

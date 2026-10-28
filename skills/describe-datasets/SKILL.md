@@ -26,10 +26,8 @@ If this fails, ask the user to provide `--org-name` or `--conf` options.
 
 ## General Usage Notes
 
-- Output defaults to `compact` in a sandbox (`GREPR_OUTPUT_FORMAT`); pass `-f` only to ask
-  for something else. `compact`/`raw` emit one JSON object per line, so parse per line
-  (`| jq -c .`), never `| jq '.[]'`. Avoid `--format table`: it truncates nested values.
-- Use `--fields id,name,state` to keep only the fields you need.
+- Output is one JSON object per line: parse with `jq -c .`, never `jq '.[]'`. The `grepr:cli`
+  skill has the other output conventions (`-f`, `--fields`, `-o`).
 - Datasets are Iceberg tables in the data lake (S3)
 - Each pipeline writes to one or more datasets
 - Query logs or spans from datasets using the `grepr:query` skill

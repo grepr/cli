@@ -258,9 +258,10 @@ export class GreprQueryCLI {
       .option('--no-auth-cache', 'Force fresh authentication by ignoring cached tokens', true)
       .option('--no-browser', 'Do not automatically open browser for OAuth authentication', true)
       .option('--timezone <tz>', 'Timezone for timestamp formatting (e.g., UTC, America/New_York)', 'system')
-      .option('-o, --output <file>', 'Output results to file instead of stdout')
+      .option('-o, --output <file>', 'Output results to file instead of stdout; on a command with -f, a format name such as json selects that format unless -f is given')
       .option('-d, --debug', 'Enable debug output')
-      .option('-q, --quiet', 'Suppress non-essential output');
+      .option('-q, --quiet', 'Suppress non-essential output')
+      .hook('preAction', (program, actionCommand) => selectFormatFromOutput(program, actionCommand));
 
     // Register all commands using the registry. Registration resolves
     // GREPR_OUTPUT_FORMAT, which happens before commander owns the process and
@@ -341,6 +342,27 @@ export class GreprQueryCLI {
       program.addCommand(standIn, { hidden: true });
     }
   }
+}
+
+/**
+ * Agents often write `-o json` to ask for JSON. When the `-o` value is a format that the
+ * command accepts and `-f` is absent, use it as the format and write to stdout, not to a file.
+ */
+function selectFormatFromOutput(program: Command, actionCommand: Command): void {
+  const output: unknown = program.getOptionValue('output');
+  const formatOption = actionCommand.options.find(option => option.attributeName() === 'format');
+  if (typeof output !== 'string' || !formatOption?.parseArg
+      || actionCommand.getOptionValueSource('format') === 'cli') {
+    return;
+  }
+  let format: unknown;
+  try {
+    format = formatOption.parseArg<unknown>(output, undefined);
+  } catch {
+    return;
+  }
+  actionCommand.setOptionValueWithSource('format', format, 'cli');
+  program.setOptionValue('output', undefined);
 }
 
 /** A command the allowlist removed: running it, or asking for its help, refuses instead. */

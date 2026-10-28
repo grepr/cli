@@ -5,7 +5,7 @@ import { createApiClient } from '../lib/api-client-factory.js';
 import { InvestigationSummaryStatus as Status } from '../openapi/openApiTypes.js';
 import { captureTranscript, followInvestigation, readTurnsPage, ReadDeadline, type InvestigationEvent } from '../lib/investigation-transcript.js';
 import { enumOption, integerOption, timeoutOption, readAction, readCommand, writeReadOutput,
-  writeReadStream, type ReadOutputOptions } from '../lib/investigation-output.js';
+  writeReadStream, requireJsonFormat, type ReadOutputOptions } from '../lib/investigation-output.js';
 
 interface ListOptions extends ReadOutputOptions { agentId: string; page: number; pageSize: number; status?: Status[] }
 interface TurnsOptions extends ReadOutputOptions { afterSeq: number; pageSize: number; follow?: boolean; timeout: number }
@@ -57,9 +57,7 @@ export class InvestigationCommand implements ICommand {
       .option('--timeout <duration>', 'Read deadline including authentication, e.g. 60s or 5m', timeoutOption, 60_000);
     readAction(command, merge, async global => {
       const options = { ...global, ...command.opts<TurnsOptions>() };
-      if (options.follow && (options.format === 'csv' || options.format === 'table')) {
-        throw new Error('--follow supports raw, compact or pretty output');
-      }
+      if (options.follow) requireJsonFormat(command, options, '--follow supports raw, compact or pretty output');
       const client = createApiClient(options);
       const id = command.args[0] ?? '';
       const controller = new AbortController();
@@ -101,7 +99,7 @@ export class InvestigationCommand implements ICommand {
       .option('--timeout <duration>', 'Export deadline, e.g. 60s or 5m', timeoutOption, 60_000);
     readAction(command, merge, async global => {
       const options = { ...global, ...command.opts<TranscriptOptions>() };
-      if (options.format === 'table' || options.format === 'csv') throw new Error('Transcript exports support pretty, raw or compact output to preserve coverage');
+      requireJsonFormat(command, options, 'Transcript exports support pretty, raw or compact output to preserve coverage');
       if (options.all && options.maxTurns !== undefined) throw new Error('--all and --max-turns are mutually exclusive');
       const controller = new AbortController();
       const interrupt = (): void => controller.abort();

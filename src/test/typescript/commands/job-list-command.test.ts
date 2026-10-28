@@ -776,8 +776,9 @@ describe('JobListCommand', () => {
         expect.any(String)
       );
 
-      // Verify success message was logged
-      expect(consoleSpy.log).toHaveBeenCalledWith('✓ Output written to /tmp/test-jobs.json');
+      // Pretty output is JSON, so the status line goes to stderr.
+      expect(consoleSpy.error).toHaveBeenCalledWith('✓ Output written to /tmp/test-jobs.json');
+      expect(consoleSpy.log).not.toHaveBeenCalledWith('✓ Output written to /tmp/test-jobs.json');
     });
 
     it('test_formatAndOutput_verifyFsDefaultIsUsed_shouldNotFailOnImport', async () => {

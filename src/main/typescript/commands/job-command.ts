@@ -3,7 +3,7 @@ import { ListCommand, ListCommandOptions } from './list-command.js';
 import { CrudCommand, CrudCommandOptions, CrudCreateUpdateOptions } from './crud-command.js';
 import { parseSinceOption } from '../lib/time-utils.js';
 import { StreamingJobExecutor } from '../lib/streaming-job-executor.js';
-import { logHumanFooter, parseOutputFormat, resolveDefaultFormat } from '../lib/output-format.js';
+import { logHumanSummary, parseOutputFormat, resolveDefaultFormat } from '../lib/output-format.js';
 import { parseIntArg } from '../lib/option-parsers.js';
 import fs from 'fs-extra';
 import { FormattableCommandOptions, CommandOption, MergeConfiguration, CommandOptionsRecord, JobExecution, JobProcessing, JobState } from '../types.js';
@@ -234,8 +234,8 @@ export class JobCrudCommand extends CrudCommand<JobCrudCommandOptions> {
       await this.formatAndOutputSingle(job as Record<string, unknown>, options);
 
       if (!options.quiet) {
-        logHumanFooter(
-          options.format,
+        logHumanSummary(
+          this.resolveFormat(options),
           `\nJob Details:
 - ID: ${job.id}
 - Name: ${job.name}

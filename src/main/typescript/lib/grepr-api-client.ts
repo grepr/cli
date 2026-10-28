@@ -714,7 +714,7 @@ export class GreprApiClient {
       } catch {
         // Continue trying other types
         if (this.config.debug) {
-          console.log(`Info: Integration with ID "${id}" not found in type "${type}". Trying next type.`);
+          console.error(`Info: Integration with ID "${id}" not found in type "${type}". Trying next type.`);
         }
       }
     }

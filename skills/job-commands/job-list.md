@@ -12,8 +12,8 @@ List all Grepr pipelines (jobs) in the organization. Use this to see available a
 # List all jobs
 grepr job:list
 
-# List jobs with JSON output
-grepr job:list -o json
+# Keep only the fields you need
+grepr job:list --fields id,name,state
 
 # List jobs for specific org
 grepr job:list --org-name myorg

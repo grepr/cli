@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'bun:test';
 import { Writable } from 'stream';
 import { StreamingJobExecutor } from '../../../../src/main/typescript/lib/streaming-job-executor.js';
+import { HeartbeatManager } from '../../../../src/main/typescript/lib/heartbeat.js';
+import { NDJsonStreamParser } from '../../../../src/main/typescript/lib/parser.js';
+import { HEARTBEAT_EVENTS, type FormattableCommandOptions } from '../../../../src/main/typescript/types.js';
 
 const settle = (): Promise<void> => new Promise<void>(resolve => setImmediate(resolve));
 
@@ -125,6 +128,34 @@ describe('StreamingJobExecutor', () => {
       expect(consoleLogSpy).not.toHaveBeenCalled();
     } finally {
       consoleLogSpy.mockRestore();
+    }
+  });
+
+  it.each([
+    ['compact', { stdout: 0, stderr: 1 }],
+    ['pretty', { stdout: 0, stderr: 1 }],
+    ['table', { stdout: 1, stderr: 0 }]
+  ] as const)('test_heartbeatRetry_%s_shouldUseStdoutOnlyForTable', (format, expected) => {
+    const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const options: FormattableCommandOptions = {
+      format, orgName: 'acme', apiBaseUrl: 'https://example.test/api', authBaseUrl: '', authMethod: 'none', clientId: '', authCache: false, browser: false
+    };
+    const executor = new StreamingJobExecutor();
+    const heartbeat = new HeartbeatManager(executor.createApiClient(options));
+
+    try {
+      executor['setupFormatter'](options);
+      executor['heartbeatManager'] = heartbeat;
+      executor['streamParser'] = new NDJsonStreamParser();
+      executor['setupEventHandlers'](options);
+
+      heartbeat.emit(HEARTBEAT_EVENTS.RETRY, 1, 3, new Error('timeout'));
+
+      expect({ stdout: consoleLogSpy.mock.calls.length, stderr: consoleErrorSpy.mock.calls.length }).toEqual(expected);
+    } finally {
+      consoleLogSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
     }
   });
 });

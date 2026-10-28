@@ -337,7 +337,7 @@ export class QueryCommand extends BaseCommand<QueryCommandOptions> implements IC
         warnOnUnliftedSpanQuery(options.query ?? '');
       }
       if (!options.quiet && !options.datasetId) {
-        logHumanFooter(options.format, `Querying ${resolved.dataType} dataset ${resolved.datasetId}`);
+        logHumanFooter(options.format ?? resolveDefaultFormat('table'), `Querying ${resolved.dataType} dataset ${resolved.datasetId}`);
       }
       await this.processJobStream(jobDefinition, options);
     } catch (error) {

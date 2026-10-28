@@ -614,8 +614,9 @@ describe('DatasetListCommand', () => {
         expect.any(String)
       );
 
-      // Verify success message was logged
-      expect(consoleSpy.log).toHaveBeenCalledWith('✓ Output written to /tmp/test-datasets.json');
+      // Pretty output is JSON, so the status line goes to stderr.
+      expect(consoleSpy.error).toHaveBeenCalledWith('✓ Output written to /tmp/test-datasets.json');
+      expect(consoleSpy.log).not.toHaveBeenCalledWith('✓ Output written to /tmp/test-datasets.json');
     });
 
     it('test_formatAndOutput_withFileOutputAndQuietMode_shouldNotLogSuccessMessage', async () => {

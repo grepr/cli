@@ -246,6 +246,19 @@ describe('GrokParseCommand', () => {
       expect((command as any).formatAndOutput).toHaveBeenCalledWith(mockResponse.results?.[0], mockOptions);
     });
 
+    it('test_execute_noFormat_shouldPrintNoSummary', async () => {
+      const { format: _format, ...optionsWithoutFormat } = mockOptions;
+      mockApiClient.getClient().POST.mockResolvedValue({
+        data: { results: [{ match: true, matchingRuleName: 'login_rule', attributes: {}, tags: {}, topLevelFields: {} }] },
+        error: null
+      });
+
+      await command.execute(optionsWithoutFormat);
+
+      const printed = [...consoleSpy.log.mock.calls, ...consoleSpy.error.mock.calls].flat().join('\n');
+      expect(printed).not.toContain('Grok Parse Summary');
+    });
+
     it('test_execute_multipleSamples_shouldProcessAll', async () => {
       const mockOptionsWithFile = { ...mockOptions, sample: undefined, samplesFile: '/path/to/samples.txt' };
 
@@ -287,9 +300,7 @@ describe('GrokParseCommand', () => {
       });
 
       expect((command as any).formatAndOutput).toHaveBeenCalledTimes(2);
-      // `raw` is machine-readable, so the separators must not reach stdout.
-      expect(consoleSpy.error).toHaveBeenCalledWith('\n=== Sample 1 ===');
-      expect(consoleSpy.error).toHaveBeenCalledWith('\n=== Sample 2 ===');
+      expect(consoleSpy.error).not.toHaveBeenCalledWith('\n=== Sample 1 ===');
       expect(consoleSpy.log).not.toHaveBeenCalledWith('\n=== Sample 1 ===');
     });
 
@@ -319,7 +330,9 @@ describe('GrokParseCommand', () => {
 
       await command.execute(mockOptions);
 
-      expect(consoleSpy.log).toHaveBeenCalledWith('No data returned from grok parsing API.');
+      // Raw output is JSON, so the status line goes to stderr.
+      expect(consoleSpy.error).toHaveBeenCalledWith('No data returned from grok parsing API.');
+      expect(consoleSpy.log).not.toHaveBeenCalledWith('No data returned from grok parsing API.');
     });
 
     it('test_execute_emptyResults_shouldHandleGracefully', async () => {
@@ -331,7 +344,9 @@ describe('GrokParseCommand', () => {
 
       await command.execute(mockOptions);
 
-      expect(consoleSpy.log).toHaveBeenCalledWith('No data returned from grok parsing API.');
+      // Raw output is JSON, so the status line goes to stderr.
+      expect(consoleSpy.error).toHaveBeenCalledWith('No data returned from grok parsing API.');
+      expect(consoleSpy.log).not.toHaveBeenCalledWith('No data returned from grok parsing API.');
     });
 
     it('test_execute_quietMode_shouldNotShowSummary', async () => {
@@ -415,7 +430,7 @@ describe('GrokParseCommand', () => {
         topLevelFields: { timestamp: '2024-01-01' }
       };
 
-      const options = { quiet: false };
+      const options = { quiet: false, format: 'table' };
 
       (command as any).showParsingSummary(data, options);
 
@@ -436,7 +451,7 @@ Grok Parse Summary:
         topLevelFields: {}
       };
 
-      const options = { quiet: false };
+      const options = { quiet: false, format: 'table' };
 
       (command as any).showParsingSummary(data, options);
 
@@ -474,7 +489,7 @@ Grok Parse Summary:
         { match: true, attributes: {}, tags: {}, topLevelFields: {} }
       ];
 
-      const options = { quiet: false };
+      const options = { quiet: false, format: 'table' };
 
       (command as any).showBatchSummary(results, options);
 

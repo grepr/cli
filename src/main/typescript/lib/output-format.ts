@@ -1,10 +1,9 @@
 /**
  * Shared helpers for output-format-aware behavior.
  *
- * `compact`, `raw`, and `csv` are consumed by jq / CSV parsers, so any
- * human-readable chatter must go to stderr there to keep stdout a clean
- * data stream. `table` and `pretty` are for humans and can keep chatter
- * on stdout.
+ * The JSON formats (`compact`, `raw`, `pretty`) and `csv` are consumed by jq /
+ * CSV parsers, so stdout carries only data there and status lines go to
+ * stderr. Only `table` keeps status lines and summaries on stdout.
  */
 
 import { InvalidArgumentError } from 'commander';
@@ -23,10 +22,9 @@ const FORMAT_ALIASES: Readonly<Record<string, OutputFormat>> = { json: 'compact'
 /** Env var that overrides every command's built-in default output format. */
 export const OUTPUT_FORMAT_ENV = 'GREPR_OUTPUT_FORMAT';
 
-const MACHINE_READABLE_FORMATS: ReadonlySet<string> = new Set(['compact', 'raw', 'csv']);
-
-export function isMachineReadable(format: string | undefined): boolean {
-  return format !== undefined && MACHINE_READABLE_FORMATS.has(format);
+/** Only `table` is for humans. Every other format is data that a parser reads. */
+export function isMachineReadable(format: OutputFormat): boolean {
+  return format !== 'table';
 }
 
 /**
@@ -36,7 +34,7 @@ export function isMachineReadable(format: string | undefined): boolean {
  */
 export function parseOutputFormat(value: string): OutputFormat {
   const normalized = value.trim().toLowerCase();
-  const aliased = FORMAT_ALIASES[normalized];
+  const aliased = Object.hasOwn(FORMAT_ALIASES, normalized) ? FORMAT_ALIASES[normalized] : undefined;
   if (aliased) {
     return aliased;
   }
@@ -52,14 +50,36 @@ export function parseOutputFormat(value: string): OutputFormat {
 }
 
 /**
- * Resolve a command's default format, letting {@link OUTPUT_FORMAT_ENV} override
- * it. An explicit `-f` flag still wins, because commander only applies this
- * value when the flag is absent.
+ * Env vars that coding agents set in the shells they run commands in. Each
+ * value is not empty only in an agent run.
+ */
+export const AGENT_ENV_VARS = [
+  'AI_AGENT',
+  'CLAUDECODE',
+  'CODEX_CI',
+  'CODEX_THREAD_ID',
+  'CURSOR_AGENT',
+  'GEMINI_CLI',
+  'OPENCODE'
+] as const;
+
+/** True when a coding agent runs the CLI. */
+export function isAgentRun(env: NodeJS.ProcessEnv = process.env): boolean {
+  return AGENT_ENV_VARS.some(name => Boolean(env[name]));
+}
+
+/**
+ * Resolve the default format of a command. The order is:
+ * 1. An explicit `-f` flag. Commander uses this value only when the flag is absent.
+ * 2. {@link OUTPUT_FORMAT_ENV}.
+ * 3. `compact` in an agent run, because agents parse the output.
+ * 4. `compact` when stdout is not a terminal, because a pipe or a file gets parsed.
+ * 5. The default of the command.
  */
 export function resolveDefaultFormat(commandDefault: OutputFormat): OutputFormat {
   const configured = process.env[OUTPUT_FORMAT_ENV];
   if (!configured) {
-    return commandDefault;
+    return isAgentRun() || process.stdout.isTTY !== true ? 'compact' : commandDefault;
   }
 
   try {
@@ -121,11 +141,18 @@ export function projectFields(
   });
 }
 
+/** Print a summary that restates the data. Only `table` prints it; the other formats get only the data. */
+export function logHumanSummary(format: OutputFormat, message: string): void {
+  if (!isMachineReadable(format)) {
+    console.log(message);
+  }
+}
+
 /**
- * Log a human-readable footer / status line, routing to stderr in
- * machine-readable formats so the stdout stream stays parseable.
+ * Log a status line. Only `table` prints it on stdout; the JSON formats and
+ * `csv` send it to stderr so that stdout stays parseable.
  */
-export function logHumanFooter(format: string | undefined, message: string): void {
+export function logHumanFooter(format: OutputFormat, message: string): void {
   if (isMachineReadable(format)) {
     console.error(message);
   } else {
