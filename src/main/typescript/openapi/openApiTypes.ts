@@ -11623,6 +11623,7 @@ export interface components {
       type: PaygSummaryType;
     };
     PendingApproval: {
+      approvalNonce?: string;
       command?: string;
       permissionId?: string;
     };
@@ -11644,6 +11645,7 @@ export interface components {
       startDate: string;
     };
     PermissionReplyRequest: {
+      approvalNonce: string;
       reply: string;
     };
     PhraseNode: {
