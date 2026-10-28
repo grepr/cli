@@ -331,11 +331,12 @@ export class GreprQueryCLI {
           { exitCode: 1, code: 'grepr.commandUnavailable' }
         );
       // A fresh command, never the removed one, so nothing the real command does can run. It takes
-      // any options; commander already allows extra arguments.
+      // any options and any extra arguments, so it refuses instead of commander.
       const standIn = new UnavailableCommand(command.name(), refuse)
         .aliases(command.aliases())
         .helpOption(false)
         .allowUnknownOption()
+        .allowExcessArguments()
         .action(refuse);
       program.addCommand(standIn, { hidden: true });
     }
