@@ -14,7 +14,7 @@
  */
 
 import { createHash } from 'crypto';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'fs';
 import path from 'path';
 import { VENDOR_LAYOUT } from '../src/main/typescript/lib/text-embedder.js';
 
@@ -41,11 +41,11 @@ export async function vendorSearchRuntime(cliDir: string): Promise<string> {
   copyFiles(path.join(tokenizersPackage, 'dist'), ['tokenizers.min.mjs'], path.join(vendorDir, VENDOR_LAYOUT.tokenizers));
   copyFiles(tokenizersPackage, ['LICENSE'], path.join(vendorDir, VENDOR_LAYOUT.tokenizers));
 
+  const cachedModelDir = await verifiedModelDir(cliDir);
   const modelDir = path.join(vendorDir, VENDOR_LAYOUT.model);
   mkdirSync(modelDir, { recursive: true });
-  for (const [file, sha256] of Object.entries(MODEL_FILES)) {
-    const cached = await downloadModelFile(cliDir, file, sha256);
-    copyFileSync(cached, path.join(modelDir, path.basename(file)));
+  for (const file of Object.keys(MODEL_FILES)) {
+    copyFileSync(path.join(cachedModelDir, file), path.join(modelDir, path.basename(file)));
   }
 
   writeFileSync(path.join(vendorDir, 'THIRD_PARTY_NOTICES.md'), THIRD_PARTY_NOTICES);
@@ -59,29 +59,47 @@ function copyFiles(fromDir: string, files: string[], toDir: string): void {
   }
 }
 
-/** Downloads into build/search-model, outside dist so `clean` keeps it, and reuses a verified copy. */
-async function downloadModelFile(cliDir: string, file: string, sha256: string): Promise<string> {
-  const cached = path.join(cliDir, 'build/search-model', MODEL_REVISION, file);
-  if (existsSync(cached) && hashOf(readFileSync(cached)) === sha256) {
-    return cached;
+/**
+ * Returns build/search-model/<revision>, outside dist so `clean` keeps it. The folder holds every
+ * model file with its expected hash, or it does not exist: files are downloaded and verified in a
+ * staging folder, which then replaces it in one rename. CI caches build/search-model, so the
+ * staging folder must stay outside it.
+ */
+async function verifiedModelDir(cliDir: string): Promise<string> {
+  const modelDir = path.join(cliDir, 'build/search-model', MODEL_REVISION);
+  const isComplete = Object.entries(MODEL_FILES).every(([file, sha256]) => {
+    const cached = path.join(modelDir, file);
+    return existsSync(cached) && hashOf(readFileSync(cached)) === sha256;
+  });
+  if (isComplete) {
+    return modelDir;
   }
 
-  const url = `https://huggingface.co/${MODEL_REPO}/resolve/${MODEL_REVISION}/${file}`;
-  console.log(`Downloading ${url}`);
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to download ${url}: HTTP ${response.status}`);
+  const stagingDir = path.join(cliDir, 'build/search-model-staging');
+  rmSync(stagingDir, { recursive: true, force: true });
+  for (const [file, sha256] of Object.entries(MODEL_FILES)) {
+    const url = `https://huggingface.co/${MODEL_REPO}/resolve/${MODEL_REVISION}/${file}`;
+    console.log(`Downloading ${url}`);
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to download ${url}: HTTP ${response.status}`);
+    }
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+    const actual = hashOf(bytes);
+    if (actual !== sha256) {
+      throw new Error(`${url} has sha256 ${actual}, expected ${sha256}`);
+    }
+
+    const staged = path.join(stagingDir, file);
+    mkdirSync(path.dirname(staged), { recursive: true });
+    writeFileSync(staged, bytes);
   }
 
-  const bytes = Buffer.from(await response.arrayBuffer());
-  const actual = hashOf(bytes);
-  if (actual !== sha256) {
-    throw new Error(`${url} has sha256 ${actual}, expected ${sha256}`);
-  }
-
-  mkdirSync(path.dirname(cached), { recursive: true });
-  writeFileSync(cached, bytes);
-  return cached;
+  rmSync(modelDir, { recursive: true, force: true });
+  mkdirSync(path.dirname(modelDir), { recursive: true });
+  renameSync(stagingDir, modelDir);
+  return modelDir;
 }
 
 function hashOf(bytes: Buffer): string {
