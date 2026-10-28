@@ -30044,6 +30044,7 @@ export enum AnalyticsOrderByDirection {
 }
 export enum AnalyticsParameterType {
   ANY = "ANY",
+  VARIANT = "VARIANT",
   NUMBER = "NUMBER",
   TEXT = "TEXT",
   BOOLEAN = "BOOLEAN",
@@ -30052,6 +30053,7 @@ export enum AnalyticsParameterType {
   MAP = "MAP",
   TYPE_NAME = "TYPE_NAME",
   TIME_UNIT = "TIME_UNIT",
+  LITERAL = "LITERAL",
 }
 export enum AnalyticsTableBindingTable {
   logs_raw = "logs_raw",
