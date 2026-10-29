@@ -689,6 +689,50 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/chat-preferences/action-categories": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the caller's chat action grants
+     * @description Returns the kinds of change the caller's chats make without asking. A chat asks about every other change before making it, and never asks about reads.
+     */
+    get: operations["getActionGrants"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/chat-preferences/action-categories/{category}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Grant a chat action category
+     * @description Lets the caller's chats make this kind of change without asking, from their next one on. Granting a category already granted changes nothing.
+     */
+    put: operations["grantActionCategory"];
+    post?: never;
+    /**
+     * Revoke a chat action category
+     * @description Makes the caller's chats ask before this kind of change again. Revoking a category not granted changes nothing.
+     */
+    delete: operations["revokeActionCategory"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/chats": {
     parameters: {
       query?: never;
@@ -741,26 +785,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/chats/{chatId}/auto-approve": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    /**
-     * Switch a chat's auto-approval mode
-     * @description Turns auto-approval on or off for the chat. While on, gated actions run without prompting, and a turn already parked on an approval is released. The setting is persisted and survives a restart of the chat. Returns 202 immediately.
-     */
-    put: operations["setAutoApprove"];
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/chats/{chatId}/cancel": {
     parameters: {
       query?: never;
@@ -792,7 +816,7 @@ export interface paths {
     put?: never;
     /**
      * Reply to a chat's pending approval
-     * @description Signals the chat's workflow with the user's approve/reject decision for the gated action it is waiting on, resuming the turn. Returns 202 immediately.
+     * @description Signals the chat's workflow with the user's decision on the write it is waiting on, resuming the turn. Returns 202 immediately. To stop being asked about such writes, grant their categories under /v1/chat-preferences/action-categories.
      */
     post: operations["respondToPermission"];
     delete?: never;
@@ -6100,9 +6124,6 @@ export interface components {
       provider: string;
       signupClientId?: string;
     };
-    AutoApproveRequest: {
-      autoApprove?: boolean;
-    };
     AvailablePermission: {
       /** @description Action being permitted (e.g., view, edit) */
       action: string;
@@ -6325,6 +6346,11 @@ export interface components {
       message?: string;
       sampleId?: string;
     };
+    /** @enum {string} */
+    ChatActionCategory: ChatActionCategory;
+    ChatActionGrants: {
+      grantedActionCategories?: components["schemas"]["ChatActionCategory"][];
+    };
     ChatList: {
       chats?: components["schemas"]["ChatSummary"][];
       nextCursor?: string;
@@ -6333,7 +6359,6 @@ export interface components {
       enabledSkills?: string[];
     };
     ChatStatusResponse: {
-      autoApprove?: boolean;
       model?: components["schemas"]["ModelConfiguration"];
       pendingApproval?: components["schemas"]["PendingApproval"];
       processing?: boolean;
@@ -6667,7 +6692,6 @@ export interface components {
       | components["schemas"]["CreateSpansBackfillJob"]
     );
     CreateChatRequest: {
-      autoApprove?: boolean;
       enabledSkills?: string[];
       model: components["schemas"]["ModelConfiguration"];
       text: string;
@@ -11725,7 +11749,8 @@ export interface components {
     };
     PendingApproval: {
       approvalNonce?: string;
-      command?: string;
+      categories?: components["schemas"]["ChatActionCategory"][];
+      description?: string;
       permissionId?: string;
     };
     /** @description One reporting period — dropdown entry plus bounds for display. */
@@ -16933,8 +16958,6 @@ export type SchemaAttributesMergeStrategy =
 export type SchemaAttributesMergeStrategyEntry =
   components["schemas"]["AttributesMergeStrategyEntry"];
 export type SchemaAuthConfig = components["schemas"]["AuthConfig"];
-export type SchemaAutoApproveRequest =
-  components["schemas"]["AutoApproveRequest"];
 export type SchemaAvailablePermission =
   components["schemas"]["AvailablePermission"];
 export type SchemaAverageAttributesMergeStrategy =
@@ -16964,6 +16987,7 @@ export type SchemaCancellableInvestigationsResponse =
   components["schemas"]["CancellableInvestigationsResponse"];
 export type SchemaChainNode = components["schemas"]["ChainNode"];
 export type SchemaChangeFinding = components["schemas"]["ChangeFinding"];
+export type SchemaChatActionGrants = components["schemas"]["ChatActionGrants"];
 export type SchemaChatList = components["schemas"]["ChatList"];
 export type SchemaChatPreferences = components["schemas"]["ChatPreferences"];
 export type SchemaChatStatusResponse =
@@ -19312,6 +19336,87 @@ export interface operations {
       };
     };
   };
+  getActionGrants: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Grants retrieved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChatActionGrants"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  grantActionCategory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        category: components["schemas"]["ChatActionCategory"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Category granted */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  revokeActionCategory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        category: components["schemas"]["ChatActionCategory"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Category revoked */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   list_1: {
     parameters: {
       query?: {
@@ -19468,44 +19573,6 @@ export interface operations {
     requestBody?: never;
     responses: {
       /** @description Delete accepted */
-      202: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Chat not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  setAutoApprove: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        chatId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["AutoApproveRequest"];
-      };
-    };
-    responses: {
-      /** @description Auto-approval mode updated */
       202: {
         headers: {
           [name: string]: unknown;
@@ -30607,6 +30674,13 @@ export enum ChangeFindingCode {
   DISALLOWED_INPUT_CHANGE = "DISALLOWED_INPUT_CHANGE",
   UNVERIFIABLE_CHANGE = "UNVERIFIABLE_CHANGE",
   NO_EFFECTIVE_CHANGE = "NO_EFFECTIVE_CHANGE",
+}
+export enum ChatActionCategory {
+  CHANGE_PIPELINES = "CHANGE_PIPELINES",
+  RUN_BACKFILLS = "RUN_BACKFILLS",
+  CHANGE_DATASETS = "CHANGE_DATASETS",
+  CHANGE_ISSUES = "CHANGE_ISSUES",
+  ACT_IN_CONNECTED_TOOLS = "ACT_IN_CONNECTED_TOOLS",
 }
 export enum CloudTrailLogsFileSourceRegions {
   US_EAST_1 = "US_EAST_1",
