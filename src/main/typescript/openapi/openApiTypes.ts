@@ -6167,7 +6167,7 @@ export interface components {
       };
       /**
        * Format: int32
-       * @description Maximum number of logs to backfill. Default and max is 500,000.
+       * @description Maximum number of logs to backfill. Default and max is 500,000. -1 backfills every matching log and 0 backfills none.
        * @default 500000
        * @example 100000
        */
@@ -14841,6 +14841,12 @@ export interface components {
        * @example PT2H
        */
       backfillDataTime?: string;
+      /**
+       * Format: int32
+       * @description Maximum number of logs each backfill this exception starts may replay, at most 500,000. -1 replays every matching log and 0 replays none. When unset, the backfill uses the default.
+       * @example 100000
+       */
+      backfillLimit?: number;
       /** @description Unique identifier for this exception */
       id?: string;
       predicate: components["schemas"]["EventPredicate"];
@@ -14937,6 +14943,12 @@ export interface components {
        * @example PT2H
        */
       backfillDataTime?: string;
+      /**
+       * Format: int32
+       * @description Maximum number of logs each backfill this exception starts may replay, at most 500,000. -1 replays every matching log and 0 replays none. When unset, the backfill uses the default.
+       * @example 100000
+       */
+      backfillLimit?: number;
       /** @description Unique identifier for this exception */
       id?: string;
       predicate: components["schemas"]["EventPredicate"];
