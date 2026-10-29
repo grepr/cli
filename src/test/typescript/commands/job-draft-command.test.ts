@@ -43,7 +43,6 @@ function writeTransformPlan(file: string): Promise<void> {
             templateInputs: {
               input: {
                 exceptions: [],
-                filters: {},
                 parsers: [],
                 reducer: {
                   name: 'log_reducer',
@@ -154,7 +153,6 @@ function writeSinkTouchingPlan(file: string): Promise<void> {
             templateInputs: {
               input: {
                 exceptions: [],
-                filters: {},
                 parsers: [],
                 reducer: {
                   name: 'log_reducer',
