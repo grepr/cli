@@ -343,6 +343,16 @@ describe('GreprApiClient submitSyncJob', () => {
     await expect(drain(stream)).resolves.toContain('"jobState":"RUNNING"');
   });
 
+  it('hands the abort signal to fetch itself, not only to the Request', async () => {
+    // Node drops a GC'd Request's signal link, so only fetch's own signal reliably aborts.
+    const controller = new AbortController();
+    mockFetch.mockResolvedValueOnce(new Response('', { status: 200 }));
+
+    await client.submitSyncJob({ name: 'draft' } as never, controller.signal);
+
+    expect(mockFetch.mock.calls[0][1]?.signal).toBe(controller.signal);
+  });
+
   it('destroys the stream with the error when it fails without an abort', async () => {
     const reader = { read: vi.fn().mockRejectedValueOnce(new Error('network boom')) };
     mockFetch.mockResolvedValueOnce(streamingResponse(reader));

@@ -784,6 +784,8 @@ export class GreprApiClient {
       body: jobDefinition,
       parseAs: 'stream',
       signal,
+      // eslint-disable-next-line no-restricted-globals -- Node drops a GC'd Request's signal link
+      fetch: request => fetch(request, { signal }),
     });
 
     if (!response.ok) {
