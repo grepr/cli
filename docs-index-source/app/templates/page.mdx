@@ -680,7 +680,7 @@ The `TemplateOperation` supports the following configuration:
 ### Template operation parameters
 
 - **`templateId`** (required): The ID of the template to use.
-- **`templateVersion`** (optional): Specific version to use. If omitted, uses the latest version.
+- **`templateVersion`**: The version of your template to use. It's required for a template your organization owns. Built-in templates ignore it and run the version that ships with the pipeline's Grepr version.
 - **`templateInputs`**: Key-value pairs passed to the template script as variables.
 - **`draftMode`** (optional): Enables draft mode, which may add additional debug operations.
 
@@ -1055,7 +1055,7 @@ More details on the Templates API are available in the [Templates API specificat
   },
   {
     q: "How are templates used in pipelines?",
-    a: "Templates are integrated into pipelines using the TemplateOperation type in your job graph. Specify the templateId, optional templateVersion, and templateInputs (key-value pairs). When the pipeline executes, Grepr resolves the template by executing its JavaScript with the provided inputs and replaces the template operation with the generated subgraph."
+    a: "Templates are integrated into pipelines using the TemplateOperation type in your job graph. Specify the templateId, templateInputs (key-value pairs), and, for a template your organization owns, its templateVersion. When the pipeline executes, Grepr resolves the template by executing its JavaScript with the provided inputs and replaces the template operation with the generated subgraph."
   },
   {
     q: "What are input/output mappings and how do they work?",

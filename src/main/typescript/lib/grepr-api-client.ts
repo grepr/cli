@@ -310,12 +310,15 @@ export class GreprApiClient {
     return data;
   }
 
-  /** Fetches the exact template version referenced by a template operation. */
-  async getTemplate(id: string, version: number): Promise<SchemaTemplate> {
+  /**
+   * Fetches the template version a template operation names, or the latest when it names none (a
+   * built-in, whose version the pipeline's image decides).
+   */
+  async getTemplate(id: string, version?: number): Promise<SchemaTemplate> {
     const { data, error } = await this.client.GET('/v1/templates/{id}', {
       params: {
         path: { id },
-        query: { version }
+        query: version == null ? { latest: true } : { version }
       }
     });
 

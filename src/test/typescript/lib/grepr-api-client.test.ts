@@ -110,6 +110,32 @@ describe('GreprApiClient getTemplate', () => {
     );
   });
 
+  it('requests the latest version when the operation names none', async () => {
+    vi.clearAllMocks();
+    const client = new GreprApiClient(API_CLIENT_CONFIG);
+    mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({
+      items: [{
+        id: '0qqtysycrgp1a',
+        name: 'log-reducer-job-graph-template',
+        template: '',
+        version: 16
+      }]
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    }));
+
+    await client.getTemplate('0qqtysycrgp1a');
+
+    const request = mockFetch.mock.calls[0]?.[0];
+    if (!(request instanceof Request)) {
+      throw new Error('Expected openapi-fetch to issue a Request');
+    }
+    expect(request.url).toBe(
+      'https://test.app.grepr.ai/api/v1/templates/0qqtysycrgp1a?latest=true'
+    );
+  });
+
   it('throws when the template version is not found', async () => {
     vi.clearAllMocks();
     const client = new GreprApiClient(API_CLIENT_CONFIG);

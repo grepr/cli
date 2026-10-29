@@ -14920,10 +14920,10 @@ export interface components {
       };
       /**
        * Format: int32
-       * @description The version of the template to use for this operation. Note that whether templates are forward- or backward-compatible are dependent on the template script, so updating or downgrading versions may result in an error in the job depending on the script.
+       * @description The template's version. Required for a template your organization owns. Built-in templates ignore it and run the version that ships with the pipeline's Grepr version.
        * @example 4
        */
-      templateVersion: number;
+      templateVersion?: number;
       /**
        * @description Runs a template script to generate a subgraph running in place of the operation in the parent graph. (enum property replaced by openapi-typescript)
        * @enum {string}

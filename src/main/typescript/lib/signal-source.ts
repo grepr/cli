@@ -32,7 +32,7 @@ export interface SignalSourceInputs {
 
 export interface SignalSourceApiClient {
   getJob(id: string, version?: number, resolved?: boolean): Promise<SchemaReadJob | undefined>;
-  getTemplate(id: string, version: number): Promise<SchemaTemplate>;
+  getTemplate(id: string, version?: number): Promise<SchemaTemplate>;
   listDatasets(): Promise<SchemaDatasetRead[] | undefined>;
   getDataset(id: string): Promise<SchemaDatasetRead | undefined>;
   lookupDataset(nameOrId: string): Promise<SchemaDatasetRead | undefined>;
