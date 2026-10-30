@@ -6,6 +6,49 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in October 2026.
 
+## October 30, 2026
+
+{/* ENGT-6413 */}
+### Connect Jira to Grepr agents
+
+You can now connect Jira Cloud to your Grepr agents with an MCP integration, so an agent can search, read, comment on, create, transition, and assign issues on your Jira site. The integration authenticates with an API token from an Atlassian service account, so you can limit the agent to the Jira projects that account can see. See [_](/integrations/mcp).
+
+### Other improvements and fixes
+
+- {/* ENGT-6148 */} Indexing on a dataset covers only the attribute paths and tag keys listed under **Indexed paths** and **Indexed tag keys**, and a dataset with no saved indexing settings indexes no attribute columns. See [_](/grepr-platform/indexed-columns#lists).
+- {/* ENGT-6437 */} You can now set **Max logs to backfill**, including no limit, on external trigger and query action exceptions.
+- {/* ENGT-6335 */} Pipelines built from a Grepr template keep running the template version they were saved with when Grepr upgrades, and a reference to a template your organization owns names its version. See [_](/templates).
+- {/* ENGT-5826, ENGT-5828, ENGT-5835, ENGT-5993 */} Log pipeline filters that combine many conditions run faster.
+- {/* ENGT-5839, ENGT-5840, ENGT-5841 */} In SQL filters and analytics queries, an equality test, a tag test, or an `IS EMPTY` check on a missing tag or attribute returns `NULL` instead of `FALSE`, so a `NOT` over it no longer matches events that lack the tag or attribute.
+- {/* ENGT-5855 */} NRQL-like `NOT LIKE` conditions match events where the attribute is missing or null.
+- {/* ENGT-6401 */} Empty values in OTLP logs are stored as null instead of an empty string.
+- {/* ENGT-6207 */} AI assistant chats ask for approval by kind of change, such as changing a pipeline or running a backfill, and you can allow a kind of change for all your chats from the **Permissions** menu in the chat box, which replaces the per-chat auto-approve switch.
+- {/* ENGT-6207 */} The AI assistant chat shows how many tool calls ran in each reply instead of listing each call with its arguments and output.
+- {/* ENGT-6436 */} You can now delete an issue from its panel on the issue board, together with its comments and history.
+- {/* ENGT-6340 */} You can now post a comment on an issue as agent guidance with the pin button next to **Post**.
+- {/* ENGT-6371, ENGT-6366 */} An issue whose expiry has passed shows who it is waiting on, and shows **Finish my part** when it is waiting on you. See [_](/ai-agents/issue-board#states).
+- {/* ENGT-6378 */} Agents add the pull requests, tickets, and chat threads related to an issue to the issue's links.
+- {/* ENGT-6356 */} Agents use each model's full context window before condensing a long session, and an investigation stops when it reaches twice its budget.
+- {/* ENGT-5859 */} You can now send an authenticated request to any Grepr API endpoint with the `grepr api` command, using the same credentials as the other Grepr CLI commands, and a request that changes data asks you to confirm it first. See [_](/cli).
+- {/* ENGT-6440 */} The Grepr CLI writes compact JSON by default when an AI agent runs it or when you pipe or redirect its output, and `-o json` selects the output format. See [_](/cli#output-formats).
+- {/* ENGT-6392 */} The Grepr CLI takes much less disk space to install, and `grepr docs:search` returns more relevant results.
+- {/* ENGT-6380 */} The Grepr CLI requires Node.js 22.23.4 or later, 24.22.1 or later, or 26.12.1 or later. See [_](/cli#install).
+- {/* ENGT-6305 */} The Grepr CLI rejects a pipeline change to a field that a template-based log pipeline does not read, instead of accepting a change that has no effect.
+- {/* ENGT-6335 */} Fixed an issue where, in rare circumstances, stopping a pipeline failed or did not take effect.
+- {/* ENGT-6397 */} Fixed an issue where, after a pipeline restarted, a rule condition could send data to your vendors again that a backfill had already sent.
+- {/* ENGT-6534 */} Fixed an issue where a log query with a large limit failed with a server error.
+- {/* ENGT-6401 */} Fixed an issue where some logs sent to an OpenTelemetry sink carried the trace ID twice.
+- {/* ENGT-5569 */} Fixed several issues in SQL functions, including calls that failed or returned different results depending on where the query ran.
+- {/* ENGT-6383 */} Fixed an issue where an issue closed as **Fixed** did not reopen when the problem came back after its monitoring period ended.
+- {/* ENGT-6356 */} Fixed an issue where an agent could lose its instructions after a long session was condensed.
+- {/* ENGT-6197 */} Fixed several issues on the **Memories** page, including agent Markdown that showed as raw text and a significance filter that could not be closed.
+- {/* ENGT-6411 */} Fixed an issue where the step pane in the pipeline editor did not fill the window and the Log Viewer bar covered its bottom.
+- {/* ENGT-6447 */} Fixed an issue where `grepr job:draft` could keep running past `--max-duration-seconds` on busy pipelines.
+- {/* ENGT-6392 */} Fixed an issue where `grepr docs:search` failed on a new install without internet access.
+- {/* ENGT-6421 */} Fixed an issue where a Splunk request with an empty authorization header returned a server error instead of an authentication error.
+- {/* ENGT-6335 */} Fixed an issue where deleting a team or role that an SSO claim mapping uses returned a server error instead of a conflict error.
+- {/* ENGT-6102, ENGT-6245, ENGT-6263 */} Security fixes.
+
 ## October 24, 2026
 
 {/* ENGT-6180 */}
