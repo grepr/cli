@@ -25,7 +25,7 @@ The following states describe the lifecycle of an `ASYNCHRONOUS` `STREAMING` job
 
 ### Update job lifecycle
 
-Job updates in Grepr are versioned. An update, therefore, means Grepr will update the state for both the version getting retired and the version getting deployed concurrently. Grepr additionally allows you to specify a `rollbackEnabled` parameter while updating the job. If set to `true`, Grepr will roll back the job to a potentially running previous version in case of a failure. You can use this parameter to ensure minimal downtime in data processing in case of a misconfiguration.
+Job updates in Grepr are versioned. An update, therefore, means Grepr will update the state for both the version getting retired and the version getting deployed concurrently. Grepr additionally allows you to specify a `rollbackEnabled` parameter while updating the job. If set to `true`, Grepr will roll back the job to its previous version in case of a failure, when that version was running. An update that starts a stopped or failed pipeline isn't rolled back: if it fails, the pipeline ends `FAILED`, and its next start restores the savepoint it had before, if it is less than a day old. You can use this parameter to ensure minimal downtime in data processing in case of a misconfiguration.
 
 A successful update job request will return a `202 Accepted` response with the updated job details and a bump in the job's version number.
 

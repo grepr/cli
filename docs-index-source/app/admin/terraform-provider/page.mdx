@@ -253,7 +253,7 @@ The `grepr_pipeline` resource supports these attributes:
 | `tags`             | Map of Strings | No       | Custom tags. See [Tags](#tf-pipeline-tags).                                                                  |
 | `wait_for_state`   | Boolean        | No       | Wait for the pipeline to reach the desired state. Defaults to `true`.                                        |
 | `state_timeout`    | Number         | No       | Timeout in seconds for state transitions. Defaults to `600`.                                                 |
-| `rollback_enabled` | Boolean        | No       | Roll the pipeline back to its last stable configuration when an update fails. Defaults to `true`.            |
+| `rollback_enabled` | Boolean        | No       | Roll a running pipeline back to its last stable configuration when an update fails. Defaults to `true`.      |
 
 ### Read-only attributes
 
