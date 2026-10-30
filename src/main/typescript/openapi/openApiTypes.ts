@@ -298,6 +298,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/agents/context-estimate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Estimate an agent's starting context
+     * @description Returns the parts of an agent's first model request and their estimated sizes: the prompts, the skill list and the tools. The run's own message (the signal or the chat) comes on top. Sizes are characters divided by 4. An MCP integration whose tools cannot be listed is returned with 0 tokens.
+     */
+    post: operations["contextEstimate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/agents/mcp-integrations/{integrationId}/tools": {
     parameters: {
       query?: never;
@@ -4938,6 +4958,20 @@ export interface components {
       /** @description Whether the agent files and works on issues; required, since an update replaces the agent and an omitted switch would turn issue work off unnoticed. */
       worksOnIssues: boolean;
     };
+    /** @description What an agent's first model request carries before the run's own message (the signal or the chat), part by part. Sizes are estimates: characters divided by 4. */
+    AgentContextEstimate: {
+      /**
+       * Format: int32
+       * @description The model's context window as the sandbox sets it: OpenCode's own window for a model it knows, otherwise the configured floor.
+       */
+      contextWindowTokens?: number;
+      parts?: components["schemas"]["ContextPart"][];
+      /**
+       * Format: int32
+       * @description The sum of the parts' tokens.
+       */
+      totalTokens?: number;
+    };
     AgentDetail: {
       agent?: components["schemas"]["AgentConfig"];
       metrics?: components["schemas"]["AgentInvestigationMetrics"];
@@ -6654,6 +6688,23 @@ export interface components {
        * @enum {string}
        */
       type: ConstantSamplingType;
+    };
+    /** @description One part of an agent's first model request, and its estimated size. */
+    ContextPart: {
+      /** @description The part's breakdown, such as one item per tool; empty when it has none. */
+      items?: components["schemas"]["ContextPart"][];
+      /**
+       * @description Where a part of an agent's first model request comes from.
+       * @enum {string}
+       */
+      kind?: ContextPartKind;
+      /** @description What the part is, for a person. */
+      label?: string;
+      /**
+       * Format: int32
+       * @description The estimated size, in tokens: characters divided by 4, rounded up.
+       */
+      tokens?: number;
     };
     /** @description Metadata about the contract. */
     Contract: {
@@ -10463,6 +10514,11 @@ export interface components {
     };
     McpToolDescriptor: {
       description?: string;
+      /**
+       * Format: int32
+       * @description What the tool adds to each model request of an agent that may call it, in estimated tokens (characters divided by 4).
+       */
+      estimatedTokens?: number;
       name?: string;
       parameters?: components["schemas"]["McpToolParameter"][];
       readOnly?: boolean;
@@ -16871,6 +16927,8 @@ export type SchemaAgentConfigPayload =
   components["schemas"]["AgentConfigPayload"];
 export type SchemaAgentConfigUpdate =
   components["schemas"]["AgentConfigUpdate"];
+export type SchemaAgentContextEstimate =
+  components["schemas"]["AgentContextEstimate"];
 export type SchemaAgentDetail = components["schemas"]["AgentDetail"];
 export type SchemaAgentInvestigationMetrics =
   components["schemas"]["AgentInvestigationMetrics"];
@@ -17053,6 +17111,7 @@ export type SchemaConditionalDataLakeConfig =
   components["schemas"]["ConditionalDataLakeConfig"];
 export type SchemaConsoleSetupInfo = components["schemas"]["ConsoleSetupInfo"];
 export type SchemaConstantSampling = components["schemas"]["ConstantSampling"];
+export type SchemaContextPart = components["schemas"]["ContextPart"];
 export type SchemaContract = components["schemas"]["Contract"];
 export type SchemaCreateAgentSessionAnalyticsJob =
   components["schemas"]["CreateAgentSessionAnalyticsJob"];
@@ -18410,6 +18469,44 @@ export interface operations {
         };
       };
       /** @description A referenced model or MCP integration does not exist */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  contextEstimate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AgentConfigCreate"];
+      };
+    };
+    responses: {
+      /** @description Estimate computed successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AgentContextEstimate"];
+        };
+      };
+      /** @description The configuration names no model */
       400: {
         headers: {
           [name: string]: unknown;
@@ -30797,6 +30894,16 @@ export enum ConditionNodeKind {
 }
 export enum ConstantSamplingType {
   constant_sampling = "constant-sampling",
+}
+export enum ContextPartKind {
+  BASE_PROMPT = "BASE_PROMPT",
+  ENVIRONMENT = "ENVIRONMENT",
+  AGENT_PROMPT = "AGENT_PROMPT",
+  FRAMEWORK = "FRAMEWORK",
+  SKILLS = "SKILLS",
+  BUILT_IN_TOOLS = "BUILT_IN_TOOLS",
+  GREPR_TOOLS = "GREPR_TOOLS",
+  MCP_TOOLS = "MCP_TOOLS",
 }
 export enum CreateIssueRequestConfidence {
   CONFIRMED = "CONFIRMED",
