@@ -2147,6 +2147,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/integrations/openai/{id}/models": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["models_3"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/integrations/otlp": {
     parameters: {
       query?: never;
@@ -11156,6 +11172,18 @@ export interface components {
        * @example **************ey
        */
       readonly apiKey?: string;
+      /**
+       * Format: int64
+       * @description Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 200,000,000.
+       * @example 200000000
+       */
+      integrationMaxTokens?: number;
+      /**
+       * Format: int32
+       * @description Length in hours of the UTC-aligned max tokens window; must be a divisor of 24. Null uses the default of 1.
+       * @example 24
+       */
+      maxTokensWindowHours?: number;
       /** @description Whether this provider offers an embeddings API and can back agent investigation memory. */
       readonly supportsEmbedding?: boolean;
       /**
@@ -23410,6 +23438,28 @@ export interface operations {
       };
     };
   };
+  models_3: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description default response */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ItemsCollectionString"];
+        };
+      };
+    };
+  };
   listOtlpIntegrations: {
     parameters: {
       query?: never;
@@ -31093,6 +31143,7 @@ export enum ModelConfigurationProvider {
   ANTHROPIC = "ANTHROPIC",
   GEMINI = "GEMINI",
   LITELLM = "LITELLM",
+  OPENAI = "OPENAI",
 }
 export enum MonthlyCreditPoolSummaryType {
   monthly_credit_pool = "monthly-credit-pool",

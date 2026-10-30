@@ -95,8 +95,10 @@ Select the tab for your provider to see the fields it requires:
     |---|---|
     | **Name** | A name for the integration, used to identify it when you configure an agent. |
     | **API Key** | Your OpenAI API key. |
+    | **Max tokens per window** | Under **Advanced**. The total tokens, counting input, cached input, and output tokens, that agent investigations using this integration can consume in each window. Leave empty for the default of 200,000,000. This is a safety net, not a spending cap: for firmer cost control, set a spend limit with your provider, on the project or workspace the API key belongs to or on the LiteLLM virtual key. |
+    | **Max tokens window (hours)** | Under **Advanced**. How often the token count starts over. Windows align to UTC and must divide 24 (1, 2, 3, 4, 6, 8, 12, or 24). Leave empty for the default of 1 hour. |
 
-    An OpenAI integration provides the embedding model that agent memory uses.
+    An OpenAI integration can serve as both an agent's model and the embedding model for agent memory.
 
   </Tabs.Tab>
 </Tabs>
