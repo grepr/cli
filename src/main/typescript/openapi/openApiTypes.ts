@@ -10500,7 +10500,7 @@ export interface components {
       /** Format: date-time */
       recordedAfter?: string;
       /** @default [] */
-      significances: PathsV1AgentMemoryGetParametersQuerySignificance[];
+      significances?: PathsV1AgentMemoryGetParametersQuerySignificance[];
       /** @enum {string} */
       verbosity?: MemorySearchRequestVerbosity;
     };
@@ -26674,6 +26674,7 @@ export interface operations {
       query?: never;
       header?: never;
       path: {
+        /** @description The issue's 13-character id, or its number, such as 142. */
         idOrNumber: string;
       };
       cookie?: never;
@@ -26764,6 +26765,7 @@ export interface operations {
       query?: never;
       header?: never;
       path: {
+        /** @description The issue's 13-character id, or its number, such as 142. */
         idOrNumber: string;
       };
       cookie?: never;
@@ -26831,6 +26833,7 @@ export interface operations {
       query?: never;
       header?: never;
       path: {
+        /** @description The issue's 13-character id, or its number, such as 142. */
         idOrNumber: string;
       };
       cookie?: never;
@@ -26898,6 +26901,7 @@ export interface operations {
       query?: never;
       header?: never;
       path: {
+        /** @description The issue's 13-character id, or its number, such as 142. */
         idOrNumber: string;
       };
       cookie?: never;
@@ -27060,6 +27064,7 @@ export interface operations {
       query?: never;
       header?: never;
       path: {
+        /** @description The issue's 13-character id, or its number, such as 142. */
         idOrNumber: string;
       };
       cookie?: never;
@@ -27405,6 +27410,7 @@ export interface operations {
       query?: never;
       header?: never;
       path: {
+        /** @description The issue's 13-character id, or its number, such as 142. */
         idOrNumber: string;
       };
       cookie?: never;
@@ -27459,6 +27465,7 @@ export interface operations {
       query?: never;
       header?: never;
       path: {
+        /** @description The issue's 13-character id, or its number, such as 142. */
         idOrNumber: string;
       };
       cookie?: never;
