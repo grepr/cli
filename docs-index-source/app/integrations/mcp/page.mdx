@@ -36,7 +36,7 @@ The tools an agent gains depend on the server you connect:
 | PagerDuty MCP | Read and act on incidents, services, and schedules. |
 | Slack MCP | Read and post messages in the channels the token can reach. |
 
-Each integration has a server URL you set, so you can point one at a self-hosted or regional endpoint rather than the vendor's. The Jira MCP is the exception. Its server URL must be on `mcp.atlassian.com`, so Grepr sends its credential only to Atlassian.
+Each integration has a server URL you set, so you can point one at a self-hosted or regional endpoint rather than the vendor's. The Jira MCP and Slack MCP are the exceptions. The Jira MCP's server URL must be on `mcp.atlassian.com`, so Grepr sends its credential only to Atlassian. The Slack MCP's server URL must be an https URL on `mcp.slack.com`, so Grepr sends its token only to Slack.
 
 Don't see an MCP in the list? Send a request to [support@grepr.ai](mailto:support@grepr.ai).
 
@@ -126,7 +126,7 @@ The credential decides what the agent can do through that MCP. Grepr passes it t
 
     | Field | Value |
     |---|---|
-    | **MCP Server URL** | `https://mcp.slack.com/mcp`, or your Slack MCP endpoint. |
+    | **MCP Server URL** | `https://mcp.slack.com/mcp` |
     | **User token** | A Slack user token, which begins with `xoxp-`. |
 
     Create a Slack app in your workspace, add the user token scopes the agent needs, then install the app to get the token. Grant `channels:read` and `channels:history` for an agent that reads channels, and add `chat:write` for one that posts. The agent reaches only the channels the token's user is in, so invite that user to the channels you want covered. To learn more, see [Access tokens](https://docs.slack.dev/authentication/tokens) in the Slack documentation.
