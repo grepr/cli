@@ -24,7 +24,7 @@ terraform {
   required_providers {
     grepr = {
       source  = "grepr/grepr"
-      version = "~> 1.2"
+      version = "~> 1.3"
     }
   }
 }
@@ -37,7 +37,7 @@ terraform {
   required_providers {
     grepr = {
       source  = "registry.opentofu.org/grepr/grepr"
-      version = "~> 1.2"
+      version = "~> 1.3"
     }
   }
 }
@@ -88,6 +88,9 @@ The provider also manages the integrations and datasets your pipelines use, star
 | `grepr_data_warehouse_integration` | A Grepr-managed data warehouse |
 | `grepr_s3_data_warehouse_integration` | A data warehouse in your S3 bucket |
 | `grepr_dataset` | A dataset in a data warehouse |
+| `grepr_pipe_integration` | A Grepr pipe that carries log events between pipelines |
+
+The `grepr_pipe_integration` resource requires provider version 1.3.0 or later. See [_](/solution-guides/route-logs-to-separate-pipelines).
 
 Reference their IDs from a pipeline so Terraform creates them first:
 

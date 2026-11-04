@@ -145,6 +145,12 @@ const pageMap = [
         type: "page",
         title: "Route logs to several vendor accounts",
       },
+      {
+        name: "route-logs-to-separate-pipelines",
+        route: "/solution-guides/route-logs-to-separate-pipelines",
+        type: "page",
+        title: "Route logs to separate pipelines",
+      },
     ],
   },
   {

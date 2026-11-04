@@ -12,7 +12,11 @@ Use these guides when you know what you want to achieve but not yet how to shape
 
 ## Route logs to several vendor accounts
 
-Your logs belong to more than one account in your observability platform, because separate teams, environments, or business units each own their own. This guide shows two ways to get each log, and each summary of those logs, to the account that owns it: a pipeline for each group, or one pipeline whose reducer groups on a routing key and whose sinks each filter on it. See [_](/solution-guides/route-logs-to-several-accounts).
+Your logs belong to more than one account in your observability platform, because separate teams, environments, or business units each own their own. This guide shows how one pipeline gets each log, and each summary of those logs, to the account that owns it: its reducer groups on a routing key, and each of its sinks filters on that key. See [_](/solution-guides/route-logs-to-several-accounts).
+
+## Route logs to separate pipelines
+
+Your logs arrive at one source that one team owns, and other teams each want their own pipeline, with their own reduction settings, exceptions, datasets, and vendor accounts. This guide shows how the owning team's routing pipeline sends each team's logs, based on a routing key, through a Grepr pipe to that team's pipeline. See [_](/solution-guides/route-logs-to-separate-pipelines).
 
 <HiddenFAQ faqs={[
   {
