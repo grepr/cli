@@ -9966,6 +9966,18 @@ export interface components {
       repeatCountInSummaryMessageEnabled?: boolean;
       samplingConfig?: components["schemas"]["SamplingConfig"];
       /**
+       * Signal drop rules
+       * @description Named predicates that stop matching patterns from being signalled while the rule is enabled. Removing or disabling a rule affects only variants first seen and subscribers who join afterwards: a line that keeps occurring is offered again only after it goes quiet long enough for the reducer to forget it. The reducer's own output is not affected.
+       * @default []
+       */
+      signalDropRules?: components["schemas"]["SignalDropRule"][];
+      /**
+       * Signal masks
+       * @description Capture-group regexes applied only to the message the signal matcher compares. Each non-empty group span is replaced with <name>. The reducer's own masks and output are not affected.
+       * @default []
+       */
+      signalMasks?: components["schemas"]["SignalMask"][];
+      /**
        * Similarity threshold
        * Format: double
        * @description Controls how close a set of tokens are to a pattern before it is considered a match. Calculated as the percent of matching tokens between a pattern and a message.
@@ -13580,6 +13592,41 @@ export interface components {
        * @example span.operationName LIKE 'GET /health%' OR VARIANT_VALUE(span.attributes, '$["http.status_code"]', 'INT') = 200
        */
       predicate: string;
+    };
+    SignalDropRule: {
+      /**
+       * Enabled
+       * @description Whether the rule is applied.
+       * @default true
+       */
+      enabled?: boolean;
+      /**
+       * Name
+       * @description Unique name of the rule. Template patches merge entries by name.
+       * @example ignore-health-checks
+       */
+      name: string;
+      predicate: components["schemas"]["EventPredicate"];
+    };
+    SignalMask: {
+      /**
+       * Enabled
+       * @description Whether the mask is applied.
+       * @default true
+       */
+      enabled?: boolean;
+      /**
+       * Name
+       * @description Unique name of the mask. Matched spans are replaced with <name>. Template patches merge entries by name.
+       * @example ship_addr
+       */
+      name: string;
+      /**
+       * Regex
+       * @description An RE2 regex (no lookarounds or backreferences) with at least one capture group; it must also compile under Hyperscan. Each non-empty group span of a match is replaced with <name>.
+       * @example Shipping to (.+?) order=
+       */
+      regex: string;
     };
     SignupRequest: {
       orgName: string;
@@ -17641,6 +17688,8 @@ export type SchemaSetIssueLocksRequest =
 export type SchemaSeverityNode = components["schemas"]["SeverityNode"];
 export type SchemaShardingConfig = components["schemas"]["ShardingConfig"];
 export type SchemaSiblingMergeRule = components["schemas"]["SiblingMergeRule"];
+export type SchemaSignalDropRule = components["schemas"]["SignalDropRule"];
+export type SchemaSignalMask = components["schemas"]["SignalMask"];
 export type SchemaSignupRequest = components["schemas"]["SignupRequest"];
 export type SchemaSkillFile = components["schemas"]["SkillFile"];
 export type SchemaSkillView = components["schemas"]["SkillView"];
