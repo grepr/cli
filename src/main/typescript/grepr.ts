@@ -50,11 +50,11 @@ function getVersion(): string {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
 
-    // Try multiple possible locations for package.json
+    // Look in the same folder first. A binary distribution must read its own package.json, not one in a parent folder.
     const possiblePaths = [
+      join(__dirname, 'package.json'),       // Binary distribution: grepr.js in same dir as package.json
       join(__dirname, '../../../package.json'), // Development: src/main/typescript/grepr.ts -> package.json
-      join(__dirname, '../../package.json'), // Development: build/dist/grepr.js -> package.json
-      join(__dirname, 'package.json'),       // Distribution: grepr.js in same dir as package.json
+      join(__dirname, '../../package.json'), // Build output and npm install: build/dist/grepr.js -> package.json
       join(__dirname, '../package.json'),    // Alternative distribution structure
     ];
 

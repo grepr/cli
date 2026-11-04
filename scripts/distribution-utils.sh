@@ -12,7 +12,7 @@ NC='\033[0m' # No Color
 # Get version information
 get_version_info() {
     local cli_dir="$1"
-    VERSION=$(node -e "console.log(require('$cli_dir/package.json').version)")
+    VERSION="${GREPR_CLI_VERSION:-$(node -e "console.log(require('$cli_dir/package.json').version)")}"
     COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 }
