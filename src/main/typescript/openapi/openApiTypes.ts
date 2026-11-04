@@ -245,7 +245,7 @@ export interface paths {
     put?: never;
     /**
      * Apply a pending agent suggestion
-     * @description Re-verifies the suggestion's template-inputs patch against the pipeline's current version and applies it as a new job version, marking the suggestion APPLIED. The resolution is compare-and-set on the pending status: a reviewer who loses a race to another gets 409 rather than overwriting it. Findings mean the pipeline changed since the suggestion was recorded; nothing is applied and the suggestion stays PENDING. Applying restarts the pipeline from a savepoint.
+     * @description Re-verifies the suggestion's template-inputs patch against the pipeline's current version and applies it as a new job version, marking the suggestion APPLIED. The resolution is compare-and-set on the pending status: a reviewer who loses a race to another gets 409 rather than overwriting it. Findings mean the pipeline changed since the suggestion was recorded; nothing is applied and the suggestion stays PENDING. A change to signal masks and drop rules only applies live, without a restart; any other change may restart the pipeline from a savepoint.
      */
     post: operations["apply"];
     delete?: never;
@@ -5456,7 +5456,7 @@ export interface components {
     AgentSuggestionApplyResult: {
       /**
        * Format: int64
-       * @description The new job version the suggestion was applied as, or absent when it was rejected by verification. Applying restarts the pipeline from a savepoint, so the new version reaches its desired state asynchronously.
+       * @description The new job version the suggestion was applied as, or absent when it was rejected by verification. A signal mask or drop rule change applies live without a restart; any other change may restart the pipeline from a savepoint, so the new version reaches its desired state asynchronously.
        */
       appliedJobVersion?: number;
       /**
@@ -11926,6 +11926,10 @@ export interface components {
        * @default []
        */
       findings?: components["schemas"]["ChangeFinding"][];
+      /** @description With rejectedSuggestionId: what was rejected, and what to do. */
+      message?: string;
+      /** @description Not an error: this agent's signal change proposes again an entry of the signal change a person rejected as this suggestion, so nothing was recorded or applied. */
+      rejectedSuggestionId?: string;
       /** @description The agent suggestion the change was recorded as. The pipeline is NOT updated and will not restart, so there is nothing to wait for and the change must not be resubmitted; a human reviews and applies it from the pipeline page. */
       suggestionId?: string;
     };
@@ -30887,6 +30891,7 @@ export enum ChangeFindingCode {
   HELPER_RULE_DELETED = "HELPER_RULE_DELETED",
   RESOLUTION_FAILED = "RESOLUTION_FAILED",
   DISALLOWED_INPUT_CHANGE = "DISALLOWED_INPUT_CHANGE",
+  INVALID_SIGNAL_CONFIG = "INVALID_SIGNAL_CONFIG",
   UNVERIFIABLE_CHANGE = "UNVERIFIABLE_CHANGE",
   NO_EFFECTIVE_CHANGE = "NO_EFFECTIVE_CHANGE",
 }
