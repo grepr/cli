@@ -9,8 +9,11 @@ List all Grepr pipelines (jobs) in the organization. Use this to see available a
 ## Examples
 
 ```bash
-# List all jobs
+# List jobs, leaving out DELETED jobs and batch jobs that ended more than 6 hours ago
 grepr job:list
+
+# List every job, with no default filters
+grepr job:list --all
 
 # Keep only the fields you need
 grepr job:list --fields id,name,state
@@ -25,6 +28,5 @@ Each job shows:
 - Name
 - Status (running, stopped, failed)
 - Created/Updated timestamps
-- Job graph
 
-Use `grepr job:get <jobId>` to get the full json for a job for inspection or modification.
+The list leaves out each job's graph unless you pass `--include-graph`. Use `grepr job:get <jobId>` to get the full json for a job for inspection or modification.

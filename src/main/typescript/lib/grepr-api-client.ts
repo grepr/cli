@@ -273,6 +273,7 @@ export class GreprApiClient {
     state?: JobState[];
     name?: string[];
     id?: string[];
+    includeGraph?: boolean;
   }): Promise<SchemaItemsCollectionReadJob | undefined> {
     // noinspection TypeScriptValidateTypes
     const { data, error } = await this.client.GET('/v1/jobs', {

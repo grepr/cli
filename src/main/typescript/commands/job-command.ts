@@ -30,40 +30,15 @@ export interface JobCreateUpdateOptions extends CrudCreateUpdateOptions {
   rollbackEnabled?: boolean;
 }
 
-/**
- * Drop `jobGraph` from list rows unless asked for. It is about 88% of a list
- * payload and is never readable in a list anyway - the table format truncates
- * it and the JSON formats bury the row in it. `job:get` returns the full graph
- * for a single pipeline, which is how a caller that needs it should ask.
- */
-function stripJobGraphs(
-  jobs: Record<string, unknown>[],
-  options: JobListCommandOptions
-): Record<string, unknown>[] {
-  if (options.includeGraph) {
-    return jobs;
-  }
+const DEFAULT_JOB_STATES = Object.values(JobState).filter(state => state !== JobState.DELETED);
 
-  return jobs.map(job => {
-    if (!('jobGraph' in job)) {
-      return job;
-    }
-    const { jobGraph: _jobGraph, ...rest } = job;
-    return rest;
-  });
-}
-
-/**
- * Job list command implementation using the new architecture
- * Shows smart defaults: active, stopped, and recently finished or failed jobs since 6 hours ago
- */
 export class JobListCommand extends ListCommand<JobListCommandOptions> {
   getCommandName(): string {
     return 'job:list';
   }
 
   getCommandDescription(): string {
-    return 'List jobs with optional filtering (defaults: active, stopped, and recently finished or failed jobs since 6h ago)';
+    return 'List jobs with optional filtering (defaults: leaves out DELETED jobs and batch jobs that ended more than 6h ago)';
   }
 
   getCommandOptions(): CommandOption[] {
@@ -83,7 +58,7 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
       },
       {
         flags: '--state <states...>',
-        description: 'Filter by job states (CREATED, PENDING, RUNNING, etc.). Defaults to active, stopped, and recently finished or failed states unless --all is set.'
+        description: 'Filter by job states (CREATED, PENDING, RUNNING, etc.). Defaults to every state except DELETED unless --all is set.'
       },
       {
         flags: '--name <names...>',
@@ -111,8 +86,8 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
       // Apply smart defaults unless --all is specified
       const params = this.buildJobListParams(options);
 
-      const jobs = await this.apiClient.listJobs(Object.keys(params).length > 0 ? params : undefined);
-      const jobList = stripJobGraphs(jobs?.items || [], options);
+      const jobs = await this.apiClient.listJobs(params);
+      const jobList = jobs?.items || [];
 
       await this.formatAndOutput(jobList, options, 'jobs');
       this.showQuerySummary(options, jobList.length);
@@ -128,7 +103,7 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
 
     // Without --all, fall back to common "what's happening recently" filters.
     // With --all, no state/since filter is applied unless the user provides one explicitly.
-    const effectiveState = options.state ?? (options.all ? undefined : ['PENDING', 'WAITING', 'STARTING', 'RUNNING', 'UPDATING', 'RESTARTING', 'STOPPING', 'STOPPED', 'DELETING', 'FINISHED', 'FAILED']);
+    const effectiveState = options.state ?? (options.all ? undefined : DEFAULT_JOB_STATES);
     const effectiveSince = options.since ?? (options.all ? undefined : 'PT6H');
 
     if (effectiveSince) params.since = parseSinceOption(effectiveSince);
@@ -137,6 +112,7 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
     if (effectiveState && effectiveState.length > 0) params.state = effectiveState;
     if (options.name && options.name.length > 0) params.name = options.name;
     if (options.id && options.id.length > 0) params.id = options.id;
+    params.includeGraph = options.includeGraph === true;
 
     return params;
   }
@@ -155,12 +131,10 @@ export class JobListCommand extends ListCommand<JobListCommandOptions> {
     if (options.name) filters.push(`name=${options.name.join(',')}`);
     if (options.sort) filters.push(`sort=${options.sort}`);
 
-    const filterStr = filters.length > 0 ? filters.join(', ') : 'defaults (active/stopped/finished/failed since 6h)';
-
     return [
       '',
       'Query Summary:',
-      `- Filters: ${filterStr}`,
+      `- Filters: ${filters.join(', ')}`,
       `- Results: ${resultCount} jobs found`
     ].join('\n');
   }

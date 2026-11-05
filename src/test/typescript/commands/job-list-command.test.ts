@@ -57,7 +57,7 @@ describe('JobListCommand', () => {
 
     it('test_getCommandDescription_shouldReturnCorrectDescription', () => {
       const result = command.getCommandDescription();
-      expect(result).toBe('List jobs with optional filtering (defaults: active, stopped, and recently finished or failed jobs since 6h ago)');
+      expect(result).toBe('List jobs with optional filtering (defaults: leaves out DELETED jobs and batch jobs that ended more than 6h ago)');
     });
 
     it('test_getCommandOptions_shouldReturnJobSpecificOptions', () => {
@@ -87,50 +87,6 @@ describe('JobListCommand', () => {
       browser: true
     };
 
-    it('test_executeList_default_shouldDropJobGraphFromEachRow', async () => {
-      const graph = { vertices: [{ type: 'source', name: 'src' }] };
-      mockApiClient.listJobs.mockResolvedValue({
-        items: [
-          { id: '1', name: 'job-1', state: 'RUNNING', jobGraph: graph },
-          { id: '2', name: 'job-2', state: 'FINISHED', jobGraph: graph }
-        ]
-      });
-
-      await command.executeList(mockOptions);
-
-      expect((command as any).formatAndOutput).toHaveBeenCalledWith(
-        [
-          { id: '1', name: 'job-1', state: 'RUNNING' },
-          { id: '2', name: 'job-2', state: 'FINISHED' }
-        ],
-        mockOptions,
-        'jobs'
-      );
-    });
-
-    it('test_executeList_includeGraph_shouldKeepJobGraph', async () => {
-      const graph = { vertices: [{ type: 'source', name: 'src' }] };
-      const items = [{ id: '1', name: 'job-1', state: 'RUNNING', jobGraph: graph }];
-      mockApiClient.listJobs.mockResolvedValue({ items });
-
-      await command.executeList({ ...mockOptions, includeGraph: true });
-
-      expect((command as any).formatAndOutput).toHaveBeenCalledWith(
-        items,
-        { ...mockOptions, includeGraph: true },
-        'jobs'
-      );
-    });
-
-    it('test_executeList_rowWithoutJobGraph_shouldBeUnchanged', async () => {
-      const items = [{ id: '1', name: 'job-1', state: 'RUNNING' }];
-      mockApiClient.listJobs.mockResolvedValue({ items });
-
-      await command.executeList(mockOptions);
-
-      expect((command as any).formatAndOutput).toHaveBeenCalledWith(items, mockOptions, 'jobs');
-    });
-
     it('test_executeList_successfulResponse_shouldFormatAndDisplayJobs', async () => {
       const mockJobs = {
         items: [
@@ -153,12 +109,40 @@ describe('JobListCommand', () => {
       expect((command as any).showQuerySummary).toHaveBeenCalledWith(mockOptions, 3);
     });
 
+    it('test_executeList_default_shouldAskServerToLeaveOutJobGraph', async () => {
+      mockApiClient.listJobs.mockResolvedValue({ items: [] });
+
+      await command.executeList(mockOptions);
+
+      expect(mockApiClient.listJobs.mock.calls[0][0].includeGraph).toBe(false);
+    });
+
+    it('test_executeList_includeGraph_shouldAskServerForJobGraph', async () => {
+      mockApiClient.listJobs.mockResolvedValue({ items: [] });
+
+      await command.executeList({ ...mockOptions, includeGraph: true });
+
+      expect(mockApiClient.listJobs.mock.calls[0][0].includeGraph).toBe(true);
+    });
+
     it('test_executeList_noStateFilter_shouldIncludeWaitingInDefaultStates', async () => {
       mockApiClient.listJobs.mockResolvedValue({ items: [] });
 
       await command.executeList(mockOptions);
 
       expect(mockApiClient.listJobs.mock.calls[0][0].state).toContain('WAITING');
+    });
+
+    it('test_executeList_noStateFilter_shouldAskForEveryStateExceptDeleted', async () => {
+      mockApiClient.listJobs.mockResolvedValue({ items: [] });
+
+      await command.executeList(mockOptions);
+
+      const states = mockApiClient.listJobs.mock.calls[0][0].state;
+      expect(states).toContain('ROLLING_BACK');
+      expect(states).toContain('VERIFYING');
+      expect(states).toContain('INFRA_UPDATE');
+      expect(states).not.toContain('DELETED');
     });
 
     it('test_executeList_emptyJobs_shouldHandleEmptyResponse', async () => {

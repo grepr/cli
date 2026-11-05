@@ -27756,6 +27756,8 @@ export interface operations {
          * @example type:backfill
          */
         tag?: string[];
+        /** @description Whether each job carries its jobGraph. Defaults to true. When false, each job leaves out jobGraph; GET /v1/jobs/{id} returns one job's graph. */
+        includeGraph?: boolean;
       };
       header?: never;
       path?: never;
