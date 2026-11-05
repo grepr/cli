@@ -4856,6 +4856,8 @@ export interface components {
       automaticSignalMaxQueueAgeMinutes?: number;
       /** @enum {string} */
       changeApprovalMode: AgentConfigCreateChangeApprovalMode;
+      /** @description OpenCode's experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool's schema; null or false is off. */
+      codeMode?: boolean;
       /** @enum {string} */
       concurrencyLimitPolicy?: AgentConfigCreateConcurrencyLimitPolicy;
       /** @description What the agent handles, shown to other agents when they list the agents; null for none. */
@@ -4896,6 +4898,8 @@ export interface components {
       automaticSignalMaxQueueAgeMinutes?: number;
       /** @enum {string} */
       changeApprovalMode: AgentConfigCreateChangeApprovalMode;
+      /** @description OpenCode's experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool's schema; null or false is off. */
+      codeMode?: boolean;
       /** @enum {string} */
       concurrencyLimitPolicy?: AgentConfigCreateConcurrencyLimitPolicy;
       /** @description What the agent handles, shown to other agents when they list the agents; null for none. */
@@ -4929,6 +4933,8 @@ export interface components {
       automaticSignalMaxQueueAgeMinutes?: number;
       /** @enum {string} */
       changeApprovalMode: AgentConfigCreateChangeApprovalMode;
+      /** @description OpenCode's experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool's schema; null or false is off. */
+      codeMode?: boolean;
       /** @enum {string} */
       concurrencyLimitPolicy?: AgentConfigCreateConcurrencyLimitPolicy;
       /** @description What the agent handles, shown to other agents; required, like worksOnIssues, and empty for none. */
@@ -30958,6 +30964,7 @@ export enum ContextPartKind {
   BUILT_IN_TOOLS = "BUILT_IN_TOOLS",
   GREPR_TOOLS = "GREPR_TOOLS",
   MCP_TOOLS = "MCP_TOOLS",
+  CODE_MODE_TOOLS = "CODE_MODE_TOOLS",
 }
 export enum CreateIssueRequestConfidence {
   CONFIRMED = "CONFIRMED",
