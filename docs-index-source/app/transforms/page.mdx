@@ -30,6 +30,12 @@ The remapper transform moves or copies attributes to top-level fields or to tags
 
 See [Remap JSON attribute fields to top-level log event fields](/transforms/remapper).
 
+## Add location data from IP addresses [#geoip]
+
+The GeoIP lookup finds an IP address in a log event and adds the continent, country, state or other subdivision, city, coordinates, and time zone of the address. It's available in pipelines built from the log reducer template.
+
+See [Add location data from IP addresses with the GeoIP lookup](/transforms/geoip).
+
 ## Transform records with SQL [#sql-transform]
 
 The SQL transform allows you to use ANSI standard SQL queries to filter, transform, and enrich data records. The SQL transform provides a familiar SQL interface to perform a number of data processing and transformation tasks.

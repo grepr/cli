@@ -334,6 +334,12 @@ const pageMap = [
         title: "Standardize messages with the remapper",
       },
       {
+        name: "geoip",
+        route: "/transforms/geoip",
+        type: "page",
+        title: "Add location data from IP addresses",
+      },
+      {
         name: "reducer",
         route: "/transforms/reducer",
         type: "folder",

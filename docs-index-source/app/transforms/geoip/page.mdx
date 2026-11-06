@@ -1,0 +1,126 @@
+---
+description: Add the continent, country, state, city, coordinates, and time zone of an IP address to log events with the Grepr GeoIP lookup.
+---
+
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Add location data from IP addresses with the GeoIP lookup
+
+The GeoIP lookup is a parsing step that finds an IP address in a log event and adds the location of that address to the event: the continent, country, state or other subdivision, city, coordinates, and time zone. Use it to search, filter, and group logs by where requests come from, such as finding every failed login from one country.
+
+Grepr looks up addresses in MaxMind's GeoLite2 City database. Each Grepr release includes the latest version of the database available on the day of the release.
+
+The GeoIP lookup is available in pipelines built from the log reducer template. In these pipelines, GeoIP lookups run after the Grok parsers and before the last attribute remapper, so a lookup can use an address that a Grok rule extracts, and the remapper can rename or move the results.
+
+## Add a GeoIP lookup to a pipeline [#add-geoip-lookup]
+
+1. On the details page for your pipeline, in the left-hand navigation menu, click **Parsing**.
+1. Click **Add parsing step**, then click **GeoIP lookup**.
+1. Under **IP address sources**, enter the path of the attribute that holds the IP address. The default is `network.client.ip`. To look in more attributes, click **Add source** for each one. Grepr tries the sources in the order you list them.
+1. In **Target**, enter the path of the attribute that receives the location data. The default is `network.client.geoip`.
+1. Click **Save**.
+
+Write a nested attribute as a dotted path such as `network.client.ip`, or as a JSON array of attribute names such as `["network", "client.ip"]` when an attribute name contains a dot. See [Write a path as an array of attribute names](/transforms/remapper#array-paths).
+
+To look up addresses from different attributes and write each result to its own target, add one GeoIP lookup for each target.
+
+## How the GeoIP lookup finds an address [#find-address]
+
+For each log event, the GeoIP lookup checks the sources in order and uses the first one whose value meets all of the following conditions:
+
+- The value is a string that holds one IPv4 or IPv6 address, such as `203.0.113.7` or `2001:db8::1`. A value with anything else in it, such as a port number or a list of addresses, doesn't match.
+- The database has a record for the address. Private addresses, such as `10.0.0.12`, have no record.
+- The path leads to the value through objects only. A path doesn't match a value inside an array.
+
+When an event's structured body is stored in an attribute, such as the `body` attribute of an OpenTelemetry log whose body is an object, the GeoIP lookup checks each source inside the body first, then from the top level of the attributes. The location data goes in the same place as the address: inside the body when the address came from the body, and at the top level of the attributes otherwise.
+
+If no source matches, the event passes through unchanged.
+
+## The location data [#location-data]
+
+The target receives an object in the shape of Datadog's GeoIP parser output, with names in English. If the target already holds a value, the location data replaces it.
+
+For example, with the default source and target, this event:
+
+```json
+{
+  "attributes": {
+    "network": {
+      "client": {
+        "ip": "81.2.69.142"
+      }
+    }
+  }
+}
+```
+
+is transformed to:
+
+```json
+{
+  "attributes": {
+    "network": {
+      "client": {
+        "ip": "81.2.69.142",
+        "geoip": {
+          "continent": { "code": "EU", "name": "Europe" },
+          "country": { "iso_code": "GB", "name": "United Kingdom" },
+          "subdivision": { "iso_code": "GB-ENG", "name": "England" },
+          "city": { "name": "London" },
+          "location": { "latitude": 51.5142, "longitude": -0.0931 },
+          "timezone": "Europe/London",
+          "ipAddress": "81.2.69.142"
+        }
+      }
+    }
+  }
+}
+```
+
+The values for an address depend on the database release.
+
+| Attribute | Description |
+|:----------|:------------|
+| `continent.code` | The two-letter continent code, such as `EU` or `NA`. |
+| `continent.name` | The continent name. |
+| `country.iso_code` | The ISO 3166-1 two-letter country code, such as `GB`. |
+| `country.name` | The country name. |
+| `subdivision.iso_code` | The full ISO 3166-2 code of the largest subdivision, such as a state or province. For example, `US-WA` is Washington state. |
+| `subdivision.name` | The subdivision name. |
+| `city.name` | The city name. |
+| `location.latitude`, `location.longitude` | The approximate coordinates of the address. |
+| `timezone` | The time zone, such as `Europe/London`. |
+| `ipAddress` | The address that was looked up, as the event wrote it. |
+
+`ipAddress` is always present. Each of the other attributes is present only when the database has a value for the address. For example, the record for an address might have a country but no city.
+
+## Rename or reshape the location data [#reshape]
+
+To give the location data the names your tools expect, use rename rules in an attribute remapping step that runs after the GeoIP lookup. For example, a rename rule with source `network.client.geoip.country.iso_code` and target `geo.country` moves the country code to `geo.country`. See [The remapper transform rename rules](/transforms/remapper#rename-rules).
+
+If the **Parsing** step has only one attribute remapping step, the one that runs before the Grok parsers, add a second one: click **Add parsing step**, then click **Attribute remapping**. The second attribute remapping step runs after the Grok parsers and GeoIP lookups.
+
+## Attribution [#attribution]
+
+This product includes GeoLite2 data created by MaxMind, available from [https://www.maxmind.com](https://www.maxmind.com).
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "How do I add the location of an IP address to my logs in Grepr?",
+      a: "In a pipeline built from the log reducer template, go to the Parsing step, click Add parsing step, and click GeoIP lookup. Enter the attribute that holds the IP address and the attribute that receives the location data. Grepr adds the continent, country, subdivision, city, coordinates, and time zone of the address."
+    },
+    {
+      q: "Which database does the Grepr GeoIP lookup use?",
+      a: "Grepr uses MaxMind's GeoLite2 City database. Each Grepr release includes the latest version of the database available on the day of the release."
+    },
+    {
+      q: "What happens when the GeoIP lookup can't find an address?",
+      a: "The GeoIP lookup tries each source attribute in order and uses the first one that holds a single IPv4 or IPv6 address with a record in the database. If no source matches, for example because the address is private, the event passes through unchanged."
+    },
+    {
+      q: "Can I change the names of the GeoIP attributes?",
+      a: "Yes. Add rename rules to an attribute remapping step that runs after the GeoIP lookup to move or rename any of the location attributes."
+    }
+  ]}
+/>

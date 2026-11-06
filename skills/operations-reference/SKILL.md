@@ -115,6 +115,7 @@ Transforms process log events and produce modified events.
 | `grok-parser` | Parse unstructured logs with Grok patterns | `grokParsingRules`, `grokHelperRules`, `predicate` |
 | `json-log-processor` | Parse JSON in message field | `maxNestedDepthForFields` |
 | `keyvalue-processor` | Extract key=value pairs from message | `fieldSeparator`, `valueSeparator` |
+| `geoip-parser` | Add the location of an IP address (MaxMind GeoLite2 City) | `sources`, `target` |
 
 ### Field Manipulation
 
@@ -287,6 +288,27 @@ Parses unstructured log messages using Grok patterns.
 - Each rule must have a name followed by the pattern
 - Use `predicate` to only parse matching logs (improves performance)
 - Can extract to `attributes`, `tags`, or top-level fields
+
+### geoip-parser
+
+Looks up an IP address and writes its location, in Datadog's GeoIP shape. Used in template-backed (log reducer
+template) pipelines, where it runs after the Grok parsers and before the post-Grok remapper.
+
+```json
+{
+  "type": "geoip-parser",
+  "name": "geoip_parser",
+  "sources": ["network.client.ip"],
+  "target": "network.client.geoip"
+}
+```
+
+**Notes:**
+- `sources` (default `["network.client.ip"]`) are tried in order; the first holding a single IPv4 or IPv6 address
+  that the database knows wins. A structured body is searched before the root.
+- `target` (default `network.client.geoip`) receives `continent`, `country`, `subdivision` (full ISO 3166-2 code),
+  `city`, `location`, `timezone` and `ipAddress`, in the same namespace as the matched source.
+- No predicate. Rename or reshape the result with the post-Grok remapper's rename rules.
 
 ### logs-filter
 

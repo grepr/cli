@@ -7890,6 +7890,22 @@ export interface components {
        */
       validateKeysOnSave?: boolean;
     };
+    GeoIpParser: {
+      /** @example operation_name */
+      name: string;
+      /** @description Attributes holding the IP address, each a dotted string or an array of literal keys. They're tried in order, in a structured body first and then at the root; the first IP the database has a record for is used. Defaults to ["network.client.ip"]. */
+      sources?: (string | string[])[];
+      /**
+       * @description Attribute that receives the result map, in the same namespace as the matched source. It replaces whatever is there. A dotted string, or an array of literal keys. Defaults to "network.client.geoip".
+       * @example network.client.geoip
+       */
+      target?: string | string[];
+      /**
+       * @description Looks up an IP address attribute and adds its continent, country, subdivision, city, location and time zone. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: GeoIpParserType;
+    };
     /** @description The payload containing integration data. */
     GithubMcp: {
       /** @description Masked API key for the MCP server. */
@@ -11298,6 +11314,7 @@ export interface components {
       | components["schemas"]["LogsBranch"]
       | components["schemas"]["LogsFilter"]
       | components["schemas"]["GrokParser"]
+      | components["schemas"]["GeoIpParser"]
       | components["schemas"]["JsonLogProcessor"]
       | components["schemas"]["LogAttributesRemapper"]
       | components["schemas"]["LogReducer"]
@@ -17262,6 +17279,7 @@ export type SchemaFinishAssignmentRequest =
   components["schemas"]["FinishAssignmentRequest"];
 export type SchemaFrontendConfig = components["schemas"]["FrontendConfig"];
 export type SchemaGemini = components["schemas"]["Gemini"];
+export type SchemaGeoIpParser = components["schemas"]["GeoIpParser"];
 export type SchemaGithubMcp = components["schemas"]["GithubMcp"];
 export type SchemaGreprApiKey = components["schemas"]["GreprApiKey"];
 export type SchemaGreprJobGraph = components["schemas"]["GreprJobGraph"];
@@ -31066,6 +31084,9 @@ export enum ExactAttributesMergeStrategyType {
 export enum ExternalSourceTriggerType {
   external_source = "external-source",
 }
+export enum GeoIpParserType {
+  geoip_parser = "geoip-parser",
+}
 export enum GreprMetricsSourceMetrics {
   table_totalBytes = "table_totalBytes",
   job_operator_numRecordsIn = "job_operator_numRecordsIn",
@@ -31879,6 +31900,7 @@ export const OPERATION_TYPES = new Set<string>([
   'agent-session-analytics',
   'agent-span-processor',
   'clone',
+  'geoip-parser',
   'grok-parser',
   'json-log-processor',
   'log-attributes-remapper',
