@@ -119,7 +119,7 @@ To clear duplicates, cancel them in bulk from the agent's **Investigations** ste
 
 ## Subscribe an agent [#subscribe]
 
-An integration on its own does nothing. To have an agent investigate the events it receives, subscribe that agent to the integration from the agent's **Triggers** step. To learn more, see [_](/ai-agents/subscriptions#webhook-sources).
+An integration on its own does nothing. To have an agent investigate the events it receives, subscribe that agent to the integration from the agent's **Subscriptions** step. To learn more, see [_](/ai-agents/subscriptions#webhook-sources).
 
 ## Grant team access [#team-access]
 
@@ -144,7 +144,7 @@ An integration on its own does nothing. To have an agent investigate the events 
   },
   {
     q: "Why does my Grepr Agent webhook return 409?",
-    a: "The integration has no agent that can be started, which normally means no agent is subscribed to it. Subscribe an agent on that agent's Triggers step. Grepr returns 409 rather than accepting the event and silently doing nothing."
+    a: "The integration has no agent that can be started, which normally means no agent is subscribed to it. Subscribe an agent on that agent's Subscriptions step. Grepr returns 409 rather than accepting the event and silently doing nothing."
   },
   {
     q: "Can a webhook retry start duplicate investigations?",

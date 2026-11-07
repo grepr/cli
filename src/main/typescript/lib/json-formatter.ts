@@ -752,10 +752,6 @@ export class JsonFormatter {
         stateColor = chalk.yellow;
         message = 'Query is too large for the query engine';
         break;
-      case 'RESOURCES_EXHAUSTED':
-        stateColor = chalk.yellow;
-        message = 'Query needed more memory than the query engine allows';
-        break;
       default:
         stateColor = chalk.gray;
         message = `Unknown job state: ${state}`;

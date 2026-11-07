@@ -4886,7 +4886,6 @@ export interface components {
       memoryConfiguration?: components["schemas"]["AgentMemoryConfiguration"];
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       name: string;
-      schedule?: components["schemas"]["AgentSchedule"];
       serviceAccountId: string;
       systemPrompt: string;
       /** @description Whether the agent files and works on issues; null means true. */
@@ -4922,7 +4921,6 @@ export interface components {
       maxTurns?: number;
       memoryConfiguration?: components["schemas"]["AgentMemoryConfiguration"];
       modelConfiguration: components["schemas"]["ModelConfiguration"];
-      schedule?: components["schemas"]["AgentSchedule"];
       serviceAccountId: string;
       systemPrompt: string;
       /** @description Whether the agent files and works on issues; every agent reads them. */
@@ -4959,7 +4957,6 @@ export interface components {
       memoryConfiguration?: components["schemas"]["AgentMemoryConfiguration"];
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       name: string;
-      schedule?: components["schemas"]["AgentSchedule"];
       serviceAccountId: string;
       systemPrompt: string;
       /** Format: int32 */
@@ -5111,12 +5108,6 @@ export interface components {
       /** @description The agent's human-readable name. */
       name?: string;
       picksUp?: components["schemas"]["PickupFilters"];
-    };
-    /** @description An agent's schedule: a five-field cron read in an IANA timezone, and optionally the instruction the agent is given on each scheduled run; without one the run follows the agent's system prompt. Fires at least five minutes apart. */
-    AgentSchedule: {
-      cron: string;
-      instructions?: string;
-      timezone: string;
     };
     AgentSessionAnalytics: {
       analysisJobId: string;
@@ -5606,11 +5597,6 @@ export interface components {
       name: string;
       /** @description The function's arguments in call order, for rendering a signature. Required arguments precede optional ones. */
       parameters?: components["schemas"]["AnalyticsParameter"][];
-    };
-    /** @description Optional nested groups. Each groupBy entry, which must name a projection alias, becomes a level with its own subtotal, and each level keeps only its top N groups under their parent. orderBy ranks siblings within each parent and names aggregate projections; when it is empty, the first aggregate projection ranks them, highest first. limit must cover the whole tree, 1 + N1 + N1*N2 + ..., and a window can't be combined with nested groups. having keeps SQL semantics: it filters the groups of every level before ranking, and a group it removes takes its children with it. A rolled-up key is NULL, so a condition on a key that a NULL fails, such as path <> '/health', removes every subtotal above that key's level; the grand total always comes back. Rows come back flat, grand total first and each parent above its children, each with a '$grouping' column: the GROUPING() bitmask of the levels the row is rolled up over. */
-    AnalyticsNestedGroups: {
-      /** @description How many groups each level keeps under its parent, one entry per groupBy entry and in the same order. */
-      limits: number[];
     };
     /**
      * @description Ordering applied to the analytical results.
@@ -14442,7 +14428,6 @@ export interface components {
        * @default 2500
        */
       limit?: number;
-      nestedGroups?: components["schemas"]["AnalyticsNestedGroups"];
       /**
        * @description Ordering applied to the analytical results.
        * @default []
@@ -17040,7 +17025,6 @@ export type SchemaAgentPipelineSubscription =
 export type SchemaAgentRecentHealth =
   components["schemas"]["AgentRecentHealth"];
 export type SchemaAgentRosterEntry = components["schemas"]["AgentRosterEntry"];
-export type SchemaAgentSchedule = components["schemas"]["AgentSchedule"];
 export type SchemaAgentSessionAnalytics =
   components["schemas"]["AgentSessionAnalytics"];
 export type SchemaAgentSessionAnalyticsDownload =
@@ -17092,8 +17076,6 @@ export type SchemaAnalyticsExample = components["schemas"]["AnalyticsExample"];
 export type SchemaAnalyticsField = components["schemas"]["AnalyticsField"];
 export type SchemaAnalyticsFunction =
   components["schemas"]["AnalyticsFunction"];
-export type SchemaAnalyticsNestedGroups =
-  components["schemas"]["AnalyticsNestedGroups"];
 export type SchemaAnalyticsOrderBy = components["schemas"]["AnalyticsOrderBy"];
 export type SchemaAnalyticsParameter =
   components["schemas"]["AnalyticsParameter"];
@@ -18563,7 +18545,7 @@ export interface operations {
           "application/json": components["schemas"]["AgentConfig"];
         };
       };
-      /** @description A referenced model or MCP integration does not exist, or the schedule is invalid: not a five-field cron, fires under five minutes apart, an unknown timezone, or no agentMaxTokens to bound it */
+      /** @description A referenced model or MCP integration does not exist */
       400: {
         headers: {
           [name: string]: unknown;
@@ -18783,7 +18765,7 @@ export interface operations {
           "application/json": components["schemas"]["AgentConfig"];
         };
       };
-      /** @description A referenced model or MCP integration does not exist, or the schedule is invalid: not a five-field cron, fires under five minutes apart, an unknown timezone, or no agentMaxTokens to bound it */
+      /** @description A referenced model or MCP integration does not exist */
       400: {
         headers: {
           [name: string]: unknown;
@@ -30668,7 +30650,6 @@ export enum PathsV1AgentsIdInvestigationsGetParametersQueryTriggers {
   WEBHOOK_SIGNAL = "WEBHOOK_SIGNAL",
   LOG_PATTERN_SIGNAL = "LOG_PATTERN_SIGNAL",
   PIPELINE_SIGNAL = "PIPELINE_SIGNAL",
-  SCHEDULE_SIGNAL = "SCHEDULE_SIGNAL",
 }
 export enum PathsV1FilesUploadPresignedUrlPostParametersQueryFormat {
   json = "json",
@@ -31096,7 +31077,6 @@ export enum EventRecordJobState {
   UNKNOWN = "UNKNOWN",
   SCANNED_MAX = "SCANNED_MAX",
   QUERY_TOO_LARGE = "QUERY_TOO_LARGE",
-  RESOURCES_EXHAUSTED = "RESOURCES_EXHAUSTED",
 }
 export enum ExactAttributesMergeStrategyType {
   exact = "exact",

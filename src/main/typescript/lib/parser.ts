@@ -14,7 +14,6 @@ export const STREAM_EVENTS = {
   TIMED_OUT: 'timed_out',
   SCANNED_MAX: 'scanned_max',
   QUERY_TOO_LARGE: 'query_too_large',
-  RESOURCES_EXHAUSTED: 'resources_exhausted',
   UNKNOWN_STATE: 'unknown-state',
   PARSE_ERROR: 'parse_error'
 } as const;
@@ -92,9 +91,6 @@ export class NDJsonStreamParser extends EventEmitter {
         break;
       case 'QUERY_TOO_LARGE':
         this.emit(STREAM_EVENTS.QUERY_TOO_LARGE, data);
-        break;
-      case 'RESOURCES_EXHAUSTED':
-        this.emit(STREAM_EVENTS.RESOURCES_EXHAUSTED, data);
         break;
       case 'RUNNING':
         if (data) {
