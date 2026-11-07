@@ -13,16 +13,17 @@ A subscription carries no filters or conditions of its own. What an agent invest
 
 ## Signal sources [#sources]
 
-Signals reach an agent in four ways:
+Signals reach an agent in five ways:
 
 | Signal | Where it comes from | How the agent is chosen |
 |---|---|---|
 | Log pattern | A pipeline reducer detected a log pattern it has not seen before. | By subscription. |
 | Pipeline signal | A SQL output in a pipeline is routed to the agent signal and matched an event. | Named in the pipeline's agent signal sink. |
 | Webhook | A Grepr Agent integration received an event. | By subscription. |
+| Schedule | The agent's schedule fired. | The agent's own schedule. See [_](#schedule). |
 | Manual | You started the investigation. | You chose the agent. |
 
-The log pattern and webhook signals use subscriptions, which you manage on the agent's **Subscriptions** step. The pipeline signal names its agents in the pipeline itself instead, and is described in [_](#agent-signal-sink).
+The log pattern and webhook signals use subscriptions, which you manage on the agent's **Triggers** step. The pipeline signal names its agents in the pipeline itself instead, and is described in [_](#agent-signal-sink).
 
 ## Subscribe an agent to a pipeline [#pipeline-sources]
 
@@ -40,11 +41,11 @@ To learn more about the reducer, see [_](/transforms/reducer/configuration).
 
 ### Step 2: Subscribe the agent [#subscribe-pipeline]
 
-1. On the agent's page, go to the **Subscriptions** step.
+1. On the agent's page, go to the **Triggers** step.
 1. In the **Subscribe to a signal source** menu, select the pipeline under **Pipelines**.
 1. Click **Subscribe**.
 
-![The Subscriptions step of an agent, showing the signal source menu grouped by source kind above the table of current subscriptions.](/images/ai-agents/agent-subscriptions.png)
+![The signal source menu of an agent, grouped by source kind, above the table of its subscriptions.](/images/ai-agents/agent-subscriptions.png)
 
 Subscriptions apply as soon as you make them and are not held by the agent's save bar. A running pipeline picks up a new subscriber without restarting, so you can subscribe an agent to a live pipeline at any time.
 
@@ -61,7 +62,7 @@ So subscribing an agent to an established pipeline can produce a burst of invest
 
 New-pattern signals tell an agent about behavior that is new. When you want an agent to investigate behavior you can describe instead, route a SQL output in the pipeline to the agent signal. Every event that output emits becomes a signal, so you decide exactly what reaches the agent by writing the SQL.
 
-This mechanism does not use subscriptions. The pipeline names the agents directly, so an agent can receive these signals without appearing in its own **Subscriptions** step.
+This mechanism does not use subscriptions. The pipeline names the agents directly, so an agent can receive these signals without appearing in its own **Triggers** step.
 
 To configure it:
 
@@ -79,7 +80,7 @@ To learn more about SQL transforms, see [_](/transforms/sql-transform).
 
 A Grepr Agent integration turns events from another system into investigations. Every event it accepts starts an investigation on each subscribed agent, with no pattern detection or deduplication in between.
 
-1. On the agent's page, go to the **Subscriptions** step.
+1. On the agent's page, go to the **Triggers** step.
 1. In the **Subscribe to a signal source** menu, select the integration under **Grepr Agent**.
 1. Click **Subscribe**.
 
@@ -87,9 +88,32 @@ Subscribe more than one agent to an integration when you want different agents t
 
 To create an integration and send events to it, see [_](/integrations/grepr-agent-webhooks).
 
+## Run an agent on a schedule [#schedule]
+
+A schedule starts an investigation on a fixed cadence, with no triggering event. Use it for work the agent should do regularly, such as a summary every weekday morning of what changed overnight.
+
+1. On the agent's page, go to the **Triggers** step.
+1. Turn on the **Runs on a schedule** toggle.
+1. Enter a five-field cron expression, read as minute, hour, day of month, month and day of week. For example, `0 9 * * 1-5` runs at 09:00 on weekdays.
+1. Choose the timezone the cron is read in.
+1. Optionally, enter **Instructions**: the task for each scheduled run. Leave them empty to have each run follow the agent's own instructions.
+1. Click **Save Changes**.
+
+Each scheduled run starts with a message telling the agent it is a scheduled run with no triggering event, followed by your instructions if you entered any.
+
+A schedule follows these rules:
+
+- Fires are at least five minutes apart, and a cron can restrict the day of month or the day of week but not both.
+- The agent must have a token budget per window, so a schedule that runs unattended is bounded. See [_](/ai-agents/create-an-agent#window-limits).
+- A scheduled run has its own slot. It does not count against the agent's concurrency limit, and other investigations never hold it back.
+- A fire while the previous scheduled run is still queued or running is skipped. The investigations list shows one skipped run with the reason, however many fires were skipped.
+- A fire that cannot run is not replayed later. A paused agent's fires are dropped.
+
+To remove the schedule, turn off the **Runs on a schedule** toggle on the **Triggers** step and click **Save Changes**.
+
 ## Unsubscribe an agent [#unsubscribe]
 
-On the agent's **Subscriptions** step, remove the source from the table and confirm. The agent stops investigating that source's signals. Investigations already running finish.
+On the agent's **Triggers** step, remove the source from the table and confirm. The agent stops investigating that source's signals. Investigations already running finish.
 
 Detach an agent from its pipelines and from the Grepr Agent integrations that name it before you delete it, because Grepr refuses to delete an agent either one still targets. A pipeline that names the agent in its agent signal sink is not covered by that check, so clear the agent from the sink's **Agents** field yourself. Because a sink keeps at least one agent, name another in its place or remove the sink with the routes that feed it. See [_](/ai-agents/create-an-agent#delete).
 
@@ -106,8 +130,12 @@ New-pattern signals need less of this than the other sources, because a pattern 
 
 <HiddenFAQ faqs={[
   {
+    q: "Can a Grepr AI agent run on a schedule?",
+    a: "Yes. On the agent's Triggers step, turn on Runs on a schedule, enter a five-field cron expression and its timezone, and optionally the instructions for each run. Fires are at least five minutes apart, the agent needs a token budget per window, and a fire while the previous scheduled run is still in progress is skipped rather than queued."
+  },
+  {
     q: "How do I make a Grepr pipeline trigger AI agent investigations?",
-    a: "Select Emit new-pattern signals to AI agents in the pipeline reducer's advanced configuration, then subscribe the agent to that pipeline on the agent's Subscriptions step. Grepr refuses a subscription to a pipeline that has the option off, and a pipeline needs a log reducer or a pattern matcher to emit these signals at all."
+    a: "Select Emit new-pattern signals to AI agents in the pipeline reducer's advanced configuration, then subscribe the agent to that pipeline on the agent's Triggers step. Grepr refuses a subscription to a pipeline that has the option off, and a pipeline needs a log reducer or a pattern matcher to emit these signals at all."
   },
   {
     q: "Why didn't my agent investigate a log pattern again?",

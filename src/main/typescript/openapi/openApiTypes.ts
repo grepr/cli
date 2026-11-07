@@ -4886,6 +4886,7 @@ export interface components {
       memoryConfiguration?: components["schemas"]["AgentMemoryConfiguration"];
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       name: string;
+      schedule?: components["schemas"]["AgentSchedule"];
       serviceAccountId: string;
       systemPrompt: string;
       /** @description Whether the agent files and works on issues; null means true. */
@@ -4921,6 +4922,7 @@ export interface components {
       maxTurns?: number;
       memoryConfiguration?: components["schemas"]["AgentMemoryConfiguration"];
       modelConfiguration: components["schemas"]["ModelConfiguration"];
+      schedule?: components["schemas"]["AgentSchedule"];
       serviceAccountId: string;
       systemPrompt: string;
       /** @description Whether the agent files and works on issues; every agent reads them. */
@@ -4957,6 +4959,7 @@ export interface components {
       memoryConfiguration?: components["schemas"]["AgentMemoryConfiguration"];
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       name: string;
+      schedule?: components["schemas"]["AgentSchedule"];
       serviceAccountId: string;
       systemPrompt: string;
       /** Format: int32 */
@@ -5108,6 +5111,12 @@ export interface components {
       /** @description The agent's human-readable name. */
       name?: string;
       picksUp?: components["schemas"]["PickupFilters"];
+    };
+    /** @description An agent's schedule: a five-field cron read in an IANA timezone, and optionally the instruction the agent is given on each scheduled run; without one the run follows the agent's system prompt. Fires at least five minutes apart. */
+    AgentSchedule: {
+      cron: string;
+      instructions?: string;
+      timezone: string;
     };
     AgentSessionAnalytics: {
       analysisJobId: string;
@@ -17031,6 +17040,7 @@ export type SchemaAgentPipelineSubscription =
 export type SchemaAgentRecentHealth =
   components["schemas"]["AgentRecentHealth"];
 export type SchemaAgentRosterEntry = components["schemas"]["AgentRosterEntry"];
+export type SchemaAgentSchedule = components["schemas"]["AgentSchedule"];
 export type SchemaAgentSessionAnalytics =
   components["schemas"]["AgentSessionAnalytics"];
 export type SchemaAgentSessionAnalyticsDownload =
@@ -18553,7 +18563,7 @@ export interface operations {
           "application/json": components["schemas"]["AgentConfig"];
         };
       };
-      /** @description A referenced model or MCP integration does not exist */
+      /** @description A referenced model or MCP integration does not exist, or the schedule is invalid: not a five-field cron, fires under five minutes apart, an unknown timezone, or no agentMaxTokens to bound it */
       400: {
         headers: {
           [name: string]: unknown;
@@ -18773,7 +18783,7 @@ export interface operations {
           "application/json": components["schemas"]["AgentConfig"];
         };
       };
-      /** @description A referenced model or MCP integration does not exist */
+      /** @description A referenced model or MCP integration does not exist, or the schedule is invalid: not a five-field cron, fires under five minutes apart, an unknown timezone, or no agentMaxTokens to bound it */
       400: {
         headers: {
           [name: string]: unknown;
@@ -30658,6 +30668,7 @@ export enum PathsV1AgentsIdInvestigationsGetParametersQueryTriggers {
   WEBHOOK_SIGNAL = "WEBHOOK_SIGNAL",
   LOG_PATTERN_SIGNAL = "LOG_PATTERN_SIGNAL",
   PIPELINE_SIGNAL = "PIPELINE_SIGNAL",
+  SCHEDULE_SIGNAL = "SCHEDULE_SIGNAL",
 }
 export enum PathsV1FilesUploadPresignedUrlPostParametersQueryFormat {
   json = "json",
