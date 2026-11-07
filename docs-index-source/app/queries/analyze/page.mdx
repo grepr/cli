@@ -227,10 +227,40 @@ In the API, the window is the `window` object of the structured analytics query,
 { "kind": "SLIDING", "timestamp": "EVENT_TIMESTAMP", "size": "PT5M", "slide": "PT1M" }
 ```
 
+## <a id="nested-groups"></a> Break groups down as nested groups
+
+Nested groups show the top values of one field and, under each of them, the top values of the next field, with a subtotal for every group and a grand total. For example, you can see the 10 client IPs with the most requests, the 10 busiest URL paths of each of those IPs, and the 10 countries each of those paths was requested from.
+
+1. Under **GROUP BY**, add one to four fields, in the order you want them nested. The first field is the top level.
+1. Select **Nested**.
+1. In each field's **Top** field, enter how many groups that level keeps under each parent. Each level keeps 10 by default.
+1. Under **ORDER BY**, add the aggregate that ranks the groups, or leave it empty to rank them by the first aggregate under SELECT, largest first.
+1. Run the analysis.
+
+![Two nested levels, client IPs then URL paths, each keeping its top 10: the grand total, then each client IP's subtotal above its paths, under a header of about 1,153 client_ip values found.](/images/queries/analyze/analyze-nested-groups.png)
+
+Each group's aggregates are computed from all of that group's logs. A parent's count includes the logs of children outside its top N, and distinct counts, averages, and percentiles are computed per group rather than added up from the rows below it.
+
+ORDER BY ranks each group among the groups under the same parent, so only aggregates can rank. A group outside its level's top N is left out together with everything under it. Groups with the same rank value are ordered by their own value, and a group whose ranking aggregate has no value ranks after the others. HAVING and time windows aren't used with nested groups, and the row limit is set from the top N values, so the whole tree is always returned: 1 + N1 + N1 × N2, and so on for each level.
+
+The results start with the grand total, and each parent row comes before its children. A row shows only the value of its own level, and the levels it covers in full are blank. A value of `null` is a group of its own: the logs whose field has no value.
+
+The header shows how many different values the first field has across all the matching logs, including the values outside its top N. The count is approximate, marked with ≈, and has a standard error of 2.3%. For an exact count, add `COUNT(DISTINCT <field>)` under SELECT; its value in the grand total row is the exact number.
+
+To rank by another aggregate, click its column header. The analysis runs again, because the ranking decides which groups are kept.
+
+In the API, nested groups are the `nestedGroups` object of the structured analytics query, with one top N per `groupBy` entry. Each `groupBy` entry must name a SELECT alias, `orderBy` entries must name aggregate aliases, `limit` must be at least the size of the whole tree, and the query can't have a `window`. A `having` condition filters the groups of every level before they're ranked, and a group it removes takes its children with it. A rolled-up level's value is null, so a `having` condition on a grouping field that null doesn't satisfy, such as `path <> '/health'`, also removes the subtotals of the levels above that field. Each result row carries a `$grouping` column: the `GROUPING()` bitmask over the levels, with a bit set for each level the row totals and the first level as the highest bit. The request looks like this:
+
+```json
+{ "nestedGroups": { "limits": [10, 10, 10] } }
+```
+
 ## Read the results table
 
-Click a column header to sort the rows you already have. No second run happens and no scan budget
-is spent; Shift-click adds a second sort instead of replacing the first.
+For an analysis without nested groups, click a column header to sort the rows you already have. No
+second run happens and no scan budget is spent; Shift-click adds a second sort instead of replacing the
+first. With nested groups, clicking a measure's header ranks the groups by it, which runs the analysis
+again; grouping columns don't sort.
 
 When an analysis comes back at its row limit, the rows you have are only the top of the ranking, so
 sorting them on the page can put the wrong rows first. **Sort on the server** puts the sort into
@@ -242,7 +272,7 @@ ORDER BY and runs the analysis again, so the engine ranks every matching row.
 
 The whole analysis lives in the page URL, so copying the link from the address bar is enough to share
 it. The link carries the dataset, the time range, the search query, every SELECT expression and its
-alias, every GROUP BY expression, the HAVING condition, the ORDER BY, the time window, the row limit,
+alias, every GROUP BY expression, nested groups and their top N values, the HAVING condition, the ORDER BY, the time window, the row limit,
 the scan budget, and the way you arranged the results table — its column order, column widths and
 sort.
 
@@ -259,9 +289,10 @@ Each result row is a JSON object keyed by column name, so a column holds whateve
 - An analysis reads one dataset at a time. Joins across datasets are not supported.
 - Sorting by an attribute that you have not cast sorts it by its stored text, so `100` sorts before `99`. Cast the attribute to sort numerically, as in `CAST(@http.status_code AS BIGINT)`.
 - A result alias cannot be a reserved SQL word, and a reference to one has to match its lowercase spelling exactly.
-- A sort you set from the result headers sorts the rows already on the page. When the analysis returned its row limit, use **Sort on the server** to rank every matching row instead.
+- Without nested groups, a sort you set from the result headers sorts the rows already on the page. When the analysis returned its row limit, use **Sort on the server** to rank every matching row instead.
 - An analysis too long to fit in the address bar cannot be shared as a link.
 - An analysis can compute at most 128 values, group by at most 64 expressions, and sort by at most 64 expressions. Each expression can be at most 4,096 characters long.
+- Nested groups take at most four levels, and the whole tree has to fit within the largest row limit your deployment allows. A nested analysis over a field with a large number of distinct values can need more memory than the query engine allows; narrow the time range to run it.
 - A time window's size and slide are whole milliseconds, and a sliding window covers at most 100 slides. `window_start` and `window_end` cannot be used as result aliases while a window is set.
 - Row, array, and map values are converted to nested JSON automatically. A value whose type has no JSON representation at all, or a constructed row with two fields of the same name, cannot be returned.
 
@@ -295,7 +326,11 @@ Each result row is a JSON object keyed by column name, so a column holds whateve
     a: "Use SEVERITY_TEXT(severity), which names the OpenTelemetry bucket: TRACE, DEBUG, INFO, WARN, ERROR or FATAL. It takes a whole number, so cast an attribute before passing it."
   },
   {
+    q: "How do I show the top values of a field and the top values of another field under each one?",
+    a: "In Analyze mode, add both fields under GROUP BY, select Nested, and set each field's Top value. The results show a grand total, each top value of the first field with its subtotal, and its top values of the second field under it."
+  },
+  {
     q: "How do I sort an analysis by a result column?",
-    a: "Click the column header in the results table. The rows on the page reorder immediately, without a second run. If the analysis returned its row limit, use Sort on the server, which puts the sort into ORDER BY and runs the analysis again."
+    a: "Click the column header in the results table. Without nested groups, the rows on the page reorder immediately, without a second run, and if the analysis returned its row limit, Sort on the server puts the sort into ORDER BY and runs the analysis again. With nested groups, clicking a measure's header runs the analysis again, ranked by that measure."
   },
 ]} />
