@@ -179,6 +179,15 @@ export class StreamingJobExecutor {
       this.completeJob('QUERY_TOO_LARGE');
     });
 
+    this.streamParser.on(STREAM_EVENTS.RESOURCES_EXHAUSTED, (data) => {
+      this.stats.errors++;
+      const errorMsg =
+        data?.message ||
+        'The query needed more memory than the query engine allows. Narrow the time range and try again.';
+      this.stats.errorMessages.push(errorMsg);
+      this.completeJob('RESOURCES_EXHAUSTED');
+    });
+
     this.streamParser.on(STREAM_EVENTS.PARSE_ERROR, (error: Error, jsonLine?: string) => {
       this.stats.errors++;
       const errorMsg = `JSON parsing error: ${error.message}`;

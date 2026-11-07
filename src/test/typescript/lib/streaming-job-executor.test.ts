@@ -131,6 +131,26 @@ describe('StreamingJobExecutor', () => {
     }
   });
 
+  it('test_resourcesExhausted_shouldEndTheJobWithTheServerMessage', () => {
+    const options: FormattableCommandOptions = {
+      format: 'compact', orgName: 'acme', apiBaseUrl: 'https://example.test/api', authBaseUrl: '', authMethod: 'none', clientId: '', authCache: false, browser: false
+    };
+    const executor = new StreamingJobExecutor();
+    const completeJobSpy = vi.spyOn(executor as unknown as { completeJob: (state: string) => void }, 'completeJob')
+      .mockImplementation(() => undefined);
+    const parser = new NDJsonStreamParser();
+    executor['setupFormatter'](options);
+    executor['heartbeatManager'] = new HeartbeatManager(executor.createApiClient(options));
+    executor['streamParser'] = parser;
+    executor['setupEventHandlers'](options);
+    const message = 'The query needed more memory than the query engine allows. Narrow the time range and try again.';
+
+    parser.processChunk(Buffer.from(`${JSON.stringify({ jobState: 'RESOURCES_EXHAUSTED', data: { message } })}\r\n`));
+
+    expect(completeJobSpy).toHaveBeenCalledWith('RESOURCES_EXHAUSTED');
+    expect(executor['stats'].errorMessages).toEqual([message]);
+  });
+
   it.each([
     ['compact', { stdout: 0, stderr: 1 }],
     ['pretty', { stdout: 0, stderr: 1 }],

@@ -175,6 +175,7 @@ export const STREAM_EVENTS = {
   TIMED_OUT: 'timed_out',
   SCANNED_MAX: 'scanned_max',
   QUERY_TOO_LARGE: 'query_too_large',
+  RESOURCES_EXHAUSTED: 'resources_exhausted',
   PARSE_ERROR: 'parse_error'
 };
 

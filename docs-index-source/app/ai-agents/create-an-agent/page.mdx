@@ -49,7 +49,7 @@ The step ends with the **Memory and issues** section, which is collapsed. Every 
 
 ### Step 4: Subscribe to signal sources [#step4-subscriptions]
 
-The **Subscriptions** step is where you connect the agent to the pipelines and Grepr Agent integrations whose signals it investigates. You can leave it empty and subscribe later from the agent's page. To learn more, see [_](/ai-agents/subscriptions).
+The **Triggers** step is where you connect the agent to the pipelines and Grepr Agent integrations whose signals it investigates. You can leave it empty and subscribe later from the agent's page. To learn more, see [_](/ai-agents/subscriptions).
 
 ### Step 5: Review and create [#step5-review]
 
@@ -137,7 +137,7 @@ The change approval mode is the exception. Grepr checks it when the agent submit
 
 To delete an agent, on its page, open the three-dot menu and select **Delete agent**. You can also delete it from the three-dot menu on its card on the **Agents** page.
 
-Grepr refuses to delete an agent while a pipeline is subscribed to it or a Grepr Agent integration names it, so detach it from both on its **Subscriptions** step first. A pipeline that names the agent directly in its agent signal sink is not covered by that check, so open the sink in each such pipeline and clear the agent from the **Agents** field yourself. A sink keeps at least one agent, so where the agent you are deleting is the only one named, either select another agent in its place or remove the sink along with the routes that feed it. A signal that arrives for a deleted agent is discarded. Investigations already running finish, and no new ones start.
+Grepr refuses to delete an agent while a pipeline is subscribed to it or a Grepr Agent integration names it, so detach it from both on its **Triggers** step first. A pipeline that names the agent directly in its agent signal sink is not covered by that check, so open the sink in each such pipeline and clear the agent from the **Agents** field yourself. A sink keeps at least one agent, so where the agent you are deleting is the only one named, either select another agent in its place or remove the sink along with the routes that feed it. A signal that arrives for a deleted agent is discarded. Investigations already running finish, and no new ones start.
 
 Deleting an agent does not delete its investigations or the memories it recorded, which stay readable and searchable by your other agents.
 
@@ -160,6 +160,6 @@ Deleting an agent does not delete its investigations or the memories it recorded
   },
   {
     q: "Why can't I delete my Grepr AI agent?",
-    a: "Grepr refuses to delete an agent while a pipeline is subscribed to it or a Grepr Agent integration names it. Detach it from both on its Subscriptions step, then delete it. Investigations already running finish, and its recorded memories remain searchable by your other agents."
+    a: "Grepr refuses to delete an agent while a pipeline is subscribed to it or a Grepr Agent integration names it. Detach it from both on its Triggers step, then delete it. Investigations already running finish, and its recorded memories remain searchable by your other agents."
   }
 ]} />

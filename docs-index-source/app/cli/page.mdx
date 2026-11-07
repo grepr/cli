@@ -720,6 +720,7 @@ When you run a `query` command or a `job:create` command in a terminal, the CLI 
 | `[TIMED_OUT]`  | The job exceeded the time limit.      |
 | `[SCANNED_MAX]`| The job exceeded the data scan limit. |
 | `[QUERY_TOO_LARGE]`| The query is too large for the query engine to run. |
+| `[RESOURCES_EXHAUSTED]`| The query needed more memory than the query engine allows. Narrow the time range and run it again. |
 
 ```console copy
 # Create a job from a definition contained in the input file
