@@ -6,6 +6,22 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in November 2026.
 
+## November 9, 2026
+
+{/* ENGT-6690 */}
+### See the top values of each group with nested groups in Analyze
+
+You can now break an Analyze query down as nested groups: the top values of one field and, under each of them, the top values of the next field, up to four levels deep. Each group shows its own subtotal, the results start with a grand total, and the header shows about how many values the first field has in total. See [_](/queries/analyze).
+
+{/* ENGT-6756 */}
+### Run agents on a schedule
+
+You can now give an AI agent a schedule, with a cron expression, a time zone, and optional instructions for what each scheduled run should do. At each scheduled time, the agent starts an investigation without waiting for a signal, and its scheduled runs appear in the agent's investigations list. See [_](/ai-agents/subscriptions#schedule).
+
+### Other improvements and fixes
+
+- {/* ENGT-6690 */} When a search or Analyze query runs out of resources, the error now tells you to narrow the time range and try again.
+
 ## November 6, 2026
 
 {/* ENGT-6651, ENGT-6741 */}
