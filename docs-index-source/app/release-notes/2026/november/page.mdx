@@ -1,0 +1,48 @@
+---
+description: Release notes for new features, improvements, and bug fixes to the Grepr platform released in November 2026.
+---
+
+# Release notes for November 2026
+
+Grepr released these feature updates, improvements, and bug fixes in November 2026.
+
+## November 9, 2026
+
+{/* ENGT-6690 */}
+### See the top values of each group with nested groups in Analyze
+
+You can now break an Analyze query down as nested groups: the top values of one field and, under each of them, the top values of the next field, up to four levels deep. Each group shows its own subtotal, the results start with a grand total, and the header shows about how many values the first field has in total. See [_](/queries/analyze).
+
+{/* ENGT-6756 */}
+### Run agents on a schedule
+
+You can now give an AI agent a schedule, with a cron expression, a time zone, and optional instructions for what each scheduled run should do. At each scheduled time, the agent starts an investigation without waiting for a signal, and its scheduled runs appear in the agent's investigations list. See [_](/ai-agents/subscriptions#schedule).
+
+### Other improvements and fixes
+
+- {/* ENGT-6690 */} When a search or Analyze query runs out of resources, the error now tells you to narrow the time range and try again.
+
+## November 6, 2026
+
+{/* ENGT-6651, ENGT-6741 */}
+### Add location data to logs from IP addresses
+
+You can now add a **GeoIP lookup** parsing step to a log pipeline. The step reads an IP address from an attribute you choose and adds the continent, country, state, city, coordinates, and time zone for that address to the event. Events without a known address pass through unchanged. See [_](/transforms/geoip).
+
+{/* ENGT-6686 */}
+### An optimized Grok parser
+
+The new **Multi-grok parser** step parses logs with several sets of Grok rules in one step, and each set parses the logs that match its own filter.
+
+### Other improvements and fixes
+
+- {/* ENGT-6593 */} The `list_pipelines` tool of the Grepr MCP server leaves out deleted pipelines and batch jobs that ended more than six hours ago unless you set `all`, and returns pipeline definitions only through `get_pipeline`.
+- {/* ENGT-5999 */} The `update_job` tool of the Grepr MCP server takes each sample log event as a JSON string, and the `test_grok` tool takes its rules, helper rules, and log sample as separate arguments, so agents on Gemini models can call both tools.
+- {/* ENGT-6403 */} AI agents have an optional code mode that reduces how much of the agent's context its tools take up, and an agent's shell commands can run for up to 5 minutes.
+- {/* ENGT-6572 */} AI agents have a new `reduce-pattern-churn` skill that fixes pattern churn, where one kind of log raises many new-pattern signals because an ID or number in it changes, by proposing signal masks and signal drop rules. See [_](/ai-agents/capabilities).
+- {/* ENGT-6358 */} Fixed an issue where, in rare circumstances, a pipeline could stop scaling up to keep up with more traffic.
+- {/* ENGT-6335 */} Fixed an issue where, in rare circumstances, a pipeline update that failed its last health check could not roll back to the previous version.
+- {/* ENGT-6200 */} Fixed an issue where unsaved edits on a pipeline's page could be lost when the pipeline's status changed.
+- {/* ENGT-6593 */} Fixed an issue where `grepr job:list` left out pipelines that were rolling back, verifying, or updating.
+- {/* ENGT-6659 */} Fixed several issues in the issue board, including the page moving when a column reached its end and a card's tooltip stopping a column from scrolling.
+- {/* ENGT-6653, ENGT-6655, ENGT-6656 */} Security fixes.
