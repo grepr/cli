@@ -19,12 +19,6 @@ const releaseNotesNav = {
       title: "2026",
       children: [
         {
-          name: "november",
-          route: "/release-notes/2026/november",
-          type: "page",
-          title: "November",
-        },
-        {
           name: "october",
           route: "/release-notes/2026/october",
           type: "page",
