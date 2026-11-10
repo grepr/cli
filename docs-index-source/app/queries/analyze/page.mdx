@@ -295,6 +295,7 @@ Each result row is a JSON object keyed by column name, so a column holds whateve
 - Nested groups take at most four levels, and the whole tree has to fit within the largest row limit your deployment allows. A nested analysis over a field with a large number of distinct values can need more memory than the query engine allows; narrow the time range to run it.
 - A time window's size and slide are whole milliseconds, and a sliding window covers at most 100 slides. `window_start` and `window_end` cannot be used as result aliases while a window is set.
 - Row, array, and map values are converted to nested JSON automatically. A value whose type has no JSON representation at all, or a constructed row with two fields of the same name, cannot be returned.
+- An analysis runs on Athena unless your organization uses a Trino query engine. On Athena, an array of timestamp, time, or binary values returns each element as text in Athena's format, such as `1970-01-01 00:00:01.900000 UTC`, rather than as an ISO 8601 string. Keep such an array one level deep: inside another array, as in `ARRAY[ARRAY[event_timestamp, received_timestamp]]`, its elements come back as fragments of text. A Trino query engine returns both whole.
 
 <HiddenFAQ faqs={[
   {
