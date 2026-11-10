@@ -181,7 +181,7 @@ export type InvestigationEvent =
 
 function endReason(metadata: SchemaInvestigationTranscript): 'paused' | 'terminal' | undefined {
   if (metadata.status === Status.STOPPED) return metadata.endedAt ? 'terminal' : 'paused';
-  if (metadata.status && [Status.COMPLETED, Status.FAILED, Status.CANCELLED, Status.DISCARDED].includes(metadata.status)) {
+  if (metadata.status && [Status.COMPLETED, Status.FAILED, Status.CANCELLED, Status.DISCARDED, Status.SKIPPED].includes(metadata.status)) {
     return 'terminal';
   }
   return undefined;

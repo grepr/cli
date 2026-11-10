@@ -64,6 +64,7 @@ describe('Investigation transcript traversal', () => {
     [Status.STOPPED, undefined, 'paused'],
     [Status.STOPPED, '2026-09-09T00:00:00Z', 'terminal'],
     [Status.FAILED, '2026-09-09T00:00:00Z', 'terminal'],
+    [Status.SKIPPED, '2026-09-09T00:00:00Z', 'terminal'],
   ])('follows %s with endedAt %s to %s after draining final turns', async (status, endedAt, reason) => {
     const events = [];
     const cursors: number[] = [];
