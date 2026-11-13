@@ -232,7 +232,7 @@ When you use the `keyvalue` transformer:
     },
     {
       q: "How do I use the keyvalue transformer with custom separators?",
-      a: "Specify the separator as the first parameter: keyvalue(':') uses colons instead of equals signs. You can also add a character allowlist as the second parameter: keyvalue('=', '/:@') allows slashes, colons, and at-signs in values. Optional parameters let you customize quote pairs and delimiters between pairs."
+      a: "Specify the separator as the first parameter: keyvalue(\":\") uses colons instead of equals signs. You can also add a character allowlist as the second parameter: keyvalue(\"=\", \"/:@\") allows slashes, colons, and at-signs in values. Optional parameters let you customize quote pairs and delimiters between pairs."
     },
     {
       q: "What does the useragent transformer extract?",
@@ -248,7 +248,7 @@ When you use the `keyvalue` transformer:
     },
     {
       q: "Can I combine multiple transformers on a single matcher?",
-      a: "Yes, you can chain transformers together. For example, %{data:value:lowercase:json} would first convert text to lowercase, then parse it as JSON. However, practical chaining is limited - most transformers expect specific input types. Check documentation to ensure transformers are compatible in sequence."
+      a: "No. Each matcher takes one transformer, as in %{data:value:json}. A second transformer is a syntax error."
     }
   ]}
 />

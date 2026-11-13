@@ -140,6 +140,8 @@ Matches a custom regular expression pattern.
 # Output: {"ticket_id": "ABC-1234"}
 ```
 
+To use a double quote inside the pattern, escape it with a backslash, as in `regex("[^\"]*")`.
+
 ## String pattern matchers [#string-matchers]
 
 These matchers extract quoted strings:
@@ -362,7 +364,7 @@ Matches a UUID (Universally Unique Identifier).
     },
     {
       q: "When should I use the regex matcher?",
-      a: "Use the regex matcher when you need to match a custom regular expression pattern that doesn't fit standard matchers. Provide the regex pattern as a parameter, like regex('[A-Z]{3}-\\d{4}') for ticket IDs. This gives you full regex flexibility for complex patterns."
+      a: "Use the regex matcher when you need to match a custom regular expression pattern that doesn't fit standard matchers. Provide the regex pattern as a parameter, like regex(\"[A-Z]{3}-\\d{4}\") for ticket IDs. This gives you full regex flexibility for complex patterns."
     },
     {
       q: "What string matchers are available for quoted text?",

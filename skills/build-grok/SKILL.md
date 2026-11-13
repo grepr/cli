@@ -82,7 +82,7 @@ For all the below examples, here's the original job we'll modify:
         "name": "grok_parser_0",
         // Applies this rule only to logs from the "web-api" service
         "grokParsingRules": [
-          "AccessLogMetrics %{ipOrHost:client_ip} %{notSpace} %{notSpace} \\[%{HTTPDATE}\\] \"%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}\" %{integer:status_code} %{integer:response_bytes} \"%{regex(\"[^\"]*\"):referrer}\" \"%{regex(\"[^\"]*\"):user_agent}\" %{integer:response_time_ms}"
+          "AccessLogMetrics %{ipOrHost:client_ip} %{notSpace} %{notSpace} \\[%{HTTPDATE}\\] \"%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}\" %{integer:status_code} %{integer:response_bytes} \"%{regex(\"[^\\\"]*\"):referrer}\" \"%{regex(\"[^\\\"]*\"):user_agent}\" %{integer:response_time_ms}"
         ],
         "predicate": {
           "type": "datadog-query",
@@ -153,7 +153,7 @@ Updated job:
         "type": "grok-parser",
         "name": "grok_parser_0",
         "grokParsingRules": [
-          "AccessLogMetrics %{ipOrHost:client_ip} %{notSpace} %{notSpace} \\[%{HTTPDATE}\\] \"%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}\" %{integer:status_code} %{integer:response_bytes} \"%{regex(\"[^\"]*\"):referrer}\" \"%{regex(\"[^\"]*\"):user_agent}\" %{integer:response_time_ms}",
+          "AccessLogMetrics %{ipOrHost:client_ip} %{notSpace} %{notSpace} \\[%{HTTPDATE}\\] \"%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}\" %{integer:status_code} %{integer:response_bytes} \"%{regex(\"[^\\\"]*\"):referrer}\" \"%{regex(\"[^\\\"]*\"):user_agent}\" %{integer:response_time_ms}",
           // New rule added, note we escaped the double quotes in the pattern
           "UpstreamLogRule %{ipOrHost:client_ip} - %{notSpace:upstream_user} \\[%{HTTPDATE}\\] \"%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}\" %{integer:status_code} %{integer:response_bytes} %{notSpace:cache_status} %{number:upstream_response_time}"
         ],
@@ -228,7 +228,7 @@ Updated job:
         "type": "grok-parser",
         "name": "grok_parser_0",
         "grokParsingRules": [
-          "AccessLogMetrics %{ipOrHost:client_ip} %{notSpace} %{notSpace} \\[%{HTTPDATE}\\] \"%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}\" %{integer:status_code} %{integer:response_bytes} \"%{regex(\"[^\"]*\"):referrer}\" \"%{regex(\"[^\"]*\"):user_agent}\" %{integer:response_time_ms}"
+          "AccessLogMetrics %{ipOrHost:client_ip} %{notSpace} %{notSpace} \\[%{HTTPDATE}\\] \"%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}\" %{integer:status_code} %{integer:response_bytes} \"%{regex(\"[^\\\"]*\"):referrer}\" \"%{regex(\"[^\\\"]*\"):user_agent}\" %{integer:response_time_ms}"
         ],
         "predicate": {
           "type": "datadog-query",
