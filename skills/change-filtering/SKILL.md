@@ -16,8 +16,7 @@ Resolve the org config once and reuse it on every command — see the `grepr:cli
 
 Run `grepr:describe-pipeline <JOB_ID>` and note which of the three phase slots
 already holds a filter, its predicate, and the raw dataset ID (needed for
-drop-volume estimation). For backend detection and which ops each backend
-supports, see `grepr:describe-pipeline`.
+drop-volume estimation).
 
 ## Step 2 — Pick the phase
 
@@ -46,11 +45,6 @@ Pick by what the predicate references:
 | Only raw log fields (a top-level tag, raw `message`) | `pre-parser` — cheapest drop |
 | A grok-extracted or parsed attribute (`@route`, `@http_status_code`) | Any post-parser phase. `pre-parser` won't have it yet → silent no-op. |
 | "Drop noise everywhere" composable from raw fields | `pre-parser`, else `pre-warehouse` |
-
-`set-filter`/`clear-filter` accept `pre-parser`, `pre-warehouse`, and
-`pre-exceptions` on both backends. Raw job-graph support is also
-shape-dependent: canonical UI-shaped graphs support these edits, while non-UI raw
-DAGs reject them with `unsupported raw job graph shape`.
 
 ## Step 2a — Predicate syntax: tags vs attributes (high-failure)
 
@@ -94,7 +88,7 @@ user. See `grepr:query` for query mechanics.
 
 ## Step 4 — Build the patch
 
-`set-filter` takes the same patch regardless of backend:
+The `set-filter` patch is
 `{ "op": "set-filter", "phase": ..., "filter": {...} }`. It installs or updates
 the phase's filter; fields you omit (`inverted`, `maxLateEventTimestampDelta`)
 carry over from an existing filter, so a predicate-only edit won't flip
@@ -104,10 +98,9 @@ accepts any `EventPredicate`, not only `datadog-query`. Re-running `set-filter`
 with a new predicate is the way to change an existing filter.
 
 `clear-filter` (`{ "op": "clear-filter", "phase": ... }`) removes the phase's
-filter. On a template-backed job, if the phase holds a complex (branching)
-transform chain rather than a simple filter, it errors and points you to
-`set-transform-chain` (a template-only op for hand-authoring chains); a simple
-filter clears cleanly.
+filter. If the phase holds a complex (branching) transform chain rather than a
+simple filter, it errors and points you to `set-transform-chain` (the op for
+hand-authored chains). A simple filter clears cleanly.
 
 Accepted phases: `pre-parser`, `pre-warehouse`, `pre-exceptions`. See
 examples.md for copy-paste patches, and `grepr:operations-reference` for the
@@ -133,8 +126,8 @@ than reciting the generic phase description.
 
 ## Resources
 
-- `examples.md` — ✅ template `set-filter`, ✅ raw-graph `set-filter`/`clear-filter`, ❌ tag-vs-`@attribute` no-op.
-- `grepr:describe-pipeline` — backend detection and per-backend op support.
+- `examples.md` has ✅ `set-filter`, ✅ `set-filter` with `clear-filter`, and ❌ tag-vs-`@attribute` no-op examples.
+- `grepr:describe-pipeline` has the pipeline summary and the template check.
 - `grepr:test-pipeline-change` — plan → draft → approval → apply.
 - `grepr:operations-reference` — full op catalog and exact field names.
 - `grepr:cli` — org config (`--conf`) resolution.

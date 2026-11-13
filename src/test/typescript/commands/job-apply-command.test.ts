@@ -10,6 +10,7 @@ import {
   SchemaUpdateJob,
 } from '@/openapi/openApiTypes.js';
 import { ApiError, GreprApiClient } from '@/lib/grepr-api-client.js';
+import { makeRawJobGraphJob, makeTemplateUpdate } from '../lib/test-fixtures.js';
 
 const fakeJob = (version: number): SchemaReadJob => ({
   id: 'job_1',
@@ -42,13 +43,12 @@ async function writePlan(file: string, baseVersion: number, fromVersion = baseVe
   await fs.writeJson(file, {
     schemaVersion: 2,
     jobId: 'job_1',
-    backend: 'template',
     baseVersion,
     fetchedAt: '2026-01-01T00:00:00Z',
     classification: 'transform',
     patch: { operations: [{ op: 'add-message-attribute', attributePath: 'foo' }] },
     current: fakeJob(baseVersion),
-    proposed: fakeUpdate(fromVersion),
+    proposed: makeTemplateUpdate({}, fromVersion),
     diff: [{ kind: 'add', path: 'x', summary: '+ x' }],
   });
 }
@@ -92,6 +92,26 @@ describe('JobApplyCommand', () => {
     await program.parseAsync(['node', 'test', 'job:apply', planFile]);
 
     expect(mockApi.updateJob).toHaveBeenCalledTimes(1);
+  });
+
+  it('test_jobApply_rawJobGraphPlan_exitsWithTemplateOnlyMessageAndNeverUpdates', async () => {
+    const planFile = path.join(tempDir, 'plan.json');
+    await writePlan(planFile, 5);
+    const plan = await fs.readJson(planFile);
+    plan.proposed.jobGraph = makeRawJobGraphJob().jobGraph;
+    await fs.writeJson(planFile, plan);
+    const mockApi = {
+      getJob: vi.fn().mockResolvedValue(fakeJob(5)),
+      updateJob: vi.fn(),
+    };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobApplyCommand().addToProgram(program, async opts => opts as never);
+    await expect(program.parseAsync(['node', 'test', 'job:apply', planFile])).rejects.toThrow();
+
+    expect(mockApi.updateJob).not.toHaveBeenCalled();
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error applying pipeline plan:', 'This pipeline uses a raw job graph (no template-operation vertex). job:plan, job:draft and job:apply support only template-backed pipelines. To change a raw job graph, edit it and run job:update.');
   });
 
   it('test_jobApply_driftWithoutForce_refusesAndExits', async () => {

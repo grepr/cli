@@ -21,7 +21,7 @@ import {
   SqlOutputStatementType,
   SumoLogSinkType,
   TemplateOperationType,
-  TraceReducerType,
+  type SchemaOperation,
   type SchemaReadDataWarehouse,
   type SchemaReadJob,
   type SchemaSqlOperation,
@@ -97,6 +97,24 @@ function completeSpanSql(name = 'post_reducer_sql'): SchemaSqlOperation {
       sqlQuery: 'SELECT * FROM traces'
     }]
   };
+}
+
+function logTemplateSourceJob(sinks: SchemaOperation[]): SchemaReadJob {
+  return {
+    id: 'job_1',
+    name: 'pipeline',
+    teamIds: ['team_pipeline'],
+    jobGraph: {
+      vertices: [{
+        type: TemplateOperationType.template_operation,
+        name: 'log_reducer_template',
+        templateId: LOG_REDUCER_TEMPLATE.id,
+        templateVersion: LOG_REDUCER_TEMPLATE.version,
+        templateInputs: { input: { datasetId: 'ds_raw', sinks: sinks.map(sink => ({ sink })) } }
+      }],
+      edges: []
+    }
+  } as SchemaReadJob;
 }
 
 function traceTemplateSourceJob(sqlOperation?: SchemaSqlOperation): SchemaReadJob {
@@ -639,39 +657,6 @@ describe('resolveBackfillInputs', () => {
     expect(client.listDatasets).toHaveBeenCalledTimes(1);
   });
 
-  it('test_resolveBackfillInputs_infersDatasetAndSinksFromRawGraph', async () => {
-    const sourceJob = {
-      id: 'job_1',
-      name: 'pipeline',
-      teamIds: ['team_template_source'],
-      jobGraph: {
-        vertices: [
-          { type: 'logs-iceberg-table-sink', name: 'raw_data_sink', datasetId: 'ds_raw' },
-          { type: DatadogLogSinkType.datadog_log_sink, name: 'dd', integrationId: 'dd_1' },
-          { type: SplunkLogSinkType.splunk_log_sink, name: 'splunk', integrationId: 'splunk_1' }
-        ],
-        edges: []
-      }
-    } as SchemaReadJob;
-    const client = apiClient({
-      getDataset: vi.fn(async id => ({ id, name: id, teamIds: ['team_pipeline'] } as never)),
-      getJob: vi.fn(async () => sourceJob),
-      getIntegrationById: vi.fn(async id => id === 'dd_1' ? datadog(id) : splunk(id))
-    });
-
-    const resolved = await resolveBackfillInputs({
-      jobId: 'job_1',
-      ...recentBackfillRange()
-    }, client);
-
-    expect(resolved.datasetId).toBe('ds_raw');
-    expect(resolved.teamIds).toEqual(['team_pipeline']);
-    expect(resolved.sinks.map(sink => sink.id)).toEqual(['dd_1', 'splunk_1']);
-    expect(client.getDataset).toHaveBeenCalledWith('ds_raw');
-    expect(client.listDatasets).not.toHaveBeenCalled();
-    expect(client.getJob).toHaveBeenCalledWith('job_1');
-  });
-
   it('test_resolveBackfillInputs_templateUsesItsDatasetId', async () => {
     const sourceJob = {
       id: 'job_1',
@@ -753,21 +738,11 @@ describe('resolveBackfillInputs', () => {
   });
 
   it('test_resolveBackfillInputs_dedupesRepeatedSinkIntegrationInPipeline', async () => {
-    const sourceJob = {
-      id: 'job_1',
-      name: 'pipeline',
-      teamIds: ['team_pipeline'],
-      jobGraph: {
-        vertices: [
-          { type: 'logs-iceberg-table-sink', name: 'raw_data_sink', datasetId: 'ds_raw' },
-          { type: DatadogLogSinkType.datadog_log_sink, name: 'dd_a', integrationId: 'dd_1' },
-          { type: DatadogLogSinkType.datadog_log_sink, name: 'dd_b', integrationId: 'dd_1' }
-        ],
-        edges: []
-      }
-    } as SchemaReadJob;
+    const sourceJob = logTemplateSourceJob([
+      { type: DatadogLogSinkType.datadog_log_sink, name: 'dd_a', integrationId: 'dd_1' },
+      { type: DatadogLogSinkType.datadog_log_sink, name: 'dd_b', integrationId: 'dd_1' }
+    ]);
     const client = apiClient({
-      getDataset: vi.fn(async id => ({ id, name: id } as never)),
       getJob: vi.fn(async () => sourceJob),
       getIntegrationById: vi.fn(async id => datadog(id))
     });
@@ -777,55 +752,30 @@ describe('resolveBackfillInputs', () => {
   });
 
   it('test_resolveBackfillInputs_rejectsStoreOnlyPipeline', async () => {
-    const sourceJob = {
-      id: 'job_1',
-      name: 'pipeline',
-      teamIds: ['team_pipeline'],
-      jobGraph: {
-        vertices: [
-          { type: 'logs-iceberg-table-sink', name: 'raw_data_sink', datasetId: 'ds_raw' }
-        ],
-        edges: []
-      }
-    } as SchemaReadJob;
     const client = apiClient({
-      getDataset: vi.fn(async id => ({ id, name: id } as never)),
-      getJob: vi.fn(async () => sourceJob)
+      getJob: vi.fn(async () => logTemplateSourceJob([]))
     });
 
     await expect(resolveBackfillInputs({ jobId: 'job_1', ...recentBackfillRange() }, client))
       .rejects.toThrow(/No supported logs sinks/);
   });
 
-  it('test_resolveBackfillInputs_rejectsMissingOrDuplicateRawSink', async () => {
-    const jobWithRawSinks = (count: number) => ({
+  it('test_resolveBackfillInputs_rawJobGraph_rejectsAndNamesTheDatasetFlags', async () => {
+    const sourceJob = {
       id: 'job_1',
       name: 'pipeline',
-      teamIds: ['team_pipeline'],
       jobGraph: {
         vertices: [
-          ...Array.from({ length: count }, (_, index) => ({
-            type: 'logs-iceberg-table-sink',
-            name: `raw_data_sink_${index}`,
-            datasetId: 'ds_raw'
-          })),
+          { type: 'logs-iceberg-table-sink', name: 'raw_data_sink', datasetId: 'ds_raw' },
           { type: DatadogLogSinkType.datadog_log_sink, name: 'dd', integrationId: 'dd_1' }
         ],
         edges: []
       }
-    } as SchemaReadJob);
+    } as SchemaReadJob;
+    const client = apiClient({ getJob: vi.fn(async () => sourceJob) });
 
-    for (const count of [0, 2]) {
-      const client = apiClient({
-        getJob: vi.fn(async () => jobWithRawSinks(count)),
-        getIntegrationById: vi.fn(async id => datadog(id))
-      });
-      const expected = count === 0
-        ? /no supported raw logs or spans dataset/
-        : /multiple raw logs datasets/;
-      await expect(resolveBackfillInputs({ jobId: 'job_1', ...recentBackfillRange() }, client))
-        .rejects.toThrow(expected);
-    }
+    await expect(resolveBackfillInputs({ jobId: 'job_1', ...recentBackfillRange() }, client))
+      .rejects.toThrow(/supports only template-backed pipelines.*--dataset-id or --dataset-name.*--data-type spans/);
   });
 
   it('test_resolveBackfillInputs_infersSpansFromTraceTemplate', async () => {
@@ -894,98 +844,12 @@ describe('resolveBackfillInputs', () => {
     }, client)).rejects.toThrow(/exactly one COMPLETE_SPAN input/);
   });
 
-  it('test_resolveBackfillInputs_multipleSourceSqlBranches_onlyRejectsPreservation', async () => {
-    const firstSql = completeSpanSql('first_sql');
-    const secondSql = completeSpanSql('second_sql');
-    const sourceJob = {
-      id: 'job_1',
-      name: 'pipeline',
-      jobGraph: {
-        vertices: [
-          {
-            type: TraceReducerType.trace_reducer,
-            name: 'trace_reducer',
-            datasetId: 'ds_spans'
-          },
-          firstSql,
-          secondSql,
-          {
-            type: DatadogTraceSinkType.datadog_trace_sink,
-            name: 'dd',
-            integrationId: 'dd_1'
-          }
-        ],
-        edges: [
-          'trace_reducer -> first_sql:traces',
-          'trace_reducer -> second_sql:traces'
-        ]
-      }
-    } as SchemaReadJob;
-    const client = apiClient({
-      getJob: vi.fn(async () => sourceJob),
-      getIntegrationById: vi.fn(async id => datadog(id))
-    });
-
-    await expect(resolveBackfillInputs({
-      jobId: 'job_1',
-      ...recentBackfillRange()
-    }, client)).resolves.toMatchObject({ dataType: CreateSpansBackfillJobDataType.spans });
-    await expect(resolveBackfillInputs({
-      jobId: 'job_1',
-      preserveSql: true,
-      ...recentBackfillRange()
-    }, client)).rejects.toThrow(/multiple post-reducer SQL operations/);
-  });
-
-  it('test_resolveBackfillInputs_infersSpansFromRawTraceGraph', async () => {
-    const sourceJob = {
-      id: 'job_1',
-      name: 'pipeline',
-      jobGraph: {
-        vertices: [
-          {
-            type: TraceReducerType.trace_reducer,
-            name: 'trace_reducer',
-            datasetId: 'ds_spans'
-          },
-          {
-            type: DatadogTraceSinkType.datadog_trace_sink,
-            name: 'dd',
-            integrationId: 'dd_1'
-          }
-        ],
-        edges: []
-      }
-    } as SchemaReadJob;
-    const client = apiClient({
-      getJob: vi.fn(async () => sourceJob),
-      getIntegrationById: vi.fn(async id => datadog(id))
-    });
-
-    const resolved = await resolveBackfillInputs({
-      jobId: 'job_1',
-      dataType: CreateSpansBackfillJobDataType.spans,
-      ...recentBackfillRange()
-    }, client);
-
-    expect(resolved.dataType).toBe(CreateSpansBackfillJobDataType.spans);
-    expect(resolved.datasetId).toBe('ds_spans');
-    expect(resolved.sinks.map(sink => sink.id)).toEqual(['dd_1']);
-  });
-
   it('test_resolveBackfillInputs_rejectsDataTypeAssertionMismatch', async () => {
-    const sourceJob = {
-      id: 'job_1',
-      name: 'pipeline',
-      jobGraph: {
-        vertices: [
-          { type: 'logs-iceberg-table-sink', name: 'raw_data_sink', datasetId: 'ds_raw' },
-          { type: DatadogLogSinkType.datadog_log_sink, name: 'dd', integrationId: 'dd_1' }
-        ],
-        edges: []
-      }
-    } as SchemaReadJob;
-    const client = apiClient({ getJob: vi.fn(async () => sourceJob) });
+    const client = apiClient({
+      getJob: vi.fn(async () => logTemplateSourceJob([
+        { type: DatadogLogSinkType.datadog_log_sink, name: 'dd', integrationId: 'dd_1' }
+      ]))
+    });
 
     await expect(resolveBackfillInputs({
       jobId: 'job_1',

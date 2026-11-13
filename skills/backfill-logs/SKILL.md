@@ -51,7 +51,7 @@ type when present. Otherwise:
   dataset:
 
   ```bash
-  grepr job:list --all --processing STREAMING -f raw |
+  grepr job:list --all --processing STREAMING --include-graph -f raw |
     grep -E '"datasetId"[[:space:]]*:[[:space:]]*"<dataset-id>"' |
     grep -Eo '"type"[[:space:]]*:[[:space:]]*"[^"]*(logs?|spans?|trace)[^"]*(reducer|sink)[^"]*"'
   ```

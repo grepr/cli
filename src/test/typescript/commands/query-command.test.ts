@@ -134,8 +134,7 @@ describe('query-command', () => {
           dataType,
           datasetId: 'ds_raw',
           teamIds: ['team_alpha'],
-          sinkOperations: [],
-          postReducerSqlOperations: []
+          sinkOperations: []
         }, resolvedEngine, new Date('2026-07-07T12:00:00Z'));
 
         expect(job.jobGraph.vertices.map(vertex => vertex.type)).toEqual([

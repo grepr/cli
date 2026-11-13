@@ -19,17 +19,13 @@ Run `grepr:describe-pipeline <job-id>` and note the reducer vertex name (usually
 `log_reducer`), its current exception predicates, any vendor-imported exception
 sets (`autoSync: true`), and the raw dataset id.
 
-For backend detection (template-backed vs raw job graph) and which ops each
-backend supports, see `grepr:describe-pipeline`. The backend decides whether you
-can narrow (template-only) or only add (raw graphs are add-only).
-
 ## Step 2: Diagnose direction
 
 | Symptom | Direction | Fix |
 |---|---|---|
-| Reduction % is low; too much traffic bypasses the reducer | Too broad | Narrow an existing predicate (template-only) |
+| Reduction % is low; too much traffic bypasses the reducer | Too broad | Narrow an existing predicate |
 | Errors/alerts/specific traces are being deduped into summaries | Missing | Add a new exception |
-| Vendor-imported set is wrong for this traffic mix | Wrong set | Narrow/remove that entry (template-only) |
+| Vendor-imported set is wrong for this traffic mix | Wrong set | Narrow/remove that entry |
 
 ### Estimate predicate volume first
 
@@ -58,7 +54,7 @@ vice versa — the predicate then matches nothing or everything.
 ## Step 3: Build the patch
 
 The op is `add-reducer-exception`; its only field is `predicate`. There is no
-`name` field. It is append-only and works on both backends.
+`name` field. It is append-only.
 
 ```json
 { "operations": [
@@ -67,26 +63,20 @@ The op is `add-reducer-exception`; its only field is `predicate`. There is no
 ] }
 ```
 
-### Add (both backends)
+### Add
 
 Use `add-reducer-exception` to let a missing log class bypass aggregation. It
 does not disturb existing entries.
 
-### Narrow an over-broad exception (template-backed only)
+### Narrow an over-broad exception
 
 Narrowing means rewriting the offending entry to match less traffic. Use
-`set-input-field` on the `exceptions` array — this op is TEMPLATE-ONLY because it
-edits template inputs; it is rejected on raw job graphs (which have no template
-inputs). It is flagged in caps because applying it to a raw graph fails at plan
-time. Start from `describe-pipeline`'s current array, replace just the bad entry,
-and pass the full array back.
+`set-input-field` on the `exceptions` array. Start from the current
+`templateInputs.input.exceptions` array in the unresolved job that
+`describe-pipeline` saves in its template check. Replace just the bad entry, and
+pass the full array back.
 
-Raw job graphs are add-only: there is no supported generic narrow/remove path.
-If a raw-graph exception is too broad, stop and surface that limitation rather
-than attempting a template-input patch.
-
-See `examples.md` for full template-backed, raw-graph, and bad-predicate
-patches.
+See `examples.md` for an add patch and a bad-predicate patch.
 
 For the full op catalog and exact field names, see `grepr:operations-reference`.
 
@@ -112,14 +102,12 @@ step-2 estimate and tighten.
 - **Narrowing didn't help**: the broad exception isn't the main reduction
   problem (empty messages or over-aggregation may be) — route to
   `grepr:tune-reduction` for full diagnosis.
-- **Raw-graph narrow/remove requested**: unsupported. Surface the add-only
-  limitation; do not fabricate a template-input patch.
 
 ## Resources
 
-- `examples.md` — ✅ add (template + raw), ✅ narrow (template-only), ❌ over-broad predicate, each with a why.
+- `examples.md` has ✅ add and ❌ over-broad predicate examples, each with a why.
 - `grepr:cli` — org config resolution.
-- `grepr:describe-pipeline` — backend detection and per-backend op support.
+- `grepr:describe-pipeline` has the pipeline summary and the template check.
 - `grepr:operations-reference` — full op catalog and field schemas.
 - `grepr:test-pipeline-change` — plan/draft/gate/apply harness.
 - `grepr:tune-reduction` — when exceptions aren't the real reduction problem.

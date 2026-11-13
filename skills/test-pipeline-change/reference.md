@@ -7,8 +7,8 @@ intent skills link here rather than restate it.
 
 - [Draft-result classification](#draft-result-classification)
 - [Per-op metrics](#per-op-metrics)
-- [Job-graph draft flags](#job-graph-draft-flags)
-- [Per-backend tag-check commands](#per-backend-tag-check-commands)
+- [Draft flags](#draft-flags)
+- [Tag-check commands](#tag-check-commands)
 - [Parsing hygiene](#parsing-hygiene)
 - [Retry budget for heartbeat-only drafts](#retry-budget-for-heartbeat-only-drafts)
 - [When things go sideways](#when-things-go-sideways)
@@ -24,7 +24,7 @@ which result you actually got (SKILL.md step 6) and say so explicitly.
 | Expected records, tagged per stage | **Validated** for the stages you can see. Proceed to compare metrics. |
 | Only `HEARTBEAT` records, then `CANCELLED` | **Heartbeat-only / no data observed** — the draft ran but exercised nothing. Inconclusive, not a pass. Usually means little traffic arrived in the window; follow the retry budget below. |
 | Timeout, non-zero exit, or no parseable records | **Inconclusive.** Show the error; do not present as validated. |
-| Records present but all `unknown`/untagged | **Inconclusive** for per-stage claims. A partial untagged population is expected on source-preserving raw drafts, but all-untagged output cannot prove a specific stage behaved correctly. |
+| Records present but all `unknown`/untagged | **Inconclusive** for per-stage claims. All-untagged output cannot prove a specific stage behaved correctly. |
 
 Treat "the command finished" and "the change is verified" as different states.
 If you only got plan/diff success without a clean draft, the plan is
@@ -32,8 +32,7 @@ structurally valid but live behavior is unverified.
 
 ## Per-op metrics
 
-Pick the metric for the patch op type and filter the right stage/tap tag —
-template-backed: server-supplied `draftOutputs`; raw graph:
+Pick the metric for the patch op type and filter on the stage tag at
 `.data.tags["sink-source"][]`.
 
 | Patch op | Metric (after the named stage) | Improvement signal |
@@ -51,29 +50,24 @@ Always sanity-check beyond the headline metric: sample 5–10 records and inspec
 by eye. A metric that improved while the output looks worse means the patch is
 wrong.
 
-## Job-graph draft flags
+## Draft flags
 
 | Flag | Effect |
 |------|--------|
-| `--sample-rate <n>` | Max sampled records/sec per source. Default: `10`. |
-| `--sample-burst <n>` | Max sampled burst per source. Default: `1000`. |
-| `--max-duration-seconds <n>` | Wall-clock cap before the CLI aborts the sync stream cleanly. Default: `30`. |
+| `--max-duration-seconds <n>` | Wall-clock cap before the CLI aborts the sync stream cleanly. |
+| `--sample-logs <file>` | Draft against a JSON array (or NDJSON) of sample logs instead of live traffic. Runs BATCH. See SKILL.md step 5. |
 
-Always pass `--max-duration-seconds` explicitly to keep drafts bounded; tune
-`--sample-rate` / `--sample-burst` to control how much live traffic is sampled.
+Always pass `--max-duration-seconds` explicitly to keep drafts bounded.
 
-## Per-backend tag-check commands
+## Tag-check commands
 
-Raw job-graph: records are wrapped under `.data`, tap tags nested at
+Records are wrapped under `.data`, and the stage tag is at
 `.data.tags["sink-source"][]`.
 
 ```bash
 jq -r 'select(.data?) | (.data.tags["sink-source"] // ["untagged"])[]' draft-<tag>.ndjson | sort | uniq -c
 jq -c 'select(.data?) | .data' draft-<tag>.ndjson | head
 ```
-
-Template-backed: inspect the server-supplied `draftOutputs` shape before
-choosing a grouping expression.
 
 ## Parsing hygiene
 
@@ -103,8 +97,7 @@ many windows or query variants.
 
 | Situation | Action |
 |-----------|--------|
-| `job:plan` fails: `unsupported raw job graph shape` | The op is a UI-level topology change (`set-filter`, `add-source`, `add-parser`, etc.) but the direct job graph is not the canonical UI log-pipeline shape. Surface the limitation and stop; do not fall back to manual `job:update` unless the user explicitly starts a separate manual-update workflow. |
-| `job:plan` fails: `generic template-input paths are not supported on raw job graphs` | `set-input-field` / `unset-input-field` paths only apply to template inputs. Use a semantic op or edit the raw graph manually. |
+| `job:plan` fails: `This pipeline uses a raw job graph (no template-operation vertex)` | `job:plan`, `job:draft`, and `job:apply` support only template-backed pipelines. Tell the user and stop. Do not fall back to a manual `job:update` on your own. The user can choose to edit the raw graph with `job:update`. |
 | `job:plan` fails: `"<field>" is not a template input field` | The path's first segment names no real template input, so the template would ignore the edit (for example, the removed `filters` slot). Use the semantic op the message names (`set-filter`, `clear-filter`, `set-transform-chain`), or a path under one of the listed fields. If the field is newer than the installed CLI, upgrade it (`npm install -g @grepr/cli@latest`). |
 | `job:plan` fails: `"transforms.<key>" is not a transform slot` | The key under `transforms` is a phase name (`pre-parser`) or a typo, not a slot (`preParser`, `preWarehouse`, `preExceptions`), so the template would ignore the edit. Use `set-filter` / `clear-filter` / `set-transform-chain` with the phase, or the slot name. If the slot is newer than the installed CLI, upgrade it (`npm install -g @grepr/cli@latest`). |
 | `job:plan` fails with a field/value error **or** a JS crash (`Cannot read properties of undefined`) | The op payload has a wrong or missing field name; the CLI does not always surface a helpful message. Load `grepr:operations-reference` for exact field names, fix the patch, regenerate. |

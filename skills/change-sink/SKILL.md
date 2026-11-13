@@ -27,8 +27,6 @@ different tables — don't conflate them.
 
 Run `grepr:describe-pipeline <JOB_ID>` and note the current sinks (names,
 types, integrationIds), the processed-logs dataset, and the raw dataset.
-For backend detection and which ops each backend supports, see
-`grepr:describe-pipeline`.
 
 Resolve the IDs the patch will need:
 
@@ -92,9 +90,9 @@ to `grepr:test-pipeline-change`.
 
 ## Resources
 
-- `examples.md` — ✅ template-backed and ✅ raw job-graph patches for adding,
-  gating, removing, and repointing sinks, plus ❌ rejected anti-patterns.
-- `grepr:describe-pipeline` — backend detection and per-backend capability.
+- `examples.md` has ✅ patches for adding, gating, removing, and repointing
+  sinks, plus ❌ rejected anti-patterns.
+- `grepr:describe-pipeline` has the pipeline summary and the template check.
 - `grepr:test-pipeline-change` — plan→draft→apply, gating, drift.
 - `grepr:operations-reference` — full op catalog and field schemas.
 - `grepr:cli` — `--conf` org config resolution.

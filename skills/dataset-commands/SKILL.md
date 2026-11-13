@@ -42,9 +42,9 @@ grepr dataset:list --fields id,name
 ```
 
 ### Find datasets a job writes to
-`dataset:list` doesn't take a `--job-id` filter; inspect the job's vertices instead.
+`dataset:list` doesn't take a `--job-id` filter; inspect the resolved job's vertices instead.
 ```bash
-grepr job:get <job-id> -f compact | jq -r '.jobGraph.vertices[] | select(.datasetId) | .datasetId' | sort -u
+grepr job:get <job-id> --resolved -f compact | jq -r '.jobGraph.vertices[] | select(.datasetId) | .datasetId' | sort -u
 ```
 
 ### Get dataset details

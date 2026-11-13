@@ -1,5 +1,5 @@
 ---
-description: Author a Flink-SQL transform on a Grepr log-reducer pipeline — reshape, enrich, or filter logs row-by-row, derive metric-shaped logs via windowed aggregation, or run arbitrary supported SQL. Emits a set-sql-transform patch into a template transform slot (pre-parser, pre-warehouse, pre-exceptions) and routes through test-pipeline-change. SQL transforms are TEMPLATE-BACKED ONLY. In the UI these slots are the Pre-Parsing, Pre-Warehouse, and Pre-Reducer Actions steps, where SQL is added as a SQL action. Use for "add a SQL transform", "add a SQL action", "transform/reshape logs with SQL", "logs to metrics", "aggregate logs with SQL". For an ad-hoc GROUP BY, count distinct, or cardinality question about existing data, use grepr:sql-analytics instead - that is a read-only query, not a pipeline change. For masking/redacting sensitive data, use grepr:change-masking (the masking operator) instead of SQL.
+description: Author a Flink-SQL transform on a Grepr log-reducer pipeline to reshape, enrich, or filter logs row-by-row, derive metric-shaped logs via windowed aggregation, or run arbitrary supported SQL. Emits a set-sql-transform patch into a template transform slot (pre-parser, pre-warehouse, pre-exceptions) and routes through test-pipeline-change. In the UI these slots are the Pre-Parsing, Pre-Warehouse, and Pre-Reducer Actions steps, where SQL is added as a SQL action. Use for "add a SQL transform", "add a SQL action", "transform/reshape logs with SQL", "logs to metrics", "aggregate logs with SQL". For an ad-hoc GROUP BY, count distinct, or cardinality question about existing data, use grepr:sql-analytics instead. That is a read-only query, not a pipeline change. For masking/redacting sensitive data, use grepr:change-masking (the masking operator) instead of SQL.
 allowed-tools: Bash(grepr query), Bash(grepr job:get), Bash(grepr job:plan), Bash(grepr job:draft), Bash(grepr sql:validate), Bash(grepr docs:search), Bash(grepr docs:get), Bash(grepr --conf * query), Bash(grepr --conf * job:get), Bash(grepr --conf * job:plan), Bash(grepr --conf * job:draft), Bash(grepr --conf * sql:validate), Bash(grepr --conf * docs:search), Bash(grepr --conf * docs:get), Read, Write, AskUserQuestion, grepr:describe-pipeline, grepr:test-pipeline-change, grepr:query, grepr:docs-commands
 ---
 
@@ -29,14 +29,8 @@ result changes what the pipeline sends, or only answers the user.
 operator is purpose-built for redaction, needs no SQL, and is dynamically
 reconfigurable. Reach for SQL only for genuine reshaping/enrichment/aggregation.
 
-## Two hard boundaries
+## Hard boundary
 
-- **Template-backed jobs only — don't pre-classify.** `set-sql-transform` only
-  works on template-backed jobs, but you do **not** need to detect the backend
-  first (resolved graphs expand the template and mislead the check). Just build
-  the patch; `job:plan` rejects a raw graph with *"SQL transform edits are only
-  supported for template-backed log-reducer jobs in the CLI. This job is a
-  direct job graph."*
 - **`LOG_EVENT` only.** On the log-reducer template the SQL reads and writes
   `LOG_EVENT` — `inputs` is `{"logs": "LOG_EVENT"}` and every `sql_output` is
   `LOG_EVENT`. (The Flink dialect defines other stream types, but they are **not

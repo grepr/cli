@@ -1,6 +1,6 @@
 ---
 description: Learn about grok:parse Grepr CLI command. Create, test, and add Grok patterns to Grepr pipelines to parse log messages into structured data to enable more effective and easier queries on log data.
-allowed-tools: Bash(grepr grok:parse), grepr:job-commands, grepr:query, grepr:docs-commands, Read(grok-parse.md)
+allowed-tools: Bash(grepr grok:parse), Bash(jq), grepr:job-commands, grepr:query, grepr:docs-commands, grepr:tune-grok, grepr:test-pipeline-change, Read(grok-parse.md)
 ---
 
 # Building Grok patterns for Grepr
@@ -39,242 +39,20 @@ Use `grepr:query` to query raw log data from the data lake if needed to get samp
 3. **Build Grok patterns**: Use the grepr grok:parse command to iteratively build and test Grok patterns against the sample log messages. Start with simple patterns and gradually add complexity as needed. You can review the grepr docs using the cli docs:search and docs:get commands to find relevant documentation on Grok patterns and available functions if needed. Generally, Grepr Grok patterns are similar to Datadog Grok patterns, but aren't exactly the same. You can use helper patterns to simplify your main patterns.
 4. **Test patterns**: Test the Grok patterns against different log messages to ensure they work as expected and extract the desired fields. Validate messages to test with the user, or ask the user for more sample messages if needed. You can ask them for a query to run on the data lake to get more sample messages if they would like to test more. You test the patterns using the grepr cli grok:parse command. Validate the results with the user. STOP here until the user confirms the patterns and the outputs are correct.
 5. **Get more data if possible**: You can ask the user if they want you to query a dataset for similar log messages to help them source more samples or to see if there are any common tags or attributes that can be used for building the predicate for the Grok parsers.
-6. **Build or update `GrokParser`**: Once the Grok patterns are finalized, you need to create or update a `GrokParser` operation in the Grepr job graph. Each parser can have multiple rules and helpers, but only one `predicate` field. Ask the user to specify the predicates to match to improve the performance and reduce CPU usage and cost for their pipelines. If no predicate is specified, the GrokParser will apply to all messages, which may not be efficient. Use the grepr cli `docs:search --type schema` to find the GrokParser schema documentation if needed. Update the job graph accordingly.
-7. **Integrate into job**: These parsers are chained serially. You don't need to create multiple parsers if they have the same predicate. You might want to separate parsers based on log types or to improve readability. The grok parsers should be placed after the JSON remapper if any and before raw data storage. If parsers exist, add new ones to the same chain.
-8. **Test job before rollout**: Make sure you test a job using the `LogsValuesSource` with sample log messages to validate that the Grok parsers work as expected before rolling out to production. You can follow the instructions in the grepr cli job:update documentation to create a temporary job for testing.
+6. **Build or update `GrokParser`**: Once the Grok patterns are finalized, add them to the pipeline with a patch. Each parser can have multiple rules and helpers, but only one `predicate` field. Ask the user to specify the predicates to match to improve the performance and reduce CPU usage and cost for their pipelines. If no predicate is specified, the GrokParser will apply to all messages, which may not be efficient. Use `add-grok-rule` to append a rule to an existing grok parser with the same predicate. Use `add-parser` with a `grok-parser` to add a parser with a different predicate. `grepr:tune-grok` has the decision table and copy-paste patches. Use the grepr cli `docs:search --type schema` to find the GrokParser schema documentation if needed.
+7. **Integrate into job**: These parsers are chained serially. You don't need to create multiple parsers if they have the same predicate. You might want to separate parsers based on log types or to improve readability. `add-parser` appends a new parser to the end of `input.parsers`.
+8. **Test before rollout**: Hand the patch to `grepr:test-pipeline-change`. It drafts the change before any production write. To test against the sample messages, draft with `--sample-logs`.
 
-# Examples
+# Example
 
-In all json examples below, comments (// ...) are for explanation only. They are not valid JSON and should not be included in actual job definitions.
-For all the below examples, here's the original job we'll modify:
+Write the patch with `jq --arg` so jq handles the JSON escaping of the rule. This patch appends a rule to the existing parser `grok_parser_0`:
 
-```json
-{
-  "name": "webapp_log_pipeline",
-  "execution": "ASYNCHRONOUS",
-  "processing": "STREAMING",
-  "desiredState": "RUNNING",
-  "jobGraph": {
-    "vertices": [
-      {
-        "type": "datadog-log-agent-source",
-        "name": "source_datadog_integration",
-        "integrationId": "<datadog-integration-id>"
-      },
-      {
-        "type": "logs-filter",
-        "name": "pre_parser_filter",
-        "predicate": {
-          "type": "datadog-query",
-          "query": ""
-        }
-      },
-      {
-        "type": "json-log-processor",
-        "name": "json_log_processor"
-      },
-      {
-        "type": "log-attributes-remapper",
-        "name": "log_attributes_remapper"
-      },
-      {
-        "type": "grok-parser",
-        "name": "grok_parser_0",
-        // Applies this rule only to logs from the "web-api" service
-        "grokParsingRules": [
-          "AccessLogMetrics %{ipOrHost:client_ip} %{notSpace} %{notSpace} \\[%{HTTPDATE}\\] \"%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}\" %{integer:status_code} %{integer:response_bytes} \"%{regex(\"[^\\\"]*\"):referrer}\" \"%{regex(\"[^\\\"]*\"):user_agent}\" %{integer:response_time_ms}"
-        ],
-        "predicate": {
-          "type": "datadog-query",
-          "query": "service:web-api"
-        },
-        "grokHelperRules": []
-      },
-      {
-        "type": "datadog-log-sink",
-        "name": "sink_datadog_integration",
-        "integrationId": "<datadog-integration-id>"
-      }
-    ],
-    "edges": [
-      "source_datadog_integration -> pre_parser_filter",
-      "pre_parser_filter -> json_log_processor",
-      "json_log_processor -> log_attributes_remapper",
-      "log_attributes_remapper -> grok_parser_0",
-      "grok_parser_0 -> sink_datadog_integration"
-    ]
-  },
-  "tags": {
-    "environment": "production"
-  }
-}
-```
-
-## 1. Update existing Grok rule with new pattern and helper
-When a new grok rule uses the same filter, you can update an existing GrokParser in a job graph to add the new rule and helper.
-
-New Grok rule to add:
-```
-UpstreamLogRule %{ipOrHost:client_ip} - %{notSpace:upstream_user} \[%{HTTPDATE}\] "%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}" %{integer:status_code} %{integer:response_bytes} %{notSpace:cache_status} %{number:upstream_response_time}
-```
-
-Updated job:
-```json
-```json
-{
-  "name": "webapp_log_pipeline",
-  "execution": "ASYNCHRONOUS",
-  "processing": "STREAMING",
-  "desiredState": "RUNNING",
-  "jobGraph": {
-    "vertices": [
-      {
-        "type": "datadog-log-agent-source",
-        "name": "source_datadog_integration",
-        "integrationId": "<datadog-integration-id>"
-      },
-      {
-        "type": "logs-filter",
-        "name": "pre_parser_filter",
-        "predicate": {
-          "type": "datadog-query",
-          "query": ""
-        }
-      },
-      {
-        "type": "json-log-processor",
-        "name": "json_log_processor"
-      },
-      {
-        "type": "log-attributes-remapper",
-        "name": "log_attributes_remapper"
-      },
-      {
-        "type": "grok-parser",
-        "name": "grok_parser_0",
-        "grokParsingRules": [
-          "AccessLogMetrics %{ipOrHost:client_ip} %{notSpace} %{notSpace} \\[%{HTTPDATE}\\] \"%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}\" %{integer:status_code} %{integer:response_bytes} \"%{regex(\"[^\\\"]*\"):referrer}\" \"%{regex(\"[^\\\"]*\"):user_agent}\" %{integer:response_time_ms}",
-          // New rule added, note we escaped the double quotes in the pattern
-          "UpstreamLogRule %{ipOrHost:client_ip} - %{notSpace:upstream_user} \\[%{HTTPDATE}\\] \"%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}\" %{integer:status_code} %{integer:response_bytes} %{notSpace:cache_status} %{number:upstream_response_time}"
-        ],
-        "predicate": {
-          "type": "datadog-query",
-          "query": "service:web-api"
-        },
-        "grokHelperRules": []
-      },
-      {
-        "type": "datadog-log-sink",
-        "name": "sink_datadog_integration",
-        "integrationId": "<datadog-integration-id>"
-      }
-    ],
-    "edges": [
-      "source_datadog_integration -> pre_parser_filter",
-      "pre_parser_filter -> json_log_processor",
-      "json_log_processor -> log_attributes_remapper",
-      "log_attributes_remapper -> grok_parser_0",
-      "grok_parser_0 -> sink_datadog_integration"
-    ]
-  },
-  "tags": {
-    "environment": "production"
-  }
-}
-```
-
-Command to make modification, using args to handle json escaping:
 ```bash
-jq --arg rule 'UpstreamLogRule %{ipOrHost:client_ip} - %{notSpace:upstream_user} \[%{HTTPDATE}\] "%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}" %{integer:status_code} %{integer:response_bytes} %{notSpace:cache_status} %{number:upstream_response_time}' '.jobGraph.vertices |= map(select(.type=="grok-parser" and .name=="grok_parser_0").grokParsingRules += [$rule] // .)' webapp_log_pipeline.json
+jq -n --arg rule 'UpstreamLogRule %{ipOrHost:client_ip} - %{notSpace:upstream_user} \[%{HTTPDATE}\] "%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}" %{integer:status_code} %{integer:response_bytes} %{notSpace:cache_status} %{number:upstream_response_time}' \
+  '{operations: [{op: "add-grok-rule", parserName: "grok_parser_0", pattern: $rule}]}' > patch-grok-<tag>.json
 ```
 
-## 2. Create new GrokParser in job graph
-When a new grok rule uses a different filter, you can create a new GrokParser in the job graph.
-
-New Grok rule to add:
-```ErrorLogRule %{HTTPDATE:timestamp} \[%{word:log_level}\] %{data:message}```
-
-Updated job:
-```json
-{
-  "name": "webapp_log_pipeline",
-  "execution": "ASYNCHRONOUS",
-  "processing": "STREAMING",
-  "desiredState": "RUNNING",
-  "jobGraph": {
-    "vertices": [
-      {
-        "type": "datadog-log-agent-source",
-        "name": "source_datadog_integration",
-        "integrationId": "<datadog-integration-id>"
-      },
-      {
-        "type": "logs-filter",
-        "name": "pre_parser_filter",
-        "predicate": {
-          "type": "datadog-query",
-          "query": ""
-        }
-      },
-      {
-        "type": "json-log-processor",
-        "name": "json_log_processor"
-      },
-      {
-        "type": "log-attributes-remapper",
-        "name": "log_attributes_remapper"
-      },
-      {
-        "type": "grok-parser",
-        "name": "grok_parser_0",
-        "grokParsingRules": [
-          "AccessLogMetrics %{ipOrHost:client_ip} %{notSpace} %{notSpace} \\[%{HTTPDATE}\\] \"%{word:http_method} %{notSpace:request_path} %{notSpace:http_version}\" %{integer:status_code} %{integer:response_bytes} \"%{regex(\"[^\\\"]*\"):referrer}\" \"%{regex(\"[^\\\"]*\"):user_agent}\" %{integer:response_time_ms}"
-        ],
-        "predicate": {
-          "type": "datadog-query",
-          "query": "service:web-api"
-        },
-        "grokHelperRules": []
-      },
-      // New GrokParser added
-      {
-        "type": "grok-parser",
-        "name": "grok_parser_1",
-        "grokParsingRules": [
-          "ErrorLogRule %{HTTPDATE:timestamp} \\[%{word:log_level}\\] %{data:message}"
-        ],
-        "predicate": {
-          "type": "datadog-query",
-          "query": "log_level:error"
-        },
-        "grokHelperRules": []
-      },
-      {
-        "type": "datadog-log-sink",
-        "name": "sink_datadog_integration",
-        "integrationId": "<datadog-integration-id>"
-      }
-    ],
-    "edges": [
-      "source_datadog_integration -> pre_parser_filter",
-      "pre_parser_filter -> json_log_processor",
-      "json_log_processor -> log_attributes_remapper",
-      "log_attributes_remapper -> grok_parser_0",
-      "grok_parser_0 -> grok_parser_1",
-      "grok_parser_1 -> sink_datadog_integration"
-    ]
-  },
-  "tags": {
-    "environment": "production"
-  }
-}
-```
-
-Command to make modification, using args to handle json escaping:
-```bash
-jq --arg rule 'ErrorLogRule %{HTTPDATE:timestamp} \[%{word:log_level}\] %{data:message}' \
-'.jobGraph.vertices += [{"type":"grok-parser","name":"grok_parser_1","grokParsingRules":[$rule],"predicate":{"type":"datadog-query","query":"log_level:error"},"grokHelperRules":[]}]' webapp_log_pipeline.json
-```
+For a rule that needs a different predicate, use `add-parser`. `grepr:tune-grok` has both patch shapes.
 
 # Grepr CLI grok:parse command-line help
 !`grepr grok:parse --help`

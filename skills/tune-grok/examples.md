@@ -3,8 +3,8 @@
 Sanitized, schema-valid `{"operations":[...]}` patches. Each uses only whitelisted ops
 and fields. Hand the chosen patch file to `grepr:test-pipeline-change`.
 
-- [✅ Add a rule to an existing grok parser (template-backed)](#1)
-- [✅ Insert a new grok-parser vertex (raw job graph)](#2)
+- [✅ Add a rule to an existing grok parser](#1)
+- [✅ Add a new grok parser](#2)
 - [❌ Over-matching pattern with no predicate](#3)
 - [❌ `add-grok-rule` on a pipeline with zero grok parsers](#4)
 - [❌ `add-grok-rule` onto a parser scoped to other logs](#5)
@@ -12,7 +12,7 @@ and fields. Hand the chosen patch file to `grepr:test-pipeline-change`.
 
 ---
 
-## 1. ✅ Add a rule to an existing grok parser (template-backed) {#1}
+## 1. ✅ Add a rule to an existing grok parser {#1}
 
 The pipeline already has one `grok-parser`. With exactly one, `parserName` is optional;
 include it when there is more than one grok parser (it is rejected if there are zero).
@@ -31,18 +31,14 @@ include it when there is more than one grok parser (it is rejected if there are 
 
 Why: an access-log line stuck in `message` now yields typed captures. Names are
 domain-prefixed (`client_ip_addr`, `http_status_code`) to dodge remapper/reducer reserved
-attributes. `add-grok-rule` behaves identically on template-backed and raw graphs — only
-the new-parser case differs by backend (see example 2).
+attributes.
 
 ---
 
-## 2. ✅ Insert a new grok-parser vertex (raw job graph) {#2}
+## 2. ✅ Add a new grok parser {#2}
 
-The pipeline has zero grok parsers, so add one with `add-parser`. On a raw job graph this
-inserts a `grok-parser` vertex into the canonical UI parser chain; `job:plan` wires the
-edges. (If the pipeline were template-backed, the same patch adds the parser to
-`input.parsers` instead — you write the identical operation either way.) A predicate
-scopes the parser to one log shape.
+The pipeline has zero grok parsers, so add one with `add-parser`. The patch appends the
+parser to the end of `input.parsers`. A predicate scopes the parser to one log shape.
 
 ```json
 {
@@ -64,9 +60,7 @@ scopes the parser to one log shape.
 
 Why: with no grok-parser vertex present, `add-grok-rule` has nothing to attach to and is
 rejected with "no grok-parser found"; `add-parser` creates the vertex first. The
-predicate keeps the parser from running on unrelated shapes. Note a raw graph requires the
-canonical UI shape — an existing parser chain to splice into; a malformed graph with no
-parser vertices yields "no grok-parser vertex found".
+predicate keeps the parser from running on unrelated shapes.
 
 ---
 
@@ -164,5 +158,4 @@ but the draft shows no new attributes on checkout logs. Use `add-parser` with pr
 
 Why: a parser tries its rules in order and the first match wins. `update-parser` replaces
 the parser with the same `name` in place, so copy every field from `job:get` (`predicate`,
-`extractAttribute`, `grokHelperRules`, the existing rules) and change only the order. It
-works on template-backed pipelines and raw graphs in the canonical UI shape.
+`extractAttribute`, `grokHelperRules`, the existing rules) and change only the order.

@@ -240,7 +240,7 @@ The following skills guide multi-step pipeline workflows. Before changing a pipe
 The following reference skills provide the agent with knowledge about Grepr. The agent consults them as needed, so you don't typically invoke them directly:
 
 - `grepr-model`: Provides core Grepr concepts, such as events, jobs, and job graphs, without a documentation lookup.
-- `job-graph-patterns`: Provides common job graph patterns with examples.
+- `job-graph-patterns`: Provides job graph patterns for ad-hoc jobs, such as a data lake query or a test job over sample logs, and the shape of a template-based pipeline job.
 - `operations-reference`: Provides a reference for the available Grepr sources, transforms, and sinks.
 
 ### Use the skills [#use-skills]
@@ -442,7 +442,6 @@ The Grepr CLI includes commands to:
 - Configure CLI settings and preferences: `config:save`, `config:delete`, `config:list`, `config:show`, `config:default`.
 - Create and manage Grepr jobs: `job:create`, `job:list`, `job:get`, `job:update`, `job:delete`.
 - Plan, validate, and apply changes to an existing pipeline: `job:plan`, `job:draft`, `job:apply`.
-- Apply transformations to a job configuration to create a new configuration for testing: `job:to-test`.
 - Run queries against data in the Grepr data lake: `query`.
 - Forward raw logs from the Grepr data lake to your observability vendors: `backfill`.
 - Manage vendor and storage integrations: `integration:list`, `integration:get`.
@@ -763,6 +762,8 @@ You can use CLI commands to edit an existing pipeline with a workflow that lets 
 - `job:draft` runs either a plan or an existing pipeline in draft mode so you can validate your changes against your data before you apply them. When you run an existing pipeline in draft mode, the pipeline runs with its existing job definition and no changes applied. A draft run does not update the live pipeline.
 - `job:apply` deploys the plan to the live pipeline. Before deploying, it checks that the pipeline hasn't changed since the plan was created.
 
+These commands work only on a pipeline built from a Grepr template, that is, a pipeline whose job graph is one template operation. See [Templates](/templates).
+
 The Grepr agent plugins use these commands to edit pipelines on your behalf. To learn more about the agent plugins, see [Run CLI commands with AI coding assistants](#agent-plugins).
 
 To run the commands directly, see the following sections.
@@ -858,7 +859,7 @@ If your backfill time range starts earlier than a destination vendor's ingestion
 
 You can specify the dataset containing the raw logs for backfilling in two ways:
 
-- From a pipeline, with the `--job-id` option. The command reads the pipeline definition to find the dataset where the pipeline stores its raw logs and the vendor destinations the pipeline sends logs to.
+- From a pipeline, with the `--job-id` option. The command reads the pipeline definition to find the dataset where the pipeline stores its raw logs and the vendor destinations the pipeline sends logs to. The pipeline must be built from a Grepr template. For another pipeline, specify the dataset.
 - From a dataset, with the `--dataset-id` or `--dataset-name` option. Because a dataset doesn't identify any vendor destinations, you must also provide one or more destination integration IDs with the `--sink-id` option.
 
 Every backfill requires a time range, provided with the `--start` and `--end` options. Timestamps must use the ISO 8601 format and include an explicit timezone, such as `2026-07-09T00:00:00Z`.

@@ -1,6 +1,6 @@
 ---
 description: Troubleshoot failing or misbehaving Grepr pipelines. Use this when pipelines aren't working as expected or the data results are not what's expected.
-allowed-tools: Bash(grepr *), grepr:job-commands, grepr:query, grepr:build-grok, grepr:grepr-model
+allowed-tools: Bash(grepr *), grepr:job-commands, grepr:query, grepr:build-grok, grepr:grepr-model, grepr:test-pipeline-change
 ---
 
 # Debugging Grepr Pipelines
@@ -23,7 +23,7 @@ Resolve the org config once and reuse it on every command — see the `grepr:cli
 | Data present but fields missing | Parsing not matching                                                | Test grok patterns                    |
 | Partial data appearing          | Predicate excluding logs                                            | Check filter/branch predicates        |
 | High latency/delay              | Backpressure or scaling                                             | Check job metrics                     |
-| Incorrect  values               | Misconfiguration of operations                                      | Run test job                          |
+| Incorrect  values               | Misconfiguration of operations                                      | Draft the pipeline                    |
 
 ## Step 1: Check Job Status
 
@@ -64,32 +64,28 @@ grepr query --dataset-id <raw-sink-dataset-id> --limit 10 -f compact --start <ti
 
 Let the user know what the result of your check is.
 
-## Step 3: Create a Test Job
+## Step 3: Draft the Pipeline
 
-The Grepr CLI can help you create a test job that has all the transformations, but with sinks replaced with a simple logs-sync-sink. This allows you to see exactly what data is being output at the end of the pipeline as well as at each intermediate step in the graph. Use the command `grepr job:to-test` to create a test job from your existing job. 
-
-For patchable pipeline edits, prefer the `job:plan` / `job:draft` /
-`job:apply` safety workflow used by `test-pipeline-change`. Use the
-manual `job:to-test` / `job:update` path only when the user explicitly asks
-for full-graph manual debugging.
-
-If there's data passing through the pipeline, the simplest test job to run would be one where we run a batch job querying data from the original source and passing through the same operations but outputting to a logs-sync-sink.
+`grepr job:draft` runs the pipeline in draft mode. The draft builds no production sinks, and each stage tags the records it emits. Draft the live pipeline as-is:
 
 ```bash
-grepr job:get <job-id> --resolved -f raw -o current-<tag>.json
-grepr job:to-test current-<tag>.json -o test-job-<tag>.json --execution SYNCHRONOUS --processing BATCH --dataset-id <raw-dataset-id> --query '<source-query if needed>' --start '<start-time>' --end '<end-time>' --limit-records 100
+grepr job:draft --job-id <job-id> --max-duration-seconds 30 -o draft-<tag>.ndjson
 ```
 
-Alternatively, you can create a test job that uses a logs-values-source with sample log messages if you can get some representative log lines.
+If little or no traffic arrives, draft against representative log lines instead. The sample format is in `grepr:test-pipeline-change` step 5.
 
 ```bash
-grepr job:get <job-id> --resolved -f raw -o current-<tag>.json
-grepr job:to-test current-<tag>.json -o test-job-<tag>.json --execution SYNCHRONOUS --processing BATCH --sample-data-file sample-logs-<tag>.json
+grepr job:draft --job-id <job-id> --sample-logs sample-logs-<tag>.json --max-duration-seconds 60 -o draft-<tag>.ndjson
 ```
 
-The output from each vertex will be also go through a tagging action that tags the data with the original edge information using the `grepr.edge` tag key. For example, if the edge is from vertices `grok-parser` to `reducer`, the tag value will be `grok_parser_output_reducer_input`.
+Records are wrapped under `.data`, and the stage tag is at `.data.tags["sink-source"][]`. Count the records per stage to see where logs drop or change, then read the records of one stage:
 
-You can then use the `grepr:job-commands` skill to create and run the test job and look at the outputs from each edge.
+```bash
+jq -r 'select(.data?) | (.data.tags["sink-source"] // ["untagged"])[]' draft-<tag>.ndjson | sort | uniq -c
+jq -c 'select(.data?) | select((.data.tags["sink-source"] // []) | index("<stage-label>")) | .data' draft-<tag>.ndjson | head
+```
+
+`job:draft` works only on template-backed pipelines. See the template check in `grepr:describe-pipeline`.
 
 ## Step 4: Test Parsing
 
@@ -121,93 +117,26 @@ Use `grepr:build-grok` for iterative pattern development.
 
 ## Step 5: Check Operation Order
 
-Pipeline operations execute in edge order. Common ordering issues:
-
-### Correct order
+The template sets the stage order. You cannot change it:
 
 ```
-source → filter → json-processor → remapper → grok-parser → reducer → sink
+sources → pre-parser slot → parsers → pre-warehouse slot → masking ─┬→ raw-logs dataset
+                                                                    └→ pre-exceptions slot → exceptions and reducer → sinks
 ```
+
+The template also sets the parser order: the first JSON processor, the first attribute remapper, the grok parsers, the GeoIP parsers, and then a second remapper if there is one. Only the order of the grok parsers, and of the GeoIP parsers, follows `input.parsers`. `add-parser` appends to the end of that list. To change the order of the grok parsers, set the full list with `set-input-field` on `parsers`, and keep each parser with its `name`.
 
 ### Problem patterns
 
-**Grok before JSON processor:**
-- Message still contains raw JSON, pattern won't match
-- Fix: Add `json-log-processor` before `grok-parser`
-
 **Filter after expensive processing:**
-- Wasting resources processing logs that get filtered
-- Fix: Move `logs-filter` earlier in the chain
+- The pipeline parses logs that a later filter drops
+- Fix: Move the filter to the `pre-parser` phase (`grepr:change-filtering`)
 
-**Remapper before JSON processor:**
-- Attributes not yet extracted
-- Fix: Run `json-log-processor` first
+## Step 6: Validate and Apply Fix
 
-## Step 6: Create Isolated Test Job
+Once you've identified the issue, write the fix as a patch with the matching skill (`grepr:tune-grok`, `grepr:change-filtering`, `grepr:tune-reduction`, or another `change-*` skill). Hand the patch to `grepr:test-pipeline-change`. It drafts the fix against sample or live data, gets explicit user approval, and applies it.
 
-Extract the problematic part of the pipeline and test it:
-
-```json
-{
-  "name": "debug_isolated_test",
-  "execution": "SYNCHRONOUS",
-  "processing": "BATCH",
-  "jobGraph": {
-    "vertices": [
-      {
-        "name": "source",
-        "type": "logs-values-source",
-        "values": [
-          {
-            "message": "<paste actual log message here>",
-            "tags": { "service": ["test"] }
-          }
-        ]
-      },
-      {
-        "name": "problematic_operation",
-        "type": "<the operation you're debugging>",
-        // ... operation config ...
-      },
-      {
-        "name": "sink",
-        "type": "logs-sync-sink"
-      }
-    ],
-    "edges": ["source -> problematic_operation", "problematic_operation -> sink"]
-  }
-}
-```
-
-This isolates the problem and shows exactly what the operation produces.
-
-## Step 7: Validate and Apply Fix
-
-Once you've identified the issue:
-
-### 1. Test the fix with sample data
-
-```bash
-grepr job:create fixed-test-<tag>.json
-```
-
-### 2. Test with live data (sync streaming)
-
-```bash
-grepr job:create fixed-test-live-<tag>.json
-```
-
-### 3. Update production pipeline
-
-```bash
-grepr job:update <job-id> fixed-production-<tag>.json
-```
-
-Use this manual full-graph update only after explicit user approval and
-only for a workflow that cannot be expressed as a patch through
-`job:plan` / `job:draft` / `job:apply`.
-
-### 4. Verify the fix
+### Verify the fix
 
 ```bash
 # Check job is running
@@ -224,8 +153,7 @@ grepr query --dataset-id <output> --limit 10 -f compact
 - [ ] Source integration is receiving data
 - [ ] Filters aren't excluding all logs
 - [ ] Grok patterns match actual log formats
-- [ ] Operations are in correct order
-- [ ] Edges connect all vertices properly
+- [ ] Grok parsers are in the intended order
 - [ ] Dataset IDs and integration IDs are valid
 
 ## Common Fixes
@@ -257,16 +185,5 @@ grepr query --dataset-id <output> --limit 10 -f compact
 // Brackets need double escaping in JSON
 "grokParsingRules": [
   "rule \\[%{word:field}\\] %{data:message}"
-]
-```
-
-### Fix 4: Missing edge in job graph
-
-```json
-// Verify all vertices are connected
-"edges": [
-  "source -> filter",
-  "filter -> processor",  // Don't forget this!
-  "processor -> sink"
 ]
 ```

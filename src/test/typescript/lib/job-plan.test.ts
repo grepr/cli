@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach, vi } from 'bun:test';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
@@ -11,35 +11,19 @@ import {
   renderDiffHuman,
 } from '@/lib/job-plan.js';
 import {
-  SchemaReadJob,
-  SchemaUpdateJob,
   LogAttributesRemapperType,
-  PathsV1JobsGetParametersQueryState,
 } from '@/openapi/openApiTypes.js';
 import { GreprApiClient } from '@/lib/grepr-api-client.js';
-import { makeTemplateJob, makeTemplateUpdate, makeJobGraphJob } from './test-fixtures.js';
+import { makeTemplateJob, makeTemplateUpdate, makeRawJobGraphJob } from './test-fixtures.js';
+
+const RAW_JOB_GRAPH_MESSAGE =
+  'This pipeline uses a raw job graph (no template-operation vertex). job:plan, job:draft and job:apply support only template-backed pipelines. To change a raw job graph, edit it and run job:update.';
 
 describe('computeDiff', () => {
   it('test_computeDiff_identicalInputs_shouldReturnEmpty', () => {
     const cur = makeTemplateJob({}, 1);
     const prop = makeTemplateUpdate({});
     expect(computeDiff(cur, prop)).toEqual([]);
-  });
-
-  it('test_computeDiff_jobGraphBackend_missingProposedJobGraph_shouldThrow', () => {
-    // A job-graph-backed proposed with an absent jobGraph must fail loudly rather
-    // than rendering the whole pipeline as added/removed.
-    const cur = makeJobGraphJob();
-    const proposed = { desiredState: 'RUNNING', fromVersion: 1 } as unknown as SchemaUpdateJob;
-    expect(() => computeDiff(cur, proposed)).toThrow(/proposed job has no jobGraph/);
-  });
-
-  it('test_computeDiff_jobGraphBackend_missingCurrentJobGraph_shouldThrow', () => {
-    // detectBackend treats an absent jobGraph as job-graph; the guard must fire
-    // before the diff renders everything as added.
-    const cur = { ...makeJobGraphJob(), jobGraph: undefined } as unknown as SchemaReadJob;
-    const proposed = makeTemplateUpdate({});
-    expect(() => computeDiff(cur, proposed)).toThrow(/current job has no jobGraph/);
   });
 
   it('test_computeDiff_multipleNamelessSinks_shouldNotCollapse', () => {
@@ -143,35 +127,6 @@ describe('computeDiff', () => {
     expect(diff[0]?.kind).toBe('add');
   });
 
-  it('test_computeDiff_jobGraphEdges_shouldEmitEdgeAddsAndRemoves', () => {
-    const cur = {
-      ...makeTemplateJob({}, 1),
-      jobGraph: {
-        vertices: [
-          { type: 'source', name: 'a' },
-          { type: 'transform', name: 'b' },
-          { type: 'sink', name: 'c' },
-        ],
-        edges: ['a -> b', 'b -> c'],
-      },
-    } as unknown as SchemaReadJob;
-    const prop = {
-      desiredState: PathsV1JobsGetParametersQueryState.RUNNING,
-      fromVersion: 1,
-      jobGraph: {
-        vertices: [
-          { type: 'source', name: 'a' },
-          { type: 'transform', name: 'b' },
-          { type: 'sink', name: 'c' },
-        ],
-        edges: ['a -> c'],
-      },
-    } as unknown as SchemaUpdateJob;
-    const diff = computeDiff(cur, prop);
-    expect(diff.map(entry => entry.path)).toContain('edges[a -> c]');
-    expect(diff.map(entry => entry.path)).toContain('edges[a -> b]');
-    expect(diff.map(entry => entry.path)).toContain('edges[b -> c]');
-  });
 });
 
 describe('renderDiffHuman', () => {
@@ -379,13 +334,12 @@ describe('parsePlan / loadPlanFromFile', () => {
     return {
       schemaVersion: PLAN_SCHEMA_VERSION,
       jobId: 'j',
-      backend: 'template',
       baseVersion: 1,
       fetchedAt: '2026-01-01T00:00:00Z',
       classification: 'transform',
       patch: { operations: [] },
       current: {},
-      proposed: { jobGraph: { vertices: [], edges: [] } },
+      proposed: makeTemplateUpdate({}),
       diff: [],
       ...overrides,
     };
@@ -398,11 +352,21 @@ describe('parsePlan / loadPlanFromFile', () => {
   it('test_parsePlan_validShape_shouldReturnPlan', () => {
     const plan = parsePlan(validPlan());
     expect(plan.jobId).toBe('j');
-    expect(plan.backend).toBe('template');
     expect(plan.baseVersion).toBe(1);
     expect(plan.classification).toBe('transform');
     expect(plan.patch.operations).toEqual([]);
-    expect(plan.proposed.jobGraph).toEqual({ vertices: [], edges: [] });
+    expect(plan.proposed.jobGraph).toEqual(makeTemplateUpdate({}).jobGraph);
+  });
+
+  it('test_parsePlan_olderPlanWithBackendField_shouldReturnPlan', () => {
+    const plan = parsePlan(validPlan({ backend: 'template' }));
+    expect(plan.jobId).toBe('j');
+    expect(plan.proposed.jobGraph).toEqual(makeTemplateUpdate({}).jobGraph);
+  });
+
+  it('test_parsePlan_rawJobGraphProposed_shouldThrowTemplateOnlyMessage', () => {
+    const rawProposed = { desiredState: 'RUNNING', fromVersion: 1, jobGraph: makeRawJobGraphJob().jobGraph };
+    expect(() => parsePlan(validPlan({ proposed: rawProposed }))).toThrow(RAW_JOB_GRAPH_MESSAGE);
   });
 
   it('test_parsePlan_wrongSchemaVersion_shouldThrow', () => {
@@ -417,18 +381,6 @@ describe('parsePlan / loadPlanFromFile', () => {
     expect(() => parsePlan(planObj)).toThrow(
       /required fields/,
     );
-  });
-
-  it('test_parsePlan_missingBackend_shouldThrow', () => {
-    const planObj = validPlan();
-    delete planObj['backend'];
-    expect(() => parsePlan(planObj)).toThrow(
-      /backend/,
-    );
-  });
-
-  it('test_parsePlan_invalidBackend_shouldThrow', () => {
-    expect(() => parsePlan(validPlan({ backend: 'bogus' }))).toThrow(/backend/);
   });
 
   it('test_parsePlan_classificationDisagreesWithPatch_shouldThrow', () => {
@@ -507,6 +459,16 @@ describe('generatePlan', () => {
     expect(plan.proposed.fromVersion).toBe(11);
   });
 
+  it('test_generatePlan_rawJobGraph_rejectsWithoutUpdate', async () => {
+    const updateJob = vi.fn();
+    const apiClient = {
+      getJob: async () => makeRawJobGraphJob(),
+      updateJob,
+    } as unknown as GreprApiClient;
+    await expect(generatePlan(apiClient, 'j', { operations: [] })).rejects.toThrow(RAW_JOB_GRAPH_MESSAGE);
+    expect(updateJob).not.toHaveBeenCalled();
+  });
+
   it('test_generatePlan_jobNotFound_shouldThrow', async () => {
     const apiClient = { getJob: async () => undefined } as unknown as GreprApiClient;
     await expect(generatePlan(apiClient, 'nope', { operations: [] })).rejects.toThrow(/not found/);
@@ -535,13 +497,4 @@ describe('generatePlan', () => {
     expect(plan.diff[0]?.path).toBe('transforms.preWarehouse');
   });
 
-  it('test_generatePlan_sqlTransformOnJobGraph_failsBeforeUpdatePayload', async () => {
-    const job = makeJobGraphJob();
-    const apiClient = { getJob: async () => job } as unknown as GreprApiClient;
-    await expect(
-      generatePlan(apiClient, 'j', {
-        operations: [{ op: 'set-sql-transform', phase: 'pre-warehouse', sqlOperation: { type: 'sql-operation', name: 's', statements: [] } as never, outputRouting: {} as never, mainStream: 'drop' }],
-      }),
-    ).rejects.toThrow(/SQL transform edits are only supported for template-backed log-reducer jobs/);
-  });
 });

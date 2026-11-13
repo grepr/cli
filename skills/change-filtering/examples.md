@@ -6,13 +6,8 @@ matches, so phrase the predicate as "what to keep" and wrap the drop condition
 in `NOT (...)`.
 
 - [✅ Template-backed: set a pre-parser filter](#template-set-filter)
-- [✅ Raw graph: set + clear a filter](#raw-set-clear-filter)
+- [✅ Set one filter and clear another](#set-clear-filter)
 - [❌ Tag-vs-@attribute mismatch (silent no-op)](#bad-tag-attribute)
-
-`set-filter`/`clear-filter` take the **same patch** on template-backed and
-canonical raw-graph pipelines for `pre-parser`, `pre-warehouse`, and
-`pre-exceptions`. Only templates accept `set-input-field`, `set-sql-transform`,
-and `set-transform-chain`.
 
 <a id="template-set-filter"></a>
 ## ✅ Template-backed: drop health checks pre-parser
@@ -40,8 +35,8 @@ the three health-check paths. `pre-warehouse` would also drop them (the tag is
 still present post-parse), just after paying the parse cost; `pre-exceptions`
 would drop them only after they were already stored in the warehouse.
 
-<a id="raw-set-clear-filter"></a>
-## ✅ Raw graph: tighten pre-warehouse, clear pre-exceptions
+<a id="set-clear-filter"></a>
+## ✅ Tighten pre-warehouse, clear pre-exceptions
 
 ```json
 {
@@ -61,8 +56,8 @@ would drop them only after they were already stored in the warehouse.
 }
 ```
 
-Why this works: canonical UI-shaped raw graphs accept `set-filter`/`clear-filter`
-on `pre-parser`, `pre-warehouse`, and `pre-exceptions`. `set-filter` merges, so
+Why this works: one patch can set one phase's filter and clear another's.
+`set-filter` merges, so
 any existing `maxLateEventTimestampDelta` on the pre-warehouse slot is preserved.
 `clear-filter` removes the pre-exceptions filter, reverting that phase to
 pass-through. In most

@@ -1,5 +1,5 @@
 ---
-description: Summarize the structure of a Grepr pipeline (sources, transforms, sinks, datasets, integrations, filters, grok parsers, reducer settings, exceptions, current state) and detect its backend format. Run first as foundational context before any pipeline change; triggers on "describe pipeline", "pipeline summary", "what's in this pipeline", "inspect/explain pipeline structure". Owns the canonical backend-detection and capability matrix other skills link to.
+description: Summarize the structure of a Grepr pipeline (sources, transforms, sinks, datasets, integrations, filters, grok parsers, reducer settings, exceptions, current state) and check that it is template-backed. Run first as foundational context before any pipeline change; triggers on "describe pipeline", "pipeline summary", "what's in this pipeline", "inspect/explain pipeline structure". Owns the template check other skills link to.
 allowed-tools: Bash(grepr job:get), Bash(grepr job:list), Bash(grepr --conf * job:get), Bash(grepr --conf * job:list), grepr:job-commands, grepr:grepr-model, grepr:operations-reference
 ---
 
@@ -35,29 +35,31 @@ pipelines carry their config as template inputs that expand server-side, and
 the resolved form is what actually runs, with all vertex names and edges
 visible. Skipping `--resolved` leaves you blind to the real graph.
 
-## Step 2: Detect the Backend
+## Step 2: Template Check
 
-Scan `jobGraph.vertices` to classify the pipeline. Both backends are common in
-practice (many UI-managed pipelines tagged `grepr-ui-managed: true` are direct
-job graphs, not template-backed), so detect per pipeline rather than assuming.
+The pipeline-edit skills and `job:plan`, `job:draft`, and `job:apply` support
+only template-backed pipelines. The resolved graph expands the template, so run
+this check on the unresolved job:
 
-- **Template-backed**: at least one vertex has `type: "template-operation"`.
-- **Direct (raw) job graph**: no `template-operation` vertex; parser / remapper
-  / reducer / grok vertices sit bare in the graph.
+```bash
+grepr job:get <JOB_ID> -f raw -o pipeline-<tag>-unresolved.json
+jq '[.jobGraph.vertices[] | select(.type == "template-operation")] | length' pipeline-<tag>-unresolved.json
+```
 
-The backend decides which edit ops are available downstream. For the full
-template-vs-raw detection rule and the per-backend capability matrix (existing-
-vertex field ops vs UI-topology ops, the canonical-UI-shape constraint, the
-`unsupported raw job graph shape` rejection, and the template-only ops), see
-[reference.md](reference.md). Surface the backend in the TL;DR so downstream
-skills don't re-detect.
+- `1`: the pipeline is template-backed. Continue. Keep this file. The
+  `templateInputs.input` object on that vertex (`sources`, `parsers`,
+  `reducer`, `transforms`, `exceptions`, `sinks`, `datasetId`, and more) is the
+  config that patches edit.
+- Any other result: the pipeline is a raw job graph. Stop. Tell the user that
+  these skills and `job:plan`, `job:draft`, and `job:apply` support only
+  template-backed pipelines. Do not build a patch. The user can still change a
+  raw job graph with `job:update`, and then defines every vertex and edge.
 
 Resolved template-backed graphs prefix vertex names with
-`template_operation__` (a template-expansion artifact; direct graphs have no
-such prefix). Edits never reference these names — they go through
-`tune-reduction` / `tune-grok` / `change-*`, which operate on template inputs.
-Note this in your output so a reader doesn't try to patch
-`template_operation__log_reducer` by name.
+`template_operation__` (a template-expansion artifact). Edits never reference
+these names. They go through `tune-reduction` / `tune-grok` / `change-*`, which
+operate on template inputs. Note this in your output so a reader doesn't try to
+patch `template_operation__log_reducer` by name.
 
 ## Step 3: Categorize Vertices
 
@@ -130,18 +132,13 @@ pipelines):
 
 Lead with a TL;DR (2–3 sentences answering "what is this pipeline and what's
 notable?"), then drill into detail sections. See
-[examples.md](examples.md) for full template-backed and raw-graph outputs.
+[examples.md](examples.md) for a full output.
 
 TL;DR rules:
 - 2–3 sentences max; anything longer belongs in the detail sections.
-- Lead with `Backend: template-backed` or `Backend: direct job graph` so
-  downstream skills route without re-detecting.
 - Name the template if recognizable, the source vendor, the non-default reducer
   settings (partition-by, exceptions, custom aggregations), and anything unusual
   (active filters, vendor exceptions, multiple branches, missing components).
-- For direct job graphs, flag shape-dependent edit limits (see reference.md):
-  canonical UI graphs support UI-topology ops; arbitrary raw DAGs only support
-  unambiguous existing-vertex field ops.
 - Skip the TL;DR if a previous skill already produced one this turn; just print
   the detail sections.
 
@@ -164,11 +161,8 @@ does it write to?"), answer it directly instead of emitting the full sections.
 
 ## Resources
 
-- [reference.md](reference.md) — canonical backend capability matrix: template
-  vs raw detection rule, per-backend supported ops, canonical-UI-shape
-  constraint, template-only ops.
-- [examples.md](examples.md) — ✅ template-backed describe output, ✅ raw
-  job-graph describe output, ❌ anti-patterns, each with a short "why".
+- [examples.md](examples.md) has a ✅ template-backed describe output and ❌
+  anti-patterns, each with a short "why".
 - `grepr:cli` — `--conf` config resolution.
 - `grepr:operations-reference` — full op catalog and exact field names.
 - `grepr:test-pipeline-change` — plan→draft→apply harness for proposed edits.

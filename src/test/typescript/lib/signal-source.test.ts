@@ -11,15 +11,11 @@ import {
   DatadogLogSinkType,
   DatadogTraceSinkType,
   LogsIcebergTableSinkType,
-  SqlOperationInputs,
-  SqlOperationType,
-  SqlOutputStatementType,
   TemplateOperationType,
   TraceReducerType,
   type SchemaDatasetRead,
   type SchemaOperation,
   type SchemaReadJob,
-  type SchemaSqlOperation,
   type SchemaTemplate
 } from '../../../main/typescript/openapi/openApiTypes.js';
 
@@ -57,16 +53,12 @@ function apiClient(overrides: Partial<SignalSourceApiClient> = {}): SignalSource
   };
 }
 
-function job(
-  vertices: SchemaOperation[],
-  teamIds: string[] = ['team_job'],
-  edges: string[] = []
-): SchemaReadJob {
+function job(vertices: SchemaOperation[], teamIds: string[] = ['team_job']): SchemaReadJob {
   return {
     id: 'job_1',
     name: 'pipeline',
     teamIds,
-    jobGraph: { vertices, edges }
+    jobGraph: { vertices, edges: [] }
   } as SchemaReadJob;
 }
 
@@ -84,20 +76,8 @@ function templateVertex(
   } as unknown as SchemaOperation;
 }
 
-function rawLogsSink(datasetId = 'ds_raw', name = 'raw_data_sink_1'): SchemaOperation {
-  return {
-    type: LogsIcebergTableSinkType.logs_iceberg_table_sink,
-    name,
-    datasetId
-  } as SchemaOperation;
-}
-
-function traceReducer(datasetId = 'ds_spans'): SchemaOperation {
-  return {
-    type: TraceReducerType.trace_reducer,
-    name: 'trace_reducer',
-    datasetId
-  } as unknown as SchemaOperation;
+function logTemplateJob(datasetId = 'ds_raw', teamIds?: string[]): SchemaReadJob {
+  return job([templateVertex('tpl_logs', 16, { datasetId })], teamIds);
 }
 
 function datadogLogSink(integrationId = 'dd_1'): SchemaOperation {
@@ -114,20 +94,6 @@ function datadogTraceSink(integrationId = 'dd_1'): SchemaOperation {
     name: `sink_${integrationId}`,
     integrationId
   } as SchemaOperation;
-}
-
-function sqlOperation(name: string): SchemaSqlOperation {
-  return {
-    type: SqlOperationType.sql_operation,
-    name,
-    inputs: { spans: SqlOperationInputs.COMPLETE_SPAN },
-    statements: [{
-      type: SqlOutputStatementType.sql_output,
-      outputName: 'normalized_spans',
-      outputType: SqlOperationInputs.COMPLETE_SPAN,
-      sqlQuery: 'SELECT * FROM spans'
-    }]
-  };
 }
 
 describe('parseSignalDataType', () => {
@@ -191,8 +157,7 @@ describe('resolveSignalSource explicit dataset mode', () => {
       dataType: spans,
       datasetId: 'ds_1',
       teamIds: ['team_ds'],
-      sinkOperations: [],
-      postReducerSqlOperations: []
+      sinkOperations: []
     });
     expect(client.getDataset).toHaveBeenCalledWith('ds_1');
   });
@@ -300,7 +265,7 @@ describe('resolveSignalSource job-derived mode', () => {
     const resolved = await resolveSignalSource({ jobId: 'job_1' }, client);
     expect(resolved).toMatchObject({ dataType: spans, datasetId: 'ds_spans' });
     expect(resolved.sinkOperations).toEqual([datadogTraceSink('dd_1')]);
-    expect(resolved.postReducerSqlOperations).toEqual([sqlOperation]);
+    expect(resolved.postReducerSqlOperation).toEqual(sqlOperation);
   });
 
   it('test_resolveSignalSource_throwsWhenTheTraceTemplateHasNoDataset', async () => {
@@ -341,6 +306,23 @@ describe('resolveSignalSource job-derived mode', () => {
       );
   });
 
+  it('test_resolveSignalSource_rejectsRawJobGraphsAndNamesTheDatasetFlags', async () => {
+    const rawLogsGraph = job([
+      { type: LogsIcebergTableSinkType.logs_iceberg_table_sink, name: 'raw_data_sink', datasetId: 'ds_raw' } as SchemaOperation,
+      datadogLogSink('dd_1')
+    ]);
+    const rawSpansGraph = job([
+      { type: TraceReducerType.trace_reducer, name: 'trace_reducer', datasetId: 'ds_spans' } as unknown as SchemaOperation,
+      datadogTraceSink('dd_1')
+    ]);
+    for (const rawJob of [rawLogsGraph, rawSpansGraph]) {
+      const client = apiClient({ getJob: vi.fn(async () => rawJob) });
+      await expect(resolveSignalSource({ jobId: 'job_1' }, client)).rejects.toThrow(
+        /job_1 uses a raw job graph.*supports only template-backed pipelines.*--dataset-id or --dataset-name.*--data-type spans/
+      );
+    }
+  });
+
   it('test_resolveSignalSource_rejectsMultipleTemplateOperations', async () => {
     const client = apiClient({
       getJob: vi.fn(async () => job([
@@ -352,106 +334,9 @@ describe('resolveSignalSource job-derived mode', () => {
       .rejects.toThrow(/has an ambiguous pipeline definition/);
   });
 
-  it('test_resolveSignalSource_infersLogsFromARawGraph', async () => {
-    const vertices = [rawLogsSink('ds_raw'), datadogLogSink('dd_1')];
-    const client = apiClient({ getJob: vi.fn(async () => job(vertices)) });
-
-    const resolved = await resolveSignalSource({ jobId: 'job_1' }, client);
-    expect(resolved).toMatchObject({ dataType: logs, datasetId: 'ds_raw' });
-    expect(resolved.sinkOperations).toEqual(vertices);
-  });
-
-  it('test_resolveSignalSource_ignoresNonRawLogsIcebergSinks', async () => {
-    const client = apiClient({
-      getJob: vi.fn(async () => job([rawLogsSink('ds_processed', 'processed_sink')]))
-    });
-    await expect(resolveSignalSource({ jobId: 'job_1' }, client))
-      .rejects.toThrow(/has no supported raw logs or spans dataset/);
-  });
-
-  it('test_resolveSignalSource_infersSpansFromARawGraph', async () => {
-    const client = apiClient({
-      getJob: vi.fn(async () => job([traceReducer('ds_spans'), datadogTraceSink('dd_1')]))
-    });
-    const resolved = await resolveSignalSource({ jobId: 'job_1' }, client);
-    expect(resolved).toMatchObject({ dataType: spans, datasetId: 'ds_spans' });
-  });
-
-  it('test_resolveSignalSource_preservesPostReducerSqlFromARawGraph', async () => {
-    const postReducerSql = sqlOperation('post_reducer_sql');
-    const client = apiClient({
-      getJob: vi.fn(async () => job(
-        [traceReducer('ds_spans'), postReducerSql, datadogTraceSink('dd_1')],
-        ['team_job'],
-        [
-          'trace_reducer:output -> post_reducer_sql:spans',
-          'post_reducer_sql:normalized_spans -> sink_dd_1'
-        ]
-      ))
-    });
-
-    const resolved = await resolveSignalSource({ jobId: 'job_1' }, client);
-    expect(resolved.postReducerSqlOperations).toEqual([postReducerSql]);
-  });
-
-  it('test_resolveSignalSource_allowsMultiplePostReducerSqlBranches', async () => {
-    const firstSql = sqlOperation('first_sql');
-    const secondSql = sqlOperation('second_sql');
-    const client = apiClient({
-      getJob: vi.fn(async () => job(
-        [traceReducer('ds_spans'), firstSql, secondSql, datadogTraceSink('dd_1')],
-        ['team_job'],
-        [
-          'trace_reducer -> first_sql:spans',
-          'trace_reducer -> second_sql:spans'
-        ]
-      ))
-    });
-
-    const resolved = await resolveSignalSource({ jobId: 'job_1' }, client);
-    expect(resolved.postReducerSqlOperations).toEqual([firstSql, secondSql]);
-  });
-
-  it('test_resolveSignalSource_rejectsARawGraphWithBothSignals', async () => {
-    const client = apiClient({
-      getJob: vi.fn(async () => job([rawLogsSink('ds_raw'), traceReducer('ds_spans')]))
-    });
-    await expect(resolveSignalSource({ jobId: 'job_1' }, client))
-      .rejects.toThrow(/contains both logs and spans datasets/);
-  });
-
-  it('test_resolveSignalSource_rejectsARawGraphWithTwoRawLogSinks', async () => {
-    const client = apiClient({
-      getJob: vi.fn(async () => job([
-        rawLogsSink('ds_a', 'raw_data_sink_a'),
-        rawLogsSink('ds_b', 'raw_data_sink_b')
-      ]))
-    });
-    await expect(resolveSignalSource({ jobId: 'job_1' }, client))
-      .rejects.toThrow(/multiple raw logs datasets; use --dataset-id/);
-  });
-
-  it('test_resolveSignalSource_rejectsARawGraphWithTwoTraceReducers', async () => {
-    const client = apiClient({
-      getJob: vi.fn(async () => job([traceReducer('ds_a'), traceReducer('ds_b')]))
-    });
-    await expect(resolveSignalSource({ jobId: 'job_1' }, client))
-      .rejects.toThrow(/multiple spans datasets; use --dataset-id/);
-  });
-
-  it('test_resolveSignalSource_ignoresTraceReducersWithoutADataset', async () => {
-    const client = apiClient({
-      getJob: vi.fn(async () => job([
-        { type: TraceReducerType.trace_reducer, name: 'reducer' } as unknown as SchemaOperation
-      ]))
-    });
-    await expect(resolveSignalSource({ jobId: 'job_1' }, client))
-      .rejects.toThrow(/has no supported raw logs or spans dataset/);
-  });
-
   it('test_resolveSignalSource_rejectsARequestedDataTypeThatContradictsTheJob', async () => {
     const client = apiClient({
-      getJob: vi.fn(async () => job([rawLogsSink('ds_raw')]))
+      getJob: vi.fn(async () => logTemplateJob())
     });
     await expect(resolveSignalSource({ jobId: 'job_1', dataType: spans }, client))
       .rejects.toThrow(/Requested --data-type spans does not match source job type logs/);
@@ -459,7 +344,7 @@ describe('resolveSignalSource job-derived mode', () => {
 
   it('test_resolveSignalSource_acceptsARequestedDataTypeThatMatchesTheJob', async () => {
     const client = apiClient({
-      getJob: vi.fn(async () => job([rawLogsSink('ds_raw')]))
+      getJob: vi.fn(async () => logTemplateJob())
     });
     await expect(resolveSignalSource({ jobId: 'job_1', dataType: logs }, client))
       .resolves.toMatchObject({ dataType: logs });
@@ -467,7 +352,7 @@ describe('resolveSignalSource job-derived mode', () => {
 
   it('test_resolveSignalSource_prefersDatasetTeamIdsOverJobTeamIds', async () => {
     const client = apiClient({
-      getJob: vi.fn(async () => job([rawLogsSink('ds_raw')], ['team_job', 'team_shared'])),
+      getJob: vi.fn(async () => logTemplateJob('ds_raw', ['team_job', 'team_shared'])),
       getDataset: vi.fn(async (id: string) => dataset(id, ['team_ds', 'team_shared']))
     });
     const resolved = await resolveSignalSource({ jobId: 'job_1' }, client);
@@ -476,7 +361,7 @@ describe('resolveSignalSource job-derived mode', () => {
 
   it('test_resolveSignalSource_fallsBackToJobTeamIdsWhenDatasetTeamsAreAbsent', async () => {
     const client = apiClient({
-      getJob: vi.fn(async () => job([rawLogsSink('ds_raw')], ['team_job'])),
+      getJob: vi.fn(async () => logTemplateJob('ds_raw', ['team_job'])),
       getDataset: vi.fn(async (id: string) => ({ id, name: id } as SchemaDatasetRead))
     });
     const resolved = await resolveSignalSource({ jobId: 'job_1' }, client);
@@ -485,7 +370,7 @@ describe('resolveSignalSource job-derived mode', () => {
 
   it('test_resolveSignalSource_skipsJobDatasetMetadataWhenTeamIdsAreNotNeeded', async () => {
     const client = apiClient({
-      getJob: vi.fn(async () => job([rawLogsSink('ds_raw')])),
+      getJob: vi.fn(async () => logTemplateJob()),
       getDataset: vi.fn(async () => {
         throw new Error('dataset metadata is unavailable');
       })
@@ -501,7 +386,7 @@ describe('resolveSignalSource job-derived mode', () => {
 
   it('test_resolveSignalSource_throwsWhenTheInferredDatasetCannotBeLoaded', async () => {
     const client = apiClient({
-      getJob: vi.fn(async () => job([rawLogsSink('ds_gone')])),
+      getJob: vi.fn(async () => logTemplateJob('ds_gone')),
       getDataset: vi.fn(async () => undefined)
     });
     await expect(resolveSignalSource({ jobId: 'job_1' }, client))

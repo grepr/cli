@@ -14,9 +14,8 @@ approval — it owns the canonical plan→draft→apply workflow; other skills l
 here rather than restate it.
 
 Resolve the org config once and reuse it on every command — see the `grepr:cli`
-skill. For backend detection and which ops each backend supports, see
-`grepr:describe-pipeline`. For the full op catalog and exact field names, see
-`grepr:operations-reference`.
+skill. `grepr:describe-pipeline` owns the template check. For the full op
+catalog and exact field names, see `grepr:operations-reference`.
 
 ## Inputs
 
@@ -26,28 +25,16 @@ caller's logic is incomplete — bounce back to the intent skill; do not ask the
 user for a patch. Use a unique filename per request/op so edits never clobber
 each other — see "Files used/generated" in reference.md.
 
-## Draft mechanics per backend
+## Draft mechanics
 
-The plan carries `backend: "template" | "job-graph"`; both run the same workflow
-but draft differently:
-
-- **Template-backed** — `job:draft` flips `draftMode: true` on the
-  template-operation vertex and submits to `POST /v1/jobs/sync`. The server
-  expands the template with the patched inputs and runs a real ingest, tagging
-  each record with the `draftOutputs` stage it came from. Same
-  `templateInputs.input` shape as `job:apply`, so what you test is what deploys.
-- **Raw job graph** — `job:draft` uses source-preserving live draft for all
-  classifications: it keeps the proposed source vertices, removes production
-  sinks, and adds sync/tap outputs. Records arrive interleaved — group by stage
-  tag, not stream order. Raw records are wrapped under `.data`; tap tags live at
-  `.data.tags["sink-source"][]`. Untagged `.data` records are expected, not a
-  failure. Non-UI raw DAGs reject UI-level topology edits with `unsupported raw
-  job graph shape`.
-
-The patched fields you test are identical to what `job:apply` writes; only the
-surrounding test topology differs on raw graphs. Parse the actual record shape
-before trusting any metric table — the tag location differs by backend. The
-draft cannot validate external sink delivery (no vendor readback); see step 2.
+`job:draft` sets `draftMode: true` on the template-operation vertex and submits
+to `POST /v1/jobs/sync`. The server expands the template with the patched inputs
+and runs a real ingest. The draft builds no production sinks. Each stage tags
+the records it emits. Records are wrapped under `.data`, and the stage tag is at
+`.data.tags["sink-source"][]`. Records arrive interleaved, so group by stage
+tag, not stream order. The draft uses the same `templateInputs.input` shape as
+`job:apply`, so what you test is what deploys. The draft cannot validate
+external sink delivery (no vendor readback); see step 2.
 
 ## Workflow
 
@@ -58,11 +45,11 @@ grepr job:plan --job-id <JOB_ID> --patch patch-<tag>.json -o plan-<tag>.json
 ```
 
 Fetches the unresolved live job, applies the patch, and writes a plan recording
-`backend`, `baseVersion` (drift detection), `classification`, and
+`baseVersion` (drift detection), `classification`, and
 `patch`/`current`/`proposed`/`diff[]`. No production write happens here. If the
-patch is malformed (wrong/missing op fields, a topology op against a non-UI raw
-graph, a proposal leaving zero sources), `job:plan` fails before writing —
-report the op-specific error verbatim to the caller and stop. See the
+patch is malformed (wrong/missing op fields, a proposal leaving zero sources),
+`job:plan` fails before writing.
+Report the op-specific error verbatim to the caller and stop. See the
 troubleshooting table in reference.md for specific failure messages.
 
 A plan can also SUCCEED and change nothing: `0 change(s)` in the printed count
@@ -123,14 +110,12 @@ grepr job:draft plan-<tag>.json --max-duration-seconds 30 -o draft-<tag>.ndjson
 Always use `-o` and always pass `--max-duration-seconds` to keep the draft
 bounded. Never shell-redirect with `> draft.ndjson 2>&1` — that mixes status
 logs into the record file and corrupts parsing; keep stderr separate from the
-`-o` output. For sampling flags and per-backend tag-check commands, see
-reference.md.
+`-o` output. For the draft flags and tag-check commands, see reference.md.
 
 **No live traffic? Draft against sample logs.** If the pipeline has little or no
 traffic (a `grepr query` over its raw dataset returns ~0 records), the live
 draft above returns heartbeat-only and verifies nothing. Instead give it a
-deterministic input with `--sample-logs` (template-backed plans only; runs
-BATCH):
+deterministic input with `--sample-logs` (runs BATCH):
 
 ```bash
 grepr job:draft plan-<tag>.json --sample-logs sample-<tag>.json --max-duration-seconds 60 -o draft-<tag>.ndjson
@@ -222,11 +207,11 @@ plan and diff succeeded.
 
 ## Resources
 
-- `reference.md` — draft-result classification, per-op metrics, job-graph draft
-  flags + tag-check commands, troubleshooting table, parsing-hygiene rules,
+- `reference.md` has the draft-result classification, per-op metrics, draft
+  flags and tag-check commands, troubleshooting table, parsing-hygiene rules,
   retry-budget detail, and file-naming conventions.
-- `examples.md` — end-to-end runs on a template-backed job and a raw job-graph
-  job, plus a ❌ anti-pattern run.
+- `examples.md` has an end-to-end run on a template-backed job and ❌
+  anti-pattern runs.
 - `grepr:cli` — org config resolution (`--conf`).
-- `grepr:describe-pipeline` — backend detection and per-backend op capability.
+- `grepr:describe-pipeline` has the pipeline summary and the template check.
 - `grepr:operations-reference` — full op catalog and exact field names.

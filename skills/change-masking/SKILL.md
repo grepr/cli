@@ -31,8 +31,7 @@ Three facts that shape every decision:
   cheap.
 
 This skill diagnoses and proposes; production writes happen only through
-`grepr:test-pipeline-change` after explicit approval. Template-backed log-reducer
-jobs only (the `masking` input does not exist on raw job graphs). Resolve the org
+`grepr:test-pipeline-change` after explicit approval. Resolve the org
 config (`--conf`) once and reuse it on every command — see the `grepr:cli` skill.
 
 ## Step 1 — Get context
@@ -156,8 +155,7 @@ Notes:
   ```
 - `messageMasks` and `attributeMasks` both default to empty — set at least one, or
   the operator masks nothing.
-- `set-masking`/`clear-masking` are **template-backed only** (rejected on raw job
-  graphs). Do not hand-write `set-input-field` on `masking` — `set-masking` is the
+- Do not hand-write `set-input-field` on `masking`. `set-masking` is the
   supported path.
 
 See `grepr:operations-reference` for the `masking-operator` shape and the

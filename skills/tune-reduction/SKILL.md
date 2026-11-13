@@ -27,8 +27,8 @@ Fetch the raw dataset ID (source vertex), the remapper message paths, and the
 reducer config (`partitionByAttributes`/`Paths`, `logReducerExceptions`,
 `attributeMergeStrategyEntries`). Run `grepr:describe-pipeline <JOB_ID>` for the
 full structural view, or `grepr job:get <JOB_ID> --resolved -f raw` when you
-only need a couple of fields. For backend detection (template-backed vs raw
-job-graph) and which ops each backend supports, see `grepr:describe-pipeline`.
+only need a couple of fields. Before you build a patch, run the template check
+in `grepr:describe-pipeline`.
 
 `grepr query --start/--end` require **absolute ISO-8601 UTC** (e.g.
 `2026-05-29T03:00:00Z`); relative offsets like `now-2h` are rejected. Compute
@@ -113,9 +113,8 @@ grepr query --dataset-id <RAW_DS> --query "<predicate.query>" \
 too broad. Common offenders: `status:error` (true error volume is usually <5%),
 `severity:>=WARNING`, and auto-synced vendor exceptions with no allow-list.
 
-Narrowing an existing exception is **template-only** (`set-input-field` on
-`exceptions`). On raw graphs that path is rejected — hand off to
-`grepr:change-exceptions`, which owns the broader narrow/add/remove vocabulary.
+To narrow an existing exception, hand off to `grepr:change-exceptions`, which
+owns the narrow/add/remove vocabulary.
 Adding a new exception (`add-reducer-exception`, `predicate` only) almost always
 hurts reduction further, so prefer narrowing.
 
@@ -168,11 +167,11 @@ When interpreting draft results:
 
 ## Resources
 
-- [examples.md](examples.md) — ✅ template-backed + ✅ raw-graph patches,
-  ❌ anti-patterns, each with a short "why".
+- [examples.md](examples.md) has ✅ patches and ❌ anti-patterns, each with a
+  short "why".
 - [reference.md](reference.md) — empty-message candidate-field analysis tables
   and the empty-`""`-vs-absent remapper behavior.
-- `grepr:describe-pipeline` — backend detection + capability matrix.
+- `grepr:describe-pipeline` has the pipeline summary and the template check.
 - `grepr:test-pipeline-change` — plan → draft → gate → apply.
 - `grepr:operations-reference` — full op catalog and exact field names.
 - `grepr:change-exceptions`, `grepr:change-filtering`, `grepr:tune-grok` —

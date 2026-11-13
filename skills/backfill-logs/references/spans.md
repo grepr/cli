@@ -2,33 +2,17 @@
 
 ## Decide whether to apply post-reducer SQL
 
-The default is no SQL. Only for a job-derived spans backfill, inspect the
-source job before dry-run:
+The default is no SQL. Only for a job-derived spans backfill, read the source
+pipeline's post-reducer SQL operation before dry-run:
 
 ```bash
-grepr job:get <job-id> --resolved -f raw -o source-span-job.json
-jq '
-  .jobGraph as $graph
-  | INDEX($graph.vertices[]; .name) as $vertices
-  | [
-      $graph.edges[]
-      | split(" -> ")
-      | map(split(":")[0])
-      | select(
-          $vertices[.[0]].type == "trace-reducer" and
-          $vertices[.[1]].type == "sql-operation"
-        )
-      | $vertices[.[1]]
-    ]
-' source-span-job.json
+grepr job:get <job-id> -f raw |
+  jq '.jobGraph.vertices[] | select(.type == "template-operation") | .templateInputs.input.sqlOperations.postReducer.sqlOperation // empty'
 ```
 
-This follows graph topology rather than operation names and handles explicit
-source and target ports. When exactly one post-reducer SQL operation exists,
-read its statements, summarize the observable effect in one concise line, and
-ask whether to keep it. If several are returned, summarize each and explain
-that `--preserve-sql` cannot preserve multiple operations; offer to exclude
-them or replace them with one explicit `--sql-operation`.
+The pipeline has at most one. If the command prints nothing, there is no SQL
+to preserve. Otherwise read its statements, summarize the observable effect in
+one concise line, and ask whether to keep it.
 
 - Keep it: add `--preserve-sql`.
 - Exclude it: add no SQL flag.

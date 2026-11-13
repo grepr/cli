@@ -10,7 +10,6 @@ import { CommandRegistry } from './lib/command-registry.js';
 import { QueryCommand } from './commands/query-command.js';
 import { ConfigCommand } from './commands/config-command.js';
 import { JobListCommand, JobCrudCommand } from './commands/job-command.js';
-import { JobToTestCommand } from './commands/job-to-test-command.js';
 import { JobPlanCommand } from './commands/job-plan-command.js';
 import { JobDraftCommand } from './commands/job-draft-command.js';
 import { JobApplyCommand } from './commands/job-apply-command.js';
@@ -208,7 +207,6 @@ export class GreprQueryCLI {
     // Register job commands
     this.commandRegistry.register(new JobListCommand());
     this.commandRegistry.register(new JobCrudCommand());
-    this.commandRegistry.register(new JobToTestCommand());
 
     // Register pipeline-editing commands (terraform-style plan / draft / apply)
     this.commandRegistry.register(new JobPlanCommand());

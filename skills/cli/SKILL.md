@@ -98,9 +98,10 @@ one skill per task; without it, use `grepr <command> --help`.
 - Search data: `grepr:query`; aggregations: `grepr:sql-analytics`.
 - Logs missing or summarized in Datadog, New Relic, Splunk, Sumo, or an OTLP backend:
   `grepr:recover-reduced-logs`. Backfills: `grepr:backfill-logs`.
-- Pipelines: read with `grepr:describe-pipeline`, troubleshoot with `grepr:debug-pipeline`. Change
-  them through an intent skill (`grepr:tune-*`, `grepr:change-*`, `grepr:build-*`) and the
-  `grepr:test-pipeline-change` harness; never apply without the user's explicit approval.
+- Pipelines: create with `grepr:build-pipeline`, read with `grepr:describe-pipeline`, troubleshoot
+  with `grepr:debug-pipeline`. Change them through an intent skill (`grepr:tune-*`,
+  `grepr:change-*`, `grepr:build-*`) and the `grepr:test-pipeline-change` harness; never apply
+  without the user's explicit approval.
 - Datasets: `grepr:describe-datasets`. Agent investigations and memories: `grepr:investigations`.
 - Create, update, or delete jobs, datasets, or integrations: `grepr:job-commands`,
   `grepr:dataset-commands`, `grepr:integration-commands`. Search the Grepr docs: `grepr:docs-commands`.

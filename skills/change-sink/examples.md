@@ -7,20 +7,18 @@ integration/dataset IDs resolved in Step 1.
 Each `add-sink`/`remove-sink` op carries a `target`. Vendor sinks need a
 unique `name` and `integrationId` and may carry an optional gating `filter`;
 the processed-logs slot is singular, takes a `logs-iceberg-table-sink`, and
-allows NO filter. These op shapes are identical on template-backed and raw
-job-graph pipelines — the patch is the same; only the underlying job shape the
-harness rewrites differs.
+allows NO filter.
 
 ## Contents
 
-- ✅ Add a vendor sink (template-backed)
-- ✅ Gate a vendor sink to a subset (template-backed)
-- ✅ Replace the processed-logs sink (raw job-graph)
-- ✅ Remove a vendor sink + repoint the raw dataset (raw job-graph, mixed)
+- ✅ Add a vendor sink
+- ✅ Gate a vendor sink to a subset
+- ✅ Replace the processed-logs sink
+- ✅ Remove a vendor sink + repoint the raw dataset (mixed)
 - ❌ `add-sink` onto an existing sink name
 - ❌ Gating filter on a processed-logs sink
 
-## ✅ Add a vendor sink (template-backed)
+## ✅ Add a vendor sink
 
 Forward reduced logs to a new New Relic destination.
 
@@ -40,7 +38,7 @@ Why: a vendor `add-sink` with a unique `name` and a valid `integrationId` is
 the canonical "forward to a new destination" change. Draft confirms records
 reach the sink stage; vendor acceptance is verified post-apply.
 
-## ✅ Gate a vendor sink to a subset (template-backed)
+## ✅ Gate a vendor sink to a subset
 
 Send only error logs to a Splunk sink, leaving other sinks untouched.
 
@@ -61,7 +59,7 @@ Why: only vendor sinks accept a gating `filter`. The `datadog-query` predicate
 selects the subset that reaches this sink; draft shows only matching logs at
 that stage and zero non-matching.
 
-## ✅ Replace the processed-logs sink (raw job-graph)
+## ✅ Replace the processed-logs sink
 
 Repoint the reduced-logs data-lake table at a new dataset. The slot is
 singular, so remove then add.
@@ -83,7 +81,7 @@ Why: `remove-sink` on `processed-logs` needs no `name` (one slot). The add
 uses the iceberg sink type with no filter. Draft verifies the graph; that
 writes land in `ds_reduced_logs` is confirmed post-apply with `grepr query`.
 
-## ✅ Remove a vendor sink + repoint the raw dataset (raw job-graph, mixed)
+## ✅ Remove a vendor sink + repoint the raw dataset (mixed)
 
 Stop forwarding to Datadog and point raw storage at a new dataset in one
 patch. Combining a sink change with a dataset repoint classifies as `mixed`.

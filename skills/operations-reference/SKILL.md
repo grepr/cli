@@ -17,15 +17,9 @@ contract — a list of typed operations on disk:
 
 The root key is `operations` (not `ops`). `job:plan` consumes this patch
 shape and writes a plan file (`--dry-run` previews the diff). `job:draft`
-and `job:apply` consume the generated plan file. Backend support:
-
-- Template-backed pipelines mutate `templateInputs.input`; the semantic
-  edit surface is the canonical path.
-- Direct job graphs mutate the resolved graph. Existing-vertex field ops
-  are allowed when the target is unambiguous.
-- UI-level topology ops on direct job graphs are allowed only for canonical
-  UI-shaped log graphs. Non-UI raw DAGs reject with `unsupported raw job
-  graph shape`.
+and `job:apply` consume the generated plan file. These commands work only on
+template-backed pipelines (exactly one `template-operation` vertex). Every op
+edits that vertex's `templateInputs.input`.
 
 Operations (exact field names matter — field mistakes fail during
 `job:plan` with op-specific errors):
@@ -37,16 +31,16 @@ Operations (exact field names matter — field mistakes fail during
 | `add-aggregation-strategy` | `attributePath`, `strategies` | Add a reducer aggregation strategy. `strategies` is an array of `sum`/`min`/`max`/`avg` — not a scalar, not `"average"`. **One strategy per attribute path**: pass a single-element array (e.g. `["avg"]`). Passing `["min","max","avg"]` expands to three entries sharing the same path, which the backend rejects at draft/apply with `Duplicate attribute paths in merge strategies are not allowed`. Append-only. |
 | `add-reducer-exception` | `predicate` | Add a reducer exception (matching logs bypass aggregation). Only `predicate` is required — there is no `name` field. |
 | `add-grok-rule` | `pattern` (not `rule`); optional `parserName`, `extractAttribute` | Append a rule to a grok parser. `parserName` is required only when more than one grok parser exists; rejected if zero exist. |
-| `set-filter` / `clear-filter` | `phase` (not `stage`); `set` also needs `filter` | Set or clear a phase-slotted filter. **Raw job graph:** replaces the canonical filter vertex; `clear-filter` keeps the vertex but blanks the predicate query. **Template-backed:** writes a transform-chain gate (`condition-node` → `passthrough-node`/`drop-node`) into the phase's `transforms` slot; `set` preserves any existing non-filter chain (e.g. a SQL node) as the pass side, `clear` unwraps a simple root gate and errors on a branching chain. `filter.predicate` is a generic `EventPredicate` (not necessarily `datadog-query`); `maxLateEventTimestampDelta`/`inverted` are honored. **Predicate validation diverges by backend:** the template path requires `filter.predicate` and rejects a predicate-omitted `set-filter`; the raw path does not validate the predicate. Always supply `filter.predicate` (omit only `inverted`/`maxLateEventTimestampDelta` to inherit them). |
-| `set-transform-chain` / `clear-transform-chain` | `phase`; `set` also needs `root` | **Template-backed only** (rejected on raw job graphs). Replace (`set`) or remove (`clear`) a phase's entire `transforms` chain. `root` is a hand-authored chain node (`condition-node`/`sql-node`/`passthrough-node`/`drop-node`). Use when you need to preserve or merge a complex chain that the semantic filter/SQL ops would overwrite. |
-| `set-sql-transform` | `phase`, `sqlOperation`, `outputRouting`, `mainStream`; optional `gate` | **Template-backed only** (rejected on raw job graphs with a template-only message). Replace a phase's `transforms` chain with one generated `sql-node` chain. `mainStream: "drop"` drops originals after SQL input; `"passthrough"` keeps originals flowing. With `gate`, non-matching events pass through unchanged. See the `sql-operation` shape below. |
-| `set-masking` / `clear-masking` | `set` needs `masking` | **Template-backed only** (rejected on raw job graphs). Install/replace (`set`) or remove (`clear`) the masking operator (`input.masking`) — a regex redactor that rewrites matches in the message and configured attribute paths. It gates the data-lake fan-out, so everything downstream — including the raw lake — sees only masked data. See the `masking-operator` shape below and `grepr:change-masking`. |
-| `add-parser` / `remove-parser` | `parser` / `name` (not `parserName`) | Add or remove a parser. New parsers append before `pre_data_warehouse_filter`. |
+| `set-filter` / `clear-filter` | `phase` (not `stage`); `set` also needs `filter` | Set or clear a phase-slotted filter. Writes a transform-chain gate (`condition-node` → `passthrough-node`/`drop-node`) into the phase's `transforms` slot; `set` preserves any existing non-filter chain (e.g. a SQL node) as the pass side, `clear` unwraps a simple root gate and errors on a branching chain. `filter.predicate` is a generic `EventPredicate` (not necessarily `datadog-query`); `maxLateEventTimestampDelta`/`inverted` are honored. `set-filter` requires `filter.predicate` and rejects a patch that omits it (omit only `inverted`/`maxLateEventTimestampDelta` to inherit them). |
+| `set-transform-chain` / `clear-transform-chain` | `phase`; `set` also needs `root` | Replace (`set`) or remove (`clear`) a phase's entire `transforms` chain. `root` is a hand-authored chain node (`condition-node`/`sql-node`/`passthrough-node`/`drop-node`). Use when you need to preserve or merge a complex chain that the semantic filter/SQL ops would overwrite. |
+| `set-sql-transform` | `phase`, `sqlOperation`, `outputRouting`, `mainStream`; optional `gate` | Replace a phase's `transforms` chain with one generated `sql-node` chain. `mainStream: "drop"` drops originals after SQL input; `"passthrough"` keeps originals flowing. With `gate`, non-matching events pass through unchanged. See the `sql-operation` shape below. |
+| `set-masking` / `clear-masking` | `set` needs `masking` | Install/replace (`set`) or remove (`clear`) the masking operator (`input.masking`), a regex redactor that rewrites matches in the message and configured attribute paths. It gates the data-lake fan-out, so everything downstream, including the raw lake, sees only masked data. See the `masking-operator` shape below and `grepr:change-masking`. |
+| `add-parser` / `remove-parser` | `parser` / `name` (not `parserName`) | Add or remove a parser. New parsers append to the end of `input.parsers`. |
 | `update-parser` | `parser` | Replace the parser with the same `parser.name` in place, keeping its position. A full replacement: copy every field you keep from `job:get`, since omitted fields are dropped. Use it to reorder grok rules (the first declared rule wins) or change a predicate. |
 | `add-source` / `remove-source` | `source` / `name` (not `sourceName`) | Add or remove source vertices. A proposal leaving zero sources is rejected. |
 | `add-sink` / `remove-sink` | `target` (`vendor`\|`processed-logs`), `sink` / `name?` | Add or remove a sink. `vendor` adds a vendor log sink (optionally with a gating `filter`); `processed-logs` sets the single reduced-logs iceberg sink. |
 | `set-raw-dataset` | `datasetId` | Point the raw-logs dataset at a different dataset ID. |
-| `set-input-field` / `unset-input-field` | `path`, `value` / `path` | Template-input escape hatch only (dot-notation, object keys not array indices); rejected on raw job graphs. The first segment must be a template input field (`sources`, `sinks`, `parsers`, `reducer`, `transforms`, …), and a key under `transforms` must be a slot (`preParser`, `preWarehouse`, `preExceptions`, not the phase names), or `job:plan` rejects the op. Edit filters with `set-filter` / `clear-filter` and transform chains with `set-transform-chain`. |
+| `set-input-field` / `unset-input-field` | `path`, `value` / `path` | Template-input escape hatch (dot-notation, object keys not array indices). The first segment must be a template input field (`sources`, `sinks`, `parsers`, `reducer`, `transforms`, …), and a key under `transforms` must be a slot (`preParser`, `preWarehouse`, `preExceptions`, not the phase names), or `job:plan` rejects the op. Edit filters with `set-filter` / `clear-filter` and transform chains with `set-transform-chain`. |
 
 Every `phase`-bearing op above (`set-filter`, `clear-filter`,
 `set-transform-chain`, `clear-transform-chain`, `set-sql-transform`) accepts
@@ -58,14 +52,9 @@ the validation path.
 
 Draft behavior:
 
-- Template-backed drafts use server draft mode and per-stage `draftOutputs`.
-- Raw job-graph drafts use source-preserving live draft for all
-  classifications. Data records are wrapped under `.data`; tap tags are
-  nested at `.data.tags["sink-source"][]`. Some untagged `.data` records
-  from direct sync outputs are expected. Bounded by `--sample-rate`
-  (default `10/sec/source`), `--sample-burst` (default `1000/source`), and
-  `--max-duration-seconds` (default `30s`); always pass
-  `--max-duration-seconds 30` explicitly.
+- Drafts use server draft mode. Data records are wrapped under `.data`, and
+  each stage tags the records it emits at `.data.tags["sink-source"][]`.
+  Always pass `--max-duration-seconds 30` explicitly to bound the draft.
 - Sink/data-lake output edits are graph/upstream verification only; external
   sink delivery is not verified by sync draft.
 
@@ -138,7 +127,7 @@ The common statement types are:
 the output stream's type; for log-reducer pipelines that is `LOG_EVENT`, as in
 the example below.
 
-For template-backed jobs, install a `sql-operation` with `set-sql-transform`
+In a pipeline, install a `sql-operation` with `set-sql-transform`
 (do **not** write a legacy `sqlOperations` template input). Its `outputRouting`
 maps each `sql_output.outputName` to a downstream step: `json-log-processor`,
 `grok-parser`, `data-warehouse`, `log-reducer`, or `sinks`. Every `sql_output`
@@ -173,8 +162,8 @@ side-output SQL. Example:
 | `masking-operator` | Redact sensitive substrings, replacing each regex match with a decorated label (`[email]`) in the message and at configured attribute paths | `messageMasks`, `attributeMasks`, `predicate` |
 
 A `masking-operator` is a **template input** (`input.masking`). Install or replace
-it with the first-class `set-masking` op, and remove it with `clear-masking`
-(both template-backed only). It sits after the post-parsing (pre-warehouse)
+it with the first-class `set-masking` op, and remove it with `clear-masking`.
+It sits after the post-parsing (pre-warehouse)
 filter and gates the data-lake fan-out, so the raw lake, the exceptions branch,
 the reducer, and forwarding sinks see masked data on the normal path.
 

@@ -8,7 +8,7 @@ import {
   LogAttributesRemapperType,
   SchemaReadJob,
 } from '@/openapi/openApiTypes.js';
-import { makeTemplateJob } from '../lib/test-fixtures.js';
+import { makeRawJobGraphJob, makeTemplateJob } from '../lib/test-fixtures.js';
 
 /** Template-backed unresolved job with a single template-operation vertex. */
 const fakeJob = (version = 3): SchemaReadJob =>
@@ -72,7 +72,7 @@ describe('JobPlanCommand', () => {
     const plan = await fs.readJson(outputFile);
     expect(plan.schemaVersion).toBe(2);
     expect(plan.jobId).toBe('job_1');
-    expect(plan.backend).toBe('template');
+    expect(plan).not.toHaveProperty('backend');
     expect(plan.baseVersion).toBe(5);
     expect(plan.classification).toBe('transform');
     expect(plan.diff.length).toBeGreaterThan(0);
@@ -125,54 +125,23 @@ describe('JobPlanCommand', () => {
     );
   });
 
-  it('test_jobPlan_jobGraphBackend_shouldGeneratePlanWithJobGraphBackend', async () => {
+  it('test_jobPlan_rawJobGraph_exitsWithTemplateOnlyMessageAndWritesNoPlan', async () => {
     const patchFile = path.join(tempDir, 'patch.json');
     await fs.writeJson(patchFile, {
       operations: [{ op: 'add-message-attribute', attributePath: 'body.action' }],
     });
     const outputFile = path.join(tempDir, 'plan.json');
-    // Build a non-template job: no template-operation vertex, just a
-    // remapper sitting directly in jobGraph.vertices.
-    const job = fakeJob(7);
-    if (job.jobGraph) {
-      job.jobGraph.vertices = [
-        { type: 'log-attributes-remapper', name: 'log_attributes_remapper', messageReservedAttributes: ['message'] } as never,
-        { type: 'log-reducer', name: 'log_reducer', delimiters: [' '], enabledMasks: [], masks: [] } as never,
-      ];
-    }
-    const mockApi = { getJob: vi.fn().mockResolvedValue(job) };
-    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
-
-    new JobPlanCommand().addToProgram(program, async opts => opts as never);
-    await program.parseAsync(['node', 'test', 'job:plan', '--job-id', 'j', '--patch', patchFile, '-o', outputFile]);
-
-    const plan = await fs.readJson(outputFile);
-    expect(plan.backend).toBe('job-graph');
-    expect(plan.baseVersion).toBe(7);
-    // The proposed update should carry the patched remapper.
-    const remapper = plan.proposed.jobGraph.vertices.find((v: { name: string }) => v.name === 'log_attributes_remapper');
-    expect(remapper.messageReservedAttributePaths).toEqual([['body', 'action']]);
-  });
-
-  it('test_jobPlan_jobGraphBackend_unsupportedOp_shouldErrorAndExit', async () => {
-    const patchFile = path.join(tempDir, 'patch.json');
-    await fs.writeJson(patchFile, {
-      operations: [{ op: 'set-filter', phase: 'pre-parser', filter: { type: 'logs-filter', name: 'f' } }],
-    });
-    const job = fakeJob(1);
-    if (job.jobGraph) job.jobGraph.vertices = [{ type: 'log-attributes-remapper', name: 'r' } as never];
-    const mockApi = { getJob: vi.fn().mockResolvedValue(job) };
+    const mockApi = { getJob: vi.fn().mockResolvedValue(makeRawJobGraphJob()) };
     (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
 
     new JobPlanCommand().addToProgram(program, async opts => opts as never);
     await expect(
-      program.parseAsync(['node', 'test', 'job:plan', '--job-id', 'j', '--patch', patchFile]),
+      program.parseAsync(['node', 'test', 'job:plan', '--job-id', 'j', '--patch', patchFile, '-o', outputFile]),
     ).rejects.toThrow();
+
     expect(processExitSpy).toHaveBeenCalledWith(1);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Error generating pipeline plan:',
-      expect.stringContaining('unsupported raw job graph shape'),
-    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error generating pipeline plan:', 'This pipeline uses a raw job graph (no template-operation vertex). job:plan, job:draft and job:apply support only template-backed pipelines. To change a raw job graph, edit it and run job:update.');
+    expect(await fs.pathExists(outputFile)).toBe(false);
   });
 
   it('test_jobPlan_dryRun_printsRenderedDiffToStdout', async () => {

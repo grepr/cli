@@ -1,10 +1,7 @@
 import {
   CreateLogsBackfillJobDataType,
   CreateSpansBackfillJobDataType,
-  LogsIcebergTableSinkType,
-  SqlOperationType,
   TemplateOperationType,
-  TraceReducerType,
   type SchemaCreateBackfillJob,
   type SchemaDatasetRead,
   type SchemaLogReducerTemplateInput,
@@ -15,11 +12,9 @@ import {
   type SchemaTemplateOperation,
   type SchemaTraceReducerTemplateInput
 } from '../openapi/openApiTypes.js';
-import { parseEdge } from './job-graph-utils.js';
 
 const LOG_REDUCER_TEMPLATE_NAME = 'log-reducer-job-graph-template';
 const TRACE_REDUCER_TEMPLATE_NAME = 'trace-reducer-job-graph-template';
-const RAW_LOGS_SINK_NAME_PREFIX = 'raw_data_sink';
 
 export type SignalDataType = SchemaCreateBackfillJob['dataType'];
 
@@ -47,7 +42,7 @@ export interface ResolvedSignalSource {
   datasetId: string;
   teamIds: string[];
   sinkOperations: SchemaOperation[];
-  postReducerSqlOperations: SchemaSqlOperation[];
+  postReducerSqlOperation?: SchemaSqlOperation;
 }
 
 type InferredJobSource = Omit<ResolvedSignalSource, 'teamIds'>;
@@ -92,8 +87,7 @@ export async function resolveSignalSource(
         dataType: options.dataType ?? CreateLogsBackfillJobDataType.logs,
         datasetId: options.datasetId,
         teamIds: [],
-        sinkOperations: [],
-        postReducerSqlOperations: []
+        sinkOperations: []
       };
     }
     const dataset = await resolveDatasetFromOptions(options, apiClient);
@@ -101,8 +95,7 @@ export async function resolveSignalSource(
       dataType: options.dataType ?? CreateLogsBackfillJobDataType.logs,
       datasetId: dataset.id,
       teamIds: includeTeamIds ? dataset.teamIds ?? [] : [],
-      sinkOperations: [],
-      postReducerSqlOperations: []
+      sinkOperations: []
     };
   }
 
@@ -140,10 +133,14 @@ async function inferJobSource(
     throw new Error(`Source job ${job.id ?? job.name} has an ambiguous pipeline definition`);
   }
   const templateOperation = templateOperations[0];
-  if (templateOperation) {
-    return inferTemplateJobSource(templateOperation, apiClient);
+  if (!templateOperation) {
+    throw new Error(
+      `Source job ${job.id ?? job.name} uses a raw job graph (no template-operation vertex). ` +
+      '--job-id supports only template-backed pipelines. ' +
+      'Pass --dataset-id or --dataset-name instead. For a trace pipeline, also pass --data-type spans.'
+    );
   }
-  return inferRawJobSource(job);
+  return inferTemplateJobSource(templateOperation, apiClient);
 }
 
 async function inferTemplateJobSource(
@@ -166,8 +163,7 @@ async function inferTemplateJobSource(
         datasetId,
         sinkOperations: sinks
           .map(wrapper => wrapper.sink)
-          .filter(isOperation),
-        postReducerSqlOperations: []
+          .filter(isOperation)
       };
     }
     case TRACE_REDUCER_TEMPLATE_NAME: {
@@ -181,9 +177,7 @@ async function inferTemplateJobSource(
         sinkOperations: (spansInput.sinks ?? [])
           .map(wrapper => wrapper.sink)
           .filter(isOperation),
-        postReducerSqlOperations: spansInput.sqlOperations?.postReducer?.sqlOperation
-          ? [spansInput.sqlOperations.postReducer.sqlOperation]
-          : []
+        postReducerSqlOperation: spansInput.sqlOperations?.postReducer?.sqlOperation
       };
     }
     default:
@@ -191,61 +185,6 @@ async function inferTemplateJobSource(
         `Source job uses unsupported pipeline template ${template.name} (${operation.templateId})`
       );
   }
-}
-
-function inferRawJobSource(job: SchemaReadJob): InferredJobSource {
-  const operations = job.jobGraph.vertices;
-  const rawLogSinks = operations.filter(isRawLogsSink);
-  const traceReducers = operations.filter(isTraceReducerWithDataset);
-
-  if (rawLogSinks.length > 0 && traceReducers.length > 0) {
-    throw new Error(`Source job ${job.id ?? job.name} contains both logs and spans datasets`);
-  }
-  if (rawLogSinks.length > 1) {
-    throw new Error(
-      `Source job ${job.id ?? job.name} has multiple raw logs datasets; ` +
-      'use --dataset-id to select one explicitly'
-    );
-  }
-  if (traceReducers.length > 1) {
-    throw new Error(
-      `Source job ${job.id ?? job.name} has multiple spans datasets; ` +
-      'use --dataset-id to select one explicitly'
-    );
-  }
-  const rawLogSink = rawLogSinks[0];
-  if (rawLogSinks.length === 1 && rawLogSink) {
-    return {
-      dataType: CreateLogsBackfillJobDataType.logs,
-      datasetId: rawLogSink.datasetId,
-      sinkOperations: operations,
-      postReducerSqlOperations: []
-    };
-  }
-  const traceReducer = traceReducers[0];
-  if (traceReducers.length === 1 && traceReducer) {
-    const postReducerSqlOperations = job.jobGraph.vertices
-      .filter(isSqlOperation)
-      .filter(operation =>
-        job.jobGraph.edges.some(
-          edge => {
-            const parsed = parseEdge(edge);
-            return parsed.sourceVertex === traceReducer.name &&
-              parsed.targetVertex === operation.name;
-          }
-        )
-      );
-    return {
-      dataType: CreateSpansBackfillJobDataType.spans,
-      datasetId: traceReducer.datasetId,
-      sinkOperations: operations,
-      postReducerSqlOperations
-    };
-  }
-
-  throw new Error(
-    `Source job ${job.id ?? job.name} has no supported raw logs or spans dataset`
-  );
 }
 
 async function resolveDatasetFromOptions(
@@ -282,31 +221,6 @@ function requireDatasetName(datasetName: string | undefined): string {
 
 function isTemplateOperation(operation: SchemaOperation): operation is SchemaTemplateOperation {
   return operation.type === TemplateOperationType.template_operation;
-}
-
-function isSqlOperation(operation: SchemaOperation): operation is SchemaSqlOperation {
-  return operation.type === SqlOperationType.sql_operation;
-}
-
-function isRawLogsSink(
-  operation: SchemaOperation
-): operation is Extract<
-  SchemaOperation,
-  { type: LogsIcebergTableSinkType.logs_iceberg_table_sink }
-> {
-  return operation.type === LogsIcebergTableSinkType.logs_iceberg_table_sink &&
-    operation.name.startsWith(RAW_LOGS_SINK_NAME_PREFIX);
-}
-
-function isTraceReducerWithDataset(
-  operation: SchemaOperation
-): operation is Extract<
-  SchemaOperation,
-  { type: TraceReducerType.trace_reducer }
-> & { datasetId: string } {
-  return operation.type === TraceReducerType.trace_reducer &&
-    typeof operation.datasetId === 'string' &&
-    operation.datasetId.length > 0;
 }
 
 function isOperation(operation: SchemaOperation | undefined): operation is SchemaOperation {

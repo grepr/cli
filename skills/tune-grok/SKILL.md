@@ -22,8 +22,7 @@ Resolve the org config once and reuse it on every command — see the `grepr:cli
 
 ### 1. Get context
 
-Run `grepr:describe-pipeline <JOB_ID>` first. For backend detection (template vs raw
-graph) and which ops each backend supports, see `grepr:describe-pipeline`. Note:
+Run `grepr:describe-pipeline <JOB_ID>` first. Note:
 
 - Each `grok-parser` vertex's name, predicate and input field (`extractAttribute`, else
   `message`) — together they decide which logs and which text its rules see (drives the
@@ -76,14 +75,14 @@ say so before the test step, not in the final summary — one line is enough:
 ### 4. Build the patch
 
 Write a semantic patch (`{"operations":[...]}`) to a fresh request-specific file (e.g.
-`patch-<short-tag>.json`) and let `job:plan` wire it into the right backend shape. Do
-not hand-build full job JSON or call `job:update`. For the full op catalog and exact
+`patch-<short-tag>.json`) and let `job:plan` apply it to the template input. Do not
+hand-build full job JSON or call `job:update`. For the full op catalog and exact
 field names, see `grepr:operations-reference`.
 
 | Pipeline state | Op | Notes |
 |---|---|---|
 | A grok parser already sees the target text: its predicate matches the target logs (or it has none) and it reads the field holding the text | `add-grok-rule` | `parserName` required only if >1 grok parser; rejected if 0 grok parsers |
-| No grok parser, or none that sees the target text | `add-parser` (a `grok-parser`) scoped to the target logs | template-backed adds it to `input.parsers`; raw graphs insert the vertex into the parser chain (canonical UI shape only — see `grepr:describe-pipeline`) |
+| No grok parser, or none that sees the target text | `add-parser` (a `grok-parser`) scoped to the target logs | appends it to the end of `input.parsers` |
 
 A parser runs its rules only on logs its predicate matches, so a rule added to a parser
 scoped to `service:payments` never sees `service:checkout` logs: the plan is accepted and
@@ -98,7 +97,7 @@ Prefer scoping a new parser with a `predicate` (`{ "type":"datadog-query", "quer
 Without a predicate the parser runs on every log; a loose pattern can then mis-parse
 unrelated shapes. Skip the predicate only for a deliberate pipeline-wide catch-all.
 
-See `examples.md` for copy-paste patches (template + raw graph) and the anti-patterns.
+See `examples.md` for copy-paste patches and the anti-patterns.
 
 ### 5. Hand off to test-pipeline-change
 
@@ -144,10 +143,10 @@ This skill diagnoses and proposes. Production writes happen only via
 
 ## Resources
 
-- `examples.md` — ✅ template-backed and ✅ raw job-graph patches (`add-grok-rule`,
-  `add-parser`) plus ❌ anti-patterns, each with a short "why".
+- `examples.md` has ✅ patches (`add-grok-rule`, `add-parser`, `update-parser`) and
+  ❌ anti-patterns, each with a short "why".
 - Pattern authoring + matcher reference: `grepr:build-grok`.
-- Backend detection and per-backend op support: `grepr:describe-pipeline`.
+- Pipeline summary and the template check: `grepr:describe-pipeline`.
 - Org config (`--conf`) handling: `grepr:cli`.
 - Full op catalog and field names: `grepr:operations-reference`.
 - Plan / draft / approval-gated apply: `grepr:test-pipeline-change`.

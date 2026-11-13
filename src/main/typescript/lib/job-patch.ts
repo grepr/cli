@@ -1,9 +1,8 @@
-/** Structured patch format for grepr pipelines: a list of ops applied locally before any production write (see {@link JobBackend} for the two substrates). */
+/** Structured patch format for template-backed grepr pipelines: a list of ops applied to `templateInputs.input` locally before any production write. */
 import {
   SchemaReadJob,
   SchemaUpdateJob,
   SchemaOperation,
-  SchemaGreprJobGraph,
   SchemaAttributesMergeStrategyEntry,
   SchemaEventPredicate,
   SchemaLogReducerTemplateInput,
@@ -31,9 +30,7 @@ import {
   SqlOperationType,
   SqlOutputStatementType,
   LogAttributesRemapperType,
-  LogReducerType,
   GrokParserType,
-  LogsFilterType,
   DatadogQueryPredicateType,
   DatadogLogSinkType,
   SplunkLogSinkType,
@@ -49,18 +46,6 @@ import {
   AverageAttributesMergeStrategyType,
   PathsV1JobsGetParametersQueryState,
 } from '@/openapi/openApiTypes';
-import { parseEdge } from './job-graph-utils.js';
-import {
-  RAW_ATTRIBUTES_REMAPPER,
-  RAW_ATTRIBUTES_REMAPPER_TYPE,
-  RAW_JSON_PROCESSOR,
-  RAW_JSON_PROCESSOR_TYPE,
-  RAW_LOG_REDUCER,
-  RAW_PARSER_TYPES,
-  RAW_PRE_EXCEPTIONS_FILTER,
-  RAW_PRE_PARSER_FILTER,
-  RAW_PRE_WAREHOUSE_FILTER,
-} from './job-graph-log-pipeline-constants.js';
 
 export type AggregationStrategy =
   | `${SumAttributesMergeStrategyType}`
@@ -96,19 +81,6 @@ const VENDOR_LOG_SINK_TYPES: ReadonlySet<string> = new Set([
 
 const LOGS_ICEBERG_TABLE_SINK_TYPE: string = LogsIcebergTableSinkType.logs_iceberg_table_sink;
 
-// Raw data-lake and processed-logs sinks share the logs-iceberg-table-sink type
-// and are distinguished only by these vertex-name prefixes — a naming convention
-// this CLI must match, not invent.
-const RAW_DATA_LAKE_SINK_NAME_PREFIX = 'raw_data_sink';
-const PROCESSED_LOGS_SINK_NAME_PREFIX = 'processed_logs_';
-
-/**
- * Which substrate a patch is applied to. `template`: one `template-operation`
- * vertex, ops mutate `templateInputs.input`. `job-graph`: ops mutate resolved
- * vertices directly; topology ops require a canonical UI log graph.
- */
-export type JobBackend = 'template' | 'job-graph';
-
 /** All supported patch operations, applied in list order. */
 export type JobPatchOp =
   | {
@@ -130,9 +102,8 @@ export type JobPatchOp =
   | {
       op: 'add-reducer-exception';
       /**
-       * Predicate logs must match to bypass aggregation. Template: wrapped in a
-       * `TemplateQueryException` appended to `input.exceptions`. Job-graph:
-       * appended raw to the reducer vertex's `logReducerExceptions`.
+       * Predicate logs must match to bypass aggregation. Wrapped in a
+       * `TemplateQueryException` appended to `input.exceptions`.
        */
       predicate: SchemaEventPredicate;
     }
@@ -147,7 +118,7 @@ export type JobPatchOp =
     }
   // Escape hatches for template-input fields the semantic ops don't cover.
   // `path` is dot-notation from the `input` root over object keys only
-  // (`sinks.0` is a key, not an index); template-only. Its first segment must be
+  // (`sinks.0` is a key, not an index). Its first segment must be
   // a template input field, matched exactly, or parsePatch rejects the op; under
   // `transforms`, so must the slot.
   // Bracket notation is unsupported: a bracketed first segment fails that check,
@@ -167,8 +138,7 @@ export type JobPatchOp =
       op: 'add-parser';
       /**
        * Operation with `name` and `type` (typically `json-log-processor`,
-       * `grok-parser`, or `log-attributes-remapper`). Template: appended to
-       * `input.parsers`. Job-graph: inserted positionally into the parser chain.
+       * `grok-parser`, or `log-attributes-remapper`). Appended to `input.parsers`.
        */
       parser: SchemaOperation;
     }
@@ -180,14 +150,14 @@ export type JobPatchOp =
   | {
       op: 'set-filter';
       phase: TemplateTransformPhase;
-      /** Filter for this phase (one per phase). Template: written as a transform-chain gate; job-graph: replaces the canonical filter vertex. */
+      /** Filter for this phase (one per phase), written as a transform-chain gate. */
       filter: SchemaLogsFilter;
     }
   | {
       op: 'clear-filter';
       phase: TemplateTransformPhase;
     }
-  // Template-only transform-chain ops. Each targets a `transforms` slot by
+  // Transform-chain ops. Each targets a `transforms` slot by
   // camel-case-equivalent phase and replaces or removes that whole chain.
   | {
       op: 'set-transform-chain';
@@ -214,7 +184,7 @@ export type JobPatchOp =
        */
       gate?: SchemaEventPredicate;
     }
-  // Template-only masking ops. The masking operator is the template `input.masking`
+  // Masking ops. The masking operator is the template `input.masking`
   // field; these set/clear it as a first-class op so callers never hand-write the
   // escape-hatch path.
   | {
@@ -246,9 +216,7 @@ export type JobPatchOp =
       /** A vendor log sink operation. */
       sink: SchemaOperation;
       /**
-       * Filter gating which logs reach this sink. Template: stored on the
-       * `TemplateLogSink`. Raw job-graph: inserted as a single-use `logs-filter`
-       * vertex (`<sink.name>_filter`) between the reducer and the sink.
+       * Filter gating which logs reach this sink, stored on the `TemplateLogSink`.
        */
       filter?: SchemaLogsFilter;
     }
@@ -272,7 +240,7 @@ export type JobPatchOp =
     }
   | {
       op: 'set-raw-dataset';
-      /** New raw-logs dataset ID. Template: `input.datasetId`. Raw job-graph: `datasetId` on the raw data-lake `logs-iceberg-table-sink` (matched by name prefix). */
+      /** New raw-logs dataset ID, written to `input.datasetId`. */
       datasetId: string;
     }
   // Per-entry removals: the inverse of the append-only `add-*` reducer/remapper
@@ -297,7 +265,7 @@ export type JobPatchOp =
     }
   | {
       op: 'remove-reducer-exception';
-      /** Predicate identifying the exception to drop (matched by serialized equality). Template: removed from `input.exceptions`; job-graph: removed from the reducer's `logReducerExceptions`. */
+      /** Predicate identifying the exception to drop from `input.exceptions` (matched by serialized equality). */
       predicate: SchemaEventPredicate;
     }
   | {
@@ -307,9 +275,9 @@ export type JobPatchOp =
       /** Name of an existing grok-parser. If omitted, exactly one grok-parser must exist. */
       parserName?: string;
     }
-  // In-place vertex updates: replace a vertex's config (located by the new
-  // operation's own `name`) while preserving its edges/position — the single-op,
-  // wiring-preserving alternative to `remove` + `add`. A missing target errors.
+  // In-place updates: replace an entry's config (located by the new operation's
+  // own `name`) at its current position. This is the single-op alternative to
+  // `remove` + `add`. A missing target errors.
   | {
       op: 'update-source';
       /** Replacement source; the existing source with the same `name` is replaced in place. */
@@ -328,8 +296,8 @@ export type JobPatchOp =
       target: 'vendor';
       sink: SchemaOperation;
       /**
-       * When provided, replaces an existing template entry filter or generated
-       * `<sink.name>_filter` vertex. Omit to preserve current gating.
+       * When provided, replaces the existing entry filter. Omit to preserve
+       * current gating.
        */
       filter?: SchemaLogsFilter;
     }
@@ -505,24 +473,12 @@ export function parsePatch(raw: unknown): JobPatch {
   return { operations: parsedOperations };
 }
 
-/** Detect whether a job is template-backed (a `template-operation` vertex) or job-graph. */
-export function detectBackend(job: { jobGraph?: { vertices?: SchemaOperation[] } }): JobBackend {
-  const vertices = job.jobGraph?.vertices;
-  if (!Array.isArray(vertices)) return 'job-graph';
-  return vertices.some(v => v.type === TemplateOperationType.template_operation) ? 'template' : 'job-graph';
-}
-
 /**
  * Apply a patch to a fetched job, producing the `SchemaUpdateJob` payload for
- * `job:apply`. Pure (clones input); dispatches on backend. Throws if an op
- * targets a missing field/vertex or a topology op hits a non-UI raw graph.
+ * `job:apply`. Pure (clones input). Throws if the job is not template-backed or
+ * an op targets a missing field.
  */
 export function applyPatch(job: SchemaReadJob, patch: JobPatch): SchemaUpdateJob {
-  const backend = detectBackend(job);
-  return backend === 'template' ? applyPatchToTemplate(job, patch) : applyPatchToJobGraph(job, patch);
-}
-
-function applyPatchToTemplate(job: SchemaReadJob, patch: JobPatch): SchemaUpdateJob {
   const cloned = structuredClone(job);
   const templateOp = findTemplateOperation(cloned);
   const input = readTemplateInput(templateOp);
@@ -543,45 +499,14 @@ function applyPatchToTemplate(job: SchemaReadJob, patch: JobPatch): SchemaUpdate
   };
 }
 
-/**
- * Apply a patch to a job-graph (non-template) pipeline. Clones the job and
- * mutates the resolved graph on the clone (the input is left untouched). Field
- * names match the template inputs except `add-reducer-exception`, which appends
- * a raw `EventPredicate` to the reducer vertex's `logReducerExceptions`. Topology
- * ops require the canonical UI log-pipeline chain.
- */
-function applyPatchToJobGraph(job: SchemaReadJob, patch: JobPatch): SchemaUpdateJob {
-  const cloned = structuredClone(job);
-  const jobGraph = cloned.jobGraph;
-  const vertices = jobGraph?.vertices;
-  if (!jobGraph || !Array.isArray(vertices) || vertices.length === 0) {
-    throw new Error('Job has no jobGraph.vertices to patch');
-  }
-  if (!Array.isArray(jobGraph.edges)) {
-    (jobGraph as unknown as { edges: string[] }).edges = [];
-  }
-  for (let i = 0; i < patch.operations.length; i++) {
-    applyJobGraphOperation(jobGraph, patch.operations[i] as JobPatchOp, i);
-  }
-  if (patch.operations.some(touchesSourceConfig)) {
-    assertProposedJobGraphHasSource(jobGraph);
-  }
-  return {
-    desiredState: cloned.desiredState as PathsV1JobsGetParametersQueryState,
-    fromVersion: cloned.version,
-    jobGraph: cloned.jobGraph,
-    teamIds: cloned.teamIds,
-  };
-}
-
 function applyOperation(input: SchemaLogReducerTemplateInput, op: JobPatchOp, index: number): void {
   switch (op.op) {
     case 'add-message-attribute':
-      return applyAddMessageAttribute(input, op.attributePath, index);
+      return applyMessageAttributeToRemapper(requireRemapper(input, 'add-message-attribute', index, ADD_PARSER_REMAPPER_HINT), op.attributePath, index);
     case 'add-group-by':
-      return applyAddGroupBy(input, op.attributePath, index);
+      return applyGroupByToReducer(input.reducer, op.attributePath, index);
     case 'add-aggregation-strategy':
-      return applyAddAggregation(input, op.attributePath, op.strategies, index);
+      return applyAggregationToReducer(input.reducer, op.attributePath, op.strategies, index);
     case 'add-reducer-exception':
       return applyAddReducerException(input, op.predicate);
     case 'add-grok-rule':
@@ -621,11 +546,11 @@ function applyOperation(input: SchemaLogReducerTemplateInput, op: JobPatchOp, in
     case 'set-raw-dataset':
       return applySetRawDataset(input, op.datasetId);
     case 'remove-message-attribute':
-      return applyRemoveMessageAttribute(input, op.attributePath, index);
+      return removeMessageAttributeFromRemapper(requireRemapper(input, 'remove-message-attribute', index), op.attributePath, index);
     case 'remove-group-by':
-      return applyRemoveGroupBy(input, op.attributePath, index);
+      return removeGroupByFromReducer(input.reducer, op.attributePath, index);
     case 'remove-aggregation-strategy':
-      return applyRemoveAggregation(input, op.attributePath, op.strategies, index);
+      return removeAggregationFromReducer(input.reducer, op.attributePath, op.strategies, index);
     case 'remove-reducer-exception':
       return applyRemoveReducerException(input, op.predicate, index);
     case 'remove-grok-rule':
@@ -638,11 +563,11 @@ function applyOperation(input: SchemaLogReducerTemplateInput, op: JobPatchOp, in
       // See add-sink: read the vendor-only `filter` via `in` so a JSON patch's stray field still reaches the guard.
       return applyUpdateSink(input, op.target, op.sink, 'filter' in op ? op.filter : undefined, index);
     case 'update-message-attribute':
-      return applyUpdateMessageAttribute(input, op.from, op.to, index);
+      return updateMessageAttributeOnRemapper(requireRemapper(input, 'update-message-attribute', index), op.from, op.to, index);
     case 'update-group-by':
-      return applyUpdateGroupBy(input, op.from, op.to, index);
+      return updateGroupByOnReducer(input.reducer, op.from, op.to, index);
     case 'update-aggregation-strategy':
-      return applyUpdateAggregation(input, op.attributePath, op.strategies, index);
+      return updateAggregationOnReducer(input.reducer, op.attributePath, op.strategies, index);
     case 'update-reducer-exception':
       return applyUpdateReducerException(input, op.from, op.to, index);
     default:
@@ -654,209 +579,6 @@ function applyOperation(input: SchemaLogReducerTemplateInput, op: JobPatchOp, in
 function throwUnknownOp(op: never, index: number): never {
   const unknownOp = op as { op?: string };
   throw new Error(`Operation ${index}: unknown op "${unknownOp.op ?? '(missing)'}"`);
-}
-
-function applyJobGraphOperation(jobGraph: SchemaGreprJobGraph, op: JobPatchOp, index: number): void {
-  const vertices = jobGraph.vertices;
-  switch (op.op) {
-    case 'add-message-attribute':
-      return jobGraphAddMessageAttribute(vertices, op.attributePath, index);
-    case 'add-group-by':
-      return jobGraphAddGroupBy(vertices, op.attributePath, index);
-    case 'add-aggregation-strategy':
-      return jobGraphAddAggregation(vertices, op.attributePath, op.strategies, index);
-    case 'add-reducer-exception':
-      return jobGraphAddReducerException(vertices, op.predicate, index);
-    case 'add-grok-rule':
-      return jobGraphAddGrokRule(vertices, op.pattern, op.parserName, op.extractAttribute, index);
-    case 'add-parser':
-      return jobGraphAddParser(jobGraph, op.parser, index);
-    case 'remove-parser':
-      return jobGraphRemoveParser(jobGraph, op.name, index);
-    case 'set-filter':
-      return jobGraphSetFilter(jobGraph, op.phase, op.filter, index);
-    case 'clear-filter':
-      return jobGraphClearFilter(jobGraph, op.phase, index);
-    case 'set-sql-transform':
-      throw new Error(
-        `Operation ${index} (set-sql-transform): SQL transform edits are only supported for ` +
-          `template-backed log-reducer jobs in the CLI. This job is a direct job graph. `
-      );
-    case 'set-transform-chain':
-    case 'clear-transform-chain':
-      throw new Error(
-        `Operation ${index} (${op.op}): transform-chain edits are only supported for ` +
-          `template-backed log-reducer jobs in the CLI. This job is a direct job graph. `
-      );
-    case 'set-masking':
-    case 'clear-masking':
-      throw new Error(
-        `Operation ${index} (${op.op}): masking operator edits are only supported for ` +
-          `template-backed log-reducer jobs in the CLI. This job is a direct job graph. `
-      );
-    case 'add-source':
-      return jobGraphAddSource(jobGraph, op.source, index);
-    case 'remove-source':
-      return jobGraphRemoveSource(jobGraph, op.name, index);
-    case 'add-sink':
-      // See the template dispatch: read the target-specific field via `in`.
-      return jobGraphAddSink(jobGraph, op.target, op.sink, 'filter' in op ? op.filter : undefined, index);
-    case 'remove-sink':
-      return jobGraphRemoveSink(jobGraph, op.target, 'name' in op ? op.name : undefined, index);
-    case 'set-raw-dataset':
-      return jobGraphSetRawDataset(jobGraph, op.datasetId, index);
-    case 'remove-message-attribute':
-      return jobGraphRemoveMessageAttribute(vertices, op.attributePath, index);
-    case 'remove-group-by':
-      return jobGraphRemoveGroupBy(vertices, op.attributePath, index);
-    case 'remove-aggregation-strategy':
-      return jobGraphRemoveAggregation(vertices, op.attributePath, op.strategies, index);
-    case 'remove-reducer-exception':
-      return jobGraphRemoveReducerException(vertices, op.predicate, index);
-    case 'remove-grok-rule':
-      return jobGraphRemoveGrokRule(vertices, op.pattern, op.parserName, index);
-    case 'update-source':
-      return jobGraphUpdateSource(jobGraph, op.source, index);
-    case 'update-parser':
-      return jobGraphUpdateParser(jobGraph, op.parser, index);
-    case 'update-sink':
-      // See add-sink: read the vendor-only `filter` via `in`.
-      return jobGraphUpdateSink(jobGraph, op.target, op.sink, 'filter' in op ? op.filter : undefined, index);
-    case 'update-message-attribute':
-      return jobGraphUpdateMessageAttribute(vertices, op.from, op.to, index);
-    case 'update-group-by':
-      return jobGraphUpdateGroupBy(vertices, op.from, op.to, index);
-    case 'update-aggregation-strategy':
-      return jobGraphUpdateAggregation(vertices, op.attributePath, op.strategies, index);
-    case 'update-reducer-exception':
-      return jobGraphUpdateReducerException(vertices, op.from, op.to, index);
-    case 'set-input-field':
-    case 'unset-input-field':
-      throw new Error(
-        `Operation ${index} (${op.op}): generic template-input paths are not supported on raw job graphs. ` +
-          `Use a semantic operation, or apply this change directly via ` +
-          `'grepr job:get' + manual edit + 'grepr job:update'.`,
-      );
-    default:
-      return throwUnknownOp(op, index);
-  }
-}
-
-function findUniqueVertexByType(
-  vertices: SchemaOperation[],
-  type: string,
-  opLabel: string,
-  index: number,
-): SchemaOperation {
-  const matches = vertices.filter(v => v.type === type);
-  if (matches.length === 0) {
-    throw new Error(
-      `Operation ${index} (${opLabel}): no ${type} vertex found in jobGraph.vertices. ` +
-        `Non-template pipelines must already include this vertex; this CLI doesn't add new vertices to job-graph pipelines.`,
-    );
-  }
-  if (matches.length > 1) {
-    throw new Error(
-      `Operation ${index} (${opLabel}): expected exactly one ${type} vertex but found ${matches.length}. ` +
-        `Ambiguous target; resolve by hand via 'grepr job:get' + 'grepr job:update'.`,
-    );
-  }
-  return matches[0] as SchemaOperation;
-}
-
-function jobGraphAddMessageAttribute(vertices: SchemaOperation[], attributePath: string, index: number): void {
-  const remapper = findUniqueVertexByType(
-    vertices,
-    LogAttributesRemapperType.log_attributes_remapper,
-    'add-message-attribute',
-    index,
-  );
-  applyMessageAttributeToRemapper(remapper as SchemaLogAttributesRemapper, attributePath, index);
-}
-
-function jobGraphAddGroupBy(vertices: SchemaOperation[], attributePath: string, index: number): void {
-  const reducer = findUniqueVertexByType(vertices, LogReducerType.log_reducer, 'add-group-by', index);
-  applyGroupByToReducer(reducer as SchemaLogReducer, attributePath, index);
-}
-
-function jobGraphAddAggregation(
-  vertices: SchemaOperation[],
-  attributePath: string,
-  strategies: AggregationStrategy[],
-  index: number,
-): void {
-  const reducer = findUniqueVertexByType(vertices, LogReducerType.log_reducer, 'add-aggregation-strategy', index);
-  applyAggregationToReducer(reducer as SchemaLogReducer, attributePath, strategies, index);
-}
-
-/** Append a predicate to the reducer's `logReducerExceptions` (stored raw, unlike the template path's `TemplateQueryException` wrapper). */
-function jobGraphAddReducerException(
-  vertices: SchemaOperation[],
-  predicate: SchemaEventPredicate,
-  index: number,
-): void {
-  const reducer = findUniqueVertexByType(
-    vertices,
-    LogReducerType.log_reducer,
-    'add-reducer-exception',
-    index,
-  ) as SchemaLogReducer;
-  const existing = reducer.logReducerExceptions ?? [];
-  const serialized = JSON.stringify(predicate);
-  if (existing.some(p => JSON.stringify(p) === serialized)) {
-    reducer.logReducerExceptions = existing;
-    return; // idempotent
-  }
-  existing.push(predicate);
-  reducer.logReducerExceptions = existing;
-}
-
-function jobGraphAddGrokRule(
-  vertices: SchemaOperation[],
-  pattern: string,
-  parserName: string | undefined,
-  extractAttribute: string | undefined,
-  index: number,
-): void {
-  const grok = findJobGraphGrokParser(vertices, parserName, 'add-grok-rule', index);
-  applyGrokRuleToParser(grok, pattern, extractAttribute);
-}
-
-/** Resolve the target grok-parser vertex by name (or the sole grok-parser); shared by add/remove-grok-rule. Throws if absent or ambiguous. */
-function findJobGraphGrokParser(
-  vertices: SchemaOperation[],
-  parserName: string | undefined,
-  opLabel: string,
-  index: number,
-): SchemaGrokParser {
-  const groks = vertices.filter(v => v.type === GrokParserType.grok_parser);
-  const grok = selectGrokParser(groks, parserName, 'jobGraph.vertices', opLabel, index);
-  if (!grok) {
-    const hint = opLabel === 'add-grok-rule' ? " Add a grok-parser vertex via 'grepr job:update' before using add-grok-rule on this pipeline." : '';
-    throw new Error(
-      `Operation ${index} (${opLabel}): ${parserName ? `grok-parser "${parserName}" not found` : 'no grok-parser vertex found in jobGraph.vertices'}.${hint}`,
-    );
-  }
-  return grok as SchemaGrokParser;
-}
-
-function selectGrokParser(
-  groks: SchemaOperation[],
-  parserName: string | undefined,
-  location: string,
-  opLabel: string,
-  index: number,
-): SchemaOperation | undefined {
-  if (parserName) {
-    return groks.find(parser => parser.name === parserName);
-  }
-  if (groks.length > 1) {
-    throw new Error(
-      `Operation ${index} (${opLabel}): found ${groks.length} grok parsers in ${location}; ` +
-        `pass parserName to choose the target parser.`,
-    );
-  }
-  return groks[0];
 }
 
 function applyMessageAttributeToRemapper(
@@ -927,7 +649,7 @@ function entryNotFoundError(index: number, opLabel: string, what: string): Error
 }
 
 // remove-* counterparts of the add-* reducer/remapper/grok writers: mutate the same
-// vertex field, shared verbatim by both backends, throw if the entry is absent.
+// field and throw if the entry is absent.
 
 function removeMessageAttributeFromRemapper(remapper: SchemaLogAttributesRemapper, attributePath: string, index: number): void {
   const parts = splitPath(attributePath, index);
@@ -1068,463 +790,6 @@ function reducerExceptionUpdateIndex(
   return at;
 }
 
-const DEFAULT_EDGE_OUTPUT = 'output';
-const DEFAULT_EDGE_INPUT = 'input';
-
-function jobGraphAddSource(jobGraph: SchemaGreprJobGraph, source: SchemaOperation, index: number): void {
-  assertRawUiLogGraph(jobGraph, 'add-source', index, [RAW_PRE_PARSER_FILTER]);
-  assertOperationIdentity(source, 'add-source', index, 'source');
-  if (findVertexIndexByName(jobGraph, source.name) !== -1) {
-    throw new Error(`Operation ${index} (add-source): source "${source.name}" already exists`);
-  }
-  jobGraph.vertices.push(source);
-  addEdgeIfMissing(jobGraph, source.name, DEFAULT_EDGE_OUTPUT, RAW_PRE_PARSER_FILTER, DEFAULT_EDGE_INPUT);
-}
-
-function jobGraphRemoveSource(jobGraph: SchemaGreprJobGraph, name: string, index: number): void {
-  assertRawUiLogGraph(jobGraph, 'remove-source', index, [RAW_PRE_PARSER_FILTER]);
-  const idx = findVertexIndexByName(jobGraph, name);
-  if (idx === -1) {
-    throw new Error(`Operation ${index} (remove-source): source "${name}" not found in jobGraph.vertices`);
-  }
-  if (!isCanonicalRawSource(jobGraph, name)) {
-    throw unsupportedRawShapeError(
-      index,
-      'remove-source',
-      `vertex "${name}" is not a canonical UI source feeding ${RAW_PRE_PARSER_FILTER}`,
-    );
-  }
-  jobGraph.vertices.splice(idx, 1);
-  removeEdgesTouching(jobGraph, name);
-}
-
-function jobGraphAddSink(
-  jobGraph: SchemaGreprJobGraph,
-  target: SinkTarget,
-  sink: SchemaOperation,
-  filter: SchemaLogsFilter | undefined,
-  index: number,
-): void {
-  assertOperationIdentity(sink, 'add-sink', index, 'sink');
-  assertSinkTargetShape(target, sink, filter, index, 'add-sink');
-  // Anchors on a unique log_reducer (assertRawUiLogGraph rejects missing/duplicate).
-  assertRawUiLogGraph(jobGraph, 'add-sink', index, [RAW_LOG_REDUCER]);
-  if (findVertexIndexByName(jobGraph, sink.name) !== -1) {
-    throw new Error(`Operation ${index} (add-sink): sink "${sink.name}" already exists`);
-  }
-  // processed-logs is a singular slot — mirror the template-backend guard.
-  // Only reject a reducer-fed iceberg sink (direct or 1-hop through a filter);
-  // a raw data-lake sink fed by pre_data_warehouse_filter is a separate slot.
-  if (target === 'processed-logs' && hasReducerFedIcebergSink(jobGraph)) {
-    throw new Error(
-      `Operation ${index} (add-sink): a logs-iceberg-table-sink already exists. ` +
-        `Remove it first with remove-sink (target: processed-logs) before adding a new one.`,
-    );
-  }
-
-  if (filter !== undefined) {
-    if (typeof filter !== 'object') {
-      throw new Error(`Operation ${index} (add-sink): filter must be an object`);
-    }
-    const filterName = `${sink.name}_filter`;
-    if (findVertexIndexByName(jobGraph, filterName) !== -1) {
-      throw new Error(`Operation ${index} (add-sink): generated filter vertex "${filterName}" already exists`);
-    }
-    const filterVertex = {
-      ...(filter as unknown as Record<string, unknown>),
-      name: filterName,
-      type: LogsFilterType.logs_filter,
-    } as unknown as SchemaOperation;
-    jobGraph.vertices.push(filterVertex, sink);
-    addEdgeIfMissing(jobGraph, RAW_LOG_REDUCER, DEFAULT_EDGE_OUTPUT, filterName, DEFAULT_EDGE_INPUT);
-    addEdgeIfMissing(jobGraph, filterName, DEFAULT_EDGE_OUTPUT, sink.name, DEFAULT_EDGE_INPUT);
-    return;
-  }
-
-  jobGraph.vertices.push(sink);
-  addEdgeIfMissing(jobGraph, RAW_LOG_REDUCER, DEFAULT_EDGE_OUTPUT, sink.name, DEFAULT_EDGE_INPUT);
-}
-
-function jobGraphRemoveSink(
-  jobGraph: SchemaGreprJobGraph,
-  target: SinkTarget,
-  name: string | undefined,
-  index: number,
-): void {
-  assertValidSinkTarget(target, 'remove-sink', index);
-  const sinkName = resolveRawSinkToRemove(jobGraph, target, name, index);
-  // If the sink is fed by its generated single-use filter, drop that too.
-  const generatedFilterName = `${sinkName}_filter`;
-  const fedByGeneratedFilter = parsedEdges(jobGraph).some(
-    edge => edge.targetVertex === sinkName && edge.sourceVertex === generatedFilterName,
-  );
-  removeVertexByName(jobGraph, sinkName);
-  removeEdgesTouching(jobGraph, sinkName);
-  if (fedByGeneratedFilter && findVertexByName(jobGraph, generatedFilterName)) {
-    removeVertexByName(jobGraph, generatedFilterName);
-    removeEdgesTouching(jobGraph, generatedFilterName);
-  }
-}
-
-/**
- * Resolve which raw-graph sink a `remove-sink` op targets. `vendor` requires a
- * `name` matching a vendor sink type; `processed-logs` ignores `name` and
- * removes the unique `logs-iceberg-table-sink` (rejecting 0 or multiple).
- */
-function resolveRawSinkToRemove(
-  jobGraph: SchemaGreprJobGraph,
-  target: SinkTarget,
-  name: string | undefined,
-  index: number,
-): string {
-  if (target === 'vendor') {
-    if (typeof name !== 'string' || name.length === 0) {
-      throw new Error(`Operation ${index} (remove-sink): name is required for target "vendor"`);
-    }
-    const vertex = findVertexByName(jobGraph, name);
-    if (!vertex) {
-      throw new Error(`Operation ${index} (remove-sink): sink "${name}" not found in jobGraph.vertices`);
-    }
-    if (!VENDOR_LOG_SINK_TYPES.has(vertex.type as string)) {
-      throw new Error(`Operation ${index} (remove-sink): vertex "${name}" is not a vendor sink (type "${vertex.type}")`);
-    }
-    return name;
-  }
-  return findIcebergSinkByRole(jobGraph, PROCESSED_LOGS_SINK_NAME_PREFIX, 'processed-logs', 'remove-sink', 'remove the sink', index).name;
-}
-
-/**
- * The single `logs-iceberg-table-sink` vertex playing the given role, identified
- * by its name prefix. Selecting by type alone is ambiguous — raw and processed
- * sinks share the type — so a count-based pick can target the wrong dataset sink.
- * Errors on 0 or >1 matches for the role.
- */
-function findIcebergSinkByRole(
-  jobGraph: SchemaGreprJobGraph,
-  namePrefix: string,
-  role: string,
-  opLabel: string,
-  action: string,
-  index: number,
-): SchemaLogsIcebergTableSink {
-  const matches = jobGraph.vertices.filter(
-    v => v.type === LOGS_ICEBERG_TABLE_SINK_TYPE && v.name.startsWith(namePrefix),
-  );
-  if (matches.length !== 1) {
-    throw new Error(
-      `Operation ${index} (${opLabel}): found ${matches.length} ${role} sinks (logs-iceberg-table-sink named "${namePrefix}*"); ` +
-        `expected exactly one to ${action}. Use 'grepr job:get' + 'grepr job:update' to ${action} explicitly.`,
-    );
-  }
-  return matches[0] as SchemaLogsIcebergTableSink;
-}
-
-function jobGraphSetRawDataset(jobGraph: SchemaGreprJobGraph, datasetId: string, index: number): void {
-  const sink = findIcebergSinkByRole(jobGraph, RAW_DATA_LAKE_SINK_NAME_PREFIX, 'raw data-lake', 'set-raw-dataset', 'set the dataset', index);
-  sink.datasetId = datasetId;
-}
-
-function jobGraphSetFilter(
-  jobGraph: SchemaGreprJobGraph,
-  phase: TemplateTransformPhase,
-  filter: SchemaLogsFilter,
-  index: number,
-): void {
-  if (!filter || typeof filter !== 'object') {
-    throw new Error(`Operation ${index} (set-filter): filter must be an object`);
-  }
-  const rawName = rawFilterNameForPhase(phase, index, 'set-filter');
-  assertRawUiLogGraph(jobGraph, 'set-filter', index, [rawName]);
-  replaceRawFilterVertex(jobGraph, rawName, filter as unknown as Record<string, unknown>, 'set-filter', index);
-}
-
-function jobGraphClearFilter(jobGraph: SchemaGreprJobGraph, phase: TemplateTransformPhase, index: number): void {
-  const rawName = rawFilterNameForPhase(phase, index, 'clear-filter');
-  assertRawUiLogGraph(jobGraph, 'clear-filter', index, [rawName]);
-  replaceRawFilterVertex(
-    jobGraph,
-    rawName,
-    { predicate: { type: DatadogQueryPredicateType.datadog_query, query: '' } },
-    'clear-filter',
-    index,
-  );
-}
-
-function replaceRawFilterVertex(
-  jobGraph: SchemaGreprJobGraph,
-  rawName: string,
-  patch: Record<string, unknown>,
-  opLabel: string,
-  index: number,
-): void {
-  const existing = findVertexByName(jobGraph, rawName);
-  if (!existing) {
-    throw unsupportedRawShapeError(index, opLabel, `vertex "${rawName}" not found`);
-  }
-  replaceVertexByName(
-    jobGraph,
-    rawName,
-    {
-      ...(existing as unknown as Record<string, unknown>),
-      ...patch,
-      type: LogsFilterType.logs_filter,
-      name: rawName,
-    } as unknown as SchemaOperation,
-    opLabel,
-    index,
-  );
-}
-
-function jobGraphAddParser(jobGraph: SchemaGreprJobGraph, parser: SchemaOperation, index: number): void {
-  assertRawUiLogGraph(jobGraph, 'add-parser', index, [RAW_PRE_PARSER_FILTER, RAW_PRE_WAREHOUSE_FILTER]);
-  assertOperationIdentity(parser, 'add-parser', index, 'parser');
-  if (!RAW_PARSER_TYPES.has(parser.type as string)) {
-    throw new Error(
-      `Operation ${index} (add-parser): parser type "${parser.type}" is not supported for raw UI graph insertion`,
-    );
-  }
-  if (findVertexIndexByName(jobGraph, parser.name) !== -1) {
-    throw new Error(`Operation ${index} (add-parser): parser "${parser.name}" already exists`);
-  }
-
-  if (parser.type === RAW_JSON_PROCESSOR_TYPE) {
-    if (parser.name !== RAW_JSON_PROCESSOR) {
-      throw unsupportedRawShapeError(index, 'add-parser', `json processor must be named "${RAW_JSON_PROCESSOR}"`);
-    }
-    if (findVertexByName(jobGraph, RAW_JSON_PROCESSOR) || findVertexByType(jobGraph, RAW_JSON_PROCESSOR_TYPE)) {
-      throw new Error(`Operation ${index} (add-parser): json-log-processor already exists in the raw graph`);
-    }
-    const successor = orderedParserNames(jobGraph, 'add-parser', index)[0] ?? RAW_PRE_WAREHOUSE_FILTER;
-    return insertRawVertexBetween(jobGraph, parser, RAW_PRE_PARSER_FILTER, successor, 'add-parser', index);
-  }
-
-  if (parser.type === RAW_ATTRIBUTES_REMAPPER_TYPE) {
-    if (parser.name !== RAW_ATTRIBUTES_REMAPPER) {
-      throw unsupportedRawShapeError(index, 'add-parser', `attributes remapper must be named "${RAW_ATTRIBUTES_REMAPPER}"`);
-    }
-    if (findVertexByName(jobGraph, RAW_ATTRIBUTES_REMAPPER) || findVertexByType(jobGraph, RAW_ATTRIBUTES_REMAPPER_TYPE)) {
-      throw new Error(`Operation ${index} (add-parser): log-attributes-remapper already exists in the raw graph`);
-    }
-    // Locate the json processor by type, not name: live UI graphs use suffixed
-    // names (e.g. json_log_processor_1), and a name-only lookup would silently
-    // fall back to RAW_PRE_PARSER_FILTER and wire the remapper before it.
-    const jsonProcessor = findVertexByType(jobGraph, RAW_JSON_PROCESSOR_TYPE);
-    const predecessor = jsonProcessor ? jsonProcessor.name : RAW_PRE_PARSER_FILTER;
-    const successor = singleMainSuccessor(jobGraph, predecessor, 'add-parser', index);
-    return insertRawVertexBetween(jobGraph, parser, predecessor, successor, 'add-parser', index);
-  }
-
-  const existingParserNames = orderedParserNames(jobGraph, 'add-parser', index);
-  const predecessor = existingParserNames[existingParserNames.length - 1] ?? RAW_PRE_PARSER_FILTER;
-  insertRawVertexBetween(jobGraph, parser, predecessor, RAW_PRE_WAREHOUSE_FILTER, 'add-parser', index);
-}
-
-function jobGraphRemoveParser(jobGraph: SchemaGreprJobGraph, name: string, index: number): void {
-  assertRawUiLogGraph(jobGraph, 'remove-parser', index, [RAW_PRE_PARSER_FILTER, RAW_PRE_WAREHOUSE_FILTER]);
-  const parser = findVertexByName(jobGraph, name);
-  if (!parser) {
-    throw new Error(`Operation ${index} (remove-parser): parser "${name}" not found in jobGraph.vertices`);
-  }
-  if (!RAW_PARSER_TYPES.has(parser.type as string)) {
-    throw new Error(`Operation ${index} (remove-parser): vertex "${name}" is not a supported parser type`);
-  }
-
-  const incoming = parsedEdges(jobGraph).filter(edge => edge.targetVertex === name);
-  const outgoing = parsedEdges(jobGraph).filter(edge => edge.sourceVertex === name);
-  if (incoming.length !== 1 || outgoing.length !== 1) {
-    throw unsupportedRawShapeError(
-      index,
-      'remove-parser',
-      `parser "${name}" must have exactly one incoming and one outgoing edge`,
-    );
-  }
-
-  removeVertexByName(jobGraph, name);
-  removeEdgesTouching(jobGraph, name);
-  const from = incoming[0] as ParsedGraphEdge;
-  const to = outgoing[0] as ParsedGraphEdge;
-  addEdgeIfMissing(jobGraph, from.sourceVertex, from.sourcePort, to.targetVertex, to.targetPort);
-}
-
-// --- Job-graph per-entry removals: anchor on the unique reducer/remapper/grok
-// vertex (the add-path guards), then delegate to the shared remover. ---
-
-function jobGraphRemoveMessageAttribute(vertices: SchemaOperation[], attributePath: string, index: number): void {
-  const remapper = findUniqueVertexByType(vertices, LogAttributesRemapperType.log_attributes_remapper, 'remove-message-attribute', index);
-  removeMessageAttributeFromRemapper(remapper as SchemaLogAttributesRemapper, attributePath, index);
-}
-
-function jobGraphRemoveGroupBy(vertices: SchemaOperation[], attributePath: string, index: number): void {
-  const reducer = findUniqueVertexByType(vertices, LogReducerType.log_reducer, 'remove-group-by', index);
-  removeGroupByFromReducer(reducer as SchemaLogReducer, attributePath, index);
-}
-
-function jobGraphRemoveAggregation(
-  vertices: SchemaOperation[],
-  attributePath: string,
-  strategies: AggregationStrategy[] | undefined,
-  index: number,
-): void {
-  const reducer = findUniqueVertexByType(vertices, LogReducerType.log_reducer, 'remove-aggregation-strategy', index);
-  removeAggregationFromReducer(reducer as SchemaLogReducer, attributePath, strategies, index);
-}
-
-/** Remove a raw `EventPredicate` from the reducer's `logReducerExceptions` (mirror of jobGraphAddReducerException). */
-function jobGraphRemoveReducerException(vertices: SchemaOperation[], predicate: SchemaEventPredicate, index: number): void {
-  const reducer = findUniqueVertexByType(vertices, LogReducerType.log_reducer, 'remove-reducer-exception', index) as SchemaLogReducer;
-  const serialized = JSON.stringify(predicate);
-  const existing = reducer.logReducerExceptions ?? [];
-  const kept = existing.filter(p => JSON.stringify(p) !== serialized);
-  if (kept.length === existing.length) {
-    throw entryNotFoundError(index, 'remove-reducer-exception', 'matching reducer exception');
-  }
-  reducer.logReducerExceptions = kept;
-}
-
-function jobGraphRemoveGrokRule(vertices: SchemaOperation[], pattern: string, parserName: string | undefined, index: number): void {
-  const grok = findJobGraphGrokParser(vertices, parserName, 'remove-grok-rule', index);
-  removeGrokRuleFromParser(grok, pattern, index);
-}
-
-// --- Job-graph in-place vertex updates: replace the named vertex's config via
-// replaceVertexByName, leaving edges/position untouched. ---
-
-function jobGraphUpdateSource(jobGraph: SchemaGreprJobGraph, source: SchemaOperation, index: number): void {
-  assertOperationIdentity(source, 'update-source', index, 'source');
-  assertRawUiLogGraph(jobGraph, 'update-source', index, [RAW_PRE_PARSER_FILTER]);
-  if (findVertexIndexByName(jobGraph, source.name) === -1) {
-    throw new Error(`Operation ${index} (update-source): source "${source.name}" not found in jobGraph.vertices.`);
-  }
-  if (!isCanonicalRawSource(jobGraph, source.name)) {
-    throw unsupportedRawShapeError(index, 'update-source', `vertex "${source.name}" is not a canonical UI source feeding ${RAW_PRE_PARSER_FILTER}`);
-  }
-  replaceVertexByName(jobGraph, source.name, source, 'update-source', index);
-}
-
-function jobGraphUpdateParser(jobGraph: SchemaGreprJobGraph, parser: SchemaOperation, index: number): void {
-  assertOperationIdentity(parser, 'update-parser', index, 'parser');
-  assertRawUiLogGraph(jobGraph, 'update-parser', index, [RAW_PRE_PARSER_FILTER, RAW_PRE_WAREHOUSE_FILTER]);
-  const existing = findVertexByName(jobGraph, parser.name);
-  if (!existing) {
-    throw new Error(`Operation ${index} (update-parser): parser "${parser.name}" not found in jobGraph.vertices.`);
-  }
-  if (!RAW_PARSER_TYPES.has(existing.type as string)) {
-    throw new Error(`Operation ${index} (update-parser): vertex "${parser.name}" is not a supported parser type.`);
-  }
-  if (!RAW_PARSER_TYPES.has(parser.type as string)) {
-    throw new Error(`Operation ${index} (update-parser): replacement parser type "${parser.type}" is not supported for raw UI graph parsers.`);
-  }
-  replaceVertexByName(jobGraph, parser.name, parser, 'update-parser', index);
-}
-
-function jobGraphUpdateSink(
-  jobGraph: SchemaGreprJobGraph,
-  target: SinkTarget,
-  sink: SchemaOperation,
-  filter: SchemaLogsFilter | undefined,
-  index: number,
-): void {
-  assertOperationIdentity(sink, 'update-sink', index, 'sink');
-  assertSinkTargetShape(target, sink, filter, index, 'update-sink');
-  if (target === 'processed-logs') {
-    const existing = findIcebergSinkByRole(jobGraph, PROCESSED_LOGS_SINK_NAME_PREFIX, 'processed-logs', 'update-sink', 'update the sink', index);
-    replaceVertexByName(jobGraph, existing.name, { ...sink, name: existing.name }, 'update-sink', index);
-    return;
-  }
-  // vendor: anchor on the unique reducer (as add-sink does), then replace the named vendor sink.
-  assertRawUiLogGraph(jobGraph, 'update-sink', index, [RAW_LOG_REDUCER]);
-  const existing = findVertexByName(jobGraph, sink.name);
-  if (!existing) {
-    throw new Error(`Operation ${index} (update-sink): sink "${sink.name}" not found in jobGraph.vertices.`);
-  }
-  if (!VENDOR_LOG_SINK_TYPES.has(existing.type as string)) {
-    throw new Error(`Operation ${index} (update-sink): vertex "${sink.name}" is not a vendor sink (type "${existing.type}").`);
-  }
-  replaceVertexByName(jobGraph, sink.name, sink, 'update-sink', index);
-  if (filter !== undefined) {
-    const filterName = `${sink.name}_filter`;
-    if (!findVertexByName(jobGraph, filterName)) {
-      throw new Error(
-        `Operation ${index} (update-sink): sink "${sink.name}" has no generated gating filter "${filterName}" to update; ` +
-          `use remove-sink + add-sink to introduce a gate.`,
-      );
-    }
-    replaceRawFilterVertex(jobGraph, filterName, filter as unknown as Record<string, unknown>, 'update-sink', index);
-  }
-}
-
-// --- Job-graph in-place updates of reducer-list entries: anchor on the unique
-// reducer/remapper (as the add/remove paths do), then delegate to the shared updater. ---
-
-function jobGraphUpdateMessageAttribute(vertices: SchemaOperation[], from: string, to: string, index: number): void {
-  const remapper = findUniqueVertexByType(vertices, LogAttributesRemapperType.log_attributes_remapper, 'update-message-attribute', index);
-  updateMessageAttributeOnRemapper(remapper as SchemaLogAttributesRemapper, from, to, index);
-}
-
-function jobGraphUpdateGroupBy(vertices: SchemaOperation[], from: string, to: string, index: number): void {
-  const reducer = findUniqueVertexByType(vertices, LogReducerType.log_reducer, 'update-group-by', index);
-  updateGroupByOnReducer(reducer as SchemaLogReducer, from, to, index);
-}
-
-function jobGraphUpdateAggregation(vertices: SchemaOperation[], attributePath: string, strategies: AggregationStrategy[], index: number): void {
-  const reducer = findUniqueVertexByType(vertices, LogReducerType.log_reducer, 'update-aggregation-strategy', index);
-  updateAggregationOnReducer(reducer as SchemaLogReducer, attributePath, strategies, index);
-}
-
-/** Replace the matching raw predicate in the reducer's `logReducerExceptions` in place (mirror of jobGraphAddReducerException). */
-function jobGraphUpdateReducerException(vertices: SchemaOperation[], from: SchemaEventPredicate, to: SchemaEventPredicate, index: number): void {
-  const reducer = findUniqueVertexByType(vertices, LogReducerType.log_reducer, 'update-reducer-exception', index) as SchemaLogReducer;
-  const existing = reducer.logReducerExceptions ?? [];
-  const idx = reducerExceptionUpdateIndex(existing.map(p => JSON.stringify(p)), from, to, index);
-  existing[idx] = to;
-  reducer.logReducerExceptions = existing;
-}
-
-function rawFilterNameForPhase(phase: TemplateTransformPhase, index: number, opLabel: string): string {
-  switch (phase) {
-    case 'pre-parser':
-      return RAW_PRE_PARSER_FILTER;
-    case 'pre-warehouse':
-      return RAW_PRE_WAREHOUSE_FILTER;
-    case 'pre-exceptions':
-      return RAW_PRE_EXCEPTIONS_FILTER;
-    default:
-      throw new Error(
-        `Operation ${index} (${opLabel}): phase "${phase}" has no canonical UI raw-graph stage. ` +
-          ACCEPTED_TRANSFORM_PHASES_MESSAGE,
-      );
-  }
-}
-
-function assertRawUiLogGraph(
-  jobGraph: SchemaGreprJobGraph,
-  opLabel: string,
-  index: number,
-  requiredNames: string[],
-): void {
-  const seen = new Set<string>();
-  for (const vertex of jobGraph.vertices) {
-    if (typeof vertex.name !== 'string' || vertex.name.length === 0) {
-      throw unsupportedRawShapeError(index, opLabel, 'every vertex must have a non-empty name');
-    }
-    if (seen.has(vertex.name)) {
-      throw unsupportedRawShapeError(index, opLabel, `duplicate vertex name "${vertex.name}"`);
-    }
-    seen.add(vertex.name);
-  }
-  const missing = requiredNames.filter(name => !seen.has(name));
-  if (missing.length > 0) {
-    throw unsupportedRawShapeError(index, opLabel, `missing canonical vertex: ${missing.join(', ')}`);
-  }
-}
-
-function unsupportedRawShapeError(index: number, opLabel: string, detail: string): Error {
-  return new Error(
-    `Operation ${index} (${opLabel}): unsupported raw job graph shape. ` +
-      `UI-level topology edits require a canonical UI log pipeline graph; ${detail}.`,
-  );
-}
-
 function assertOperationIdentity(
   operation: SchemaOperation,
   opLabel: string,
@@ -1542,223 +807,10 @@ function assertOperationIdentity(
   }
 }
 
-function findVertexByName(jobGraph: SchemaGreprJobGraph, name: string): SchemaOperation | undefined {
-  return jobGraph.vertices.find(vertex => vertex.name === name);
-}
-
-function findVertexByType(jobGraph: SchemaGreprJobGraph, type: string): SchemaOperation | undefined {
-  return jobGraph.vertices.find(vertex => vertex.type === type);
-}
-
-function findVertexIndexByName(jobGraph: SchemaGreprJobGraph, name: string): number {
-  return jobGraph.vertices.findIndex(vertex => vertex.name === name);
-}
-
-function replaceVertexByName(
-  jobGraph: SchemaGreprJobGraph,
-  name: string,
-  replacement: SchemaOperation,
-  opLabel: string,
-  index: number,
-): void {
-  const idx = findVertexIndexByName(jobGraph, name);
-  if (idx === -1) {
-    throw unsupportedRawShapeError(index, opLabel, `vertex "${name}" not found`);
-  }
-  jobGraph.vertices[idx] = replacement;
-}
-
-function removeVertexByName(jobGraph: SchemaGreprJobGraph, name: string): void {
-  const idx = findVertexIndexByName(jobGraph, name);
-  if (idx !== -1) {
-    jobGraph.vertices.splice(idx, 1);
-  }
-}
-
-interface ParsedGraphEdge {
-  edge: string;
-  index: number;
-  sourceVertex: string;
-  targetVertex: string;
-  sourcePort: string;
-  targetPort: string;
-}
-
-function graphEdges(jobGraph: SchemaGreprJobGraph): string[] {
-  const graph = jobGraph as unknown as { edges?: string[] };
-  if (!Array.isArray(graph.edges)) {
-    graph.edges = []; // Lazily initializes edges to [] if absent — normalizes the schema type omission.
-  }
-  return graph.edges;
-}
-
-function parsedEdges(jobGraph: SchemaGreprJobGraph): ParsedGraphEdge[] {
-  return graphEdges(jobGraph).map((edge, index) => ({ edge, index, ...parseEdge(edge) }));
-}
-
-/** True if any `logs-iceberg-table-sink` is reachable from `RAW_LOG_REDUCER` within two hops. */
-function hasReducerFedIcebergSink(jobGraph: SchemaGreprJobGraph): boolean {
-  const edges = parsedEdges(jobGraph);
-  const reducerNeighbors = new Set(
-    edges.filter(e => e.sourceVertex === RAW_LOG_REDUCER).map(e => e.targetVertex),
-  );
-  return jobGraph.vertices.some(
-    v =>
-      v.type === LOGS_ICEBERG_TABLE_SINK_TYPE &&
-      (reducerNeighbors.has(v.name) ||
-        edges.some(e => reducerNeighbors.has(e.sourceVertex) && e.targetVertex === v.name)),
-  );
-}
-
-function formatEdge(sourceVertex: string, sourcePort: string, targetVertex: string, targetPort: string): string {
-  const source = sourcePort === DEFAULT_EDGE_OUTPUT ? sourceVertex : `${sourceVertex}:${sourcePort}`;
-  const target = targetPort === DEFAULT_EDGE_INPUT ? targetVertex : `${targetVertex}:${targetPort}`;
-  return `${source} -> ${target}`;
-}
-
-function addEdgeIfMissing(
-  jobGraph: SchemaGreprJobGraph,
-  sourceVertex: string,
-  sourcePort: string,
-  targetVertex: string,
-  targetPort: string,
-): void {
-  const candidate = formatEdge(sourceVertex, sourcePort, targetVertex, targetPort);
-  const exists = parsedEdges(jobGraph).some(edge =>
-    edge.sourceVertex === sourceVertex &&
-    edge.sourcePort === sourcePort &&
-    edge.targetVertex === targetVertex &&
-    edge.targetPort === targetPort,
-  );
-  if (!exists) {
-    graphEdges(jobGraph).push(candidate);
-  }
-}
-
-function removeEdgesTouching(jobGraph: SchemaGreprJobGraph, name: string): void {
-  const keep = graphEdges(jobGraph).filter(edge => {
-    const parsed = parseEdge(edge);
-    return parsed.sourceVertex !== name && parsed.targetVertex !== name;
-  });
-  (jobGraph as unknown as { edges: string[] }).edges = keep;
-}
-
-function removeEdgeAt(jobGraph: SchemaGreprJobGraph, index: number): void {
-  graphEdges(jobGraph).splice(index, 1);
-}
-
-function insertRawVertexBetween(
-  jobGraph: SchemaGreprJobGraph,
-  vertex: SchemaOperation,
-  predecessor: string,
-  successor: string,
-  opLabel: string,
-  index: number,
-): void {
-  const directEdges = parsedEdges(jobGraph).filter(edge =>
-    edge.sourceVertex === predecessor && edge.targetVertex === successor,
-  );
-  if (directEdges.length !== 1) {
-    throw unsupportedRawShapeError(
-      index,
-      opLabel,
-      `expected exactly one parser-chain edge ${predecessor} -> ${successor}`,
-    );
-  }
-  const directEdge = directEdges[0] as ParsedGraphEdge;
-  jobGraph.vertices.push(vertex);
-  removeEdgeAt(jobGraph, directEdge.index);
-  addEdgeIfMissing(jobGraph, predecessor, directEdge.sourcePort, vertex.name, DEFAULT_EDGE_INPUT);
-  addEdgeIfMissing(jobGraph, vertex.name, DEFAULT_EDGE_OUTPUT, successor, directEdge.targetPort);
-}
-
-function orderedParserNames(jobGraph: SchemaGreprJobGraph, opLabel: string, index: number): string[] {
-  const names: string[] = [];
-  let current = RAW_PRE_PARSER_FILTER;
-  const seen = new Set<string>([current]);
-
-  while (current !== RAW_PRE_WAREHOUSE_FILTER) {
-    const outgoing = parsedEdges(jobGraph).filter(edge => edge.sourceVertex === current);
-    if (outgoing.length !== 1) {
-      throw unsupportedRawShapeError(
-        index,
-        opLabel,
-        `parser chain vertex "${current}" must have exactly one outgoing main-chain edge`,
-      );
-    }
-    const next = (outgoing[0] as ParsedGraphEdge).targetVertex;
-    if (next === RAW_PRE_WAREHOUSE_FILTER) {
-      return names;
-    }
-    const nextVertex = findVertexByName(jobGraph, next);
-    if (!nextVertex || !RAW_PARSER_TYPES.has(nextVertex.type as string)) {
-      throw unsupportedRawShapeError(
-        index,
-        opLabel,
-        `vertex "${next}" between ${RAW_PRE_PARSER_FILTER} and ${RAW_PRE_WAREHOUSE_FILTER} is not a supported parser`,
-      );
-    }
-    if (seen.has(next)) {
-      throw unsupportedRawShapeError(index, opLabel, `cycle detected at parser vertex "${next}"`);
-    }
-    names.push(next);
-    seen.add(next);
-    current = next;
-  }
-  return names;
-}
-
-function singleMainSuccessor(jobGraph: SchemaGreprJobGraph, name: string, opLabel: string, index: number): string {
-  const outgoing = parsedEdges(jobGraph).filter(edge => edge.sourceVertex === name);
-  if (outgoing.length !== 1) {
-    throw unsupportedRawShapeError(index, opLabel, `vertex "${name}" must have exactly one outgoing main-chain edge`);
-  }
-  return (outgoing[0] as ParsedGraphEdge).targetVertex;
-}
-
-function isCanonicalRawSource(jobGraph: SchemaGreprJobGraph, name: string): boolean {
-  const edges = parsedEdges(jobGraph);
-  const hasIncoming = edges.some(edge => edge.targetVertex === name);
-  const feedsPreParser = edges.some(edge =>
-    edge.sourceVertex === name && edge.targetVertex === RAW_PRE_PARSER_FILTER,
-  );
-  return !hasIncoming && feedsPreParser;
-}
-
 function assertProposedTemplateHasSource(input: SchemaLogReducerTemplateInput): void {
   if (!Array.isArray(input.sources) || input.sources.length === 0) {
     throw new Error('Proposed job graph has zero sources; a log pipeline must keep at least one source.');
   }
-}
-
-function assertProposedJobGraphHasSource(jobGraph: SchemaGreprJobGraph): void {
-  if (!jobGraph.vertices.some(vertex => typeof vertex.name === 'string' && isCanonicalRawSource(jobGraph, vertex.name))) {
-    throw new Error('Proposed job graph has zero sources; a log pipeline must keep at least one source.');
-  }
-}
-
-function applyAddMessageAttribute(input: SchemaLogReducerTemplateInput, attributePath: string, index: number): void {
-  const remapper = findRemapper(input);
-  if (!remapper) {
-    throw new Error(
-      `Operation ${index} (add-message-attribute): no log-attributes-remapper in input.parsers. ` +
-      `Template-backed pipelines normally include a remapper by default; if yours doesn't, add one via add-parser first.`,
-    );
-  }
-  applyMessageAttributeToRemapper(remapper as SchemaLogAttributesRemapper, attributePath, index);
-}
-
-function applyAddGroupBy(input: SchemaLogReducerTemplateInput, attributePath: string, index: number): void {
-  applyGroupByToReducer(input.reducer, attributePath, index);
-}
-
-function applyAddAggregation(
-  input: SchemaLogReducerTemplateInput,
-  attributePath: string,
-  strategies: AggregationStrategy[],
-  index: number,
-): void {
-  applyAggregationToReducer(input.reducer, attributePath, strategies, index);
 }
 
 function applyAddReducerException(input: SchemaLogReducerTemplateInput, predicate: SchemaEventPredicate): void {
@@ -1794,9 +846,14 @@ function findTemplateGrokParser(
   opLabel: string,
   index: number,
 ): SchemaGrokParser {
-  const grok = parserName
-    ? parsers.find(p => p.name === parserName)
-    : selectGrokParser(parsers.filter(p => p.type === GrokParserType.grok_parser), undefined, 'input.parsers', opLabel, index);
+  const groks = parsers.filter(p => p.type === GrokParserType.grok_parser);
+  if (!parserName && groks.length > 1) {
+    throw new Error(
+      `Operation ${index} (${opLabel}): found ${groks.length} grok parsers in input.parsers; ` +
+        `pass parserName to choose the target parser.`,
+    );
+  }
+  const grok = parserName ? parsers.find(p => p.name === parserName) : groks[0];
   if (!grok) {
     const hint = opLabel === 'add-grok-rule' ? ' If you need to introduce one, use add-parser first.' : '';
     throw new Error(
@@ -1994,8 +1051,8 @@ function findSimpleRootFilterGate(root: SchemaChainNode): FilterGateMatch | unde
  * Install or update a filter gate at the phase's transform slot:
  * - empty slot: `IF filter THEN PASSTHROUGH ELSE DROP`
  * - existing simple gate: rebuild with the new predicate, keeping the pass side
- *   and inheriting `inverted`/`lateDataDuration` when the patch omits them (raw
- *   merge semantics — a predicate-only edit must not flip keep↔drop)
+ *   and inheriting `inverted`/`lateDataDuration` when the patch omits them, so a
+ *   predicate-only edit does not flip keep and drop
  * - any other existing chain (e.g. a SqlNode): `IF filter THEN <chain> ELSE DROP`
  */
 function applySetFilter(
@@ -2212,29 +1269,7 @@ function applyRemoveSource(input: SchemaLogReducerTemplateInput, name: string, i
   input.sources.splice(idx, 1);
 }
 
-// --- Template per-entry removals: resolve the same reducer/remapper/grok the add
-// path writes, then delegate to the shared remover. ---
-
-function applyRemoveMessageAttribute(input: SchemaLogReducerTemplateInput, attributePath: string, index: number): void {
-  const remapper = findRemapper(input);
-  if (!remapper) {
-    throw new Error(`Operation ${index} (remove-message-attribute): no log-attributes-remapper in input.parsers.`);
-  }
-  removeMessageAttributeFromRemapper(remapper as SchemaLogAttributesRemapper, attributePath, index);
-}
-
-function applyRemoveGroupBy(input: SchemaLogReducerTemplateInput, attributePath: string, index: number): void {
-  removeGroupByFromReducer(input.reducer, attributePath, index);
-}
-
-function applyRemoveAggregation(
-  input: SchemaLogReducerTemplateInput,
-  attributePath: string,
-  strategies: AggregationStrategy[] | undefined,
-  index: number,
-): void {
-  removeAggregationFromReducer(input.reducer, attributePath, strategies, index);
-}
+// --- Template per-entry removals. ---
 
 /** Remove the `TemplateQueryException` whose predicate matches (mirror of applyAddReducerException). */
 function applyRemoveReducerException(input: SchemaLogReducerTemplateInput, predicate: SchemaEventPredicate, index: number): void {
@@ -2314,24 +1349,7 @@ function applyUpdateSink(
   input.processedLogsSink = sink as SchemaLogsIcebergTableSink;
 }
 
-// --- Template in-place updates of reducer-list entries: resolve the same
-// reducer/remapper the add/remove paths use, then delegate to the shared updater. ---
-
-function applyUpdateMessageAttribute(input: SchemaLogReducerTemplateInput, from: string, to: string, index: number): void {
-  const remapper = findRemapper(input);
-  if (!remapper) {
-    throw new Error(`Operation ${index} (update-message-attribute): no log-attributes-remapper in input.parsers.`);
-  }
-  updateMessageAttributeOnRemapper(remapper as SchemaLogAttributesRemapper, from, to, index);
-}
-
-function applyUpdateGroupBy(input: SchemaLogReducerTemplateInput, from: string, to: string, index: number): void {
-  updateGroupByOnReducer(input.reducer, from, to, index);
-}
-
-function applyUpdateAggregation(input: SchemaLogReducerTemplateInput, attributePath: string, strategies: AggregationStrategy[], index: number): void {
-  updateAggregationOnReducer(input.reducer, attributePath, strategies, index);
-}
+// --- Template in-place updates of reducer-list entries. ---
 
 /** Replace the matching `TemplateQueryException`'s predicate in place (mirror of applyAddReducerException). */
 function applyUpdateReducerException(input: SchemaLogReducerTemplateInput, from: SchemaEventPredicate, to: SchemaEventPredicate, index: number): void {
@@ -2356,7 +1374,7 @@ function assertValidSinkTarget(target: string, opLabel: string, index: number): 
   }
 }
 
-/** Validate the sink type matches the target and `filter` is vendor-only; shared by add-sink and update-sink on both backends. */
+/** Validate the sink type matches the target and `filter` is vendor-only; shared by add-sink and update-sink. */
 function assertSinkTargetShape(
   target: SinkTarget,
   sink: SchemaOperation,
@@ -2574,9 +1592,9 @@ function touchesSinkConfig(op: JobPatchOp, index: number): boolean {
 }
 
 /**
- * Find the single `template-operation` vertex (exactly one per template-backed
- * job); throws on 0 (non-template) or >1 (unsupported). Accepts `SchemaReadJob`
- * or `SchemaUpdateJob` without casts.
+ * Find the single `template-operation` vertex of a template-backed job. This is
+ * the guard that rejects a raw job graph pipeline (0 matches); it also rejects
+ * more than 1 match. Accepts `SchemaReadJob` or `SchemaUpdateJob` without casts.
  */
 export function findTemplateOperation(job: { jobGraph?: { vertices?: SchemaOperation[] } }): SchemaOperation & { draftMode?: boolean; templateInputs?: Record<string, unknown> } {
   const vertices = job.jobGraph?.vertices;
@@ -2586,8 +1604,9 @@ export function findTemplateOperation(job: { jobGraph?: { vertices?: SchemaOpera
   const matches = vertices.filter(v => v.type === TemplateOperationType.template_operation);
   if (matches.length === 0) {
     throw new Error(
-      `Pipeline is not template-backed (no template-operation vertex). ` +
-        `This helper only applies to template-backed pipelines.`,
+      'This pipeline uses a raw job graph (no template-operation vertex). ' +
+        'job:plan, job:draft and job:apply support only template-backed pipelines. ' +
+        'To change a raw job graph, edit it and run job:update.',
     );
   }
   if (matches.length > 1) {
@@ -2620,8 +1639,21 @@ function writeTemplateInput(
   templateOp.templateInputs['input'] = input;
 }
 
-function findRemapper(input: SchemaLogReducerTemplateInput): SchemaOperation | undefined {
-  return input.parsers.find(p => p.type === LogAttributesRemapperType.log_attributes_remapper);
+const ADD_PARSER_REMAPPER_HINT =
+  `Template-backed pipelines normally include a remapper by default; if yours doesn't, add one via add-parser first.`;
+
+function requireRemapper(
+  input: SchemaLogReducerTemplateInput,
+  opLabel: string,
+  index: number,
+  hint?: string,
+): SchemaLogAttributesRemapper {
+  const remapper = input.parsers.find(p => p.type === LogAttributesRemapperType.log_attributes_remapper);
+  if (!remapper) {
+    const message = `Operation ${index} (${opLabel}): no log-attributes-remapper in input.parsers.`;
+    throw new Error(hint === undefined ? message : `${message} ${hint}`);
+  }
+  return remapper as SchemaLogAttributesRemapper;
 }
 
 function splitPath(path: string, index: number): string[] {

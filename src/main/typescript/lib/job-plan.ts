@@ -9,11 +9,9 @@ import { SchemaReadJob, SchemaUpdateJob, SchemaOperation, SchemaLogReducerTempla
 import {
   applyPatch,
   classifyPatch,
-  detectBackend,
   findTemplateOperation,
   parsePatch,
   PatchClassification,
-  JobBackend,
   JobPatch,
 } from './job-patch.js';
 import { GreprApiClient } from './grepr-api-client.js';
@@ -24,8 +22,6 @@ export const PLAN_SCHEMA_VERSION = 2 as const;
 export interface JobPlan {
   schemaVersion: typeof PLAN_SCHEMA_VERSION;
   jobId: string;
-  /** Which substrate the patch targets; recorded so `job:draft`/`job:apply` needn't re-detect. */
-  backend: JobBackend;
   baseVersion: number;
   fetchedAt: string;
   /** What the patch touches; used to pick the validation path. */
@@ -52,19 +48,16 @@ export async function generatePlan(
   jobId: string,
   patch: JobPatch,
 ): Promise<JobPlan> {
-  // Fetch unresolved: template inputs are only visible in the unresolved view,
-  // and job-graph pipelines have nothing to resolve, so `false` works for both.
+  // Template inputs are only visible in the unresolved view.
   const current = await apiClient.getJob(jobId, undefined, false);
   if (!current) {
     throw new Error(`Job not found: ${jobId}`);
   }
-  const backend = detectBackend(current);
   const proposed = applyPatch(current, patch);
   const diff = computeDiff(current, proposed);
   return {
     schemaVersion: PLAN_SCHEMA_VERSION,
     jobId,
-    backend,
     baseVersion: current.version,
     fetchedAt: new Date().toISOString(),
     classification: classifyPatch(patch),
@@ -76,14 +69,10 @@ export async function generatePlan(
 }
 
 /**
- * Compute a diff between current and proposed configs. Template-backed: diffs at
- * template-input granularity (parsers/sources/sinks/transforms/reducer/exceptions/
- * scalars). Job-graph: diffs per resolved vertex (by name) and per edge.
+ * Compute a diff between current and proposed configs at template-input
+ * granularity (parsers/sources/sinks/transforms/reducer/exceptions/scalars).
  */
 export function computeDiff(current: SchemaReadJob, proposed: SchemaUpdateJob): JobDiffEntry[] {
-  if (detectBackend(current) === 'job-graph') {
-    return computeJobGraphDiff(current, proposed);
-  }
   const curInput = readTemplateInputFromJob(current);
   const propInput = readTemplateInputFromJob(proposed);
   const entries: JobDiffEntry[] = [];
@@ -95,47 +84,6 @@ export function computeDiff(current: SchemaReadJob, proposed: SchemaUpdateJob): 
   diffExceptions(curInput, propInput, entries);
   diffTopLevelScalars(curInput, propInput, entries);
   return entries;
-}
-
-function computeJobGraphDiff(current: SchemaReadJob, proposed: SchemaUpdateJob): JobDiffEntry[] {
-  // Fail loudly on an absent jobGraph rather than letting `?? []` render the whole
-  // pipeline as added/removed — a misleading preview the user approves against.
-  // (Mirrors the template path, where readTemplateInputFromJob throws on bad input.)
-  if (!current.jobGraph) throw new Error('Cannot diff: current job has no jobGraph');
-  if (!proposed.jobGraph) throw new Error('Cannot diff: proposed job has no jobGraph');
-  const curVertices = current.jobGraph.vertices ?? [];
-  const propVertices = proposed.jobGraph.vertices ?? [];
-  const curEdges = current.jobGraph.edges ?? [];
-  const propEdges = proposed.jobGraph.edges ?? [];
-  const entries: JobDiffEntry[] = [];
-  diffNamedArray('vertices', curVertices, propVertices, entries);
-  diffEdges(curEdges, propEdges, entries);
-  return entries;
-}
-
-function diffEdges(current: string[], proposed: string[], entries: JobDiffEntry[]): void {
-  const cur = new Set(current);
-  const prop = new Set(proposed);
-  for (const edge of proposed) {
-    if (!cur.has(edge)) {
-      entries.push({
-        kind: 'add',
-        path: `edges[${edge}]`,
-        after: edge,
-        summary: `+ edge ${edge}`,
-      });
-    }
-  }
-  for (const edge of current) {
-    if (!prop.has(edge)) {
-      entries.push({
-        kind: 'remove',
-        path: `edges[${edge}]`,
-        before: edge,
-        summary: `- edge ${edge}`,
-      });
-    }
-  }
 }
 
 function readTemplateInputFromJob(job: { jobGraph?: { vertices?: SchemaOperation[] } }): SchemaLogReducerTemplateInput {
@@ -495,9 +443,6 @@ export function parsePlan(raw: unknown): JobPlan {
   if (typeof obj['jobId'] !== 'string' || typeof obj['baseVersion'] !== 'number') {
     throw new Error('Plan file missing required fields (jobId, baseVersion)');
   }
-  if (obj['backend'] !== 'template' && obj['backend'] !== 'job-graph') {
-    throw new Error(`Plan file "backend" must be "template" or "job-graph" (got ${JSON.stringify(obj['backend'])})`);
-  }
   // Patch/diff checked structurally; current/proposed shape-checked below.
   const patch = parsePatch(obj['patch']);
   // Recompute classification rather than trusting it: a stale or hand-edited
@@ -519,5 +464,6 @@ export function parsePlan(raw: unknown): JobPlan {
   if (!isPlainObject(proposed) || !isPlainObject(proposed['jobGraph'])) {
     throw new Error('Plan file "proposed" must be an object with a "jobGraph" object — regenerate the plan.');
   }
+  findTemplateOperation(proposed);
   return obj as unknown as JobPlan;
 }

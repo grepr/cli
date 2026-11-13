@@ -140,7 +140,7 @@ export async function resolveBackfillInputs(
   const source = await resolveSignalSource(options, apiClient);
   validateForDataType(options, source.dataType);
 
-  const sqlOperation = resolveSqlOperation(options, source.postReducerSqlOperations);
+  const sqlOperation = resolveSqlOperation(options, source.postReducerSqlOperation);
   const sinkIds = options.jobId
     ? inferSinkIds(source.sinkOperations, source.dataType)
     : options.sinkIds ?? [];
@@ -317,7 +317,7 @@ function isNonBlankString(value: unknown): value is string {
 
 function resolveSqlOperation(
   options: BackfillCommandInputs,
-  preserved: SchemaSqlOperation[]
+  preserved: SchemaSqlOperation | undefined
 ): SchemaSqlOperation | undefined {
   if (options.sqlOperation) {
     return options.sqlOperation;
@@ -325,17 +325,11 @@ function resolveSqlOperation(
   if (!options.preserveSql) {
     return undefined;
   }
-  if (preserved.length === 0) {
+  if (!preserved) {
     throw new Error('Source job has no post-reducer SQL to preserve');
   }
-  if (preserved.length > 1) {
-    throw new Error(
-      'Source job has multiple post-reducer SQL operations; --preserve-sql requires exactly one'
-    );
-  }
-  const operation = preserved[0];
-  validateSpansSqlOperation(operation);
-  return operation;
+  validateSpansSqlOperation(preserved);
+  return preserved;
 }
 
 function inferSinkIds(operations: SchemaOperation[], dataType: SignalDataType): string[] {

@@ -3,20 +3,11 @@
 Sanitized patches for the three reduction causes. Each is a copy-paste-valid
 `{ "operations": [...] }` file using only whitelisted ops, fields, and strategy
 values (`sum`|`min`|`max`|`avg`). Hand the file to `grepr:test-pipeline-change`.
+To narrow an over-broad exception, see `grepr:change-exceptions`.
 
-> Narrowing an over-broad exception is deferred to ENGT-4722 (dedicated
-> `remove-reducer-exception` op, both backends). Today's only path is the
-> template-only `set-input-field` rewrite — see `grepr:change-exceptions`. The
-> comprehensive example set lands with that ticket.
-
-- [✅ Empty messages + over-aggregation (works on both backends)](#empty)
-- [✅ Raw job-graph patch](#raw)
+- [✅ Empty messages + over-aggregation](#empty)
 - [❌ Bad: multiple strategies on one path](#bad-strategies)
 - [❌ Bad: over-broad exception that craters reduction](#bad-exception)
-
-The `add-message-attribute`, `add-group-by`, and `add-aggregation-strategy` ops
-behave identically on template-backed and raw job-graphs, so the same patch
-applies to both — shown once below.
 
 ## ✅ Empty messages + over-aggregation {#empty}
 
@@ -41,27 +32,6 @@ fallback path, so the reducer gets a non-empty pattern to dedupe on. The two
 group-bys keep `GET`/`POST` and `200`/`500` in distinct buckets instead of
 collapsing into one over-aggregated pattern, and `avg` summarizes latency with
 a single strategy per path.
-
-## ✅ Raw job-graph patch {#raw}
-
-The same semantic ops work on a canonical UI-shaped raw graph — no
-`set-input-field` needed. Fix empty `checkout-service` messages and add a
-group-by on the GraphQL operation name that was over-aggregating.
-
-```json
-{
-  "operations": [
-    { "op": "add-message-attribute", "attributePath": "msg.message" },
-    { "op": "add-group-by", "attributePath": "msg.operationName" }
-  ]
-}
-```
-
-Why it works: `add-message-attribute` writes the remapper's
-`messageReservedAttributePaths` and `add-group-by` appends to the reducer's
-`partitionByAttributes` on a raw graph directly. `msg.operationName` is
-medium-cardinality, so it splits the merged GraphQL pattern without crippling
-the reduction ratio.
 
 ## ❌ Bad: multiple strategies on one path {#bad-strategies}
 

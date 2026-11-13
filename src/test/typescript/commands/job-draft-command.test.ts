@@ -9,7 +9,7 @@ import {
   TemplateOperationType,
   PathsV1JobsGetParametersQueryState,
 } from '@/openapi/openApiTypes.js';
-import { makeTemplateJob } from '../lib/test-fixtures.js';
+import { makeRawJobGraphJob, makeTemplateJob } from '../lib/test-fixtures.js';
 
 vi.mock('@/lib/api-client-factory.js', () => ({
   createApiClient: vi.fn(),
@@ -21,7 +21,6 @@ function writeTransformPlan(file: string): Promise<void> {
   return fs.writeJson(file, {
     schemaVersion: 2,
     jobId: 'job_1',
-    backend: 'template',
     baseVersion: 5,
     fetchedAt: '2026-01-01T00:00:00Z',
     classification: 'transform',
@@ -63,77 +62,10 @@ function writeTransformPlan(file: string): Promise<void> {
   });
 }
 
-function writeJobGraphPlan(file: string): Promise<void> {
-  // Direct job-graph plan: no template-operation vertex, just bare
-  // source/remapper/reducer vertices. The raw draft keeps this source live and
-  // interposes a logs-event-sampler after it.
-  return fs.writeJson(file, {
-    schemaVersion: 2,
-    jobId: 'job_jg',
-    backend: 'job-graph',
-    baseVersion: 3,
-    fetchedAt: '2026-01-01T00:00:00Z',
-    classification: 'transform',
-    patch: { operations: [{ op: 'add-message-attribute', attributePath: 'body.action' }] },
-    current: {},
-    proposed: {
-      desiredState: PathsV1JobsGetParametersQueryState.RUNNING,
-      fromVersion: 3,
-      jobGraph: {
-        vertices: [
-          { type: 'logs-iceberg-table-source', name: 'src', datasetId: 'raw_ds_x' },
-          { type: 'log-attributes-remapper', name: 'log_attributes_remapper' },
-          { type: 'log-reducer', name: 'log_reducer' },
-        ],
-        edges: ['src -> log_attributes_remapper', 'log_attributes_remapper -> log_reducer'],
-      },
-    },
-    diff: [],
-  });
-}
-
-function writeSourceTouchingJobGraphPlan(file: string): Promise<void> {
-  return fs.writeJson(file, {
-    schemaVersion: 2,
-    jobId: 'job_jg',
-    backend: 'job-graph',
-    baseVersion: 4,
-    fetchedAt: '2026-01-01T00:00:00Z',
-    classification: 'source',
-    patch: { operations: [{ op: 'add-source', source: { type: 'datadog-log-agent-source', name: 'dd_source', integrationId: 'int_1' } }] },
-    current: {
-      processing: 'STREAMING',
-    },
-    proposed: {
-      desiredState: PathsV1JobsGetParametersQueryState.RUNNING,
-      fromVersion: 4,
-      jobGraph: {
-        vertices: [
-          { type: 'logs-iceberg-table-source', name: 'src', datasetId: 'raw_ds_x' },
-          { type: 'datadog-log-agent-source', name: 'dd_source', integrationId: 'int_1' },
-          { type: 'logs-filter', name: 'pre_parser_filter' },
-          { type: 'log-attributes-remapper', name: 'log_attributes_remapper' },
-          { type: 'log-reducer', name: 'log_reducer' },
-          { type: 'logs-sync-sink', name: 'sink' },
-        ],
-        edges: [
-          'src -> pre_parser_filter',
-          'dd_source -> pre_parser_filter',
-          'pre_parser_filter -> log_attributes_remapper',
-          'log_attributes_remapper -> log_reducer',
-          'log_reducer -> sink',
-        ],
-      },
-    },
-    diff: [],
-  });
-}
-
 function writeSinkTouchingPlan(file: string): Promise<void> {
   return fs.writeJson(file, {
     schemaVersion: 2,
     jobId: 'job_1',
-    backend: 'template',
     baseVersion: 5,
     fetchedAt: '2026-01-01T00:00:00Z',
     classification: 'sink',
@@ -364,73 +296,9 @@ describe('JobDraftCommand', () => {
     expect(processExitSpy).toHaveBeenCalledWith(1);
   });
 
-  it('test_jobDraft_jobGraphBackend_keepsLiveSourceAndInsertsSampler', async () => {
-    // A raw (non-templated) draft mirrors the UI: keep the live source and
-    // interpose a logs-event-sampler after it rather than replaying iceberg.
+  it('test_jobDraft_noMaxDuration_passesNoSignal', async () => {
     const planFile = path.join(tempDir, 'plan.json');
-    await writeJobGraphPlan(planFile);
-
-    const stream = Readable.from(['{"jobState":"FINISHED"}\n']);
-    const mockApi = { submitSyncJob: vi.fn().mockResolvedValue(stream) };
-    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
-
-    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
-    await program.parseAsync(['node', 'test', 'job:draft', planFile]);
-
-    expect(mockApi.submitSyncJob).toHaveBeenCalledTimes(1);
-    const submitted = mockApi.submitSyncJob.mock.calls[0]?.[0] as {
-      jobGraph: { vertices: { name: string; type: string }[]; edges: string[] };
-    };
-    const names = submitted.jobGraph.vertices.map(v => v.name);
-    // Live source preserved, no iceberg replay source.
-    expect(names).toContain('src');
-    expect(names).not.toContain('draft_tapped_source');
-    // A sampler is interposed between the source and its old downstream.
-    expect(names).toContain('src_draft_sampler');
-    expect(submitted.jobGraph.edges).toContain('src -> src_draft_sampler');
-    expect(submitted.jobGraph.edges).toContain('src_draft_sampler -> log_attributes_remapper');
-    expect(submitted.jobGraph.edges).not.toContain('src -> log_attributes_remapper');
-  });
-
-  it('test_jobDraft_jobGraphBackend_sampleFlagsTuneSampler', async () => {
-    const planFile = path.join(tempDir, 'plan.json');
-    await writeJobGraphPlan(planFile);
-
-    const stream = Readable.from(['{"jobState":"FINISHED"}\n']);
-    const mockApi = { submitSyncJob: vi.fn().mockResolvedValue(stream) };
-    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
-
-    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
-    await program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-rate', '5', '--sample-burst', '50']);
-
-    const submitted = mockApi.submitSyncJob.mock.calls[0]?.[0] as {
-      jobGraph: { vertices: { name: string; maxAllowedRate?: number; maxBurstLimit?: number }[] };
-    };
-    const sampler = submitted.jobGraph.vertices.find(v => v.name === 'src_draft_sampler');
-    expect(sampler?.maxAllowedRate).toBe(5);
-    expect(sampler?.maxBurstLimit).toBe(50);
-  });
-
-  it('test_jobDraft_jobGraphBackend_maxDurationSeconds_passesAbortSignal', async () => {
-    // The max-duration cap arms an AbortController whose signal is handed to
-    // submitSyncJob; without the flag, no signal is passed.
-    const planFile = path.join(tempDir, 'plan.json');
-    await writeJobGraphPlan(planFile);
-
-    const stream = Readable.from(['{"jobState":"FINISHED"}\n']);
-    const mockApi = { submitSyncJob: vi.fn().mockResolvedValue(stream) };
-    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
-
-    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
-    await program.parseAsync(['node', 'test', 'job:draft', planFile, '--max-duration-seconds', '30']);
-
-    const signal = mockApi.submitSyncJob.mock.calls[0]?.[1] as AbortSignal | undefined;
-    expect(signal).toBeInstanceOf(AbortSignal);
-  });
-
-  it('test_jobDraft_jobGraphBackend_noMaxDuration_passesNoSignal', async () => {
-    const planFile = path.join(tempDir, 'plan.json');
-    await writeJobGraphPlan(planFile);
+    await writeTransformPlan(planFile);
 
     const stream = Readable.from(['{"jobState":"FINISHED"}\n']);
     const mockApi = { submitSyncJob: vi.fn().mockResolvedValue(stream) };
@@ -444,7 +312,7 @@ describe('JobDraftCommand', () => {
 
   it('test_jobDraft_nonPositiveMaxDuration_shouldRejectBeforeSubmit', async () => {
     const planFile = path.join(tempDir, 'plan.json');
-    await writeJobGraphPlan(planFile);
+    await writeTransformPlan(planFile);
 
     const mockApi = { submitSyncJob: vi.fn() };
     (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
@@ -466,7 +334,7 @@ describe('JobDraftCommand', () => {
     // The sync endpoint streams HEARTBEAT tokens; the CLI must echo each one
     // back via sendHeartbeat or the server cancels the streaming draft.
     const planFile = path.join(tempDir, 'plan.json');
-    await writeJobGraphPlan(planFile);
+    await writeTransformPlan(planFile);
 
     const lines = [
       '{"jobState":"HEARTBEAT","heartbeatToken":"tok-1"}\r\n',
@@ -486,31 +354,9 @@ describe('JobDraftCommand', () => {
     expect(mockApi.sendHeartbeat).toHaveBeenCalledWith('tok-1');
   });
 
-  it('test_jobDraft_templatePlan_rejectsSamplerFlags', async () => {
-    // --sample-rate/--sample-burst only apply to raw job-graph drafts;
-    // template plans manage sampling server-side.
-    const planFile = path.join(tempDir, 'plan.json');
-    await writeTransformPlan(planFile);
-
-    const mockApi = { submitSyncJob: vi.fn() };
-    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
-
-    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
-    await expect(
-      program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-rate', '5']),
-    ).rejects.toThrow();
-
-    expect(mockApi.submitSyncJob).not.toHaveBeenCalled();
-    expect(processExitSpy).toHaveBeenCalledWith(1);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Error running draft pipeline:',
-      expect.stringContaining('do not pass job-graph-only flags'),
-    );
-  });
-
   it('test_jobDraft_templatePlan_maxDurationSeconds_passesAbortSignal', async () => {
-    // --max-duration-seconds works for template drafts: the AbortController is
-    // backend-agnostic and simply cuts the stream after N seconds.
+    // The max-duration cap arms an AbortController whose signal is handed to
+    // submitSyncJob; it cuts the stream after N seconds.
     const planFile = path.join(tempDir, 'plan.json');
     await writeTransformPlan(planFile);
 
@@ -523,39 +369,6 @@ describe('JobDraftCommand', () => {
 
     const signal = mockApi.submitSyncJob.mock.calls[0]?.[1] as AbortSignal | undefined;
     expect(signal).toBeInstanceOf(AbortSignal);
-  });
-
-  it('test_jobDraft_jobGraphSourceTouching_preservesProposedSources', async () => {
-    const planFile = path.join(tempDir, 'plan.json');
-    await writeSourceTouchingJobGraphPlan(planFile);
-
-    const stream = Readable.from(['{"jobState":"FINISHED"}\n']);
-    const mockApi = { submitSyncJob: vi.fn().mockResolvedValue(stream) };
-    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
-
-    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
-    await program.parseAsync(['node', 'test', 'job:draft', planFile]);
-
-    expect(mockApi.submitSyncJob).toHaveBeenCalledTimes(1);
-    const submitted = mockApi.submitSyncJob.mock.calls[0]?.[0] as {
-      tags: Record<string, string>;
-      jobGraph: { vertices: { name: string }[]; edges: string[] };
-    };
-    const names = submitted.jobGraph.vertices.map(v => v.name);
-    expect(submitted.tags['grepr.draft_mode']).toBeUndefined();
-    expect(names).toContain('dd_source');
-    expect(names).not.toContain('draft_tapped_source');
-    expect(names).toContain('draft_source_preserving_sink');
-    expect(names).not.toContain('sink');
-    // Each live source streams through its own sampler into the old downstream.
-    expect(submitted.jobGraph.edges).toContain('dd_source -> dd_source_draft_sampler');
-    expect(submitted.jobGraph.edges).toContain('dd_source_draft_sampler -> pre_parser_filter');
-    expect(submitted.jobGraph.edges).not.toContain('dd_source -> pre_parser_filter');
-    // log_reducer is tap-eligible, so it reaches the sync sink through its
-    // tagger (tagged, attributable) rather than a direct untagged edge.
-    expect(submitted.jobGraph.edges).toContain('log_reducer -> tap_log_reducer');
-    expect(submitted.jobGraph.edges).toContain('tap_log_reducer -> draft_source_preserving_sink');
-    expect(submitted.jobGraph.edges).not.toContain('log_reducer -> draft_source_preserving_sink');
   });
 
   it('test_jobDraft_jobId_noPlan_draftsLivePipelineAsIs', async () => {
@@ -578,6 +391,24 @@ describe('JobDraftCommand', () => {
     const submitted = mockApi.submitSyncJob.mock.calls[0]?.[0] as { jobGraph: { vertices: { draftMode: boolean }[] }; processing: string };
     expect(submitted.processing).toBe('BATCH');
     expect(submitted.jobGraph.vertices[0]?.draftMode).toBe(true);
+  });
+
+  it('test_jobDraft_jobId_rawJobGraph_exitsWithTemplateOnlyMessage', async () => {
+    const mockApi = {
+      getJob: vi.fn().mockResolvedValue(makeRawJobGraphJob()),
+      submitSyncJob: vi.fn(),
+    };
+    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
+
+    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
+    await expect(program.parseAsync(['node', 'test', 'job:draft', '--job-id', 'job_jg'])).rejects.toThrow();
+
+    expect(mockApi.submitSyncJob).not.toHaveBeenCalled();
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error running draft pipeline:',
+      'This pipeline uses a raw job graph (no template-operation vertex). job:plan, job:draft and job:apply support only template-backed pipelines. To change a raw job graph, edit it and run job:update.',
+    );
   });
 
   it('test_jobDraft_bothPlanAndJobId_shouldErrorAndExit', async () => {
@@ -844,30 +675,6 @@ describe('JobDraftCommand', () => {
     const inputOnDisk = planOnDisk.proposed.jobGraph.vertices[0];
     expect(inputOnDisk.templateInputs.input.draftSource).toBeUndefined();
     expect(inputOnDisk.draftMode).toBe(false);
-  });
-
-  it('test_jobDraft_sampleLogs_rejectedOnJobGraphPlan', async () => {
-    // Sample-driven drafts inject a template draftSource; a raw job-graph plan
-    // has no template input, so the flag is rejected before any submit.
-    const planFile = path.join(tempDir, 'plan.json');
-    await writeJobGraphPlan(planFile);
-    const sampleFile = path.join(tempDir, 'sample.json');
-    await fs.writeJson(sampleFile, [{ id: 'a1', eventTimestamp: 1, receivedTimestamp: 1 }]);
-
-    const mockApi = { submitSyncJob: vi.fn() };
-    (createApiClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApi);
-
-    new JobDraftCommand().addToProgram(program, async opts => ({ ...opts, quiet: true }) as never);
-    await expect(
-      program.parseAsync(['node', 'test', 'job:draft', planFile, '--sample-logs', sampleFile]),
-    ).rejects.toThrow();
-
-    expect(mockApi.submitSyncJob).not.toHaveBeenCalled();
-    expect(processExitSpy).toHaveBeenCalledWith(1);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Error running draft pipeline:',
-      expect.stringContaining('--sample-logs is only supported for template-backed pipelines'),
-    );
   });
 
   it('test_jobDraft_sampleLogs_missingFile_shouldErrorAndExit', async () => {

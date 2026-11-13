@@ -88,7 +88,7 @@ All processing in Grepr happens through **jobs**. A job defines:
 |------|-----------|------------|-------------|
 | **Query** | SYNCHRONOUS | BATCH | Query data lake, return results immediately |
 | **Pipeline** | ASYNCHRONOUS | STREAMING | Continuous log processing in production |
-| **Test Pipeline** | SYNCHRONOUS | STREAMING | Test pipeline with live data (rate-limited) |
+| **Draft** | SYNCHRONOUS | STREAMING or BATCH | `job:draft` runs a pipeline's template in draft mode. It writes nothing and streams results back |
 | **Backfill** | ASYNCHRONOUS | BATCH | Reprocess historical data to a sink |
 
 ## Job Graph Structure
@@ -127,6 +127,28 @@ Some operations have multiple named outputs:
 - `logs-branch`: `default` (matches predicate) and `else` (doesn't match)
 - Use `:output_name` suffix to specify which output to connect
 
+### Pipelines Are Template-Backed
+
+A pipeline's job graph is one `template-operation` vertex with no edges. The
+vertex names a built-in template (`log-reducer-job-graph-template` for logs,
+`trace-reducer-job-graph-template` for traces) and holds the pipeline settings
+in `templateInputs.input`. The server expands the template into the full graph
+of sources, parsers, reducer, and sinks.
+
+- `grepr job:get <id>` returns the template-operation vertex.
+- `grepr job:get <id> --resolved` returns the expanded graph. Read sinks and
+  datasets there.
+
+Templates give guardrails. They make common changes easy and safe, such as a
+filter, a parser, or a SQL transform, and the CLI can plan, draft, and apply
+those changes. Change a pipeline with the intent skills and
+`grepr:test-pipeline-change`. Create one with `grepr:build-pipeline`.
+
+A raw job graph lists its vertices and edges directly. It is an advanced path.
+`job:create` and `job:update` accept it, and the user defines every vertex and
+edge. `job:plan`, `job:draft`, `job:apply`, `--job-id` on `query` and
+`backfill`, and the intent skills support only template-backed pipelines.
+
 ## Job Lifecycle States
 
 | State | Description |
@@ -157,7 +179,8 @@ Some operations have multiple named outputs:
 | Term | Definition |
 |------|------------|
 | **Job** | A complete data processing definition (graph + config) |
-| **Pipeline** | Common name for an async streaming job |
+| **Pipeline** | Common name for an async streaming job built from a template |
+| **Template** | A built-in job graph generator. A pipeline's `template-operation` vertex names it and holds its inputs |
 | **Query** | Common name for a sync batch job |
 | **Operation** | A vertex in the job graph (source, transform, or sink) |
 | **Integration** | Configuration for external systems (vendors, storage) |

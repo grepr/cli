@@ -14,12 +14,7 @@ Resolve the org config once and reuse it on every command — see the `grepr:cli
 ## Step 1 — Get context
 
 Run `grepr:describe-pipeline <JOB_ID>` and record the existing sources (name, type,
-`integrationId`, query/predicate, time window) and the backend shape. For backend
-detection and which ops each backend supports, see `grepr:describe-pipeline`.
-
-Source ops apply to template-backed pipelines and to canonical UI-shaped raw job
-graphs. A non-canonical raw DAG rejects source topology edits with `unsupported raw
-job graph shape`, so confirm the shape before building a patch.
+`integrationId`, query/predicate, time window).
 
 When adding a source, list the integrations so the new vertex can reference a real
 `integrationId`:
@@ -53,7 +48,7 @@ fields:
 | `add-source` | `source` (object) | agent or iceberg source, see below |
 | `remove-source` | `name` (string) | name of an existing source vertex |
 
-Source shapes (the canonical UI shape — required for raw-graph edits):
+Source shapes:
 - Agent: `{ "type": "datadog-log-agent-source", "name": "...", "integrationId": "..." }`
 - Iceberg replay: `{ "type": "logs-iceberg-table-source", "name": "...", "datasetId": "...", "query": {...}, "start": "...", "end": "...", "limit": 1000 }`
 
@@ -95,9 +90,9 @@ credentials, integration auth, or query filter is the likely cause.
 
 ## Resources
 
-- `examples.md` — ✅ template-backed add/replace patches, ✅ raw-graph add-source, and
-  ❌ rejected patches (zero-source removal, non-canonical raw graph), each with a why.
-- `grepr:describe-pipeline` — backend detection and per-backend op support.
+- `examples.md` has ✅ add/replace patches and a ❌ rejected zero-source removal, each
+  with a why.
+- `grepr:describe-pipeline` has the pipeline summary and the template check.
 - `grepr:operations-reference` — full source-type catalog and exact field names.
 - `grepr:integration-commands` — list/inspect integrations for `integrationId`.
 - `grepr:test-pipeline-change` — plans, drafts, gates, and applies the patch.
