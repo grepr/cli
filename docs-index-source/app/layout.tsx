@@ -464,6 +464,12 @@ const pageMap = [
           },
         ],
       },
+      {
+        name: "sql",
+        route: "/queries/sql",
+        type: "page",
+        title: "Query logs with SQL",
+      },
     ],
   },
   {

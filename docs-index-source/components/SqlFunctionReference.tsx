@@ -38,6 +38,7 @@ interface PublishedFunction {
 /** Reading order: the ones an analysis is mostly made of come first. */
 const CATEGORY_ORDER = [
   'AGGREGATE',
+  'WINDOW',
   'VARIANT',
   'STRING',
   'TIME',
@@ -50,6 +51,7 @@ const CATEGORY_ORDER = [
 
 const CATEGORY_TITLES: Record<string, string> = {
   AGGREGATE: 'Aggregate',
+  WINDOW: 'Window',
   VARIANT: 'Attributes and variants',
   STRING: 'String',
   TIME: 'Date and time',
@@ -134,12 +136,14 @@ export function SqlFunctionReference() {
                     <tr key={fn.name} id={fn.name.toLowerCase()}>
                       <td>
                         <code>{fn.name}</code>
-                        {/* Redundant inside the Aggregate section, so shown
-                            only if the catalog ever grows an aggregate that
-                            sits under another category. */}
-                        {fn.aggregate && category !== 'AGGREGATE' && (
-                          <span className={styles.badge}>aggregate</span>
-                        )}
+                        {/* Redundant inside the Aggregate section, and wrong
+                            for window functions, which Calcite models as
+                            aggregates but which never group rows. */}
+                        {fn.aggregate &&
+                          category !== 'AGGREGATE' &&
+                          category !== 'WINDOW' && (
+                            <span className={styles.badge}>aggregate</span>
+                          )}
                       </td>
                       <td className={styles.args}>
                         <code>{argumentList(fn)}</code>

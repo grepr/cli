@@ -30,7 +30,7 @@ a field, add the field under SELECT and group by it.
 
 ![The Analyze drawer with a count and a 95th-percentile duration beside the grouped service column, and the result rows below it.](/images/queries/analyze/analyze-drawer.png)
 
-## Log fields
+## <a id="fields"></a> Log fields
 
 Expressions address the stored log columns by the following names:
 
@@ -62,7 +62,7 @@ Index a single value with `[1]` when you want only the first:
 tags['service'][1]
 ```
 
-## Attribute values
+## <a id="attributes"></a> Attribute values
 
 Grepr parses structured logs into an attribute document. Address a single attribute with the `@`
 form, which takes a dotted path through that document:
@@ -162,6 +162,15 @@ SEVERITY_TEXT(severity)
 ```
 
 ![An analysis grouping by SEVERITY_TEXT(severity), whose result rows are named FATAL, ERROR, WARN, INFO and DEBUG.](/images/queries/analyze/analyze-severity-text.png)
+
+Window functions such as `RANK`, `LAG` and `ROW_NUMBER` compute across the result rows instead of grouping them, and each one needs an `OVER` clause. They compute after grouping, so GROUP BY and HAVING can't use them; to keep the top-ranked rows, sort by the rank and set the row limit. To rank groups, or to compare each group with the total, order the window by an aggregate:
+
+```sql
+-- Under SELECT, with tags['service'][1] under GROUP BY
+COUNT(*)
+RANK() OVER (ORDER BY COUNT(*) DESC)
+COUNT(*) * 100.0 / SUM(COUNT(*)) OVER ()
+```
 
 ## Name the results
 
@@ -283,6 +292,10 @@ already run, restoring the controls without re-running and spending scan budget 
 ## Result values
 
 Each result row is a JSON object keyed by column name, so a column holds whatever the underlying attribute held, such as a number, a string, a boolean, or a nested object. Timestamps are returned as UTC ISO 8601 strings.
+
+## <a id="sql"></a> Write a whole query in SQL
+
+When one SELECT with grouping can't answer the question, such as an aggregate of an aggregate or logs matched to other logs, write a whole Grepr SQL query on the SQL page. See [Query logs with SQL](/queries/sql).
 
 ## Limitations
 

@@ -957,6 +957,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/datasets/{id}/data-types": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the data types a dataset holds
+     * @description Returns the data types the dataset holds, of logs_raw (logs) and spans_raw (traces). A type is held once a pipeline that writes it to the dataset is created or updated, and then stays held, even after the pipeline stops or retention empties the table.
+     */
+    get: operations["getDatasetDataTypes"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/datasets/{id}/estimation-config": {
     parameters: {
       query?: never;
@@ -5552,10 +5572,11 @@ export interface components {
        */
       message: string;
       /**
-       * @description Where the rule was broken, as a path into the request: 'select', 'select[1].expression', 'select[1].alias', 'groupBy[0]', 'window.size', 'window.slide', 'having', 'orderBy[2].expression', 'limit', 'scanBudgetBytes', 'predicate', or 'query' for a failure that names no single item.
+       * @description Where the rule was broken, as a path into the request: 'select', 'select[1].expression', 'select[1].alias', 'groupBy[0]', 'window.size', 'window.slide', 'having', 'orderBy[2].expression', 'sql', 'limit', 'scanBudgetBytes', 'predicate', or 'query' for a failure that names no single item.
        * @example select[1].alias
        */
       path: string;
+      range?: components["schemas"]["AnalyticsDiagnosticRange"];
     };
     /** @description A change that resolves this diagnostic, when the server has verified one: today, the GROUP BY entry that makes an ungrouped SELECT expression valid. */
     AnalyticsDiagnosticFix: {
@@ -5565,10 +5586,33 @@ export interface components {
        */
       addGroupBy: string;
     };
+    /** @description For a diagnostic on 'sql', the part of the query's text it is about, when the server can tell. */
+    AnalyticsDiagnosticRange: {
+      /**
+       * Format: int32
+       * @example 19
+       */
+      endColumn: number;
+      /**
+       * Format: int32
+       * @example 3
+       */
+      endLine: number;
+      /**
+       * Format: int32
+       * @example 7
+       */
+      startColumn: number;
+      /**
+       * Format: int32
+       * @example 3
+       */
+      startLine: number;
+    };
     AnalyticsDraftRequest: {
-      /** @description Dataset the query reads. Supplying it checks the scan budget against that dataset's ceiling and requires VIEW permission on it. */
+      /** @description Dataset a builder query reads. Supplying it checks the scan budget against that dataset's ceiling and requires VIEW permission on it. A Grepr SQL query names its own dataset, which this must match when given. */
       datasetId?: string;
-      query: components["schemas"]["StructuredAnalyticsQuery"];
+      query: components["schemas"]["AnalyticsQuery"];
       /**
        * Format: int64
        * @description Bytes the run may scan, checked against the organization's ceiling. Zero stands for a budget field left empty and is reported as a diagnostic.
@@ -5587,9 +5631,12 @@ export interface components {
       /** @description The call, in the analytics source language. */
       expression: string;
     };
+    /** @description A column a query reads: its name, its type and, for a struct, its fields. */
     AnalyticsField: {
       /** @description Format string for a nested key accessor, when applicable. */
       accessorTemplate?: string;
+      /** @description A struct column's fields, in order, each with its own fields when it is a struct. */
+      fields?: components["schemas"]["AnalyticsField"][];
       name: string;
       type: string;
     };
@@ -5661,8 +5708,35 @@ export interface components {
     /** @description Complete analytical query to execute. */
     AnalyticsQuery: {
       type: string;
-    } & components["schemas"]["StructuredAnalyticsQuery"];
-    /** @description Dataset tables available to the query under logical aliases. */
+    } & (
+      | components["schemas"]["StructuredAnalyticsQuery"]
+      | components["schemas"]["SqlAnalyticsQuery"]
+    );
+    /** @description The outermost SELECT's GROUP BY, by result column name. */
+    AnalyticsResultGrouping: {
+      /** @description Whether every GROUP BY entry names a selected column. */
+      allSelected?: boolean;
+      /** @description The other GROUP BY keys' columns, in GROUP BY order. */
+      keys: string[];
+      /** @description The column of the first GROUP BY key that buckets a time, FLOOR(ts TO unit); null when none does. */
+      time?: string;
+      /**
+       * @description The time bucket's unit; null with no time column.
+       * @enum {string}
+       */
+      unit?: AnalyticsResultGroupingUnit;
+    };
+    /** @description What a Grepr SQL run's result columns are. Each column's kind comes from the type the engine reports for it; whether the rows are ordered and the grouping come from the query's outermost SELECT. */
+    AnalyticsResultShape: {
+      grouping?: components["schemas"]["AnalyticsResultGrouping"];
+      /** @description Each column's kind, in the order of the record's columns. */
+      kinds: AnalyticsResultShapeKinds[];
+      /** @description Whether the outermost query has an ORDER BY, so the rows come in its order. */
+      ordered?: boolean;
+      /** @description Whether the query uses ROLLUP, CUBE or GROUPING SETS anywhere, so its rows may include subtotals that share keys with the rows they add up. */
+      subtotals?: boolean;
+    };
+    /** @description Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none. */
     AnalyticsTableBinding: {
       /** @description Logical table name used by the analytical query. */
       alias: string;
@@ -5717,6 +5791,10 @@ export interface components {
       promotedTagKeys?: string[];
       /** @description Words the analytics SQL grammar reserves; they cannot be used as result aliases. */
       reservedWords?: string[];
+      /** @description The columns a Grepr SQL query reads from each table type it can read, by table key (logs_raw, spans_raw), in the order * returns them. */
+      tableFields?: {
+        [key: string]: components["schemas"]["AnalyticsField"][];
+      };
     };
     AndEventPredicate: {
       /**
@@ -5962,8 +6040,8 @@ export interface components {
        * @default 107374182400
        */
       scanBudgetBytes?: number;
-      /** @description Dataset tables available to the query under logical aliases. */
-      tables: components["schemas"]["AnalyticsTableBinding"][];
+      /** @description Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none. */
+      tables?: components["schemas"]["AnalyticsTableBinding"][];
       /**
        * @description Executes an analytical query against dataset tables using Athena. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -7457,6 +7535,13 @@ export interface components {
        */
       teamIds?: string[];
     };
+    DatasetDataTypes: {
+      /**
+       * @description The data types the dataset holds, by table key: logs_raw (logs) and spans_raw (traces). A type is held once a pipeline that writes it to the dataset is created or updated, and then stays held, even after the pipeline stops or retention empties the table.
+       * @default []
+       */
+      types: AnalyticsTableBindingTable[];
+    };
     DatasetEstimationConfig: {
       /** Format: date-time */
       readonly createdAt?: string;
@@ -7738,6 +7823,8 @@ export interface components {
     };
     /** @description A streaming event record. Records are newline-separated as per the chunked output standard. Each record will contain a 'state' field and potentially a 'data' field. When the state is 'RUNNING', the 'data' field will be valid. In all other states, the 'data' field will be null. */
     EventRecord: {
+      /** @description An analytics run's result column names, in the query's order. Sent once: on the first row's record, or on the terminal record when there are no rows. Null on every other record. */
+      columns?: string[];
       data?: components["schemas"]["ReadableData"];
       /** @description The token that should be used by the client to send a heartbeat back to the server. This will usually only be set for the 'HEARTBEAT' state. Heartbeats back from the client are only required when heartbeatToken is not null. */
       heartbeatToken?: string;
@@ -7746,6 +7833,9 @@ export interface components {
        * @enum {string}
        */
       jobState: EventRecordJobState;
+      /** @description Why a Grepr SQL run failed, in a sentence of the server's own, never the query engine's text. Set on that run's failed terminal record. Null on every other record. */
+      message?: string;
+      resultShape?: components["schemas"]["AnalyticsResultShape"];
     };
     ExactAttributesMergeStrategy: {
       /**
@@ -14188,6 +14278,45 @@ export interface components {
        */
       type: SplunkLogSinkType;
     };
+    SqlAnalyticsQuery: {
+      /** @description ID of the dataset whose tables the query reads. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of the time interval every table covers.
+       */
+      end: string;
+      /**
+       * Format: int32
+       * @description The most rows returned. A LIMIT in the query can only lower it.
+       * @default 2500
+       */
+      limit?: number;
+      /** @description One read-only Grepr SQL query. It reads only the tables' aliases, each bounded by the time range and its filter everywhere the query names it. */
+      sql: string;
+      /**
+       * Format: date-time
+       * @description Start of the time interval every table covers.
+       */
+      start: string;
+      /** @description The tables the query reads, each under its own alias. */
+      tables: components["schemas"]["SqlAnalyticsTable"][];
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: SqlAnalyticsQueryType;
+    };
+    SqlAnalyticsTable: {
+      /** @description The name the SQL reads the table by. Unique within the query, ignoring case. */
+      alias: string;
+      filter: components["schemas"]["EventPredicate"];
+      /**
+       * @description The dataset's table the alias reads: `logs_raw` for logs, `spans_raw` for traces.
+       * @enum {string}
+       */
+      table: AnalyticsTableBindingTable;
+    };
     /** @description Base class for SQL statements */
     SqlExecutable: {
       eventTimeAttribute?: string;
@@ -15843,8 +15972,8 @@ export interface components {
        * @default 107374182400
        */
       scanBudgetBytes?: number;
-      /** @description Dataset tables available to the query under logical aliases. */
-      tables: components["schemas"]["AnalyticsTableBinding"][];
+      /** @description Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none. */
+      tables?: components["schemas"]["AnalyticsTableBinding"][];
       /**
        * @description Executes an analytical query using a Trino query engine. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -17110,6 +17239,8 @@ export type SchemaAnalyticsDiagnostic =
   components["schemas"]["AnalyticsDiagnostic"];
 export type SchemaAnalyticsDiagnosticFix =
   components["schemas"]["AnalyticsDiagnosticFix"];
+export type SchemaAnalyticsDiagnosticRange =
+  components["schemas"]["AnalyticsDiagnosticRange"];
 export type SchemaAnalyticsDraftRequest =
   components["schemas"]["AnalyticsDraftRequest"];
 export type SchemaAnalyticsDraftResponse =
@@ -17126,6 +17257,10 @@ export type SchemaAnalyticsParameter =
 export type SchemaAnalyticsProjection =
   components["schemas"]["AnalyticsProjection"];
 export type SchemaAnalyticsQuery = components["schemas"]["AnalyticsQuery"];
+export type SchemaAnalyticsResultGrouping =
+  components["schemas"]["AnalyticsResultGrouping"];
+export type SchemaAnalyticsResultShape =
+  components["schemas"]["AnalyticsResultShape"];
 export type SchemaAnalyticsTableBinding =
   components["schemas"]["AnalyticsTableBinding"];
 export type SchemaAnalyticsTimeWindow =
@@ -17279,6 +17414,7 @@ export type SchemaDatadogTraceAgentSource =
   components["schemas"]["DatadogTraceAgentSource"];
 export type SchemaDatadogTraceSink = components["schemas"]["DatadogTraceSink"];
 export type SchemaDatasetCreate = components["schemas"]["DatasetCreate"];
+export type SchemaDatasetDataTypes = components["schemas"]["DatasetDataTypes"];
 export type SchemaDatasetEstimationConfig =
   components["schemas"]["DatasetEstimationConfig"];
 export type SchemaDatasetRead = components["schemas"]["DatasetRead"];
@@ -17795,6 +17931,10 @@ export type SchemaSplunkLogAgentSource =
 export type SchemaSplunkLogHttpSource =
   components["schemas"]["SplunkLogHttpSource"];
 export type SchemaSplunkLogSink = components["schemas"]["SplunkLogSink"];
+export type SchemaSqlAnalyticsQuery =
+  components["schemas"]["SqlAnalyticsQuery"];
+export type SchemaSqlAnalyticsTable =
+  components["schemas"]["SqlAnalyticsTable"];
 export type SchemaSqlExecutable = components["schemas"]["SqlExecutable"];
 export type SchemaSqlIoStatement = components["schemas"]["SqlIoStatement"];
 export type SchemaSqlNode = components["schemas"]["SqlNode"];
@@ -20193,6 +20333,35 @@ export interface operations {
       };
       /** @description Dataset has jobs associated with it. */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getDatasetDataTypes: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The types the dataset holds. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DatasetDataTypes"];
+        };
+      };
+      /** @description Dataset not found. */
+      404: {
         headers: {
           [name: string]: unknown;
         };
@@ -30859,6 +31028,21 @@ export enum AnalyticsParameterType {
   TIME_UNIT = "TIME_UNIT",
   LITERAL = "LITERAL",
 }
+export enum AnalyticsResultGroupingUnit {
+  SECOND = "SECOND",
+  MINUTE = "MINUTE",
+  HOUR = "HOUR",
+  DAY = "DAY",
+  WEEK = "WEEK",
+  MONTH = "MONTH",
+  QUARTER = "QUARTER",
+  YEAR = "YEAR",
+}
+export enum AnalyticsResultShapeKinds {
+  TIME = "TIME",
+  NUMBER = "NUMBER",
+  OTHER = "OTHER",
+}
 export enum AnalyticsTableBindingTable {
   logs_raw = "logs_raw",
   logs_dedup = "logs_dedup",
@@ -31627,6 +31811,9 @@ export enum SplunkLogHttpSourceType {
 }
 export enum SplunkLogSinkType {
   splunk_log_sink = "splunk-log-sink",
+}
+export enum SqlAnalyticsQueryType {
+  sql_analytics_query = "sql-analytics-query",
 }
 export enum SqlIoStatementType {
   sql_io = "sql_io",
