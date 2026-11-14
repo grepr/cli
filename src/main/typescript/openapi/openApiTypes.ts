@@ -6041,7 +6041,7 @@ export interface components {
        */
       start: string;
       /**
-       * @description Returns grouped agent session summaries through Athena. (enum property replaced by openapi-typescript)
+       * @description Returns grouped agent session summaries. The server runs it on the organization's engine; the type name doesn't choose Athena. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: AthenaAgentSessionsSourceType;
@@ -6070,7 +6070,7 @@ export interface components {
       /** @description Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none. */
       tables?: components["schemas"]["AnalyticsTableBinding"][];
       /**
-       * @description Executes an analytical query against dataset tables using Athena. (enum property replaced by openapi-typescript)
+       * @description Executes an analytical query against dataset tables. The server runs it on the organization's engine; the type name doesn't choose Athena. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: AthenaAnalyticsSourceType;
@@ -16013,7 +16013,7 @@ export interface components {
       /** @description Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none. */
       tables?: components["schemas"]["AnalyticsTableBinding"][];
       /**
-       * @description Executes an analytical query using a Trino query engine. (enum property replaced by openapi-typescript)
+       * @description Executes an analytical query against dataset tables. The server runs it on the organization's engine; the type name doesn't choose Trino. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: TrinoAnalyticsSourceType;
@@ -16055,7 +16055,7 @@ export interface components {
        */
       start: string;
       /**
-       * @description Reads raw log events out of an Iceberg Table without pattern enrichment, executed against a Trino query engine. (enum property replaced by openapi-typescript)
+       * @description Reads raw log events out of an Iceberg Table without pattern enrichment. The server runs it on the organization's engine; the type name doesn't choose Trino. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: TrinoRawLogsSourceType;
@@ -16108,7 +16108,7 @@ export interface components {
        */
       start: string;
       /**
-       * @description Reads spans using Grepr's internal query system out of an Iceberg Table for processing, executed against a Trino query engine. (enum property replaced by openapi-typescript)
+       * @description Reads spans using Grepr's internal query system out of an Iceberg Table for processing. The server runs it on the organization's engine; the type name doesn't choose Trino. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: TrinoRawSpanSourceType;
@@ -16173,7 +16173,7 @@ export interface components {
        */
       start: string;
       /**
-       * @description Reads events using Grepr's internal query system out of an Iceberg Table for processing, executed against a Trino query engine. (enum property replaced by openapi-typescript)
+       * @description Reads events using Grepr's internal query system out of an Iceberg Table for processing. The server runs it on the organization's engine; the type name doesn't choose Trino. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: TrinoReducerLogSourceType;
