@@ -5763,6 +5763,24 @@ export interface components {
       /** @description Whether the query uses ROLLUP, CUBE or GROUPING SETS anywhere, so its rows may include subtotals that share keys with the rows they add up. */
       subtotals?: boolean;
     };
+    AnalyticsSource: {
+      /** @example operation_name */
+      name: string;
+      query: components["schemas"]["AnalyticsQuery"];
+      /**
+       * Format: int64
+       * @description Maximum number of bytes this query may scan.
+       * @default 107374182400
+       */
+      scanBudgetBytes?: number;
+      /** @description Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none. */
+      tables?: components["schemas"]["AnalyticsTableBinding"][];
+      /**
+       * @description Executes an analytical query against dataset tables, on the query engine the server chooses for the organization. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: AnalyticsSourceType;
+    };
     /** @description Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none. */
     AnalyticsTableBinding: {
       /** @description Logical table name used by the analytical query. */
@@ -6056,24 +6074,6 @@ export interface components {
       variables?: {
         [key: string]: components["schemas"]["Any"];
       };
-    };
-    AthenaAnalyticsSource: {
-      /** @example operation_name */
-      name: string;
-      query: components["schemas"]["AnalyticsQuery"];
-      /**
-       * Format: int64
-       * @description Maximum number of bytes this query may scan.
-       * @default 107374182400
-       */
-      scanBudgetBytes?: number;
-      /** @description Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none. */
-      tables?: components["schemas"]["AnalyticsTableBinding"][];
-      /**
-       * @description Executes an analytical query against dataset tables. The server runs it on the organization's engine; the type name doesn't choose Athena. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: AthenaAnalyticsSourceType;
     };
     /**
      * @description Maps a log event attribute path to an HTTP header name
@@ -11519,12 +11519,11 @@ export interface components {
       | components["schemas"]["GreprPipeLogSink"]
       | components["schemas"]["DatadogMetricsSink"]
       | components["schemas"]["LegacyDatadogMetricsSink"]
-      | components["schemas"]["AthenaAnalyticsSource"]
+      | components["schemas"]["AnalyticsSource"]
       | components["schemas"]["GreprReducerLogSource"]
       | components["schemas"]["AthenaAgentSessionsSource"]
       | components["schemas"]["GreprRawLogsSource"]
       | components["schemas"]["GreprRawSpanSource"]
-      | components["schemas"]["TrinoAnalyticsSource"]
       | components["schemas"]["TrinoReducerLogSource"]
       | components["schemas"]["TrinoRawLogsSource"]
       | components["schemas"]["TrinoRawSpanSource"]
@@ -16000,24 +15999,6 @@ export interface components {
       source?: string;
       type?: string;
     };
-    TrinoAnalyticsSource: {
-      /** @example operation_name */
-      name: string;
-      query: components["schemas"]["AnalyticsQuery"];
-      /**
-       * Format: int64
-       * @description Maximum number of bytes this query may process.
-       * @default 107374182400
-       */
-      scanBudgetBytes?: number;
-      /** @description Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none. */
-      tables?: components["schemas"]["AnalyticsTableBinding"][];
-      /**
-       * @description Executes an analytical query against dataset tables. The server runs it on the organization's engine; the type name doesn't choose Trino. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: TrinoAnalyticsSourceType;
-    };
     TrinoRawLogsSource: {
       /** @description The ID of the dataset to read data from. */
       datasetId: string;
@@ -17299,6 +17280,7 @@ export type SchemaAnalyticsResultGrouping =
   components["schemas"]["AnalyticsResultGrouping"];
 export type SchemaAnalyticsResultShape =
   components["schemas"]["AnalyticsResultShape"];
+export type SchemaAnalyticsSource = components["schemas"]["AnalyticsSource"];
 export type SchemaAnalyticsTableBinding =
   components["schemas"]["AnalyticsTableBinding"];
 export type SchemaAnalyticsTimeWindow =
@@ -17325,8 +17307,6 @@ export type SchemaAppendMessageRequest =
 export type SchemaArrayData = components["schemas"]["ArrayData"];
 export type SchemaAthenaAgentSessionsSource =
   components["schemas"]["AthenaAgentSessionsSource"];
-export type SchemaAthenaAnalyticsSource =
-  components["schemas"]["AthenaAnalyticsSource"];
 export type SchemaAttributeHeaderMapping =
   components["schemas"]["AttributeHeaderMapping"];
 export type SchemaAttributeKeyTermNode =
@@ -18093,8 +18073,6 @@ export type SchemaTransitionIssueRequest =
 export type SchemaTrigger = components["schemas"]["Trigger"];
 export type SchemaTriggerActionOp = components["schemas"]["TriggerActionOp"];
 export type SchemaTriggerSignal = components["schemas"]["TriggerSignal"];
-export type SchemaTrinoAnalyticsSource =
-  components["schemas"]["TrinoAnalyticsSource"];
 export type SchemaTrinoRawLogsSource =
   components["schemas"]["TrinoRawLogsSource"];
 export type SchemaTrinoRawSpanSource =
@@ -31085,6 +31063,9 @@ export enum AnalyticsResultShapeKinds {
   NUMBER = "NUMBER",
   OTHER = "OTHER",
 }
+export enum AnalyticsSourceType {
+  analytics_source = "analytics-source",
+}
 export enum AnalyticsTableBindingTable {
   logs_raw = "logs_raw",
   logs_dedup = "logs_dedup",
@@ -31124,9 +31105,6 @@ export enum AppKeyScopeCheckStatus {
 }
 export enum AthenaAgentSessionsSourceType {
   athena_agent_sessions_source = "athena-agent-sessions-source",
-}
-export enum AthenaAnalyticsSourceType {
-  athena_analytics_source = "athena-analytics-source",
 }
 export enum AttributeKeyTermNodeType {
   attribute_key_term_node = "attribute-key-term-node",
@@ -32013,9 +31991,6 @@ export enum TranscriptMessageRole {
 export enum TriggerActionOpType {
   trigger_action = "trigger-action",
 }
-export enum TrinoAnalyticsSourceType {
-  trino_analytics_source = "trino-analytics-source",
-}
 export enum TrinoRawLogsSourceType {
   trino_raw_log_source = "trino-raw-log-source",
 }
@@ -32112,8 +32087,8 @@ export enum WindowBasedLogarithmicSamplingType {
 export const SOURCE_TYPES = new Set<string>([
   'agent-session-events-iceberg-table-source',
   'agent-sessions-iceberg-table-source',
+  'analytics-source',
   'athena-agent-sessions-source',
-  'athena-analytics-source',
   'bounded-datadog-source',
   'cloudtrail-file-source',
   'datadog-log-agent-source',
@@ -32143,7 +32118,6 @@ export const SOURCE_TYPES = new Set<string>([
   'splunk-log-http-source',
   'sumologic-log-agent-source',
   'traces-iceberg-table-source',
-  'trino-analytics-source',
   'trino-raw-log-source',
   'trino-raw-span-source',
   'trino-reducer-log-source'
