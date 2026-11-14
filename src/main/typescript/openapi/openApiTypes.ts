@@ -4899,6 +4899,12 @@ export interface components {
       maxConcurrentInvestigations?: number;
       /**
        * Format: int32
+       * @description How many of the agent's signal-triggered investigations may wait in the queue; past it, intake drops the agent's new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 1000, and an update that leaves it out keeps it.
+       * @default 1000
+       */
+      maxQueuedInvestigations?: number;
+      /**
+       * Format: int32
        * @default 3000000
        */
       maxTokens?: number;
@@ -4916,6 +4922,11 @@ export interface components {
     AgentConfigPayload: {
       /** Format: int64 */
       agentMaxTokens?: number;
+      /**
+       * @description What the agent is for; null for a triage agent.
+       * @enum {string}
+       */
+      agentType?: AgentConfigPayloadAgentType;
       /** Format: int32 */
       automaticSignalMaxQueueAgeMinutes?: number;
       /** @enum {string} */
@@ -4938,12 +4949,19 @@ export interface components {
       issuePickup?: components["schemas"]["AgentIssuePickup"];
       /** Format: int32 */
       maxConcurrentInvestigations?: number;
+      /**
+       * Format: int32
+       * @description How many of the agent's signal-triggered investigations may wait in the queue; past it, intake drops the agent's new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 1000, and an update that leaves it out keeps it.
+       */
+      maxQueuedInvestigations?: number;
       /** Format: int32 */
       maxTokens?: number;
       /** Format: int32 */
       maxTurns?: number;
       memoryConfiguration?: components["schemas"]["AgentMemoryConfiguration"];
       modelConfiguration: components["schemas"]["ModelConfiguration"];
+      /** @description For the churn specialist only: whether it also runs on a pipeline that is not in churn mode. Grepr creates it with true, and unset means true; an update that leaves it out keeps it, and other agents have none. */
+      runOutsideChurnMode?: boolean;
       schedule?: components["schemas"]["AgentSchedule"];
       serviceAccountId: string;
       systemPrompt: string;
@@ -4975,6 +4993,11 @@ export interface components {
       issuePickup: components["schemas"]["AgentIssuePickup"];
       /** Format: int32 */
       maxConcurrentInvestigations?: number;
+      /**
+       * Format: int32
+       * @description How many of the agent's signal-triggered investigations may wait in the queue; past it, intake drops the agent's new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 1000, and an update that leaves it out keeps it.
+       */
+      maxQueuedInvestigations?: number;
       /** Format: int32 */
       maxTokens?: number;
       /** Format: int32 */
@@ -4982,6 +5005,8 @@ export interface components {
       memoryConfiguration?: components["schemas"]["AgentMemoryConfiguration"];
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       name: string;
+      /** @description For the churn specialist only: whether it also runs on a pipeline that is not in churn mode. Grepr creates it with true, and unset means true; an update that leaves it out keeps it, and other agents have none. */
+      runOutsideChurnMode?: boolean;
       schedule?: components["schemas"]["AgentSchedule"];
       serviceAccountId: string;
       systemPrompt: string;
@@ -5122,6 +5147,8 @@ export interface components {
       recordPolicy?: AgentMemoryPolicyRecordPolicy;
     };
     AgentPipelineSubscription: {
+      /** Format: date-time */
+      churnModeSince?: string;
       jobId: string;
       /** Format: date-time */
       pausedAt?: string;
@@ -6828,6 +6855,11 @@ export interface components {
        * @description Inclusive contract start date.
        */
       startDate: string;
+    };
+    CoveredSignal: {
+      fix?: string;
+      maskedMessage?: string;
+      message?: string;
     };
     CreateAgentSessionAnalyticsJob: {
       datasetId: string;
@@ -8730,6 +8762,7 @@ export interface components {
     InvestigationTranscript: {
       actions?: components["schemas"]["InvestigationAction"][];
       agentId?: string;
+      coveredSignals?: components["schemas"]["CoveredSignal"][];
       /** Format: date-time */
       createdAt?: string;
       decision?: components["schemas"]["DecisionOutcome"];
@@ -12047,6 +12080,11 @@ export interface components {
     PipelineChangeRequest: {
       /** @description Whether to apply the change directly (true) or record it as a suggestion for a human to review (false). This expresses intent only: the server enforces the proposing agent's approval mode, so a suggest-only agent's change is always recorded as a suggestion no matter what is passed here. */
       autoApply?: boolean;
+      /**
+       * Format: int64
+       * @description The pipeline version the change was computed from, as get_pipeline returned it. A change that replaces a signal mask or drop rule another investigation's fix changed in a later version is refused. Without it, fixes applied since the proposing investigation started count as later.
+       */
+      baseVersion?: number;
       /** @description One or two sentences a human reviewer reads first: what the change does and why. Required when the change is recorded as a suggestion. */
       changeDescription?: string;
       /** @description A caller-chosen idempotency key for this change, unique within the investigation. Resending the same changeId records one suggestion rather than a duplicate, so a retried call is safe. Required when the change is recorded as a suggestion. */
@@ -17366,6 +17404,7 @@ export type SchemaConsoleSetupInfo = components["schemas"]["ConsoleSetupInfo"];
 export type SchemaConstantSampling = components["schemas"]["ConstantSampling"];
 export type SchemaContextPart = components["schemas"]["ContextPart"];
 export type SchemaContract = components["schemas"]["Contract"];
+export type SchemaCoveredSignal = components["schemas"]["CoveredSignal"];
 export type SchemaCreateAgentSessionAnalyticsJob =
   components["schemas"]["CreateAgentSessionAnalyticsJob"];
 export type SchemaCreateBackfillJob =
@@ -30949,6 +30988,9 @@ export enum AgentConfigCreateIssueHandoffMode {
   REQUIRE_TRIAGE = "REQUIRE_TRIAGE",
   ALLOW_READY = "ALLOW_READY",
 }
+export enum AgentConfigPayloadAgentType {
+  CHURN_SPECIALIST = "CHURN_SPECIALIST",
+}
 export enum AgentLogProcessorType {
   agent_log_processor = "agent-log-processor",
 }
@@ -31151,6 +31193,7 @@ export enum ChangeFindingCode {
   INVALID_SIGNAL_CONFIG = "INVALID_SIGNAL_CONFIG",
   UNVERIFIABLE_CHANGE = "UNVERIFIABLE_CHANGE",
   NO_EFFECTIVE_CHANGE = "NO_EFFECTIVE_CHANGE",
+  STALE_SIGNAL_ENTRY = "STALE_SIGNAL_ENTRY",
 }
 export enum ChatActionCategory {
   CHANGE_PIPELINES = "CHANGE_PIPELINES",
