@@ -5031,7 +5031,7 @@ export interface components {
     };
     /** @description Whether an agent's queued pipeline log signals are screened by a decision model, which drops those not worth investigating, and how. */
     AgentDecisionConfiguration: {
-      /** @description Whether the decision step screens the agent's queued signals; never for an agent that works on issues. */
+      /** @description Whether the decision step screens the agent's queued signals. */
       enabled?: boolean;
       /** @description Extra guidance from the operator, sent once with each decision request; null for none. */
       guidance?: string;
