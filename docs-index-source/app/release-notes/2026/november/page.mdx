@@ -6,6 +6,29 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in November 2026.
 
+## November 14, 2026
+
+{/* ENGT-6740, ENGT-6745, ENGT-6850, ENGT-6852, ENGT-6901 */}
+### Query logs and traces with SQL
+
+You can now write one Grepr SQL query across up to four tables of a dataset's logs and traces on the new **SQL** page. Each table reads the dataset's logs or spans through its own filter under an alias, so one query can join logs to other logs or to the spans of their traces, aggregate the results of an aggregation, or rank groups against each other. Results show as a table, a line chart, or a top list, and you can share a query as a link. See [_](/queries/sql).
+
+### Other improvements and fixes
+
+- {/* ENGT-6744 */} Analyze's Grepr SQL functions include window functions, such as `ROW_NUMBER`, `RANK`, `LAG`, and `LEAD`, for ranking rows and comparing a row with the rows around it. See [_](/queries/analyze).
+- {/* ENGT-6575, ENGT-6994 */} You can turn on **Filter signals with a decision model** for an AI agent, so a model from your OpenAI integration screens its queued log pattern signals and drops the ones an investigation would learn nothing from, at a confidence threshold you set.
+- {/* ENGT-6575 */} The **Status** filter on an agent's investigations list lets you select several statuses at once, including **Skipped**.
+- {/* ENGT-6808 */} Timestamps without a time zone on logs from Datadog, Splunk HEC, and New Relic sources, such as `2026-01-15 10:30:00.123`, are read as UTC, so these events keep their own time instead of the time Grepr received them.
+- {/* ENGT-6357 */} Grok rules with syntax errors are rejected when you save a pipeline, as they are in Datadog. See [_](/transforms/grok/datadog-matchers).
+- {/* ENGT-6969 */} In the Grepr CLI, `job:plan`, `job:draft`, and `job:apply` work only on template-based pipelines and point you to `job:update` for a pipeline defined as a job graph, and the `job:to-test` command and the `--sample-rate` and `--sample-burst` options of `job:draft` are removed. See [_](/cli).
+- {/* ENGT-6746 */} Calendar presets in the time picker, such as **Today** and **Yesterday**, keep their names in the picker's label.
+- {/* ENGT-6884 */} Fixed an issue where Analyze could return wrong values for array and map columns.
+- {/* ENGT-6695 */} Fixed an issue where Analyze's results table showed no rows after you switched to it from a chart.
+- {/* ENGT-6746, ENGT-6766 */} Fixed several issues in Analyze in Log Explorer, including queries refused because they were checked against the wrong dataset, the previous dataset's rows staying on screen after you switched datasets, a busy server's response shown as an error instead of a prompt to run again, and the page failing after fast edits in Safari.
+- {/* ENGT-6357 */} Fixed several issues in grok parsing, including matcher arguments with a comma, such as a `date` pattern with `,SSS` milliseconds, that failed to parse, and rules that in rare circumstances failed with "Grok rule could not be found".
+- {/* ENGT-6867 */} Fixed an issue where editing some integrations that a running pipeline uses, such as renaming them, was refused with an error saying the integration is in use.
+- {/* ENGT-6887, ENGT-6971 */} Security fixes.
+
 ## November 9, 2026
 
 {/* ENGT-6690 */}
