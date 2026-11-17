@@ -70,8 +70,11 @@ describe('parseQueryEngine', () => {
     expect(parseQueryEngine('flink')).toBe('flink');
   });
 
-  it('test_parseQueryEngine_trino_shouldReturnTrino', () => {
-    expect(parseQueryEngine('trino')).toBe('trino');
+  // The server picks Athena or Trino for the organization, so the CLI can't name either.
+  it('test_parseQueryEngine_trino_shouldThrow', () => {
+    expect(() => parseQueryEngine('trino')).toThrow(
+      'Invalid query engine: trino. Must be athena or flink'
+    );
   });
 
   it('test_parseQueryEngine_undefined_shouldReturnUndefinedForCallerDefault', () => {
@@ -84,7 +87,7 @@ describe('parseQueryEngine', () => {
 
   it('test_parseQueryEngine_invalidValue_shouldThrow', () => {
     expect(() => parseQueryEngine('iceberg')).toThrow(
-      'Invalid query engine: iceberg. Must be athena, flink, or trino'
+      'Invalid query engine: iceberg. Must be athena or flink'
     );
   });
 });

@@ -20,16 +20,20 @@ import type { SignalSourceInputs } from './lib/signal-source.js';
 
 export type AuthMethod = 'oauth' | 'client-credentials' | 'none';
 
-export type QueryEngine = 'athena' | 'flink' | 'trino';
+/**
+ * Where `grepr query` reads: `athena`, the default, sends the server's own sources, which it runs
+ * on the engine it chooses for the organization (Athena or Trino); `flink` reads Iceberg directly
+ * through a Flink job.
+ */
+export type QueryEngine = 'athena' | 'flink';
 
 /**
- * The concrete query engine a query will execute against, resolved locally from the explicit
- * `queryEngine` option with Athena as the default.
+ * The query path a query will execute on, resolved locally from the explicit `queryEngine` option
+ * with `athena` as the default.
  */
 export type ResolvedQueryEngine =
   | { kind: 'athena' }
-  | { kind: 'flink' }
-  | { kind: 'trino' };
+  | { kind: 'flink' };
 
 export interface CliOptions {
   orgName: string;

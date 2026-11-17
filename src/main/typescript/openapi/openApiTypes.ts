@@ -5834,7 +5834,7 @@ export interface components {
       maxRowLimit: number;
       /**
        * Format: int64
-       * @description Largest scan budget, in bytes, an Athena analytics query over this dataset may request. Absent when no ceiling applies. Queries routed to a Trino query engine are not subject to it.
+       * @description Largest scan budget, in bytes, an analytics query over this dataset may request. Absent when no ceiling applies, including when the engine the server runs the organization's queries on has none.
        */
       maxScanBudgetBytes?: number;
       /** @description Promoted logs_raw tag keys for the requested dataset. */
@@ -11508,9 +11508,6 @@ export interface components {
       | components["schemas"]["AthenaAgentSessionsSource"]
       | components["schemas"]["GreprRawLogsSource"]
       | components["schemas"]["GreprRawSpanSource"]
-      | components["schemas"]["TrinoReducerLogSource"]
-      | components["schemas"]["TrinoRawLogsSource"]
-      | components["schemas"]["TrinoRawSpanSource"]
       | components["schemas"]["SplunkLogAgentSource"]
       | components["schemas"]["SplunkLogHttpSource"]
       | components["schemas"]["NewRelicLogAgentSource"]
@@ -15976,177 +15973,6 @@ export interface components {
       source?: string;
       type?: string;
     };
-    TrinoRawLogsSource: {
-      /** @description The ID of the dataset to read data from. */
-      datasetId: string;
-      /**
-       * Format: date-time
-       * @description End of time interval to query data for.
-       * @example 2023-01-01T01:00:00Z
-       */
-      end: string;
-      /**
-       * Format: int32
-       * @description The maximum number of rows to process
-       * @default 2500
-       */
-      limit?: number;
-      /** @example operation_name */
-      name: string;
-      /**
-       * Format: int32
-       * @description Offset on the number of rows to process
-       * @default 0
-       */
-      offset?: number;
-      query: components["schemas"]["query"];
-      /**
-       * @description The order in which the rows should be sorted by
-       * @default ASCENDING
-       * @enum {string}
-       */
-      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
-      /**
-       * Format: date-time
-       * @description Start of time interval to query data for.
-       * @example 2023-01-01T00:00:00Z
-       */
-      start: string;
-      /**
-       * @description Reads raw log events out of an Iceberg Table without pattern enrichment. The server runs it on the organization's engine; the type name doesn't choose Trino. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: TrinoRawLogsSourceType;
-      /**
-       * @description Variables that can be used to modify the query while parsed
-       * @default {}
-       * @example {
-       *       "__application": "app1",
-       *       "__service": "service1"
-       *     }
-       */
-      variables?: {
-        [key: string]: components["schemas"]["Any"];
-      };
-    };
-    TrinoRawSpanSource: {
-      /** @description The ID of the dataset to read data from. */
-      datasetId: string;
-      /**
-       * Format: date-time
-       * @description End of time interval to query data for.
-       * @example 2023-01-01T01:00:00Z
-       */
-      end: string;
-      /**
-       * Format: int32
-       * @description The maximum number of rows to process
-       * @default 2500
-       */
-      limit?: number;
-      /** @example operation_name */
-      name: string;
-      /**
-       * Format: int32
-       * @description Offset on the number of rows to process
-       * @default 0
-       */
-      offset?: number;
-      query: components["schemas"]["query"];
-      /**
-       * @description The order in which the rows should be sorted by
-       * @default ASCENDING
-       * @enum {string}
-       */
-      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
-      /**
-       * Format: date-time
-       * @description Start of time interval to query data for.
-       * @example 2023-01-01T00:00:00Z
-       */
-      start: string;
-      /**
-       * @description Reads spans using Grepr's internal query system out of an Iceberg Table for processing. The server runs it on the organization's engine; the type name doesn't choose Trino. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: TrinoRawSpanSourceType;
-      /**
-       * @description Variables that can be used to modify the query while parsed
-       * @default {}
-       * @example {
-       *       "__application": "app1",
-       *       "__service": "service1"
-       *     }
-       */
-      variables?: {
-        [key: string]: components["schemas"]["Any"];
-      };
-    };
-    TrinoReducerLogSource: {
-      /** @description The ID of the dataset to read data from. */
-      datasetId: string;
-      /**
-       * Format: date-time
-       * @description End of time interval to query data for.
-       * @example 2023-01-01T01:00:00Z
-       */
-      end: string;
-      /**
-       * Format: int32
-       * @description The maximum number of rows to process
-       * @default 2500
-       */
-      limit?: number;
-      /** @example operation_name */
-      name: string;
-      /**
-       * Format: int32
-       * @description Offset on the number of rows to process
-       * @default 0
-       */
-      offset?: number;
-      /**
-       * @description The name of the table containing processed logs.
-       * @example "processed_logs"
-       */
-      processedLogsTableName?: string;
-      query: components["schemas"]["query"];
-      /**
-       * Format: ISO-8601
-       * @description The interval used by the Log Reducer for the query. Uses ISO 8601 format for intervals.
-       * @default PT2M
-       * @example PT20.345S
-       */
-      reductionInterval: string;
-      /**
-       * @description The order in which the rows should be sorted by
-       * @default ASCENDING
-       * @enum {string}
-       */
-      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
-      /**
-       * Format: date-time
-       * @description Start of time interval to query data for.
-       * @example 2023-01-01T00:00:00Z
-       */
-      start: string;
-      /**
-       * @description Reads events using Grepr's internal query system out of an Iceberg Table for processing. The server runs it on the organization's engine; the type name doesn't choose Trino. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: TrinoReducerLogSourceType;
-      /**
-       * @description Variables that can be used to modify the query while parsed
-       * @default {}
-       * @example {
-       *       "__application": "app1",
-       *       "__service": "service1"
-       *     }
-       */
-      variables?: {
-        [key: string]: components["schemas"]["Any"];
-      };
-    };
     TypeInformationAny: {
       /** Format: int32 */
       arity?: number;
@@ -18048,12 +17874,6 @@ export type SchemaTransitionIssueRequest =
 export type SchemaTrigger = components["schemas"]["Trigger"];
 export type SchemaTriggerActionOp = components["schemas"]["TriggerActionOp"];
 export type SchemaTriggerSignal = components["schemas"]["TriggerSignal"];
-export type SchemaTrinoRawLogsSource =
-  components["schemas"]["TrinoRawLogsSource"];
-export type SchemaTrinoRawSpanSource =
-  components["schemas"]["TrinoRawSpanSource"];
-export type SchemaTrinoReducerLogSource =
-  components["schemas"]["TrinoReducerLogSource"];
 export type SchemaTypeInformationAny =
   components["schemas"]["TypeInformationAny"];
 export type SchemaTypeInformationObject =
@@ -31960,15 +31780,6 @@ export enum TranscriptMessageRole {
 export enum TriggerActionOpType {
   trigger_action = "trigger-action",
 }
-export enum TrinoRawLogsSourceType {
-  trino_raw_log_source = "trino-raw-log-source",
-}
-export enum TrinoRawSpanSourceType {
-  trino_raw_span_source = "trino-raw-span-source",
-}
-export enum TrinoReducerLogSourceType {
-  trino_reducer_log_source = "trino-reducer-log-source",
-}
 export enum UpdateIssueRequestClear {
   NEXT_STEP = "NEXT_STEP",
   REVISIT_AT = "REVISIT_AT",
@@ -32086,10 +31897,7 @@ export const SOURCE_TYPES = new Set<string>([
   'splunk-log-agent-source',
   'splunk-log-http-source',
   'sumologic-log-agent-source',
-  'traces-iceberg-table-source',
-  'trino-raw-log-source',
-  'trino-raw-span-source',
-  'trino-reducer-log-source'
+  'traces-iceberg-table-source'
 ]);
 
 export const SINK_TYPES = new Set<string>([

@@ -40,8 +40,6 @@ import {
   LogsSynchronousSinkType,
   SpansSynchronousSinkType,
   TracesIcebergTableSourceType,
-  TrinoRawLogsSourceType,
-  TrinoRawSpanSourceType,
   type SchemaCreateJob
 } from '../../../main/typescript/openapi/openApiTypes.js';
 import type { QueryCommandOptions, ResolvedQueryEngine } from '../../../main/typescript/types.js';
@@ -69,7 +67,7 @@ describe('query-command', () => {
       expect(resolveQueryEngine()).toEqual({ kind: 'athena' });
     });
 
-    for (const engine of ['athena', 'flink', 'trino'] as const) {
+    for (const engine of ['athena', 'flink'] as const) {
       it(`test_resolveQueryEngine_${engine}_returnsExplicitEngine`, () => {
         expect(resolveQueryEngine(engine)).toEqual({ kind: engine });
       });
@@ -96,12 +94,6 @@ describe('query-command', () => {
         sinkType: LogsSynchronousSinkType.logs_sync_sink
       },
       {
-        dataType: CreateLogsBackfillJobDataType.logs,
-        resolvedEngine: { kind: 'trino' },
-        sourceType: TrinoRawLogsSourceType.trino_raw_log_source,
-        sinkType: LogsSynchronousSinkType.logs_sync_sink
-      },
-      {
         dataType: CreateSpansBackfillJobDataType.spans,
         resolvedEngine: { kind: 'athena' },
         sourceType: GreprRawSpanSourceType.grepr_raw_span_source,
@@ -113,12 +105,6 @@ describe('query-command', () => {
         sourceType: TracesIcebergTableSourceType.traces_iceberg_table_source,
         sinkType: SpansSynchronousSinkType.spans_sync_sink
       },
-      {
-        dataType: CreateSpansBackfillJobDataType.spans,
-        resolvedEngine: { kind: 'trino' },
-        sourceType: TrinoRawSpanSourceType.trino_raw_span_source,
-        sinkType: SpansSynchronousSinkType.spans_sync_sink
-      }
     ] satisfies BuildQueryJobDefinitionCase[]) {
       it(`test_buildQueryJobDefinition_${dataType}_${resolvedEngine.kind}_buildsSignalGraph`, () => {
         const job = buildQueryJobDefinition({
@@ -213,11 +199,11 @@ describe('query-command', () => {
       }
     }
 
-    it('test_execute_explicitTrino_submitsTrinoSource', async () => {
+    it('test_execute_explicitFlink_submitsIcebergTableSource', async () => {
       const command = new TestableQueryCommand();
       await command.execute({
         ...baseOptions,
-        queryEngine: 'trino',
+        queryEngine: 'flink',
         datasetId: 'ds_raw',
         dataType: CreateLogsBackfillJobDataType.logs,
         query: 'service:web',
@@ -227,7 +213,7 @@ describe('query-command', () => {
       });
 
       expect(command.capturedJob?.jobGraph.vertices[0]).toMatchObject({
-        type: TrinoRawLogsSourceType.trino_raw_log_source
+        type: LogsIcebergTableSourceType.logs_iceberg_table_source
       });
     });
   });

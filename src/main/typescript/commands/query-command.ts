@@ -24,8 +24,6 @@ import {
   LogsSynchronousSinkType,
   SpansSynchronousSinkType,
   TracesIcebergTableSourceType,
-  TrinoRawLogsSourceType,
-  TrinoRawSpanSourceType,
   type SchemaCreateJob,
   type SchemaEventPredicate,
   type SchemaGreprRawLogsSource,
@@ -33,9 +31,7 @@ import {
   type SchemaLogsIcebergTableSource,
   type SchemaOperation,
   type SchemaSpansSynchronousSink,
-  type SchemaTracesIcebergTableSource,
-  type SchemaTrinoRawLogsSource,
-  type SchemaTrinoRawSpanSource
+  type SchemaTracesIcebergTableSource
 } from '../openapi/openApiTypes.js';
 import {
   buildLanguageQueryPredicate,
@@ -66,8 +62,6 @@ export function resolveQueryEngine(queryEngine?: QueryEngine): ResolvedQueryEngi
   switch (queryEngine) {
     case 'flink':
       return { kind: 'flink' };
-    case 'trino':
-      return { kind: 'trino' };
     case 'athena':
     default:
       return { kind: 'athena' };
@@ -149,16 +143,10 @@ function buildLogsSource(
   queryEngine: ResolvedQueryEngine,
   common: QuerySourceCommonFields,
   query: SchemaEventPredicate
-): SchemaGreprRawLogsSource | SchemaLogsIcebergTableSource | SchemaTrinoRawLogsSource {
+): SchemaGreprRawLogsSource | SchemaLogsIcebergTableSource {
   switch (queryEngine.kind) {
     case 'flink':
       return { ...common, type: LogsIcebergTableSourceType.logs_iceberg_table_source, query };
-    case 'trino':
-      return {
-        ...common,
-        type: TrinoRawLogsSourceType.trino_raw_log_source,
-        query
-      };
     case 'athena':
       return { ...common, type: GreprRawLogsSourceType.grepr_raw_log_source, query };
   }
@@ -187,18 +175,13 @@ function buildSpansSource(
   queryEngine: ResolvedQueryEngine,
   sourceFields: QuerySourceCommonFields & { query: SchemaEventPredicate },
   spanFilters: SpanQueryFilters
-): SchemaGreprRawSpanSource | SchemaTracesIcebergTableSource | SchemaTrinoRawSpanSource {
+): SchemaGreprRawSpanSource | SchemaTracesIcebergTableSource {
   switch (queryEngine.kind) {
     case 'flink':
       return {
         ...sourceFields,
         ...spanFilters,
         type: TracesIcebergTableSourceType.traces_iceberg_table_source
-      };
-    case 'trino':
-      return {
-        ...sourceFields,
-        type: TrinoRawSpanSourceType.trino_raw_span_source
       };
     case 'athena':
       return { ...sourceFields, type: GreprRawSpanSourceType.grepr_raw_span_source };
