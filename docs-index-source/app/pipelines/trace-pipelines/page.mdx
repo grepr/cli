@@ -26,23 +26,7 @@ A trace pipeline reduces data volume primarily through _sampling_, which forward
 
 The sections [_](#head-sampling) and [_](#tail-sampling) describe how to configure each sampling type.
 
-To make tail-based sampling more precise, a trace pipeline groups traces by their _signature_. A signature is a canonical, deterministic record of the structure of a trace: the services and operations it invokes and the way those operations are nested. Rather than comparing every trace from the same endpoint against a single baseline, _signature sampling_ compares each trace only against others that followed the same execution path. Because traces that follow the same path have similar expected performance, this fine-grained grouping makes anomalies such as unusually slow traces easier to detect and produces more accurate sampling decisions for each path.
-
-Grepr builds a signature by recursively traversing the spans of an assembled trace, recording each span's operation name and a configurable set of key attributes, deduplicating identical sibling spans, and collapsing repeated operations so that loops do not distort the result. Because the same structure always produces the same signature, traces with the same shape share the same signature. During tail sampling, Grepr computes latency percentiles separately for each signature, so the performance tiers compare each trace against others of the same kind. To learn more about how signatures group traces during tail sampling, see [_](#key-attributes).
-
-A signature is a nested, text representation of the trace. Grepr represents each span as `(operation,{key_attributes},[child_spans])`, where the key attributes are `index:value` pairs and the index is the position of each attribute in the configured **Key Attribute Paths**. With the default paths, index `0` is `service.name` and index `1` is `http.method`. The child spans, sorted and deduplicated, are nested within the brackets.
-
-For example, a single span for a request handled by the `api` service produces the following signature:
-
-```text
-(GET /api/users,{0:api,1:GET},[])
-```
-
-A trace for a request that calls a database query, which has no `http.method` attribute, produces a nested signature:
-
-```text
-(GET /api/users,{0:api,1:GET},[(SELECT users,{0:api},[])])
-```
+To make tail-based sampling more precise, a trace pipeline groups traces by their _signature_. A signature identifies traces that follow the same execution path: the same services and operations, nested the same way, with the same values for a configurable set of key attributes. Traces that differ only in how many times the same call repeats under one parent, or in the order of those calls, share a signature. Tail sampling compares each trace only against others with the same signature, so unusually slow traces stand out against traces of the same kind. To learn more about how signatures group traces during tail sampling, see [_](#key-attributes).
 
 ## Supported sources and destinations [#supported-apm-integrations]
 
@@ -75,7 +59,7 @@ To configure SQL transforms, on the **Configure SQL Transformation** form:
 
 ## Store traces in the data lake [#apm-data-lake]
 
-A trace pipeline persists the processed spans that reach the data lake step, even though the pipeline forwards only a sampled subset to your observability platform. You configure the data lake step by selecting the _dataset_ that identifies where Grepr stores the spans. Storing traces in the data lake also makes them searchable in [Trace Explorer](#trace-explorer) and retrievable for tasks such as [backfilling](#trace-actions). When you configure tail sampling, spans that require trace assembly reach this step after assembly; see the buffering note in [_](#tail-sampling).
+A trace pipeline persists the processed spans that reach the data lake step, even though the pipeline forwards only a sampled subset to your observability platform. You configure the data lake step by selecting the _dataset_ that identifies where Grepr stores the spans. Storing traces in the data lake also makes them searchable in [Trace Explorer](#trace-explorer) and retrievable for tasks such as [backfilling](#trace-actions). When you configure tail sampling, spans that require trace assembly reach this step after assembly; see the data-loss note in [_](#tail-sampling).
 
 To learn more about how Grepr stores your raw telemetry data, see [_](/grepr-platform/data-lake).
 
@@ -85,12 +69,12 @@ In a trace reduction pipeline, head sampling determines which data to keep early
 
 _Trace head sampling_ applies a single uniform sampling rate to the entire trace. You set a single rate between `0.0` and `1.0`, and Grepr retains each trace with that probability, keeping together all spans that share a trace. Trace head sampling has no filter, so it samples every trace at the same rate. Leave the rate blank to disable trace head sampling.
 
-_Span head sampling_ applies to individual spans and is an ordered list of rules. Each rule has a sampling rate between `0.0` and `1.0` and an optional SQL filter:
+_Span head sampling_ applies to individual spans and is a list of rules. Each rule has a sampling rate between `0.0` and `1.0` and an optional SQL filter:
 
 - A rule with a SQL filter retains matching spans at the configured rate.
 - A rule without a filter samples spans uniformly at the configured rate.
 
-Grepr evaluates the rules from top to bottom and applies the first rule that matches a span. How Grepr handles the retained spans depends on whether tail sampling is configured:
+A span is kept at the highest rate among the rules whose filter it matches. How Grepr handles the retained spans depends on whether tail sampling is configured:
 
 - When [tail sampling](#tail-sampling) is configured, the retained spans participate in trace assembly before Grepr forwards them.
 - When tail sampling is not configured, Grepr sends the retained spans directly to your sinks.
@@ -103,10 +87,10 @@ If both trace head sampling and a span head sampling rule retain the same span, 
 
 ## Use tail sampling to sample traces [#tail-sampling]
 
-Tail sampling makes a sampling decision after Grepr assembles a complete trace within a time window, so it can base the decision on the characteristics of the whole trace. Tail sampling includes dedicated settings for traces likely to be valuable for troubleshooting, along with performance-based sampling tiers that sample traces based on their latency.
+Tail sampling makes a sampling decision after Grepr assembles a complete trace, so it can base the decision on the characteristics of the whole trace. Tail sampling includes dedicated settings for traces likely to be valuable for troubleshooting, along with performance-based sampling tiers that sample traces based on their latency.
 
 <Callout type="warning">
-  Trace assembly buffers tail-sampling candidates in task memory. Regular checkpoints do not include this buffer. If trace processing restarts after a failure or you cancel the pipeline, spans still in the buffer are lost and are not available in Trace Explorer. A planned stop with a savepoint drains the buffer before stopping. Spans retained by trace-level head sampling bypass trace assembly, and pipelines without tail sampling send retained spans directly to the data lake.
+  If trace processing restarts after a failure or you cancel the pipeline, spans of traces that are still waiting for a tail sampling decision are lost and are not available in Trace Explorer. Stopping a pipeline normally doesn't lose them. Spans retained by trace-level head sampling don't wait for a tail sampling decision, and pipelines without tail sampling send retained spans directly to the data lake.
 </Callout>
 
 Several tail sampling settings accept durations in ISO-8601 duration format. For example, `PT20S` represents 20 seconds and `PT1M` represents one minute.
@@ -116,8 +100,8 @@ Several tail sampling settings accept durations in ISO-8601 duration format. For
 Tail sampling applies the following rates to traces with characteristics that often make them valuable to retain:
 
 - **Error Sampling Rate** is the rate applied to traces where any span reports an error status. The default rate is `0.75`.
-- **Incomplete Sampling Rate** is the rate applied to structurally incomplete traces, which are traces that are missing a root span or that have orphaned parent references when the trace is emitted. The default rate is `0.5`. The **Max Trace Delay** setting controls when a trace is emitted by setting the idle gap between spans of the same trace. When no new span arrives within this window, the trace assembly session closes, and the trace is emitted. The default max trace delay is `PT20S`.
-- **Long-Running Trace Sampling Rate** is the rate applied to traces that are force-emitted because they keep receiving spans for longer than the **Max Session Length**. The default rate is `0.0`. The max session length sets the maximum lifetime of a trace assembly session before Grepr force-emits the trace as long-running, and it must be greater than the max trace delay. The default max session length is `PT1M`.
+- **Incomplete Sampling Rate** is the rate applied to structurally incomplete traces, which are traces that are missing a root span or that have orphaned parent references when the trace is emitted. The default rate is `0.5`. The **Max Trace Delay** setting is how long Grepr waits for another span of a trace before it treats the trace as complete. The default max trace delay is `PT20S`.
+- **Long-Running Trace Sampling Rate** is the rate applied to traces that keep receiving spans for longer than the **Max Session Length**. The default rate is `0.0`. The max session length is the longest Grepr waits for a trace that is still receiving spans before it treats the trace as long-running, and it must be greater than the max trace delay. The default max session length is `PT1M`.
 
 ### Sample by latency with performance-based tiers [#performance-tiers]
 
@@ -138,7 +122,7 @@ A tier at `P0` is a catch-all: it matches unconditionally, so every trace that f
 
 ### Group traces by signature [#key-attributes]
 
-Grepr groups traces by their signature and computes latency percentiles separately for each group, rather than across all traces. The **Key Attribute Paths** setting defines the span attributes that Grepr includes in each signature, as well as the operation names and nesting of the trace. Including an attribute in the signature separates traces that differ by that attribute into different groups. You enter one attribute path per line, and by default, Grepr includes the `service.name` and `http.method` attributes.
+Grepr groups traces by their signature and applies the performance tiers separately within each group, rather than across all traces. The **Key Attribute Paths** setting defines the span attributes that Grepr includes in each signature, in addition to the trace's operations and their nesting. Including an attribute in the signature separates traces that differ by that attribute into different groups. You enter one attribute path per line, and by default, Grepr includes the `service.name` and `http.method` attributes.
 
 ## Analyze the critical path [#critical-path]
 
@@ -232,11 +216,7 @@ When you select a span, Trace Explorer displays a details panel with the span's 
     },
     {
       q: "How does Grepr group traces by signature?",
-      a: "A signature is a canonical, deterministic record of the structure of a trace: the services and operations it invokes and the way those operations are nested. Grepr builds a signature by traversing the spans of an assembled trace, recording each span's operation name and a configurable set of key attributes, and collapsing repeated operations so that loops do not distort the result. During tail sampling, Grepr computes latency percentiles separately for each signature, so the performance tiers compare each trace against others of the same structure."
-    },
-    {
-      q: "What does a trace signature look like?",
-      a: "Grepr represents each span in a signature as (operation,{key_attributes},[child_spans]), where the key attributes are index:value pairs keyed by their position in the configured Key Attribute Paths, and the child spans are nested, sorted, and deduplicated within the brackets. For example, a single span for a request handled by the api service produces (GET /api/users,{0:api,1:GET},[]), and a request that then calls a database query produces (GET /api/users,{0:api,1:GET},[(SELECT users,{0:api},[])])."
+      a: "A signature identifies traces that follow the same execution path: the same services and operations, nested the same way, with the same values for the configured key attributes. Repeated identical calls under one parent count once, in any order. During tail sampling, Grepr applies the performance tiers separately for each signature, so each trace is compared against others of the same kind."
     },
     {
       q: "What is the difference between Datadog APM metrics and APM stats?",
@@ -260,7 +240,7 @@ When you select a span, Trace Explorer displays a details panel with the span's 
     },
     {
       q: "Can I still access traces that the pipeline does not forward?",
-      a: "You can search and inspect spans that reach the Grepr data lake in Trace Explorer, and you can use the logs backfill action to retrieve the full logs for a representative sample of traces. Tail-sampling candidates still buffered when a task fails or a pipeline is canceled are lost because regular checkpoints do not include the in-memory trace assembly buffer."
+      a: "You can search and inspect spans that reach the Grepr data lake in Trace Explorer, and you can use the logs backfill action to retrieve the full logs for a representative sample of traces. Spans of traces still waiting for a tail sampling decision when trace processing fails or a pipeline is canceled are lost."
     },
     {
       q: "What is Trace Explorer?",

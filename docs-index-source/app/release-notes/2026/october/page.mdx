@@ -92,8 +92,8 @@ You can now track problems on the issue board, where people and AI agents file, 
 - {/* ENGT-6184 */} You can now chat with the AI assistant on an Anthropic LLM integration as well as a Gemini one, and pick a model tier, such as Opus or Sonnet, instead of a model name. See [_](/integrations/llm).
 - {/* ENGT-6184 */} An LLM integration that leaves **Max tokens per window** empty now allows 200,000,000 tokens per window instead of 20,000,000, and both budget fields are under **Advanced** on the integration form. See [_](/integrations/llm#max-tokens).
 - {/* ENGT-6184 */} The AI assistant opens from a button in the bottom-right corner of the page instead of the app bar.
-- {/* ENGT-6109 */} Fixed an issue where a pipeline stopped for more than a day could fail to start again, and such a pipeline now starts without its saved state, so reducer patterns and in-progress aggregations start over.
-- {/* ENGT-6174 */} Fixed an issue where updating or stopping a pipeline under heavy load failed after five minutes when Grepr could not save its state in time, and the pipeline now resumes from its most recent checkpoint, which might send some logs to your vendor a second time.
+- {/* ENGT-6109 */} Fixed an issue where a pipeline stopped for more than a day could fail to start again. Such a pipeline now starts fresh, so its patterns and in-progress summaries start over.
+- {/* ENGT-6174 */} Fixed an issue where updating or stopping a pipeline under heavy load could fail after five minutes. The pipeline now resumes from its most recent saved point, which might send some logs to your vendor a second time.
 - {/* ENGT-6218 */} Fixed an issue where, in rare circumstances, a pipeline you stopped could keep running.
 - {/* ENGT-6089 */} Fixed an issue where some NRQL-like queries on raw logs failed with an error that a column could not be found.
 - {/* ENGT-6215 */} Fixed an issue where a search that listed several hundred values in one `OR` list failed to run.

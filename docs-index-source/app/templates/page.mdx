@@ -692,8 +692,9 @@ The `TemplateOperation` supports the following configuration:
     {
       "type": "logs-iceberg-table-source",
       "name": "source",
-      "table": "logevent_raw_prod",
-      "processing": "STREAM",
+      "datasetId": "<dataset-id>",
+      "start": "2026-01-01T00:00:00Z",
+      "end": "2026-01-01T01:00:00Z",
       "query": {
         "type": "simple-query",
         "query": "service:web-api"

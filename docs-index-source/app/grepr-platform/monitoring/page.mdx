@@ -76,7 +76,7 @@ The scrape endpoint exposes the following metrics. Each metric is a _gauge_, whi
 | `grepr_pipeline_lag_seconds_p50` | Median input-output lag observed over the last minute, in seconds. | `job_id` |
 | `grepr_pipeline_lag_seconds_p95` | 95th-percentile input-output lag observed over the last minute, in seconds. | `job_id` |
 | `grepr_pipeline_lag_seconds_p99` | 99th-percentile input-output lag observed over the last minute, in seconds. | `job_id` |
-| `grepr_pipeline_cpu_cores` | CPU cores allocated to the pipeline taskmanager pods. Reflects allocation, not usage. | `job_id` |
+| `grepr_pipeline_cpu_cores` | CPU cores allocated to the pipeline. Reflects allocation, not usage. | `job_id` |
 
 The four `_per_minute` metrics are gauges that already encode a per-minute rate. Plot them directly. Do not apply `rate()` or `increase()` on top of them, since that produces meaningless values.
 

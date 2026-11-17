@@ -245,7 +245,7 @@ export interface paths {
     put?: never;
     /**
      * Apply a pending agent suggestion
-     * @description Re-verifies the suggestion's template-inputs patch against the pipeline's current version and applies it as a new job version, marking the suggestion APPLIED. The resolution is compare-and-set on the pending status: a reviewer who loses a race to another gets 409 rather than overwriting it. Findings mean the pipeline changed since the suggestion was recorded; nothing is applied and the suggestion stays PENDING. A change to signal masks and drop rules only applies live, without a restart; any other change may restart the pipeline from a savepoint.
+     * @description Re-verifies the suggestion's template-inputs patch against the pipeline's current version and applies it as a new job version, marking the suggestion APPLIED. The resolution is compare-and-set on the pending status: a reviewer who loses a race to another gets 409 rather than overwriting it. Findings mean the pipeline changed since the suggestion was recorded; nothing is applied and the suggestion stays PENDING. A change to signal masks and drop rules only applies live, without a restart; any other change may restart the pipeline from its saved state.
      */
     post: operations["apply"];
     delete?: never;
@@ -1491,7 +1491,7 @@ export interface paths {
     get?: never;
     /**
      * Set a Datadog integration's API keys
-     * @description Replaces the integration's entire set of API keys in one atomic write. Existing keys are referenced by id (kept or rotated), new keys carry only a value, and omitted keys are removed; one key is marked as the send key used to write data back to Datadog. If any key is rejected the existing set is left unchanged. All keys are accepted for inbound telemetry. Requires the organization to have multiple Datadog API keys enabled. Adding, removing, relabeling, or rotating a key other than the send key is allowed while the integration's pipeline is running; a change that affects the send key (which key it is, or its value) requires the pipeline to be stopped, since that key is baked into the running Flink job.
+     * @description Replaces the integration's entire set of API keys in one atomic write. Existing keys are referenced by id (kept or rotated), new keys carry only a value, and omitted keys are removed; one key is marked as the send key used to write data back to Datadog. If any key is rejected the existing set is left unchanged. All keys are accepted for inbound telemetry. Requires the organization to have multiple Datadog API keys enabled. Adding, removing, relabeling, or rotating a key other than the send key is allowed while the integration's pipeline is running; a change that affects the send key (which key it is, or its value) requires the pipeline to be stopped, since the running pipeline keeps using it.
      */
     put: operations["setDatadogApiKeys"];
     post?: never;
@@ -5019,7 +5019,7 @@ export interface components {
     AgentContextEstimate: {
       /**
        * Format: int32
-       * @description The model's context window as the sandbox sets it: OpenCode's own window for a model it knows, otherwise the configured floor.
+       * @description The model's context window, in tokens.
        */
       contextWindowTokens?: number;
       parts?: components["schemas"]["ContextPart"][];
@@ -5535,7 +5535,7 @@ export interface components {
     AgentSuggestionApplyResult: {
       /**
        * Format: int64
-       * @description The new job version the suggestion was applied as, or absent when it was rejected by verification. A signal mask or drop rule change applies live without a restart; any other change may restart the pipeline from a savepoint, so the new version reaches its desired state asynchronously.
+       * @description The new job version the suggestion was applied as, or absent when it was rejected by verification. A signal mask or drop rule change applies live without a restart; any other change may restart the pipeline from its saved state, so the new version reaches its desired state asynchronously.
        */
       appliedJobVersion?: number;
       /**
@@ -5940,7 +5940,7 @@ export interface components {
         [key: string]: components["schemas"]["MetricAggregation"];
       };
       /**
-       * @description Join expressions linking aliases (Calcite-parsed SQL).
+       * @description SQL join expressions linking aliases.
        * @default []
        */
       joinOn?: string[];
@@ -6296,7 +6296,7 @@ export interface components {
       | components["schemas"]["IgnoreAttributesMergeStrategy"];
     /**
      * Attributes merge strategy entries
-     * @description List of attribute paths and their corresponding merge strategies. If no strategy is defined for a path, the terminal merge strategy will be used.
+     * @description List of attribute paths and their corresponding merge strategies. If no strategy is defined for a path, the default merge strategy is used.
      */
     AttributesMergeStrategyEntry: {
       /**
@@ -6706,13 +6706,6 @@ export interface components {
        * @default []
        */
       metadataAttributes?: string[];
-      /**
-       * Format: int32
-       * @description Parallelism multiplier for cohort outputs (anomaly rules ignore this). Splits each cohort across 2^n CohortCalc instances by the low n bits of tsIdLo, trading parallelism for partial per-shard aggregation. 0 = one instance per cohort.
-       * @default 0
-       * @example 4
-       */
-      numShardBits?: number;
       /**
        * @description Ordered cohort-output entries (first-match-wins).
        * @default []
@@ -7197,20 +7190,20 @@ export interface components {
     };
     /**
      * Critical Path Analysis
-     * @description Opt-in critical-path analysis settings. Computed during trace assembly; requires tail sampling. The maxSpans and sampleRate levers bound the per-trace cost.
+     * @description Opt-in critical-path analysis settings. Requires tail sampling.
      */
     CriticalPathAnalysisConfig: {
       /**
        * Max spans analyzed
        * Format: int32
-       * @description Cap on how many spans are analyzed per trace; the critical chain is kept first. Null means no cap beyond the global per-trace assembly limit.
+       * @description Maximum number of spans analyzed per trace. Null means the default maximum.
        * @example 500
        */
       maxSpans?: number;
       /**
        * Analysis sample rate
        * Format: double
-       * @description Fraction of assembled traces to analyze, in [0.0, 1.0], selected deterministically by trace id. Defaults to 1.0 (analyze every trace).
+       * @description Fraction of the traces that tail sampling evaluates to analyze, in [0.0, 1.0]. Traces kept by trace head sampling are not analyzed. Defaults to 1.0 (analyze all of them).
        * @default 1
        * @example 1
        */
@@ -7336,7 +7329,7 @@ export interface components {
       /** @example operation_name */
       name: string;
       /**
-       * @description Strategy for resetting Kafka consumer offset when no committed offset exists or has expired. EARLIEST reads from oldest available offset (prevents data loss on restart after retention period). LATEST skips to newest offset (current behavior).
+       * @description Where a pipeline starts reading when it has no saved position. EARLIEST reads the oldest data still available, so nothing is skipped. LATEST starts with new data.
        * @default LATEST
        * @enum {string}
        */
@@ -7529,7 +7522,7 @@ export interface components {
       /** @example operation_name */
       name: string;
       /**
-       * @description Strategy for resetting Kafka consumer offset when no committed offset exists or has expired. EARLIEST reads from oldest available offset (prevents data loss on restart after retention period). LATEST skips to newest offset (current behavior).
+       * @description Where a pipeline starts reading when it has no saved position. EARLIEST reads the oldest data still available, so nothing is skipped. LATEST starts with new data.
        * @default LATEST
        * @enum {string}
        */
@@ -8158,7 +8151,7 @@ export interface components {
       /** @example operation_name */
       name: string;
       /**
-       * @description Strategy for resetting Kafka consumer offset when no committed offset exists or has expired. EARLIEST reads from oldest available offset (prevents data loss on restart after retention period). LATEST skips to newest offset (current behavior).
+       * @description Where a pipeline starts reading when it has no saved position. EARLIEST reads the oldest data still available, so nothing is skipped. LATEST starts with new data.
        * @default LATEST
        * @enum {string}
        */
@@ -8601,7 +8594,7 @@ export interface components {
     };
     IgnoreAttributesMergeStrategy: {
       /**
-       * @description IgnoreAttributesMergeStrategy: Does nothing during merge - leaves the current value unchanged. Used internally for suffixed keys managed by CompositeAttributesMergeStrategy. (enum property replaced by openapi-typescript)
+       * @description IgnoreAttributesMergeStrategy: Leaves the attribute's value unchanged. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: IgnoreAttributesMergeStrategyType;
@@ -9959,12 +9952,12 @@ export interface components {
     LogReducer: {
       /**
        * Attributes merge strategy entries
-       * @description List of attribute paths and their corresponding merge strategies. If no strategy is defined for a path, the terminal merge strategy will be used.
+       * @description List of attribute paths and their corresponding merge strategies. If no strategy is defined for a path, the default merge strategy is used.
        * @default []
        */
       attributeMergeStrategyEntries?: components["schemas"]["AttributesMergeStrategyEntry"][];
       /**
-       * @description Use attribute shape only, or shape and whole-value similarity tokens.
+       * @description Whether selected attribute values count toward similarity, or only their keys, nesting and kind of value.
        * @default KEYS_AND_VALUES
        * @enum {string}
        */
@@ -9972,15 +9965,15 @@ export interface components {
       /**
        * Deduplication threshold
        * Format: int32
-       * @description Number of duplicates we send for a pattern before we start deduplication.
+       * @description Number of messages matching a pattern that are forwarded unchanged in each reduction window before the reducer starts summarizing the pattern.
        * @default 4
        * @example 4
        */
       dedupThreshold?: number;
       defaultAttributesMergeStrategy?: components["schemas"]["AttributesMergeStrategy"];
       /**
-       * Token delimiters
-       * @description Characters to use for splitting tokens. Default is missing '@' to avoid splitting email addresses. Also missing '.' to avoid splitting identifiers using it.
+       * Delimiters
+       * @description Characters that separate the parts of a message that the reducer compares. The default omits '@' and '.' so email addresses and dotted identifiers stay whole.
        * @default [
        *       ":",
        *       "#",
@@ -10013,18 +10006,17 @@ export interface components {
        *       "~",
        *       "`"
        *     ]
-       * @example [":", "#", "[", "]", "(", ")", "{", "}", "|", ",", ";", """, "'", " ", "\t", "\n", "\r"]
        */
       delimiters: string[];
       /**
        * Emit new-pattern signals
-       * @description Whether this operation may emit LogPatternSignal events to the agent-service when new patterns are detected or replayed. Must be enabled before an agent can subscribe to this pipeline.
+       * @description Whether this pipeline may send new-pattern signals to Grepr AI agents. Must be enabled before an agent can subscribe to this pipeline.
        * @default false
        */
       emitNewPatternSignals?: boolean;
       /**
        * Enabled masks
-       * @description Masks that are enabled for tokenizing messages. These are specified as the names of the masks to use. The default enabled masks are: ipport, timestamp, uuid, number.
+       * @description Masks to apply, specified as the names of the masks to use. The default enabled masks are: ipport, timestamp, uuid, number.
        * @default [
        *       "ipport",
        *       "timestamp",
@@ -10075,7 +10067,7 @@ export interface components {
       logReducerExceptions?: components["schemas"]["EventPredicate"][];
       /**
        * Masks
-       * @description Set of masks that can be applied to messages before tokenizing them. These masks are specified as pairs of (name, regex). The default masks are: ipport, timestamp, uuid, number, awsarn, awstoken.
+       * @description Named regular expressions for values, such as timestamps and IDs, that can differ between messages of the same pattern. These masks are specified as pairs of (name, regex). The default masks are: ipport, timestamp, uuid, number, awsarn, awstoken.
        * @default [
        *       [
        *         "ipport",
@@ -10128,7 +10120,7 @@ export interface components {
       partitionByTags?: string[];
       /**
        * Format: ISO-8601
-       * @description Time window in which logs are considered for deduplication. Should not be modified without explicit guidance.
+       * @description Managed by Grepr. Leave unset.
        * @default PT2M
        * @example PT20.345S
        */
@@ -10156,7 +10148,7 @@ export interface components {
       /**
        * Similarity threshold
        * Format: double
-       * @description Controls how close a set of tokens are to a pattern before it is considered a match. Calculated as the percent of matching tokens between a pattern and a message.
+       * @description How similar messages must be to belong to the same pattern, from 20 to 100. Higher values match more exactly and reduce less.
        * @default 70
        * @example 70
        */
@@ -10346,7 +10338,7 @@ export interface components {
       /**
        * Max allowed rate in messages per second
        * Format: double
-       * @description Max allowed rate in messages per second. The max rate used by the token rate limiter to control the sampling rate of events. The rate is distributed across parallel subtasks.
+       * @description Maximum rate of events forwarded, in messages per second.
        * @default 10
        * @example 10
        */
@@ -10354,7 +10346,7 @@ export interface components {
       /**
        * Max burst limit
        * Format: int32
-       * @description Maximum size of acceptable burst used by the token bucket rate limiter to handle bursty traffic.
+       * @description Largest burst of events forwarded above the maximum rate.
        * @default 2000
        * @example 2000
        */
@@ -10362,7 +10354,7 @@ export interface components {
       /** @example operation_name */
       name: string;
       /**
-       * @description Samples log events using a token based rate limiter. Throttles log events based on max rate accepting up to max burst limit for bursty traffic. Can selectively sample events matching a filter predicate. Rate limiting is distributed across parallel subtasks.
+       * @description Samples log events by limiting them to a maximum rate, allowing short bursts. Can selectively sample events matching a filter predicate.
        *      (enum property replaced by openapi-typescript)
        * @enum {string}
        */
@@ -11101,13 +11093,6 @@ export interface components {
        */
       emitInterval: string;
       hostMetadata?: components["schemas"]["HostMetadataReporting"];
-      /**
-       * Format: ISO-8601
-       * @description Watermark delay applied to give late-arriving data a chance to be aggregated.
-       * @default PT10S
-       * @example PT20.345S
-       */
-      lateArrivalWaitDuration: string;
       /** @example operation_name */
       name: string;
       objects: components["schemas"]["ObjectsConfig"];
@@ -11304,7 +11289,7 @@ export interface components {
       /** @example operation_name */
       name: string;
       /**
-       * @description Strategy for resetting Kafka consumer offset when no committed offset exists or has expired. EARLIEST reads from oldest available offset (prevents data loss on restart after retention period). LATEST skips to newest offset (current behavior).
+       * @description Where a pipeline starts reading when it has no saved position. EARLIEST reads the oldest data still available, so nothing is skipped. LATEST starts with new data.
        * @default LATEST
        * @enum {string}
        */
@@ -11648,7 +11633,7 @@ export interface components {
       /** @example operation_name */
       name: string;
       /**
-       * @description Strategy for resetting Kafka consumer offset when no committed offset exists or has expired. EARLIEST reads from oldest available offset (prevents data loss on restart after retention period). LATEST skips to newest offset (current behavior).
+       * @description Where a pipeline starts reading when it has no saved position. EARLIEST reads the oldest data still available, so nothing is skipped. LATEST starts with new data.
        * @default LATEST
        * @enum {string}
        */
@@ -11686,7 +11671,7 @@ export interface components {
       /** @example operation_name */
       name: string;
       /**
-       * @description Strategy for resetting Kafka consumer offset when no committed offset exists or has expired. EARLIEST reads from oldest available offset (prevents data loss on restart after retention period). LATEST skips to newest offset (current behavior).
+       * @description Where a pipeline starts reading when it has no saved position. EARLIEST reads the oldest data still available, so nothing is skipped. LATEST starts with new data.
        * @default LATEST
        * @enum {string}
        */
@@ -11742,7 +11727,7 @@ export interface components {
     ParseQueryRequest: {
       query?: components["schemas"]["EventPredicate"];
       /**
-       * @description Which runtime representation to validate the query against. Defaults to PARSED_QUERY_NODE (returns the parsed tree for the in-browser matcher). Use EVENT_PREDICATE to validate against the Java predicate the Flink pipeline runs; no parsed tree is returned in that case.
+       * @description Which runtime representation to validate the query against. Defaults to PARSED_QUERY_NODE (returns the parsed tree for the in-browser matcher). Use EVENT_PREDICATE to validate against the matcher that pipelines run; no parsed tree is returned in that case.
        * @default PARSED_QUERY_NODE
        * @enum {string}
        */
@@ -11855,14 +11840,14 @@ export interface components {
     };
     PatternMatcher: {
       /**
-       * @description Use attribute shape only, or shape and whole-value similarity tokens.
+       * @description Whether selected attribute values count toward similarity, or only their keys, nesting and kind of value.
        * @default KEYS_AND_VALUES
        * @enum {string}
        */
       attributeTokenization?: LogReducerAttributeTokenization;
       /**
-       * Token delimiters
-       * @description Characters to use for splitting tokens.
+       * Delimiters
+       * @description Characters that separate the parts of a message that the reducer compares. The default omits '@' and '.' so email addresses and dotted identifiers stay whole.
        * @default [
        *       ":",
        *       "#",
@@ -11899,13 +11884,13 @@ export interface components {
       delimiters: string[];
       /**
        * Emit new-pattern signals
-       * @description Whether this operation may emit LogPatternSignal events to the agent-service when new patterns are detected or replayed. Must be enabled before an agent can subscribe to this pipeline.
+       * @description Whether this pipeline may send new-pattern signals to Grepr AI agents. Must be enabled before an agent can subscribe to this pipeline.
        * @default false
        */
       emitNewPatternSignals?: boolean;
       /**
        * Enabled masks
-       * @description Masks that are enabled for tokenizing messages.
+       * @description Masks to apply, specified as the names of the masks to use.
        * @default [
        *       "ipport",
        *       "timestamp",
@@ -11932,7 +11917,7 @@ export interface components {
       includedAttributePrefixes?: string[][];
       /**
        * Masks
-       * @description Set of masks that can be applied to messages before tokenizing them. These masks are specified as pairs of (name, regex).
+       * @description Named regular expressions for values, such as timestamps and IDs, that can differ between messages of the same pattern. These masks are specified as pairs of (name, regex).
        * @default [
        *       [
        *         "ipport",
@@ -11986,7 +11971,7 @@ export interface components {
       /**
        * Similarity threshold
        * Format: double
-       * @description Controls how close a set of tokens are to a pattern before it is considered a match. Calculated as the percent of matching tokens between a pattern and a message.
+       * @description How similar messages must be to belong to the same pattern, from 20 to 100. Higher values match more exactly and reduce less.
        * @default 70
        * @example 70
        */
@@ -11998,7 +11983,7 @@ export interface components {
        */
       tokenizationInput?: LogReducerTokenizationInput;
       /**
-       * @description Matches log patterns using an iterative feedback loop. Events with known patterns skip the global reducer for improved efficiency. (enum property replaced by openapi-typescript)
+       * @description Matches log events against known log patterns. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: PatternMatcherType;
@@ -12099,7 +12084,7 @@ export interface components {
     PipelineChangeResult: {
       /**
        * Format: int64
-       * @description The new job version the change was applied as. Applying restarts the pipeline from a savepoint, so the new version reaches its desired state asynchronously.
+       * @description The new job version the change was applied as. Applying restarts the pipeline from its saved state, so the new version reaches its desired state asynchronously.
        */
       appliedVersion?: number;
       /**
@@ -12167,7 +12152,7 @@ export interface components {
       /** Format: int32 */
       limit?: number;
       /**
-       * @description PreserveAllAttributesMergeStrategy: Collects all incoming values/objects into a collection. If an incoming value is a collection, its elements are unpacked and added individually. The 'limit' field defines when an attribute size will trigger a cluster overflow emission. The 'unique' flag determines if the collection behaves like a Set or a List. (enum property replaced by openapi-typescript)
+       * @description PreserveAllAttributesMergeStrategy: Collects all incoming values/objects into a collection. If an incoming value is a collection, its elements are unpacked and added individually. When adding values would exceed 'limit', the current summary is emitted and a new one starts. The 'unique' flag determines if the collection behaves like a Set or a List. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: PreserveAllAttributesMergeStrategyType;
@@ -12380,15 +12365,15 @@ export interface components {
        */
       type: QuerySinkType;
     };
-    /** @description Optional configuration overrides for the raw logs iceberg table sink. */
+    /** @description Optional configuration overrides for the raw logs sink. */
     RawLogsSinkConfig: {
-      /** @description Flag to enable dynamic partitioning for log tables. */
+      /** @description Managed by Grepr. Leave unset. */
       enableDynamicPartitioning?: boolean;
       /** @description Override the sink vertex name. */
       name?: string;
       /**
        * Format: int32
-       * @description Determines how many shards per partition a single iceberg writer can accommodate.
+       * @description Managed by Grepr. Leave unset.
        */
       parallelismBasedShardLimitMultiplier?: number;
       shardingConfig?: components["schemas"]["ShardingConfig"];
@@ -13765,11 +13750,11 @@ export interface components {
        */
       type: SeverityNodeType;
     };
-    /** @description Configuration for dynamic partitioning when enabled. */
+    /** @description Managed by Grepr. Leave unset. */
     ShardingConfig: Record<string, never>;
     /**
      * Sibling Merge Rules
-     * @description Merges sibling spans that share an identical subtree signature and match a CompleteSpan SQL predicate. The earliest-start match is kept (with its children); the other matching same-signature siblings are removed and counted under grepr.merged_siblings.
+     * @description Keeps the earliest of repeated sibling spans with the same structure that match a CompleteSpan SQL predicate, removes the others, and counts them under grepr.merged_siblings.
      */
     SiblingMergeRule: {
       /**
@@ -14253,7 +14238,7 @@ export interface components {
       /** @example operation_name */
       name: string;
       /**
-       * @description Strategy for resetting Kafka consumer offset when no committed offset exists or has expired. EARLIEST reads from oldest available offset (prevents data loss on restart after retention period). LATEST skips to newest offset (current behavior).
+       * @description Where a pipeline starts reading when it has no saved position. EARLIEST reads the oldest data still available, so nothing is skipped. LATEST starts with new data.
        * @default LATEST
        * @enum {string}
        */
@@ -14695,7 +14680,7 @@ export interface components {
       /** @example operation_name */
       name: string;
       /**
-       * @description Strategy for resetting Kafka consumer offset when no committed offset exists or has expired. EARLIEST reads from oldest available offset (prevents data loss on restart after retention period). LATEST skips to newest offset (current behavior).
+       * @description Where a pipeline starts reading when it has no saved position. EARLIEST reads the oldest data still available, so nothing is skipped. LATEST starts with new data.
        * @default LATEST
        * @enum {string}
        */
@@ -14938,15 +14923,14 @@ export interface components {
     };
     /**
      * Tail Sampling Configuration
-     * @description Optional configuration for histogram-based tail sampling. When provided, enables intelligent sampling based on trace duration percentiles calculated over sliding windows. Uses hierarchical trace signatures to group similar traces and applies configurable sampling rates based on performance tiers (fast, medium, slow, outliers).
+     * @description Optional tail sampling, which decides whether to keep a trace once it is complete, based on its duration compared with similar traces and on whether it has errors.
      */
     TailSamplingConfig: {
       /**
        * Bootstrap Threshold
        * Format: int32
-       * @description Number of traces to sample during bootstrap period before applying percentile-based sampling rules. This allows the system to gather initial data on trace durations before applying more complex sampling logic. This number will be multiplied by the parallelism of the pipeline, so the bootstrap traces may be higher as the pipeline expands for new trace signatures.
+       * @description Managed by Grepr. Leave unset.
        * @default 40
-       * @example 1000
        */
       bootstrapThreshold?: number;
       /**
@@ -14967,7 +14951,7 @@ export interface components {
       incompleteSamplingRate?: number;
       /**
        * Key Attribute Paths
-       * @description Array of attribute paths to extract key attributes from spans for hierarchical signature generation. Each inner array represents a sequence of keys to search for in the attributes map. These attributes are used to group traces by their structural patterns.
+       * @description Span attributes that distinguish traces with the same operations. Tail sampling compares each trace with others that share its operations and these attribute values. Each inner array is one attribute path.
        * @default [
        *       [
        *         "service.name"
@@ -14996,21 +14980,21 @@ export interface components {
       /**
        * Long-Running Trace Sampling Rate
        * Format: double
-       * @description Sampling rate for traces force-emitted because they exceeded the configured maxSessionLength. Routed through a dedicated 'long_running' percentile bucket — distinct from the structural 'incomplete' bucket — so operators can monitor and tune separately.
+       * @description Sampling rate for traces that keep receiving spans for longer than maxSessionLength. These traces are labeled long_running.
        * @default 0
        * @example 0.1
        */
       longRunningTraceSamplingRate?: number;
       /**
        * Format: ISO-8601
-       * @description Upper bound on how long a single trace assembly session may accumulate spans in memory before being force-emitted. Protects against long-running traces that would otherwise hold spans in the assembly buffer indefinitely. When the cap is hit, the trace is classified as long-running and later spans form a new session. Must be strictly greater than maxTraceDelay.
+       * @description The longest to wait for a trace that is still receiving spans before treating it as long-running. Must be strictly greater than maxTraceDelay.
        * @default PT1M
        * @example PT20.345S
        */
       maxSessionLength?: string;
       /**
        * Format: ISO-8601
-       * @description The maximum time to wait for all spans of a trace to arrive before assembling the trace. This determines the size of the tumbling window used for trace assembly. Traces that span longer than this duration may be assembled as partial traces. Should be set based on the expected maximum trace duration in your system. Large values may lead to memory issues if traces are too long and will delay sending traces to the sink by that amount. The pipeline may also fail if configured too high.
+       * @description How long to wait for another span of a trace before treating the trace as complete. Traces whose spans arrive further apart may be treated as incomplete. Larger values delay forwarding traces by up to that amount.
        * @default PT20S
        * @example PT20.345S
        */
@@ -15628,8 +15612,8 @@ export interface components {
       actions?: components["schemas"]["TraceAction"][];
       criticalPathAnalysis?: components["schemas"]["CriticalPathAnalysisConfig"];
       /**
-       * Iceberg Dataset ID
-       * @description Dataset ID used for naming the Iceberg table (traces_raw_{datasetId}). If not provided, traces will not be persisted to Iceberg.
+       * Dataset ID
+       * @description Dataset where Grepr stores the spans. If not provided, spans are not stored in the data lake.
        * @example 2ABs4Z8QZtSJJCDaGp7KPN
        */
       datasetId?: string;
@@ -15637,7 +15621,7 @@ export interface components {
       name: string;
       /**
        * Sibling Merge Rules
-       * @description Rules that merge same-signature sibling spans matching a predicate, after tail sampling decisions. The earliest-start match is kept with its children; the other matching same-signature siblings are removed and counted under grepr.merged_siblings. Requires tail sampling to be configured.
+       * @description Rules that keep the earliest of repeated sibling spans with the same structure that match a predicate, remove the others, and count them under grepr.merged_siblings. Requires tail sampling to be configured.
        * @default []
        */
       siblingMergeRules?: components["schemas"]["SiblingMergeRule"][];
@@ -15649,7 +15633,7 @@ export interface components {
       spanDropRules?: components["schemas"]["SpanDropRule"][];
       /**
        * Span Head Sampling Rules
-       * @description Span head sampling rules. Matched spans are retained as SPAN_HEAD_SAMPLED. If tail sampling is configured, matched spans participate in trace assembly before output; otherwise, matched spans are emitted directly. Order is significant; first match wins for metric attribution. Trace head sampling wins when both match the same span.
+       * @description Span head sampling rules. A span is kept at the highest rate among the rules whose filter it matches. These spans are retained whatever tail sampling decides; if tail sampling is configured, they are forwarded after their trace is complete, otherwise directly. Trace head sampling takes precedence when both keep the same span.
        * @default []
        */
       spanHeadSamplingRules?: components["schemas"]["SpanHeadSamplingRule"][];
@@ -15657,7 +15641,7 @@ export interface components {
       /**
        * Trace Head Sampling Rate
        * Format: double
-       * @description Uniform trace head sampling rate in [0.0, 1.0]. When set, all spans sharing a traceId are retained together as HEAD_SAMPLED at this probability. Mutually exclusive with traceHeadSamplingRules (scalar wins when both present).
+       * @description Fraction of traces to keep, in [0.0, 1.0]. All spans of a kept trace are kept together. Takes precedence over traceHeadSamplingRules when both are set.
        */
       traceHeadSamplingRate?: number;
       /**
@@ -15668,7 +15652,7 @@ export interface components {
        */
       traceHeadSamplingRules?: components["schemas"]["TraceHeadSamplingRule"][];
       /**
-       * @description Reduces trace volume by sampling CompleteSpan instances. Combines a uniform trace head sampling rate (whole-trace retention) and per-span head sampling rules with optional quantile-based tail sampling. (enum property replaced by openapi-typescript)
+       * @description Reduces trace volume by sampling traces and spans. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: TraceReducerType;
@@ -15747,7 +15731,7 @@ export interface components {
        */
       traceSamplerTagValue?: string;
       /**
-       * @description Samples traces based on their ID and marks associated events that are part of the selected traces. This can be used to bypass downstream processing such as message reduction, ensuring complete unmodified logs for those selected traces. This operation can add some overhead since it might require an additional shuffle in the pipeline. Messages that have trace IDs will be output on the "traced" output, while messages that do not have any trace IDs be output on the "untraced" output. (enum property replaced by openapi-typescript)
+       * @description Samples traces based on their ID and marks associated events that are part of the selected traces. This can be used to bypass downstream processing such as message reduction, ensuring complete unmodified logs for those selected traces. Messages that have trace IDs will be output on the "traced" output, while messages that do not have any trace IDs be output on the "untraced" output. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: TraceSamplerType;

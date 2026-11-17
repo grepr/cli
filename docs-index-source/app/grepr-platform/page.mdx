@@ -7,7 +7,7 @@ import { HiddenFAQ } from '@/components/HiddenFAQ'
 
 # Overview of the Grepr Platform
 
-The Grepr platform enables efficient collection, storage, processing, and analysis of log data. Because Grepr is built on a general-purpose stream processing engine, you can create processing pipelines for your logs using standard observability pipeline capabilities, such as filtering, parsing, transforming, and routing of processed logs. The Grepr log processing functionality optimizes logs shipped to observability platforms, reducing log volume and observability costs.
+The Grepr platform enables efficient collection, storage, processing, and analysis of log data. You can create processing pipelines for your logs using standard observability pipeline capabilities, such as filtering, parsing, transforming, and routing of processed logs. The Grepr log processing functionality optimizes logs shipped to observability platforms, reducing log volume and observability costs.
 
 This page provides an overview of the Grepr platform's core components and how to access its features. This page also has an overview of how the platform handles security, high availability, and scalability. Links to more detailed documentation for each topic are included.
 
@@ -111,7 +111,7 @@ See [The Grepr CLI](/cli).
   },
   {
     q: "How does Grepr ensure high availability?",
-    a: "Grepr is designed for high availability with minimal downtime for log processing pipelines. It runs on AWS with compute nodes deployed across three availability zones. Stateless services run on multiple replicas across zones with automatic scaling, and data pipelines are stateful with automatic failover and recovery from checkpoints."
+    a: "Grepr is designed for high availability with minimal downtime for log processing pipelines. It runs on AWS with compute nodes deployed across three availability zones. Stateless services run on multiple replicas across zones with automatic scaling, and data pipelines are stateful with automatic failover and recovery."
   },
   {
     q: "Can Grepr automatically scale to handle increased log volume?",

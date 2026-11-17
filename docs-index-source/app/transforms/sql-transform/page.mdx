@@ -42,7 +42,7 @@ The SQL transform is ideal when you need to perform complex data transformations
 The SQL transform processes data through one or more SQL statements. You specify SQL statements that define the data structure after processing, and the SQL transform processes the input data to transform it into those structures. You can configure the transform to send the results of running the SQL statement to either:
 
 - A `view`, which is a temporary table for intermediate results. Subsequent statements can then reference the `view` during their processing.
-- An `output` object, which converts the results of a view statement into a Flink DataStream object that downstream statements can consume. Each `output` must be assigned a unique name.
+- An `output` object, which makes the results of a view statement available to downstream steps. Each `output` must be assigned a unique name.
 
 `view` and `output` statements are defined as part of a configuration that also includes details such as:
 
@@ -226,7 +226,7 @@ Data ordering:
   },
   {
     q: "How do I create a SQL view versus a SQL output?",
-    a: "A view is a temporary table for intermediate results that subsequent statements can reference. An output converts the results of a view into a Flink DataStream object that downstream statements or pipeline sinks can consume. Each output must have a unique name and at least one output must exist in your SQL transform."
+    a: "A view is a temporary table for intermediate results that subsequent statements can reference. An output makes the results of a view available to downstream steps or pipeline sinks. Each output must have a unique name and at least one output must exist in your SQL transform."
   },
   {
     q: "Can I create multiple SQL statements in a single transform?",

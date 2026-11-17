@@ -9,7 +9,7 @@ import { HiddenFAQ } from '@/components/HiddenFAQ'
 
 Grepr is an enterprise-grade data storage, processing, and analytics platform for your observability data. Grepr collects, transforms, and analyzes your log data and then sends the processed logs to your observability platform.
 
-Before sending log data to the destination platform, Grepr uses machine learning to analyze and intelligently aggregate the data. During normal operations, Grepr reduces your observability costs by reducing the volume of data sent to your observability tools, while retaining all of your raw data in low-cost cloud storage. If an incident or anomaly occurs, Grepr increases the granularity of the forwarded data to ensure that sufficient data is available for troubleshooting. Grepr also uses the raw data to backfill any historical data relevant to the incident.
+Before sending log data to the destination platform, Grepr aggregates repeated log messages into summaries. During normal operations, Grepr reduces your observability costs by reducing the volume of data sent to your observability tools, while retaining all of your raw data in low-cost cloud storage. If an incident or anomaly occurs, Grepr increases the granularity of the forwarded data to ensure that sufficient data is available for troubleshooting. Grepr also uses the raw data to backfill any historical data relevant to the incident.
 
  Grepr supports popular observability platforms, including Datadog, Splunk, New Relic, Sumo Logic, Grafana Cloud, and OpenTelemetry-compatible platforms.
 
@@ -83,7 +83,7 @@ If you're just getting started with Grepr, follow the **Get started** guides bel
   },
   {
     q: "How does Grepr reduce observability costs?",
-    a: "Grepr uses machine learning to intelligently aggregate and reduce the volume of log data sent to your observability tools during normal operations, while automatically increasing data granularity during incidents. This significantly reduces costs while maintaining full raw data access."
+    a: "Grepr aggregates and reduces the volume of log data sent to your observability tools during normal operations, while automatically increasing data granularity during incidents. This significantly reduces costs while maintaining full raw data access."
   },
   {
     q: "What observability platforms does Grepr integrate with?",

@@ -56,7 +56,7 @@ When configuring a Datadog sink in a trace pipeline, the **Additional Tags** set
 
 ### New feature: Performance improvements when writing to data lake tables
 
-Improved partitioning and shard sizing improve write performance and query efficiency for data lake tables by automatically organizing data into appropriate partitions without manual configuration, while changes to shard sizing ensure better distribution for lower-volume data streams.
+Improved write performance and query efficiency for data lake tables, without manual configuration, including for lower-volume data streams.
 
 {/* ENGT-3368 */}
 ### New feature: View and search activity, integration, and audit logs with the Grepr REST API
@@ -80,7 +80,7 @@ See [The Grok key-value transformer](/transforms/grok/transformers#grok-key-valu
 {/* ENGT-3178 */}
 ### New feature: Reduce data scan sizes by directly querying raw logs
 
-Log searches now support querying raw log tables directly from the data lake without joining with the pattern lookup table. This new query mode provides faster query execution when pattern information is not needed. You can use this option in Log Explorer or the Grepr REST API.
+Log searches can now skip pattern information, which makes queries faster when you don't need it. You can use this option in Log Explorer or the Grepr REST API.
 
 {/* ENGT-3113 */}
 ### New feature: Go directly to specific resources with deep links

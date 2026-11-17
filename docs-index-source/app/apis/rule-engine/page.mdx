@@ -100,7 +100,7 @@ The actions are described in the condition as action rules. They can be of the f
 
 This is executed on events that match a certain predicate, for the entire duration that the associated condition is active. The `Event Action Rule` is configured by specifying a predicate for matching events and a set of actions to take on matched events.
 
-As an example, the UI configures the rule engine and conditions such that, when there's an abnormal event or an external API call hits Grepr, events that are related to the incident are tagged with a special tag that tells the log reducer to skip aggregating them.
+As an example, the UI configures the rule engine and conditions such that, when there's an abnormal event or an external API call hits Grepr, events that are related to the incident are excluded from aggregation by the log reducer.
 
 ### Job action rule
 

@@ -20,7 +20,7 @@ A single `template-operation` vertex expands into the named-stage graph below.
 
 ## TL;DR
 Standard Datadog basic-logs template. Datadog agent → JSON + remap → branches to
-raw-Iceberg AND reducer (2-min window, partitioned by service); reducer output
+raw-Iceberg AND reducer (partitioned by service); reducer output
 goes to pattern-Iceberg + back to Datadog. All three phase filters are
 pass-through; reducer has 1 exception (`status:error`).
 
@@ -35,7 +35,6 @@ pass-through; reducer has 1 exception (`status:error`).
 - `log-attributes-remapper` `log_attributes_remapper`
   - messageReservedAttributes: `["message", "msg"]`
 - `log-reducer` `log_reducer`
-  - reductionTimeWindow: `120s`
   - partitionByAttributes: `["service"]`
   - logReducerExceptions: 1 (`status:error`)
 
@@ -62,7 +61,7 @@ the reducer by its resolved vertex name:
 ```json
 {
   "operations": [
-    { "op": "set-input-field", "path": "template_operation__log_reducer.reductionTimeWindow", "value": "300s" }
+    { "op": "set-input-field", "path": "template_operation__log_reducer.similarityThreshold", "value": 80 }
   ]
 }
 ```

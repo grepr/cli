@@ -217,7 +217,7 @@ ROW<
 | `resource` | `ROW` | Attributes and entity references for the telemetry producer. For example, for a process that produced the telemetry data, this might include the process name, the hostname and environment where the process runs, and its version. |
 | `instrumentationscope` | `ROW` | Metadata, including the name and version, for the library or framework that produced the span. |
 | `span` | `ROW` | The OpenTelemetry span payload, including trace identifiers, timing, attributes, events, links, status, and flags. |
-| `tracesignature` | `STRING` | A distinct, deterministic pattern derived from the trace's execution path, used for sorting and grouping traces before sampling. |
+| `tracesignature` | `STRING` | Identifies traces that follow the same execution path. |
 | `duration` | `BIGINT` | Span duration in nanoseconds. |
 | `haserror` | `BOOLEAN` | Whether the span is marked as an error. |
 | `percentilebucket` | `STRING` | The performance-based tier assigned to the span. |

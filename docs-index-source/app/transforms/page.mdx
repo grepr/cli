@@ -56,7 +56,7 @@ To have more flexibility for where filters are included in a pipeline, use the R
 
 ## Reduce log volumes with dynamic aggregation [#reducer]
 
-The Grepr log reducer uses clustering algorithms to identify patterns in your log data and aggregate similar log messages. The output of this aggregation includes summaries and samples of similar messages. The log reducer is a core step in a log reduction pipeline, where it runs before processed log events are sent to your configured sinks. By sending summaries of similar messages rather than multiple events with redundant information, Grepr significantly reduces the volume of shipped logs and your observability costs. The log reduction pipeline also persists the complete set of raw logs to a low-cost data lake, enabling you to analyze and troubleshoot issues when necessary.
+The Grepr log reducer identifies patterns in your log data and aggregates similar log messages. The output of this aggregation includes summaries and samples of similar messages. The log reducer is a core step in a log reduction pipeline, where it runs before processed log events are sent to your configured sinks. By sending summaries of similar messages rather than multiple events with redundant information, Grepr significantly reduces the volume of shipped logs and your observability costs. The log reduction pipeline also persists the complete set of raw logs to a low-cost data lake, enabling you to analyze and troubleshoot issues when necessary.
 
 To learn more about how Grepr reduces log volumes with dynamic aggregation, see [Reduce noise and improve the usability of your logs with the log reducer](/transforms/reducer).
 
@@ -116,7 +116,7 @@ You can also use the REST API to create more complex pipeline configurations. Se
     },
     {
       q: "How does Grepr reduce log volumes and observability costs?",
-      a: "Grepr uses clustering algorithms to identify patterns in log data and aggregates similar log messages. Instead of sending multiple redundant log events, Grepr sends summaries and samples of similar messages to your observability platform. This significantly reduces the volume of shipped logs while retaining the ability to analyze and troubleshoot issues. Raw logs are retained in a low-cost data lake for future reference."
+      a: "Grepr identifies patterns in log data and aggregates similar log messages. Instead of sending multiple redundant log events, Grepr sends summaries and samples of similar messages to your observability platform. This significantly reduces the volume of shipped logs while retaining the ability to analyze and troubleshoot issues. Raw logs are retained in a low-cost data lake for future reference."
     },
     {
       q: "What happens if a transform fails on a record?",

@@ -96,7 +96,7 @@ Include only populated fields — keep the output focused.
   `hostReservedAttributes` / paths, count of `attributeRemappingRules` (+ a
   couple of samples).
 - **Reducer** (`log-reducer`) — `dedupThreshold`, `similarityThreshold`,
-  `reductionTimeWindow`, `partitionByAttributes` /
+  `partitionByAttributes` /
   `partitionByAttributePaths` / `partitionByTags`,
   `attributeMergeStrategyEntries` (path + strategy type), `logReducerExceptions`
   (count + a sample predicate or two), `integrationExceptionConfigs`.

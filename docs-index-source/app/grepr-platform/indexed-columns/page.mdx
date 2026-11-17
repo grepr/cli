@@ -6,7 +6,7 @@ import { HiddenFAQ } from '@/components/HiddenFAQ'
 
 # Indexed columns
 
-Grepr stores each raw log's attributes as one JSON document and its tags as a map. A search that filters on one attribute reads every log's whole attribute document to find a match.
+A search that filters on a field that isn't indexed reads more data than it needs to.
 
 An _indexed column_ removes that cost for one field. Grepr writes the field into its own column in the dataset's data lake table, so a search that filters on the field reads that column and skips the files that can't contain a match. See [The Grepr data lake](/grepr-platform/data-lake).
 
@@ -53,11 +53,9 @@ If you add the field back before then, Grepr goes back to writing the same colum
 
 ## Collect file statistics on every column [#file-statistics]
 
-A search skips a data file on an indexed column by using the file's statistics for that column: the smallest and largest values the column holds in the file, and how many of them are null. By default, a data lake table collects these statistics on its first 100 columns only, counting top-level columns before nested fields. On a table with many indexed columns, the columns and fields past the first 100 have no statistics, so searches that filter on them read every data file.
+A search on an indexed column skips data files that can't match by using statistics about the column. By default, a data lake table collects these statistics on its first 100 columns only. On a table with many indexed columns, the columns and fields past the first 100 have no statistics, so searches that filter on them read every data file.
 
-To collect statistics on every column of a dataset's raw log table or raw span table, in the dataset's settings, expand **Advanced**, turn on **Raw logs table** or **Raw spans table**, and click **Save**. Both are off for a new dataset. Turning one off returns the table to collecting statistics on its first 100 columns. The raw span table's built-in span fields keep their statistics either way. Grepr pins their statistics mode when a pipeline writing the dataset starts, and keeps any mode already set on the table for one of those fields.
-
-Statistics on every column add about 18 bytes of table metadata for each indexed column in each data file.
+To collect statistics on every column of a dataset's raw log table or raw span table, in the dataset's settings, expand **Advanced**, turn on **Raw logs table** or **Raw spans table**, and click **Save**. Both are off for a new dataset. Turning one off returns the table to collecting statistics on its first 100 columns. The raw span table's built-in span fields keep their statistics either way.
 
 A change applies to the data files that pipelines write after their next restart, and earlier when the table gets a new indexed column. Data files already written keep the statistics they were written with.
 

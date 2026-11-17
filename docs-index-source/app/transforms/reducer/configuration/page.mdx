@@ -7,21 +7,15 @@ import { HiddenFAQ } from '@/components/HiddenFAQ'
 
 # Configure the log reducer in a Grepr pipeline
 
-This page describes the transformations the log reducer applies to incoming log messages and how to configure them to meet your requirements. When you create log reduction pipelines, Grepr adds a log reducer with default settings that control how log messages are aggregated, grouped, tokenized, and summarized. These settings are suitable for many log-processing workloads, but you can modify these settings to meet your requirements through the Grepr UI, the REST API, or the Grepr CLI. This page describes each setting and how to configure the setting in the UI. For the API documentation, see the [LogReducer API specification](/apis/api-spec#schema/LogReducer). For the CLI, see [The Grepr CLI](/cli).
+This page describes the log reducer's settings and how to configure them to meet your requirements. When you create log reduction pipelines, Grepr adds a log reducer with default settings that control how log messages are grouped into patterns, sampled, and summarized. These settings are suitable for many log-processing workloads, but you can modify these settings to meet your requirements through the Grepr UI, the REST API, or the Grepr CLI. This page describes each setting and how to configure the setting in the UI. For the API documentation, see the [LogReducer API specification](/apis/api-spec#schema/LogReducer). For the CLI, see [The Grepr CLI](/cli).
 
-The log reducer transforms logs into summarized events through a multi-step process. The reducer divides the incoming log stream into consecutive _aggregation windows_ and produces summaries for each window separately. An aggregation window is a fixed-duration, tumbling window over which the reducer counts and aggregates the messages that match each pattern. Tumbling windows are contiguous and non-overlapping, so each log belongs to exactly one window. The aggregation window is two minutes by default.
+The reducer's settings control the following:
 
-<Callout type="warning">
-  To change the aggregation window duration, you must use the Grepr REST API. You cannot use the Grepr UI to change the window duration. Before changing this value, Grepr recommends contacting [support@grepr.ai](mailto:support@grepr.ai) for guidance.
-</Callout>
-
-The following describes the core steps in this process and includes links with details on changing the default behavior for each step:
-
-- Masking replaces dynamic values such as timestamps, IDs, and IP addresses with specific tokens. By normalizing values that represent the same entity but might differ slightly in format or content, masking prevents them from being split incorrectly in the next step. See [Enable grouping of dynamic fields by assigning common tokens](#mask-configuration).
-- Tokenizing breaks log messages into tokens based on configurable delimiters, creating a structured representation optimized for grouping. See [Configure delimiters used to split log messages](#delimiter-configuration).
-- Grouping uses similarity metrics to group messages into patterns. A configurable similarity threshold determines how closely messages must match to be considered part of the same pattern. You can use grouping to retain the values of important fields by excluding them from aggregation. See [Configure how messages are grouped](#grouping-configuration).
-- Sampling sends a configurable number of raw sample messages per pattern. This number is referred to as the _deduplication threshold_ throughout this documentation. After this threshold is reached, you can configure the reducer to stop forwarding that pattern until the end of the aggregation window, or use logarithmic sampling. See [Configure a sampling strategy](#sampling-configuration).
-- Summarizing generates, at the end of each aggregation window, concise summaries of aggregated messages that matched an identified pattern. For details on the fields included in the summarized output events, see [Summary message metadata](/transforms/reducer#summary-metadata).
+- Grouping decides which messages can share a pattern and how similar they must be. See [Configure how messages are grouped](#grouping-configuration).
+- Sampling decides how many raw messages of each pattern are forwarded before the reducer starts summarizing, and whether it keeps forwarding occasional samples after that. See [Configure how messages are aggregated](#aggregation-configuration) and [Configure a sampling strategy](#sampling-configuration).
+- Masks treat values such as timestamps, IDs, and IP addresses as interchangeable, so messages that differ only in those values share a pattern. See [Group variable values with masks](#mask-configuration).
+- Delimiters are the characters that separate the parts of a message that the reducer compares. See [Configure delimiters used to split log messages](#delimiter-configuration).
+- Merge strategies decide how attribute values are combined in a summary. See [Configure how attributes are merged](#attribute-configuration). For details on the fields included in the summarized output events, see [Summary message metadata](/transforms/reducer#summary-metadata).
 
 To modify the configuration settings in the UI, on the overview page for your pipeline, click **Reducer** in the left-hand navigation menu to open the **Edit Reducer** dialog. The dialog contains a form to configure **Grouping Configuration**, **Aggregation Configuration**, **Sampling Configuration**, **Mask Configuration**, **Delimiter Configuration**, and **Attribute Configuration** values. The following sections describe these settings.
 
@@ -43,10 +37,10 @@ Grouping also decides how a summary can be routed, because a summary carries the
 
 ### Similarity threshold (%)
 
-The similarity threshold controls how close a set of tokens must be to an existing pattern for the reducer to consider the message a match for that pattern. To set this threshold, enter a whole number from 20 to 100. This value represents the percentage of tokens that must match between the incoming message and the pattern.
+The similarity threshold controls how similar messages must be to belong to the same pattern. To set this threshold, enter a whole number from 20 to 100.
 
-- A higher value requires a closer match to group messages into the same pattern. Higher values produce more distinct patterns, each containing fewer of the tokens defined by [regular expression masks](#mask-configuration), and reduce volume less aggressively.
-- A lower value allows grouping messages with more variation into the same pattern. Lower values lead to greater reduction, but the resulting summary messages contain more mask-defined tokens.
+- A higher value requires a closer match to group messages into the same pattern. Higher values produce more distinct patterns, with fewer placeholders in each summary message, and reduce volume less aggressively.
+- A lower value allows grouping messages with more variation into the same pattern. Lower values lead to greater reduction, but the resulting summary messages contain more placeholders.
 
 ## Configure how messages are aggregated [#aggregation-configuration]
 
@@ -54,13 +48,13 @@ The **Aggregation Configuration** section controls how many raw messages are for
 
 ### Minimum number of samples
 
-To set a _deduplication threshold_ for messages, in the **Minimum number of samples** field, enter a whole number of two or greater. This value is the minimum count of messages matching a pattern that the reducer forwards as raw messages inside a single aggregation window before it begins aggregating additional matches into a summary message. Until this threshold is reached, unaggregated messages are forwarded to your sinks.
+In the **Minimum number of samples** field, enter a whole number of two or greater. This value is the number of messages matching a pattern that the reducer forwards as raw messages in each reduction window before it begins aggregating additional matches into a summary message. The reducer step shows the reduction window. Until this number is reached, unaggregated messages are forwarded to your sinks.
 
 Use a lower value to begin aggregation sooner and maximize volume reduction. Use a higher value when a pattern has a higher threshold for the number of duplicate messages to forward before beginning aggregation.
 
 ### Add repeat count prefix to summary messages
 
-To have the reducer prepend a prefix to each summary message that indicates the number of raw messages aggregated and the duration of the aggregation period, select **Add repeat count prefix to summary messages**.
+To have the reducer prepend a prefix to each summary message that indicates the number of raw messages aggregated and the period they cover, select **Add repeat count prefix to summary messages**.
 
 Clear **Add repeat count prefix to summary messages** if your downstream system needs to parse the summary message body without changes. For example, if summary messages use JSON formatting, the leading prefix would cause a syntax error.
 
@@ -73,24 +67,24 @@ To reduce logs whose useful information is in attributes, on the reducer step of
 | **Message only** | Uses only the message. Empty messages pass through without reduction. This is the default. |
 | **Message, or attributes when empty** | Uses the message when it is nonempty, otherwise the selected attributes. Summaries of empty-message events have a null message. |
 | **Attributes only** | Ignores the message for pattern matching. Generated summaries have a null message; original samples and exceptions retain their messages. |
-| **Message and attributes** | Uses the selected attribute structure for exact grouping and combines message tokens with any attribute-value tokens for similarity. Summaries contain only the message text, and events with an empty message produce summaries with a null message. |
+| **Message and attributes** | Uses both the message and the selected attributes. Summaries contain only the message text, and events with an empty message produce summaries with a null message. |
 
-When attributes participate, their selected key structure must match exactly. Key order does not matter. Adding a selected key, changing nesting, or changing a null field to a populated scalar separates patterns. When the message is read from an attribute that holds a string, that attribute does not participate either: it is used as the message or, with **Attributes only**, ignored along with the message. An attribute holding anything else, such as an object body, provides no message and participates like any other attribute.
+When attributes participate, logs share a pattern only when their selected attributes have the same keys, the same nesting, and the same kind of value: null, a single value, a list, or an object. Key order does not matter. For example, `{"error": null}` and `{"error": "timeout"}` form separate patterns. When the message is read from an attribute that holds a string, that attribute does not participate either: it is used as the message or, with **Attributes only**, ignored along with the message. An attribute holding anything else, such as an object body, provides no message and participates like any other attribute.
 
 With the default, **Message only**, attributes are not used. The attribute settings below appear when you set **Build patterns from** to an option that uses attributes.
 
 Use **Attribute values** to choose how selected attributes affect similarity scoring:
 
-- **Compare values**: Use values as part of the similarity calculations. A mask applies to a value only when it matches the entire value.
-- **Ignore values**: Attribute values are not used for similarity scoring.
+- **Compare values**: Logs whose attribute values differ too much form separate patterns. A mask applies to a value only when it matches the entire value.
+- **Ignore values**: Attribute values don't affect matching, apart from the kind of value described above. Message similarity and grouping fields still apply.
 
 ### Include or exclude attribute subtrees [#attribute-prefixes]
 
 Use **Include attributes** and **Exclude attributes** to select the attribute structure and values that participate in pattern matching. Enter each attribute path the same way as in the **Fields** dialog: `@` followed by the path in dot notation, or a JSON array for a key that contains a dot. For example, `@request.headers` selects the nested `request.headers` subtree, while `@["request.headers"]` selects a top-level key containing a literal dot.
 
-Leave the include field empty to include all attributes. Exclusions take precedence over includes. Prefixes select complete subtrees and address keys inside array elements without an array index. Excluded fields, ancestors containing only excluded fields, and array elements containing only excluded fields contribute neither structure nor value tokens. Selected containers that are empty in the event remain part of the shape.
+Leave the include field empty to include all attributes. Exclusions take precedence over includes. Prefixes select complete subtrees and address keys inside array elements without an array index. Excluded fields don't affect which pattern a log matches.
 
-These settings affect pattern matching. They do not remove attributes from events or change their configured merge strategies. An excluded attribute can still be an explicit grouping value. If no message tokens or selected attribute structure remain, the event passes through.
+These settings affect pattern matching. They do not remove attributes from events or change their configured merge strategies. An excluded attribute can still be an explicit grouping value. If neither message text nor selected attributes remain, the event passes through.
 
 For example, this reducer configuration uses request keys for matching while requiring the excluded tenant value to match exactly:
 
@@ -105,27 +99,27 @@ For example, this reducer configuration uses request keys for matching while req
 }
 ```
 
-The `pattern-matcher` operation supports the same API settings and preserves the messages of forwarded events. Both operations default `tokenizationInput` to `MESSAGE_ONLY`, which is **Message only**, so attributes are not used. When attributes are used, `attributeTokenization` defaults to `KEYS_AND_VALUES`, which is **Compare values**, and empty attribute lists select every attribute.
+The `tokenizationInput` setting defaults to `MESSAGE_ONLY`, which is **Message only**, so attributes are not used. When attributes are used, `attributeTokenization` defaults to `KEYS_AND_VALUES`, which is **Compare values**, and empty attribute lists select every attribute.
 
 ## Configure a sampling strategy [#sampling-configuration]
 
-The **Sampling Configuration** section controls whether and how additional raw messages are forwarded for a pattern after the minimum number of samples is reached in the current aggregation window. To configure the sampling strategy for a reducer, in the **Sampling strategy** menu, select one of the following options:
+The **Sampling Configuration** section controls whether additional raw messages are forwarded for a pattern after the minimum number of samples is reached. To configure the sampling strategy for a reducer, in the **Sampling strategy** menu, select one of the following options:
 
 ### No Additional Sampling
 
-During each aggregation window, Grepr passes through a configurable number of sample messages for each pattern before beginning aggregation. After the deduplication threshold is reached for a specific pattern, Grepr stops sending messages for that pattern until the end of the aggregation window, at which point a summary is emitted. This ensures that a minimum number of raw messages always pass through unmodified. Low-frequency messages that usually contain important troubleshooting information pass through unmodified.
+Grepr passes through a configurable number of sample messages for each pattern before beginning aggregation. After the minimum number of samples is reached for a specific pattern, Grepr stops sending raw messages for that pattern for the rest of the reduction window and summarizes them. This ensures that a minimum number of raw messages always pass through unmodified. Low-frequency messages that usually contain important troubleshooting information pass through unmodified.
 
-While this default behavior maximizes reduction, the actual count of messages seen at the vendor is independent of the number of original raw messages. Instead, the count is based on the messages summarized in each aggregation window. Features in external log aggregators that depend on message counts by pattern, such as Datadog's "top patterns" capability, might not work as expected. To address this, select the following logarithmic sampling option.
+While this default behavior maximizes reduction, the count of messages seen at the vendor no longer tracks the number of original raw messages. Features in external log aggregators that depend on message counts by pattern, such as Datadog's "top patterns" capability, might not work as expected. To address this, select the following logarithmic sampling option.
 
 ### Window-Based Logarithmic
 
-With logarithmic sampling, high-volume patterns that occur in the aggregation window are sampled more heavily than low-volume patterns.
+With logarithmic sampling, Grepr keeps forwarding occasional raw samples of a pattern after the minimum number of samples is reached, and forwards proportionally fewer as the pattern's volume grows. An unexpectedly large increase in messages matching a pattern still appears as an increase in message count at the vendor, at a much smaller magnitude.
 
-When you select this option, to configure the rate of additional sampling, enter a whole number of two or greater in the **Logarithm Base** field. The reducer process uses this base value to increase the sample size logarithmically. For example, if the base is set to two and the deduplication threshold is set to four, Grepr sends one additional sample message when the number of messages in the aggregation window first exceeds two raised to the power of the deduplication threshold + 1 (`2^5 or 32`). Additional samples are then sent at the 64th, 128th, 256th, and subsequent messages. This ensures that an unexpectedly large increase in messages matching a pattern still appears as an increase in message count at the vendor, but with a logarithmically smaller magnitude.
+When you select this option, enter a whole number of two or greater in the **Logarithm Base** field. A larger base forwards fewer additional samples as volume grows, and a smaller base forwards more.
 
-## Enable grouping of dynamic fields by assigning common tokens [#mask-configuration]
+## Group variable values with masks [#mask-configuration]
 
-The **Mask Configuration** section defines the regular expression masks that the reducer uses to replace variable parts of a log message, such as timestamps, IDs, or IP addresses, with specific tokens before the message is tokenized and grouped. Masking normalizes variable content so that messages that differ only in these values are grouped into the same pattern.
+The **Mask Configuration** section defines the regular expression masks that identify variable parts of a log message, such as timestamps, IDs, or IP addresses. Messages that differ only in masked values are grouped into the same pattern.
 
 The reducer ships with the following default masks. Each appears as a row in the **Mask Configuration** section and can be enabled, disabled, edited, or reset to its original pattern:
 
@@ -145,9 +139,9 @@ For each mask row, you can:
 - For default masks, click the restore icon to reset the pattern to its original value.
 - For custom masks, click the delete icon to remove the mask.
 
-### Enable grouping of non-default formats by assigning custom tokens
+### Add custom masks for other formats
 
-To ensure the correct grouping of fields with formats that aren't handled by the default masks, you can create custom masks. For example, you might have a field with values that include delimiter characters, and you need to prevent the reducer from splitting the single field on those delimiters.
+To ensure the correct grouping of fields with formats that aren't handled by the default masks, you can create custom masks. For example, you might have a field with values that include delimiter characters, and you need the reducer to treat each value as a single unit.
 
 When you add a custom mask, you must enter a name for the mask that:
 
@@ -168,12 +162,12 @@ Enter the mask in the **Regular Expression Pattern** text box. A custom mask pat
 
 ## Configure delimiters used to split log messages [#delimiter-configuration]
 
-The **Delimiter Configuration** section defines the characters that the reducer uses to split a log message into tokens during clustering. After masking, the reducer splits each message into tokens using these characters and then calculates similarity against known patterns. Characters that are not in the delimiter list are treated as part of a token.
+The **Delimiter Configuration** section defines the characters that separate the parts of a log message that the reducer compares. Characters that are not in the delimiter list are treated as part of a word.
 
-The default delimiter set contains common punctuation and whitespace characters: `:`, `#`, `[`, `]`, `(`, `)`, `{`, `}`, `|`, `,`, `;`, `"`, `'`, space, `\t`, `\n`, and `\r`.
+The default delimiter set contains common punctuation and whitespace characters: `:`, `#`, `[`, `]`, `(`, `)`, `{`, `}`, `|`, `,`, `;`, `"`, `'`, `&`, `=`, `?`, `!`, `+`, `*`, `/`, `<`, `>`, `%`, `^`, `~`, `` ` ``, space, `\t`, `\n`, and `\r`.
 
 <Callout>
-  The default set intentionally omits `@` and `.` so that email addresses and dotted identifiers, such as fully qualified class names, are not split across tokens.
+  The default set intentionally omits `@` and `.` so that email addresses and dotted identifiers, such as fully qualified class names, are not split apart.
 </Callout>
 
 To modify the delimiter list:
@@ -214,7 +208,7 @@ When you select **Sample** or **Preserve All**, you can configure the following 
 When you configure more than one strategy for the same attribute path, the reducer writes a separate attribute in the summary for each strategy, using a suffix such as `_sum`, `_avg`, or `_min`. The first strategy in the list also writes to the base attribute name. For example, configuring **Sum** and then **Average** for `bytes_sent` produces `bytes_sent_sum`, which is also written to `bytes_sent`, and `bytes_sent_avg`. To change the order in which strategies are applied, drag them in the list.
 
 <Callout>
-  Adding multiple strategies, whether to a specific path or the default, adds additional attributes to the summary and requires more processing per message. Use multiple strategies only when your analytics or dashboards need more than one aggregated form of the same attribute.
+  Adding multiple strategies, whether to a specific path or the default, adds additional attributes to the summary. Use multiple strategies only when your analytics or dashboards need more than one aggregated form of the same attribute.
 </Callout>
 
 Each strategy type can be used only once per attribute path.
@@ -227,30 +221,26 @@ As with path-specific strategies, you can add multiple default strategies. When 
 
 ## Send new-pattern signals to AI agents [#agent-signals]
 
-The reducer identifies the patterns in your logs, which also makes it the first place a pattern that has never occurred before becomes visible. You can have the pipeline report each new pattern to your Grepr AI agents, so an agent investigates behavior that is new in your systems without you writing an alert for it first.
+You can have the pipeline report each new log pattern to your Grepr AI agents, so an agent investigates behavior that is new in your systems without you writing an alert for it first.
 
 To turn this on, on the reducer step of your pipeline, open the **Advanced** settings and select **Emit new-pattern signals to AI agents**.
 
 Turning it on emits nothing by itself. A signal reaches an agent only when that agent is subscribed to the pipeline, and Grepr refuses a subscription to a pipeline that has this setting off. So turn it on first, then subscribe the agent.
 
-Each pattern signals an agent once rather than on every occurrence, for as long as the reducer keeps that pattern in its state, so a pattern that keeps matching does not keep starting investigations. To learn how signals reach an agent and how to bound the volume, see [_](/ai-agents/subscriptions).
+Each pattern signals each subscribed agent once rather than on every occurrence, so a pattern that keeps matching does not keep starting investigations. To learn how signals reach an agent and how to bound the volume, see [_](/ai-agents/subscriptions).
 
 <HiddenFAQ faqs={[
-    {
-        q: "What is the aggregation window?",
-        a: "The aggregation window is a fixed-duration, tumbling window over which the reducer counts and aggregates the messages that match each pattern. The reducer divides the incoming log stream into consecutive windows and produces a summary separately for each window. The window is two minutes by default. You cannot change the window duration in the Grepr UI; you must use the REST API, and Grepr recommends contacting support for guidance before changing it."
-    },
     {
         q: "How do I prevent messages from different services being aggregated together?",
         a: "Add the tag key that identifies each service, such as service or env, to the Group-by values field. The reducer aggregates messages independently for each unique combination of group-by values, so patterns from different services are never merged."
     },
     {
         q: "What does the similarity threshold control?",
-        a: "The similarity threshold is the percentage of tokens that must match between an incoming message and an existing pattern for the message to be considered part of that pattern. Higher values produce more distinct patterns and less aggressive reduction. Lower values produce broader patterns and more aggressive reduction, at the cost of more mask-defined tokens in each summary."
+        a: "The similarity threshold controls how similar messages must be to belong to the same pattern. Higher values produce more distinct patterns and less aggressive reduction. Lower values produce broader patterns and more aggressive reduction, at the cost of more placeholders in each summary."
     },
     {
         q: "Why should I raise the minimum number of samples?",
-        a: "The minimum number of samples is how many raw matching messages are forwarded for a pattern in an aggregation window before aggregation begins. Raise it when you want more raw samples of each pattern to be sent to your observability backend. Lower it to begin aggregation sooner and reduce more volume."
+        a: "The minimum number of samples is how many raw matching messages are forwarded for a pattern in each reduction window before aggregation begins. Raise it when you want more raw samples of each pattern to be sent to your observability backend. Lower it to begin aggregation sooner and reduce more volume."
     },
     {
         q: "When should I disable the repeat count prefix?",
@@ -258,7 +248,7 @@ Each pattern signals an agent once rather than on every occurrence, for as long 
     },
     {
         q: "What's the difference between the two sampling strategies?",
-        a: "No Additional Sampling stops forwarding raw messages for a pattern as soon as the minimum number of samples has been reached in an aggregation window. Window-Based Logarithmic continues to forward additional raw samples at a logarithmically decreasing rate, preserving more visibility into high-volume patterns."
+        a: "No Additional Sampling stops forwarding raw messages for a pattern as soon as the minimum number of samples has been reached. Window-Based Logarithmic continues to forward occasional raw samples, proportionally fewer as volume grows, preserving more visibility into high-volume patterns."
     },
     {
         q: "How does the logarithm base affect sampling?",
@@ -266,7 +256,7 @@ Each pattern signals an agent once rather than on every occurrence, for as long 
     },
     {
         q: "What are masks and why does the reducer apply them?",
-        a: "Masks are regular expressions that identify variable parts of a log message, such as timestamps, IDs, or IP addresses, and replace them with specific tokens before clustering. This normalizes messages that differ only in those values so they can be grouped into the same pattern."
+        a: "Masks are regular expressions that identify variable parts of a log message, such as timestamps, IDs, or IP addresses. Messages that differ only in masked values are grouped into the same pattern."
     },
     {
         q: "Why are my JSON-only or fully structured logs not being reduced?",
@@ -282,7 +272,7 @@ Each pattern signals an agent once rather than on every occurrence, for as long 
     },
     {
         q: "What are delimiters and when should I change them?",
-        a: "Delimiters are the characters the reducer uses to split messages into tokens during clustering. The defaults cover common punctuation and whitespace but omit @ and . so email addresses and dotted identifiers are not split. Change the list when your log format uses other separators, such as a custom field delimiter."
+        a: "Delimiters are the characters that separate the parts of a message that the reducer compares. The defaults cover common punctuation and whitespace but omit @ and . so email addresses and dotted identifiers are not split. Change the list when your log format uses other separators, such as a custom field delimiter."
     },
     {
         q: "How do I add a tab, newline, or carriage return delimiter?",
@@ -310,6 +300,6 @@ Each pattern signals an agent once rather than on every occurrence, for as long 
     },
     {
         q: "What does the default strategy apply to?",
-        a: "The default strategy applies to every attribute path that does not have an explicit entry in Attribute merging strategies. Exact Match is the default, but you can configure one or more other strategies. As with path-specific strategies, additional default strategies produce suffixed attributes and require more processing."
+        a: "The default strategy applies to every attribute path that does not have an explicit entry in Attribute merging strategies. Exact Match is the default, but you can configure one or more other strategies. As with path-specific strategies, additional default strategies produce suffixed attributes."
     }
 ]} />

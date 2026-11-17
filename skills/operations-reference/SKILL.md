@@ -223,7 +223,7 @@ Prefer it over a SQL `REGEXP_REPLACE` transform for redaction. See
 
 | Operation | Description | Key Properties |
 |-----------|-------------|----------------|
-| `log-reducer` | Deduplicate and aggregate similar logs | `similarityThreshold`, `partitionByTags`, `reductionTimeWindow` |
+| `log-reducer` | Deduplicate and aggregate similar logs | `similarityThreshold`, `dedupThreshold`, `partitionByTags` |
 
 ## Sinks (Data Output)
 
@@ -363,7 +363,6 @@ Deduplicates and aggregates similar log messages.
   "similarityThreshold": 80.0,
   "partitionByTags": ["service", "host"],
   "partitionByAttributes": ["http.method"],
-  "reductionTimeWindow": "PT120S",
   "dedupThreshold": 5,
   "samplingConfig": {
     "type": "window-based-logarithmic-sampling",

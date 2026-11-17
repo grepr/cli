@@ -53,8 +53,8 @@ Subscriptions apply as soon as you make them and are not held by the agent's sav
 
 A pattern signals an agent only if the agent subscribed after that pattern last emitted a signal. This has two consequences worth knowing before you rely on it:
 
-- An agent is notified about each pattern once, for as long as the reducer keeps that pattern in its state. A pattern that keeps occurring does not keep starting investigations, so a pattern that matches a high volume of logs does not flood an agent. A pattern the reducer drops from its state and later meets again counts as new, and signals its subscribers a second time.
-- Subscribing gives you no backlog. An agent you subscribe today is never notified about occurrences that already happened. It is notified the next time any pattern matches, including a pattern the pipeline flagged before you subscribed, because that agent is newer than the pattern's last emission.
+- An agent is notified about each pattern once, not on every occurrence. A pattern that keeps occurring does not keep starting investigations, so a pattern that matches a high volume of logs does not flood an agent. A pattern that hasn't been seen for a long time can count as new again and signal its subscribers a second time.
+- Subscribing gives you no backlog. An agent you subscribe today is never notified about occurrences that already happened. It is notified the next time any pattern matches, including a pattern the pipeline flagged before you subscribed.
 
 So subscribing an agent to an established pipeline can produce a burst of investigations, one for each of its recurring patterns as that pattern next matches, and then settle down to one per newly detected pattern. Expect that burst on a busy pipeline and set the agent's concurrency limit before you subscribe. See [Control how many signals reach an agent](#volume).
 

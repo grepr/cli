@@ -32,17 +32,13 @@ An example log event in JSON would look like:
   "eventTimestamp": "2024-08-21T04:21:14.062Z",
   "receivedTimestamp": "2024-08-21T04:21:14.188Z",
   "severity": 9,
-  "message": "State backend is set to heap memory",
+  "message": "Connection pool initialized with 20 connections",
   "tags": {
-    "app": "greprdev-0gvrs39hhft9q",
-    "kube_ownerref_kind": "deployment",
-    "source": "grepr-query",
-    "organizationId": "greprdev",
-    "service": "grepr-query",
-    "pod_phase": "running",
-    "host": "ip-10-12-4-129.ec2.internal",
-    "image_tag": "0.1.0-3421150",
-    "container_id": "b743c4b78b8ec25c6c73ea03de443ebe19acf760d293dc4145bd31170768a216"
+    "service": "checkout",
+    "host": "web-01",
+    "env": "production",
+    "source": "java",
+    "version": "2.4.1"
   },
   "attributes": {
     "process": {

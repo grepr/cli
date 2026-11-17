@@ -83,7 +83,7 @@ The preserve all strategy retains all values for a given attribute key up to a c
 When applied to a map-valued attribute, the reducer treats the entire map object as a single scalar value for the purpose of the `limit`. When the `unique` flag is set to true, the reducer compares maps deeply for uniqueness.
 
 <Callout type="warning">
-The `limit` also defines an upper bound on the maximum number of events that the reducer can cluster together for a given pattern during a time window. When the limit is reached, the reducer emits the current cluster as a summary message and begins a new cluster for that pattern. This ensures that attribute collections don't grow unbounded while still preserving important data.
+The `limit` caps how many values a summary collects for the attribute. When adding values would exceed it, the reducer emits the current summary and begins a new one for that pattern. This ensures that attribute collections don't grow unbounded while still preserving important data.
 </Callout>
 
 ### Example: The preserve all strategy with scalar values
@@ -570,7 +570,7 @@ This approach is powerful for numeric attributes where you want comprehensive st
     },
     {
         q: "What is the difference between the sample and preserve all strategies?",
-        a: "Both strategies collect attribute values up to a configured limit and let you choose whether the collected values are unique. The sample strategy truncates any additional values after the limit is reached. The preserve all strategy instead emits the current summary and starts a new cluster when the limit would be exceeded, so no values are dropped."
+        a: "Both strategies collect attribute values up to a configured limit and let you choose whether the collected values are unique. The sample strategy truncates any additional values after the limit is reached. The preserve all strategy instead emits the current summary and starts a new one when the limit would be exceeded, so no values are dropped."
     },
     {
         q: "What does the unique flag control?",

@@ -1,5 +1,5 @@
 ---
-description: Reduce log volume using Grepr's intelligent pattern detection, clustering, and sampling for cost-effective observability at scale.
+description: Reduce log volume with Grepr's pattern detection and sampling for cost-effective observability at scale.
 ---
 
 import { Callout } from 'nextra/components'
@@ -7,7 +7,7 @@ import { HiddenFAQ } from '@/components/HiddenFAQ'
 
 # Reduce noise and improve the usability of your logs with the log reducer
 
-Grepr's log reducer uses clustering algorithms and real-time pattern discovery to identify repeated messages in high-volume log streams and aggregate those messages into summarized events. These summarized events reduce the volume of redundant, low-value log events while retaining full context for less common and often higher-value events.
+Grepr's log reducer identifies repeated messages in high-volume log streams and aggregates those messages into summarized events. These summarized events reduce the volume of redundant, low-value log events while retaining full context for less common and often higher-value events.
 
 The log reducer is a core step in a Grepr log reduction pipeline, where it runs after log events have been processed by the parsing, filtering, and transformation steps and before they are sent to your configured sinks. By sending summarized events rather than the full set of logs to your observability vendor, Grepr significantly reduces the volume of shipped logs and your observability costs.
 
@@ -17,24 +17,21 @@ Log reduction pipelines also persist your unaggregated raw logs in a Grepr data 
 
 When you create a log reduction pipeline, a reducer is added with default settings suitable for many log processing flows. When needed, you can change the configuration settings to meet your requirements. You can modify reducer settings in the UI or through the Grepr REST API. To configure the reducer in the UI, see [Configure the log reducer in a Grepr pipeline](/transforms/reducer/configuration). For API documentation, see the [LogReducer API specification](/apis/api-spec#schema/LogReducer).
 
-## How log reduction works
+## What the log reducer does
 
-The log reducer divides incoming log events into fixed-duration, tumbling windows and produces summaries separately for each window. The reducer creates the summarized events through a multi-step process, including transformations to:
+The log reducer groups similar messages into patterns. For each pattern, it:
 
-- Normalize fields to help group values that represent the same entity but might differ slightly in format or content.
-- Structure messages to optimize grouping.
-- Group messages using similarity metrics.
-- Output a configurable number of raw sample messages per pattern before summarizing additional matches.
-- Create and output a concise summary of aggregated messages that match an identified pattern along with a configurable sample of raw messages. The summarized events include metadata that provides important context about the aggregated messages and preserves important fields. See [Summary message metadata](#summary-metadata).
-- Add a tag to all output events to indicate whether the type of message it contains is a sample, summary, passthrough, or exception. See [Message types](#message-types).
+- Forwards a configurable number of raw sample messages unchanged.
+- Periodically emits a concise summary of the additional messages that matched the pattern. The summarized events include metadata that provides important context about the aggregated messages and preserves important fields. See [Summary message metadata](#summary-metadata).
+- Tags every output event to indicate whether it is a sample, summary, passthrough, or exception. See [Message types](#message-types).
 
-If the reducer cannot find a matching pattern for a message, the message passes through unmodified. Reasons that the reducer cannot find a pattern include:
+A message passes through unmodified when:
 
-- The clustering process is unable to extract patterns from messages.
-- The selected inputs contain neither message tokens nor attribute structure to group by. See [Choose which fields form a pattern](/transforms/reducer/configuration#structured-configuration).
+- The reducer doesn't find a pattern for it.
+- The selected inputs contain neither message text nor attributes to group by. See [Choose which fields form a pattern](/transforms/reducer/configuration#structured-configuration).
 - The message matches a configured exception rule that prevents it from being reduced.
 
-To learn more about the transformations the reducer applies to messages and how to modify its default behavior, see [Configure the log reducer in a Grepr pipeline](/transforms/reducer/configuration).
+To change how the reducer groups and summarizes messages, see [Configure the log reducer in a Grepr pipeline](/transforms/reducer/configuration).
 
 ## Example: Summarizing repeated and low-value messages
 
@@ -69,8 +66,8 @@ After processing, each record is assigned a message type, and the `grepr.message
 
 | Value | Description |
 |:------|:------------|
-| `sample` | The message is a sample of the original log messages that matched a specific pattern. Sample messages are sent through unmodified until the deduplication threshold is reached. |
-| `summary` | The message summarizes multiple source log messages that matched a specific pattern. Summary messages are generated at the end of each aggregation window for patterns that have exceeded the deduplication threshold. |
+| `sample` | The message is a sample of the original log messages that matched a specific pattern. Sample messages are sent through unmodified until the minimum number of samples is reached. |
+| `summary` | The message summarizes multiple source log messages that matched a specific pattern. Summary messages are generated periodically for patterns that have exceeded the minimum number of samples. |
 | `passthrough` | The message did not match any existing patterns and was sent through unmodified. |
 | `exception` | The message matched an exception rule and was sent through unmodified. |
 
@@ -85,12 +82,12 @@ After processing, each record is assigned a message type, and the `grepr.message
     a: "Log reduction is Grepr's process of identifying patterns in high-volume log streams and aggregating similar messages into concise summaries. This reduces the volume of logs shipped to your observability vendor while preserving access to the underlying raw messages through the Grepr data lake."
   },
   {
-    q: "How does Grepr identify log patterns?",
-    a: "The reducer applies a multi-step process to each log message. It normalizes variable values such as timestamps, IDs, and IP addresses, structures the message to optimize grouping, and groups messages into patterns using similarity metrics. For each pattern, the reducer forwards a configurable number of raw sample messages before it summarizes additional matches into a single summary event."
+    q: "What does the log reducer do with each pattern?",
+    a: "For each pattern, the reducer forwards a configurable number of raw sample messages unchanged, then periodically summarizes additional matches into a single summary event."
   },
   {
     q: "What does the grepr.messagetype tag indicate?",
-    a: "The grepr.messagetype tag records how a message was processed. The value 'sample' means the message was forwarded before the deduplication threshold was reached, 'summary' means the message is a summary of aggregated messages, 'passthrough' means the message did not match any pattern, and 'exception' means the message matched a configured exception."
+    a: "The grepr.messagetype tag records how a message was processed. The value 'sample' means the message was forwarded before the minimum number of samples was reached, 'summary' means the message is a summary of aggregated messages, 'passthrough' means the message did not match any pattern, and 'exception' means the message matched a configured exception."
   },
   {
     q: "What information does a summary message include?",
@@ -98,6 +95,6 @@ After processing, each record is assigned a message type, and the `grepr.message
   },
   {
     q: "Why might a message pass through without being aggregated?",
-    a: "A message passes through unmodified when the clustering process can't find a pattern that matches it, when the log message field is empty or null, or when the message matches a configured exception rule that prevents aggregation."
+    a: "A message passes through unmodified when the reducer doesn't find a pattern for it, when the selected inputs contain nothing to group by, or when the message matches a configured exception rule that prevents aggregation."
   }
 ]} />

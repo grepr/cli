@@ -90,7 +90,7 @@ When you imported queries from Datadog dashboards or monitors, some valid querie
 
 ### Other improvements and fixes
 
-- {/* ENGT-5078 */} Fixed an issue where the parallelism Grepr had scaled a pipeline up to was reset to the default when the pipeline restarted, so a busy pipeline had to scale up again from the beginning and fell behind while it did.
+- {/* ENGT-5078 */} Fixed an issue where a busy pipeline fell behind after a restart because it lost the capacity Grepr had scaled it up to.
 - {/* ENGT-4903 */} Buttons and links that referred to the search pages as "Logs explorer" and "Traces explorer" now consistently read Log Explorer and Trace Explorer.
 - {/* ENGT-5084 */} Tables now show placeholder rows while they load instead of an overlay on their previous contents, and the code editor shows a spinner instead of a line of text.
 

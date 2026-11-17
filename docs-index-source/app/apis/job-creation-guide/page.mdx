@@ -198,7 +198,7 @@ Process live data with rate limiting for testing:
 
 ### Production pipeline (asynchronous streaming)
 
-A complex production pipeline based on the Grepr reference implementation:
+An example production pipeline:
 
 ```json
 {
@@ -261,7 +261,6 @@ A complex production pipeline based on the Grepr reference implementation:
         "partitionByAttributes": ["http.url_details.path", "http.method"],
         "similarityThreshold": 80.0,
         "dedupThreshold": 5,
-        "reductionTimeWindow": "PT120S",
         "samplingConfig": {
           "type": "window-based-logarithmic-sampling",
           "logarithmBase": 2
