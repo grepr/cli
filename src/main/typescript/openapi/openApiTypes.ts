@@ -4899,8 +4899,8 @@ export interface components {
       maxConcurrentInvestigations?: number;
       /**
        * Format: int32
-       * @description How many of the agent's signal-triggered investigations may wait in the queue; past it, intake drops the agent's new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 1000, and an update that leaves it out keeps it.
-       * @default 1000
+       * @description How many of the agent's signal-triggered investigations may wait in the queue; past it, intake drops the agent's new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 200, and an update that leaves it out keeps it.
+       * @default 200
        */
       maxQueuedInvestigations?: number;
       /**
@@ -4951,7 +4951,7 @@ export interface components {
       maxConcurrentInvestigations?: number;
       /**
        * Format: int32
-       * @description How many of the agent's signal-triggered investigations may wait in the queue; past it, intake drops the agent's new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 1000, and an update that leaves it out keeps it.
+       * @description How many of the agent's signal-triggered investigations may wait in the queue; past it, intake drops the agent's new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 200, and an update that leaves it out keeps it.
        */
       maxQueuedInvestigations?: number;
       /** Format: int32 */
@@ -4995,7 +4995,7 @@ export interface components {
       maxConcurrentInvestigations?: number;
       /**
        * Format: int32
-       * @description How many of the agent's signal-triggered investigations may wait in the queue; past it, intake drops the agent's new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 1000, and an update that leaves it out keeps it.
+       * @description How many of the agent's signal-triggered investigations may wait in the queue; past it, intake drops the agent's new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 200, and an update that leaves it out keeps it.
        */
       maxQueuedInvestigations?: number;
       /** Format: int32 */
@@ -10016,18 +10016,20 @@ export interface components {
       emitNewPatternSignals?: boolean;
       /**
        * Enabled masks
-       * @description Masks to apply, specified as the names of the masks to use. The default enabled masks are: ipport, timestamp, uuid, number.
+       * @description Masks to apply, specified as the names of the masks to use. The default enabled masks are: ipport, timestamp, uuid, number, anydigit.
        * @default [
        *       "ipport",
        *       "timestamp",
        *       "uuid",
-       *       "number"
+       *       "number",
+       *       "anydigit"
        *     ]
        * @example [
        *       "ipport",
        *       "timestamp",
        *       "uuid",
-       *       "number"
+       *       "number",
+       *       "anydigit"
        *     ]
        */
       enabledMasks: string[];
@@ -10067,7 +10069,7 @@ export interface components {
       logReducerExceptions?: components["schemas"]["EventPredicate"][];
       /**
        * Masks
-       * @description Named regular expressions for values, such as timestamps and IDs, that can differ between messages of the same pattern. These masks are specified as pairs of (name, regex). The default masks are: ipport, timestamp, uuid, number, awsarn, awstoken.
+       * @description Named regular expressions for values, such as timestamps and IDs, that can differ between messages of the same pattern. These masks are specified as pairs of (name, regex). The default masks are: ipport, timestamp, uuid, number, anydigit, awsarn, awstoken.
        * @default [
        *       [
        *         "ipport",
@@ -10086,6 +10088,10 @@ export interface components {
        *         "(?:^|(?<!\\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\\-\\+]?(?>(?:(?:\\d{1,100})?(?:\\.\\d{1,100})(?:[eE][\\-\\+]?\\d{1,100}))|(?:(?:\\d{1,100})?(?:\\.\\d{1,100}))|(?:\\d{1,100}))))(?:(?!\\w)|$)"
        *       ],
        *       [
+       *         "anydigit",
+       *         "(?<![A-Za-z0-9_])(?:[0-9]++[A-Za-z_]|[A-Za-z_]++[0-9])[A-Za-z0-9_]*+(?![A-Za-z0-9_])"
+       *       ],
+       *       [
        *         "awsarn",
        *         "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*"
        *       ],
@@ -10094,7 +10100,7 @@ export interface components {
        *         "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}"
        *       ]
        *     ]
-       * @example [["ipport", "(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?"],["timestamp", "(?:(?:\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}:\d{2}(?:[.,]\d{1,12})?(?:Z|(?:[\+\-]\d{2}:?\d{2})|\sUTC)?)|(?:\d{1,4}/\d{1,2}/\d{1,4}(,?\s\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)?)|(?:\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)|(?:\d{2}/[A-Za-z]{3}/\d{4}(?:[:\s]\d{2}:\d{2}:\d{2}(?:\s\+[0-9]{4})?)?))"],["uuid", "(?:^|(?<!\w))(?:[a-fA-F0-9]{8}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{12})(?:(?!\w)|$)"],["number", "(?:^|(?<!\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\-\+]?(?>(?:(?:\d{1,100})?(?:\.\d{1,100})(?:[eE][\-\+]?\d{1,100}))|(?:(?:\d{1,100})?(?:\.\d{1,100}))|(?:\d{1,100}))))(?:(?!\w)|$)"],["awsarn", "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*"],["awstoken", "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}"]]
+       * @example [["ipport", "(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?"],["timestamp", "(?:(?:\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}:\d{2}(?:[.,]\d{1,12})?(?:Z|(?:[\+\-]\d{2}:?\d{2})|\sUTC)?)|(?:\d{1,4}/\d{1,2}/\d{1,4}(,?\s\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)?)|(?:\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)|(?:\d{2}/[A-Za-z]{3}/\d{4}(?:[:\s]\d{2}:\d{2}:\d{2}(?:\s\+[0-9]{4})?)?))"],["uuid", "(?:^|(?<!\w))(?:[a-fA-F0-9]{8}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{12})(?:(?!\w)|$)"],["number", "(?:^|(?<!\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\-\+]?(?>(?:(?:\d{1,100})?(?:\.\d{1,100})(?:[eE][\-\+]?\d{1,100}))|(?:(?:\d{1,100})?(?:\.\d{1,100}))|(?:\d{1,100}))))(?:(?!\w)|$)"],["anydigit", "(?<![A-Za-z0-9_])(?:[0-9]++[A-Za-z_]|[A-Za-z_]++[0-9])[A-Za-z0-9_]*+(?![A-Za-z0-9_])"],["awsarn", "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*"],["awstoken", "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}"]]
        */
       masks: string[][];
       /** @example operation_name */
@@ -11892,13 +11898,15 @@ export interface components {
        *       "ipport",
        *       "timestamp",
        *       "uuid",
-       *       "number"
+       *       "number",
+       *       "anydigit"
        *     ]
        * @example [
        *       "ipport",
        *       "timestamp",
        *       "uuid",
-       *       "number"
+       *       "number",
+       *       "anydigit"
        *     ]
        */
       enabledMasks: string[];
@@ -11933,6 +11941,10 @@ export interface components {
        *         "(?:^|(?<!\\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\\-\\+]?(?>(?:(?:\\d{1,100})?(?:\\.\\d{1,100})(?:[eE][\\-\\+]?\\d{1,100}))|(?:(?:\\d{1,100})?(?:\\.\\d{1,100}))|(?:\\d{1,100}))))(?:(?!\\w)|$)"
        *       ],
        *       [
+       *         "anydigit",
+       *         "(?<![A-Za-z0-9_])(?:[0-9]++[A-Za-z_]|[A-Za-z_]++[0-9])[A-Za-z0-9_]*+(?![A-Za-z0-9_])"
+       *       ],
+       *       [
        *         "awsarn",
        *         "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*"
        *       ],
@@ -11941,7 +11953,7 @@ export interface components {
        *         "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}"
        *       ]
        *     ]
-       * @example [["ipport", "(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?"],["timestamp", "(?:(?:\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}:\d{2}(?:[.,]\d{1,12})?(?:Z|(?:[\+\-]\d{2}:?\d{2})|\sUTC)?)|(?:\d{1,4}/\d{1,2}/\d{1,4}(,?\s\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)?)|(?:\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)|(?:\d{2}/[A-Za-z]{3}/\d{4}(?:[:\s]\d{2}:\d{2}:\d{2}(?:\s\+[0-9]{4})?)?))"],["uuid", "(?:^|(?<!\w))(?:[a-fA-F0-9]{8}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{12})(?:(?!\w)|$)"],["number", "(?:^|(?<!\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\-\+]?(?>(?:(?:\d{1,100})?(?:\.\d{1,100})(?:[eE][\-\+]?\d{1,100}))|(?:(?:\d{1,100})?(?:\.\d{1,100}))|(?:\d{1,100}))))(?:(?!\w)|$)"],["awsarn", "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*"],["awstoken", "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}"]]
+       * @example [["ipport", "(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?"],["timestamp", "(?:(?:\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}:\d{2}(?:[.,]\d{1,12})?(?:Z|(?:[\+\-]\d{2}:?\d{2})|\sUTC)?)|(?:\d{1,4}/\d{1,2}/\d{1,4}(,?\s\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)?)|(?:\d{1,2}:\d{2}:\d{1,2}(?:[.,]\d{1,12})?(?:\s?(?:[AP]M))?)|(?:\d{2}/[A-Za-z]{3}/\d{4}(?:[:\s]\d{2}:\d{2}:\d{2}(?:\s\+[0-9]{4})?)?))"],["uuid", "(?:^|(?<!\w))(?:[a-fA-F0-9]{8}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{12})(?:(?!\w)|$)"],["number", "(?:^|(?<!\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\-\+]?(?>(?:(?:\d{1,100})?(?:\.\d{1,100})(?:[eE][\-\+]?\d{1,100}))|(?:(?:\d{1,100})?(?:\.\d{1,100}))|(?:\d{1,100}))))(?:(?!\w)|$)"],["anydigit", "(?<![A-Za-z0-9_])(?:[0-9]++[A-Za-z_]|[A-Za-z_]++[0-9])[A-Za-z0-9_]*+(?![A-Za-z0-9_])"],["awsarn", "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*"],["awstoken", "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}"]]
        */
       masks: string[][];
       /** @example operation_name */
@@ -31981,6 +31993,7 @@ export const DEFAULT_LOG_REDUCER_MASKS = [
   { name: "timestamp", regex: "(?:(?:\\d{4}-\\d{2}-\\d{2}(?:T|\\s)\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d{1,12})?(?:Z|(?:[\\+\\-]\\d{2}:?\\d{2})|\\sUTC)?)|(?:\\d{1,4}/\\d{1,2}/\\d{1,4}(,?\\s\\d{1,2}:\\d{2}:\\d{1,2}(?:[.,]\\d{1,12})?(?:\\s?(?:[AP]M))?)?)|(?:\\d{1,2}:\\d{2}:\\d{1,2}(?:[.,]\\d{1,12})?(?:\\s?(?:[AP]M))?)|(?:\\d{2}/[A-Za-z]{3}/\\d{4}(?:[:\\s]\\d{2}:\\d{2}:\\d{2}(?:\\s\\+[0-9]{4})?)?))", description: "Matches many timestamp formats, e.g. 2024-04-26T15:30:45.123Z, 26/04/2024 15:30:45, 15:30:45", enabledByDefault: true },
   { name: "uuid", regex: "(?:^|(?<!\\w))(?:[a-fA-F0-9]{8}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{4}[-,_,:]?[a-fA-F0-9]{12})(?:(?!\\w)|$)", description: "Matches UUIDs, e.g. 123e4567-e89b-12d3-a456-426614174000.", enabledByDefault: true },
   { name: "number", regex: "(?:^|(?<!\\w))(?:(?:0x[a-fA-F0-9]{1,100})|(?:[\\-\\+]?(?>(?:(?:\\d{1,100})?(?:\\.\\d{1,100})(?:[eE][\\-\\+]?\\d{1,100}))|(?:(?:\\d{1,100})?(?:\\.\\d{1,100}))|(?:\\d{1,100}))))(?:(?!\\w)|$)", description: "Matches integers and decimal numbers up to 100 digits.", enabledByDefault: true },
+  { name: "anydigit", regex: "(?<![A-Za-z0-9_])(?:[0-9]++[A-Za-z_]|[A-Za-z_]++[0-9])[A-Za-z0-9_]*+(?![A-Za-z0-9_])", description: "Matches a word of letters and digits that has both, e.g. abc123, u_42x or v2.", enabledByDefault: true },
   { name: "awsarn", regex: "arn:aws(?:-[a-z]+-[a-z]+)?:[a-zA-Z0-9-]+:(?:[a-z0-9-]+:)?(?:[0-9]{12})?:[a-zA-Z0-9-_./]+(?::[a-zA-Z0-9-_./]+)*", description: "Matches AWS ARNs", enabledByDefault: false },
   { name: "awstoken", regex: "(?:IQoJb3JpZ2luX[A-Za-z0-9+/]{10,20})[A-Za-z0-9+/]{800,1100}", description: "Matches AWS session tokens", enabledByDefault: false }
 ] as const;

@@ -157,8 +157,8 @@ When interpreting draft results:
 
 - **Don't lower `dedupThreshold`** to fake reduction — fix the upstream cause.
 - The reducer dedupes on the **post-mask** `message` (`timestamp`, `uuid`,
-  `ipport`, `number` masks pre-applied). Numeric IDs in patterns usually mean a
-  mask is off — check the reducer's `enabledMasks`.
+  `ipport`, `number`, `anydigit` masks pre-applied). Numeric IDs in patterns
+  usually mean a mask is off — check the reducer's `enabledMasks`.
 - Aggregation strategies are safe only for fields that are actually numeric in
   the sample; string/missing/mixed-type fields can fail the draft.
 - Query a few time windows — reduction varies hourly with traffic mix.

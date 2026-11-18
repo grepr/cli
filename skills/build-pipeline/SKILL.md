@@ -78,6 +78,12 @@ If the file is empty, the org has no log pipeline to copy from. Ask the user
 to create the first log pipeline in the Grepr UI, and make later changes to it
 with the intent skills.
 
+The copied lists are that pipeline's, not the current defaults. A pipeline
+created before a mask became a default, such as `anydigit`, lacks it. If
+`enabledMasks` differs from the default masks in
+`grepr docs:get doc://transforms/reducer/configuration/page.mdx`, tell the user,
+and suggest creating the pipeline in the Grepr UI, which uses the defaults.
+
 ## 3. Write the pipeline file
 
 Write `pipeline-<tag>.json`:

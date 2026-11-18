@@ -129,6 +129,7 @@ The reducer ships with the following default masks. Each appears as a row in the
 | `ipport` | Enabled | Matches IPv4 addresses and optional ports, such as `192.168.0.1` or `192.168.0.1:8080`. |
 | `number` | Enabled | Matches integers and decimal numbers up to 100 digits. |
 | `uuid` | Enabled | Matches UUIDs, such as `123e4567-e89b-12d3-a456-426614174000`. |
+| `anydigit` | Enabled | Matches a word of letters and digits that has both, such as `abc123`, `u_42x`, or `v2`. Words of digits alone are left to `number`. It has the lowest priority: where another enabled mask, default or custom, matches the same text, that mask wins. Where another mask matches only part of the word, `anydigit` can win, as the leftmost match is taken first: with a custom `\d{6}` mask, `ORD123456` becomes `<anydigit>`. |
 | `awsarn` | Disabled | Matches AWS ARNs. |
 | `awstoken` | Disabled | Matches AWS session tokens. |
 

@@ -91,7 +91,7 @@ The two kinds of invocations, manual and signal triggered, end differently when 
 | **When at the limit** | Whether an additional signal waits or is dropped. **Queue** holds it until a slot frees. **Discard** drops it. |
 | **Max queue wait (minutes)** | How long a queued investigation waits before Grepr discards it. Leave empty for no limit. |
 
-The maximum queue wait applies only to investigations triggered by a signal, not to the ones you start manually. Set it when a stale signal is not worth investigating, such as a pattern that stopped occurring an hour ago. Leave it empty when you want every signal investigated eventually.
+The maximum queue wait applies only to investigations triggered by a signal, not to the ones you start manually. Set it when a stale signal is not worth investigating, such as a pattern that stopped occurring an hour ago. Leave it empty to let queued investigations wait indefinitely. A signal that arrives while the agent's queue is full is still dropped: the queue limit (`maxQueuedInvestigations`, 200 by default) counts signal-triggered investigations, and runs that churn mode holds back have their own allowance.
 
 An agent subscribed to a busy pipeline can produce more signals than it can investigate. **Discard** keeps the agent current at the cost of skipping signals, and **Queue** with a maximum wait keeps a bounded backlog. To reduce the signals instead of dropping them, narrow what the source emits. See [_](/ai-agents/subscriptions).
 

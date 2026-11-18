@@ -122,6 +122,8 @@ A discarded investigation was recorded but never ran. There are three reasons, a
 | A queued investigation waited longer than the maximum queue wait. | Raise or remove the maximum queue wait, or raise the concurrency limit so the queue drains faster. |
 | A token budget was exhausted. | Raise the budget that blocked it, or wait for the window to reset. Check which budget it was on the agent's page. |
 
+A signal that arrives while the agent's queue is full is dropped without a record, so it never appears in the list. The queue is full when it holds the agent's queue limit (`maxQueuedInvestigations`, 200 by default) of signal-triggered investigations. Runs that churn mode holds back have their own allowance. To drop fewer signals, set a maximum queue wait, raise the concurrency limit, or narrow what the source emits.
+
 A rise in discarded investigations usually means a source is emitting more than the agent can handle. Reducing what the source emits keeps the signal you want, whereas raising the limits keeps the volume and increases the cost. See [_](/ai-agents/subscriptions#volume).
 
 ## Review the pipeline changes an agent proposes [#suggestions]
@@ -174,7 +176,7 @@ To follow a running investigation as it progresses, add `--follow` to `investiga
   },
   {
     q: "Why was my investigation discarded?",
-    a: "There are three reasons: the agent was at its concurrency limit and set to discard extra signals, a queued investigation waited longer than the maximum queue wait, or a token budget was exhausted. The agent's page reports which token budget blocked it and when the window resets."
+    a: "A recorded investigation is discarded for one of three reasons: the agent was at its concurrency limit and set to discard extra signals, a queued investigation waited longer than the maximum queue wait, or a token budget was exhausted. The agent's page reports which token budget blocked it and when the window resets. A signal that arrives while the agent's queue is full, at its queue limit (maxQueuedInvestigations, 200 by default), is dropped before anything is recorded. To drop fewer signals, set a maximum queue wait, raise the concurrency limit, or narrow what the source emits."
   },
   {
     q: "How do I review a pipeline change proposed by a Grepr AI agent?",
