@@ -957,6 +957,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/datasets/{id}/data-types": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the data types a dataset holds
+     * @description Returns the data types the dataset holds, of logs_raw (logs) and spans_raw (traces). A type is held once a pipeline that writes it to the dataset is created or updated, and then stays held, even after the pipeline stops or retention empties the table.
+     */
+    get: operations["getDatasetDataTypes"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/datasets/{id}/estimation-config": {
     parameters: {
       query?: never;
@@ -7545,6 +7565,13 @@ export interface components {
        */
       teamIds?: string[];
     };
+    DatasetDataTypes: {
+      /**
+       * @description The data types the dataset holds, by table key: logs_raw (logs) and spans_raw (traces). A type is held once a pipeline that writes it to the dataset is created or updated, and then stays held, even after the pipeline stops or retention empties the table.
+       * @default []
+       */
+      types: AnalyticsTableBindingTable[];
+    };
     DatasetEstimationConfig: {
       /** Format: date-time */
       readonly createdAt?: string;
@@ -7576,11 +7603,6 @@ export interface components {
       readonly updatedAt?: string;
     };
     DatasetRead: {
-      /**
-       * @description The kinds of data the dataset holds, such as logs, traces, metrics and agent_sessions. A kind is held once a pipeline that writes it to the dataset is created or updated. Other kinds may be added; clients ignore those they don't know.
-       * @default []
-       */
-      dataTypes?: string[];
       id: string;
       integrationId: string;
       name: string;
@@ -17226,6 +17248,7 @@ export type SchemaDatadogTraceAgentSource =
   components["schemas"]["DatadogTraceAgentSource"];
 export type SchemaDatadogTraceSink = components["schemas"]["DatadogTraceSink"];
 export type SchemaDatasetCreate = components["schemas"]["DatasetCreate"];
+export type SchemaDatasetDataTypes = components["schemas"]["DatasetDataTypes"];
 export type SchemaDatasetEstimationConfig =
   components["schemas"]["DatasetEstimationConfig"];
 export type SchemaDatasetRead = components["schemas"]["DatasetRead"];
@@ -20134,6 +20157,35 @@ export interface operations {
       };
       /** @description Dataset has jobs associated with it. */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getDatasetDataTypes: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The types the dataset holds. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DatasetDataTypes"];
+        };
+      };
+      /** @description Dataset not found. */
+      404: {
         headers: {
           [name: string]: unknown;
         };
