@@ -2,7 +2,6 @@ import {
   CreateLogsBackfillJobDataType,
   CreateSpansBackfillJobDataType,
   TemplateOperationType,
-  type SchemaCreateBackfillJob,
   type SchemaDatasetRead,
   type SchemaLogReducerTemplateInput,
   type SchemaOperation,
@@ -16,7 +15,10 @@ import {
 const LOG_REDUCER_TEMPLATE_NAME = 'log-reducer-job-graph-template';
 const TRACE_REDUCER_TEMPLATE_NAME = 'trace-reducer-job-graph-template';
 
-export type SignalDataType = SchemaCreateBackfillJob['dataType'];
+/** The signals the CLI backfills and queries; metrics backfills start from the Metrics explorer. */
+export type SignalDataType =
+  | CreateLogsBackfillJobDataType.logs
+  | CreateSpansBackfillJobDataType.spans;
 
 export interface SignalSourceInputs {
   jobId?: string;

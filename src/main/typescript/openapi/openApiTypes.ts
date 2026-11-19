@@ -1043,7 +1043,7 @@ export interface paths {
     get: operations["getTableConfig"];
     /**
      * Replace a dataset table config
-     * @description Replaces the configuration override for one of the dataset's tables. Applies the resulting schema and partition-spec changes to the live Iceberg table. 409 if any pipeline currently references the dataset.
+     * @description Replaces the configuration override for one of the dataset's tables. Applies the resulting schema and partition-spec changes to the live Iceberg table. 409 while a linked pipeline is active (a stopped one doesn't block). metrics_points and metrics_series take one partition field, a bucket count of metric_hash or metric_name, a power of two, which takes effect when a pipeline next starts.
      */
     put: operations["putTableConfig"];
     post?: never;
@@ -3664,7 +3664,7 @@ export interface paths {
     put?: never;
     /**
      * Create a backfill job
-     * @description Creates a logs or spans backfill batch job from backfill parameters (time window, query, vendor sinks, and optional type-specific fields). The `dataType` selects the built-in logs or spans template. This is an asynchronous batch job: the response returns an identifier (field: `id`) that can be used to query the status of the job using the `GET` jobs endpoint. The server builds the backfill job graph from the parameters, so callers do not assemble it themselves.
+     * @description Creates a logs, spans or metrics backfill batch job from backfill parameters (time window, query, vendor sinks, and optional type-specific fields). The `dataType` selects the built-in logs, spans or metrics template; a metrics backfill needs metrics pipelines enabled. This is an asynchronous batch job: the response returns an identifier (field: `id`) that can be used to query the status of the job using the `GET` jobs endpoint. The server builds the backfill job graph from the parameters, so callers do not assemble it themselves.
      */
     post: operations["submitBackfillJob"];
     delete?: never;
@@ -4158,7 +4158,7 @@ export interface paths {
     };
     /**
      * Get analytics expression vocabulary
-     * @description Returns parser-approved expression functions and logical log fields. With a dataset, includes that dataset's promoted logs_raw tag keys.
+     * @description Returns parser-approved expression functions and the logical fields of the table a query reads: logs_raw, the default, metrics_points or metrics_series. With a dataset, includes that dataset's scan budget ceiling.
      */
     get: operations["getAnalyticsVocabulary"];
     put?: never;
@@ -5538,11 +5538,6 @@ export interface components {
       recentHealth?: components["schemas"]["AgentRecentHealth"];
       subscriptionCounts?: components["schemas"]["AgentSubscriptionCounts"];
     };
-    /**
-     * @description Aggregation function.
-     * @enum {string}
-     */
-    AggType: AggType;
     AggregationAccumulator: {
       /** @enum {string} */
       accumulatorType?: AggregationAccumulatorAccumulatorType;
@@ -5552,13 +5547,13 @@ export interface components {
     /** @description One aggregation function declaration. */
     AggregationDecl: {
       /**
-       * @description Function arguments. Heterogeneous; validated at pipeline construction. PERCENTILE accepts [rank], [rank, relativeAccuracy], or [rank, relativeAccuracy, maxNumBins].
+       * @description Function arguments, validated at pipeline construction. PERCENTILE accepts [rank], [rank, relativeAccuracy], or [rank, relativeAccuracy, maxNumBins].
        * @default []
        */
-      args?: Record<string, never>[];
+      args?: number[];
       /** @description Output suffix. Omitted = preserve source metric name; in rule conditions the output is addressed as `<alias>.val` (at most one as-less aggregation per block). */
       as?: string;
-      fn: components["schemas"]["AggType"];
+      fn: components["schemas"]["MetricsRuleFunction"];
     };
     AllQueryNode: {
       /**
@@ -5572,8 +5567,8 @@ export interface components {
       /** Format: int32 */
       caretFromEnd?: number;
       detail?: string;
-      insert?: string;
-      label?: string;
+      insert: string;
+      label: string;
     };
     /** @description Request constraints, followed by the first SQL failure when the request is complete, at most one per field. Empty means no draft errors were found; execution still validates the query against its actual table and engine. */
     AnalyticsDiagnostic: {
@@ -5621,6 +5616,7 @@ export interface components {
        */
       startLine: number;
     };
+    /** @description An analytics query as it stands while it is being written. A builder query's table is logs_raw, the default, or metrics_points, and the query is checked against that table's columns. */
     AnalyticsDraftRequest: {
       /** @description Dataset a builder query reads. Supplying it checks the scan budget against that dataset's ceiling and requires VIEW permission on it. A Grepr SQL query names its own dataset, which this must match when given. */
       datasetId?: string;
@@ -5631,6 +5627,7 @@ export interface components {
        * @example 107374182400
        */
       scanBudgetBytes: number;
+      table?: components["schemas"]["DatasetTable"];
     };
     AnalyticsDraftResponse: {
       /** @description Request constraints, followed by the first SQL failure when the request is complete, at most one per field. Empty means no draft errors were found; execution still validates the query against its actual table and engine. */
@@ -5650,6 +5647,11 @@ export interface components {
       /** @description A struct column's fields, in order, each with its own fields when it is a struct. */
       fields?: components["schemas"]["AnalyticsField"][];
       name: string;
+      /**
+       * @description The rows a structured query must read for this column: TAG for a metrics_series tag column, which only a query with rows TAG reads. Absent for a column every query reads.
+       * @enum {string}
+       */
+      rows?: AnalyticsFieldRows;
       type: string;
     };
     AnalyticsFunction: {
@@ -5766,17 +5768,13 @@ export interface components {
        */
       type: AnalyticsSourceType;
     };
-    /** @description Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none. */
+    /** @description A dataset-owned table exposed to the query under a logical alias. An analysis binds logs_raw or metrics_points. */
     AnalyticsTableBinding: {
       /** @description Logical table name used by the analytical query. */
       alias: string;
       /** @description ID of the dataset that owns the table. */
       datasetId: string;
-      /**
-       * @description Dataset-owned table exposed under the logical alias.
-       * @enum {string}
-       */
-      table: AnalyticsTableBindingTable;
+      table: components["schemas"]["DatasetTable"];
     };
     /** @description Optional time window that buckets the results. Adds leading 'window_start' and 'window_end' result columns, which are always grouped. */
     AnalyticsTimeWindow: {
@@ -5817,8 +5815,6 @@ export interface components {
        * @description Largest scan budget, in bytes, an analytics query over this dataset may request. Absent when no ceiling applies, including when the engine the server runs the organization's queries on has none.
        */
       maxScanBudgetBytes?: number;
-      /** @description Promoted logs_raw tag keys for the requested dataset. */
-      promotedTagKeys?: string[];
       /** @description Words the analytics SQL grammar reserves; they cannot be used as result aliases. */
       reservedWords?: string[];
       /** @description The columns a Grepr SQL query reads from each table type it can read, by table key (logs_raw, spans_raw), in the order * returns them. */
@@ -6656,42 +6652,6 @@ export interface components {
        */
       type: CloudTrailLogsFileSourceType;
     };
-    /** @description One cohort-output entry. */
-    CohortOutputDecl: {
-      /**
-       * @description Aggregations to emit. Null = [{ fn: DEFAULT }].
-       * @default []
-       */
-      aggregations?: components["schemas"]["AggregationDecl"][];
-      selectors?: components["schemas"]["FilterPrimitive"];
-      /**
-       * @description When false, emit per-series time-only aggregation (no space/cohort collapse); aggregations apply as time-window folds. Default true keeps cohort aggregation.
-       * @default true
-       */
-      spaceAggregation?: boolean;
-    };
-    /** @description Cohort-identity + space-aggregation configuration. */
-    CohortsConfig: {
-      /**
-       * @description Level-prefixed attribute keys that group objects into cohorts.
-       * @default []
-       * @example [
-       *       "resource.cluster",
-       *       "resource.region"
-       *     ]
-       */
-      identifyingAttributes?: string[];
-      /**
-       * @description Level-prefixed attribute keys describing cohorts.
-       * @default []
-       */
-      metadataAttributes?: string[];
-      /**
-       * @description Ordered cohort-output entries (first-match-wins).
-       * @default []
-       */
-      outputs?: components["schemas"]["CohortOutputDecl"][];
-    };
     /** @description A complete span with its resource and instrumentation scope context. */
     CompleteSpan: {
       /** Format: int64 */
@@ -6858,14 +6818,12 @@ export interface components {
       /** Format: date-time */
       start: string;
     };
-    /** @description Parameters for creating a logs or spans backfill batch job. */
+    /** @description Parameters for creating a logs, spans or metrics backfill batch job. */
     CreateBackfillJob: {
       dataType: string;
       datasetId?: string;
       /** Format: date-time */
       end?: string;
-      /** Format: int32 */
-      limit?: number;
       name?: string;
       sinks?: components["schemas"]["Operation"][];
       /** Format: date-time */
@@ -6877,6 +6835,7 @@ export interface components {
     } & (
       | components["schemas"]["CreateLogsBackfillJob"]
       | components["schemas"]["CreateSpansBackfillJob"]
+      | components["schemas"]["CreateMetricsBackfillJob"]
     );
     CreateChatRequest: {
       enabledSkills?: string[];
@@ -6980,7 +6939,7 @@ export interface components {
        * @enum {string}
        */
       dataType: CreateLogsBackfillJobDataType;
-      /** @description The dataset the backfill reads from and the dedup sinks track delivery in. */
+      /** @description The dataset the backfill reads from. */
       datasetId: string;
       /**
        * Format: date-time
@@ -7032,10 +6991,55 @@ export interface components {
         [key: string]: components["schemas"]["Any"];
       };
       /**
-       * @description Vendor integration IDs, if any, whose prior delivery the backfill skips: exactly the integrations the sinks send to, or empty. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.
+       * @description Vendor integration IDs, if any, whose prior delivery, as the dataset records it, the backfill skips: exactly the integrations the sinks send to, or empty. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.
        * @default []
        */
       vendorSinkIntegrationIds?: string[];
+    };
+    /** @description Parameters for a metrics backfill. */
+    CreateMetricsBackfillJob: {
+      /**
+       * @description Selects the built-in metrics backfill template. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      dataType: CreateMetricsBackfillJobDataType;
+      /** @description The dataset the backfill reads from. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of the time interval to backfill.
+       * @example 2023-01-01T01:00:00Z
+       */
+      end: string;
+      /**
+       * @description Name of the backfill job. Must match the job name pattern [a-z0-9_]{1,128}.
+       * @example manual_backfill_1
+       */
+      name: string;
+      query: components["schemas"]["MetricEventPredicate"];
+      /** @description The vendor sink operations that deliver the backfilled events. Passed through verbatim, matching the sinks a rule action would carry. */
+      sinks: components["schemas"]["Operation"][];
+      /**
+       * Format: date-time
+       * @description Start of the time interval to backfill, inclusive.
+       * @example 2023-01-01T00:00:00Z
+       */
+      start: string;
+      /**
+       * @description Custom tags added to the backfill job for ease of search.
+       * @default {}
+       * @example {
+       *       "source": "manual"
+       *     }
+       */
+      tags?: {
+        [key: string]: string;
+      };
+      /**
+       * @description The team IDs that the backfill job is associated with.
+       * @default []
+       */
+      teamIds?: string[];
     };
     CreateRole: {
       /** @description Description of the role */
@@ -7081,7 +7085,7 @@ export interface components {
        * @enum {string}
        */
       dataType: CreateSpansBackfillJobDataType;
-      /** @description The dataset the backfill reads from and the dedup sinks track delivery in. */
+      /** @description The dataset the backfill reads from. */
       datasetId: string;
       /**
        * Format: date-time
@@ -7280,6 +7284,11 @@ export interface components {
        */
       filterQuery: string;
       /**
+       * @description Whether Grepr forwards the Datadog agent's sketches (distributions) and service checks to Datadog, as the agent sent them. Turn it on only when Grepr is the only destination for those payloads; an agent that also sends them to Datadog directly already delivers them. Unset means off.
+       * @default false
+       */
+      forwardSketchesAndServiceChecks?: boolean;
+      /**
        * @description When the active dashboard threshold is set, whether dashboards that were never viewed are still imported. Unset means they are.
        * @default true
        */
@@ -7392,6 +7401,66 @@ export interface components {
        */
       validateKeysOnSave?: boolean;
     };
+    DatadogMetricsAgentSource: {
+      /**
+       * Format: ISO-8601
+       * @description How long after a host's record a byte-identical copy of it, as a Datadog agent's retry sends, is dropped. 0 keeps every copy. At most an hour. Records without a host aren't checked. Changes without a restart.
+       * @default PT1H
+       * @example PT20.345S
+       */
+      duplicateWindow?: string;
+      /**
+       * @description Tag keys that identify a series where they would otherwise describe it: exact keys or globs with *. A series tag matching one stays identifying even when it also matches nonIdentifyingKeys. Host tags are descriptive unless listed here. A host tag listed here identifies the host's series, unless its key is one of the resources the agent sent for the series, such as host, which stays as the agent sent it. So a change in its value makes a new series, and a metrics reducer can group cohorts by it. For example, to group cohorts by env and cluster, set identifyingKeys to ["env", "cluster"] and the reducer's groupBy.keys to ["env", "cluster"]. A listed host tag also reaches Datadog as a resource. Defaults to ["env"]. Setting it replaces the default, so list env to keep it, or set [] to identify by no tag.
+       * @default [
+       *       "env"
+       *     ]
+       * @example [
+       *       "env",
+       *       "cluster"
+       *     ]
+       */
+      identifyingKeys?: string[];
+      /** @description The Datadog integration id. */
+      integrationId: string;
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Tag keys that don't identify a series: exact keys or globs with *. Matching series tags stay on the metric, but a change in their values doesn't make a new series, unless they also match identifyingKeys. So env, identifying by default, stays identifying unless identifyingKeys leaves it out. The host key can't be configured.
+       * @default []
+       */
+      nonIdentifyingKeys?: string[];
+      /**
+       * @description Metric renames, in order: the first that matches a metric's whole name, a plain name exactly or a regex after r/, renames it, and every later step sees only the new name. A change restarts the pipeline.
+       * @default []
+       */
+      renames?: components["schemas"]["MetricRename"][];
+      /**
+       * Format: ISO-8601
+       * @description How long to wait for late points before a window's first send.
+       * @default PT20S
+       * @example PT20.345S
+       */
+      softLateDeadline?: string;
+      /**
+       * @description Reads metrics from Grepr's Datadog collection agent into the v3 model. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: DatadogMetricsAgentSourceType;
+      /**
+       * Format: ISO-8601
+       * @description How long a new host's metrics wait for its metadata, their points dropped, before they go on without its host tags. 0 means don't wait: they go on at once, without the host's tags until its metadata comes. Changes without a restart.
+       * @default PT10M
+       * @example PT20.345S
+       */
+      unknownHostWait?: string;
+      /**
+       * Format: ISO-8601
+       * @description How often the job's watermarks advance, which paces a metrics reducer's first sends and expiries. It sets the job's watermark interval over the job-level one. At least a millisecond.
+       * @default PT1S
+       * @example PT20.345S
+       */
+      watermarkInterval?: string;
+    };
     DatadogMetricsSink: {
       /**
        * @description Additional tags to add to the logs when writing to Datadog. Gets combined with the integration's additionalTags.
@@ -7401,10 +7470,33 @@ export interface components {
        *     ]
        */
       additionalTags?: string[];
+      /**
+       * @description How the sink compresses each request to Datadog: ZSTD1, zstd at level 1, as the Datadog agent sends it, or GZIP at zlib's default level.
+       * @default ZSTD1
+       * @enum {string}
+       */
+      compression?: DatadogMetricsSinkCompression;
+      /**
+       * @description Send host metadata to Datadog: each real host's stored metadata, for the hosts this sink sends series for, and each virtual cohort host's agreed tags. A metrics reducer pipeline turns it on.
+       * @default false
+       */
+      hostMetadata?: boolean;
       /** @description The Datadog integration id. */
       integrationId: string;
+      /**
+       * Format: ISO-8601
+       * @description Skip a point older than this when it would go out, counted, since Datadog drops points over an hour old unless their metric has historical ingestion. At least a second; unset skips nothing. A metrics reducer pipeline sets it.
+       * @example PT20.345S
+       */
+      maxLateData?: string;
       /** @example operation_name */
       name: string;
+      /**
+       * @description Submit each series' points to Datadog in the order they come, never two requests carrying one series at once, so a window sent again goes out after its earlier send. A metrics reducer pipeline turns it on. The sink must read its producer directly, or through clones and unions only.
+       * @default false
+       */
+      orderedSends?: boolean;
+      sendQueue?: components["schemas"]["DatadogSendQueue"];
       /**
        * @description Writes processed metrics to Datadog. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -7468,6 +7560,66 @@ export interface components {
        */
       type: DatadogQueryPredicateType;
     };
+    /** @description How a Datadog metrics sink with ordered sends queues and sends its series. Every field has a default. */
+    DatadogSendQueue: {
+      /**
+       * Format: ISO-8601
+       * @description How long a partial request waits for more series before it goes, from a millisecond to a day.
+       * @default PT3S
+       * @example PT20.345S
+       */
+      bufferTime?: string;
+      /**
+       * Format: ISO-8601
+       * @description How long one HTTP call may take, the client's own retries included, from a millisecond to a day.
+       * @default PT10S
+       * @example PT20.345S
+       */
+      callTimeout?: string;
+      /**
+       * Format: int64
+       * @description The most uncompressed payload bytes a request carries, from 65536 to 511488, so a request stays within Datadog's 512,000-byte limit.
+       * @default 511488
+       */
+      maxBatchBytes?: number;
+      /**
+       * Format: int32
+       * @description The most series a request carries.
+       * @default 2000
+       */
+      maxBatchSeries?: number;
+      /**
+       * Format: int64
+       * @description The most bytes a sink subtask queues; past it, the sink holds back its input until requests drain the queue. At least maxBatchBytes. The keyed sink also keeps idle distribution series in up to as many bytes again, outside this bound.
+       * @default 4194304
+       */
+      maxBufferedBytes?: number;
+      /**
+       * Format: int32
+       * @description Attempts past the first before a point is dropped and logged, below 32767; -1 retries until Datadog takes it.
+       * @default 3
+       */
+      maxRetries?: number;
+      /**
+       * Format: int32
+       * @description The most bytes one series may take; a larger one fails the job.
+       * @default 1000000
+       */
+      maxSeriesBytes?: number;
+      /**
+       * Format: int32
+       * @description Requests in flight per sink subtask, never two carrying the same series.
+       * @default 5
+       */
+      requestsInFlight?: number;
+      /**
+       * Format: ISO-8601
+       * @description How long a retryable failure's points wait before they queue again, up to a day.
+       * @default PT0.1S
+       * @example PT20.345S
+       */
+      retryDelay?: string;
+    };
     /** @description Forwards Datadog stats payloads to the Datadog platform for accurate RED metrics. Stats are pre-computed by the Datadog agent and bypass all processing. */
     DatadogStatsSink: {
       /**
@@ -7490,6 +7642,21 @@ export interface components {
        * @enum {string}
        */
       type: DatadogStatsSinkType;
+    };
+    /** @description Settings for a Datadog agents' metrics source. */
+    DatadogTemplateSourceSettings: {
+      /**
+       * Format: ISO-8601
+       * @description How long after a host's record a byte-identical copy of it, as a Datadog agent's retry sends, is dropped. 0 keeps every copy. At most an hour. Records without a host aren't checked. Changes without a restart. Absent, an hour.
+       * @example PT20.345S
+       */
+      duplicateWindow?: string;
+      /**
+       * Format: ISO-8601
+       * @description How long a new host's metrics wait for its metadata, their points dropped, before they go on without its host tags. 0 means don't wait: they go on at once, without the host's tags until its metadata comes. At least 0. Changes without a restart. Absent, 10 minutes.
+       * @example PT20.345S
+       */
+      unknownHostWait?: string;
     };
     DatadogTraceAgentSource: {
       /**
@@ -7598,6 +7765,11 @@ export interface components {
        */
       teamIds?: string[];
     };
+    /**
+     * @description One of the Iceberg tables a dataset owns.
+     * @enum {string}
+     */
+    DatasetTable: DatasetTable;
     DatasetUpdate: {
       name: string;
       /**
@@ -7653,10 +7825,10 @@ export interface components {
     /** @description Drops matching series outright. */
     DropRule: {
       /**
-       * @description Level-prefixed attribute key → glob pattern. All entries must match.
+       * @description Tag key → value pattern, a glob or an RE2 regex after r/ that matches the whole value, each key read from a series' merged attributes. All entries must match.
        * @default {}
        * @example {
-       *       "resource.test": "true"
+       *       "test": "true"
        *     }
        */
       attributeFilters?: {
@@ -7956,10 +8128,10 @@ export interface components {
     /** @description Combined metric-name + attribute-value filter. */
     FilterPrimitive: {
       /**
-       * @description Level-prefixed attribute key → glob pattern. All entries must match.
+       * @description Tag key → value pattern, a glob or an RE2 regex after r/ that matches the whole value, each key read from a series' merged attributes. All entries must match.
        * @default {}
        * @example {
-       *       "resource.env": "prod"
+       *       "env": "prod"
        *     }
        */
       attributeFilters?: {
@@ -8450,6 +8622,41 @@ export interface components {
       /** @default [] */
       ruleErrors?: components["schemas"]["GrokRuleError"][];
     };
+    /** @description How objects are grouped into cohorts for aggregation across objects. */
+    GroupByConfig: {
+      /**
+       * @description Tag keys that group objects into cohorts, such as env. Each reads a series' merged attributes: its own tags, then its scope's, then its resource's, a tag the source identifies by winning over one it only describes by. A key the source sends only as descriptive is absent: to group by a tag the source describes by default, declare it identifying at the source too. A series missing a key forms a cohort of its other keys' values. A rule that aggregates across objects writes each key back where the series had it, on its resource, its scope or itself, each object key with the cohort's id, the first series of a window deciding where its series differ, and carries the id as grepr.cohort, a series tag. The id is cohort_ followed by the cohort's pairs as key-value, sorted and joined by _, as in cohort_env-prod_service-api. A bare tag is its key alone; the id is the bare cohort when every key is absent, and cohort-default for a reducer without cohort keys.
+       * @default []
+       * @example [
+       *       "env",
+       *       "cluster"
+       *     ]
+       */
+      keys?: string[];
+    };
+    /** @description Rolls the metrics it takes up across a cohort's objects: one output per cohort and window. */
+    GroupByRule: Omit<
+      WithRequired<components["schemas"]["ProcessingRule"], "name">,
+      "type"
+    > & {
+      /**
+       * @description Aggregations to emit. Null = [{ fn: DEFAULT }].
+       * @default []
+       */
+      aggregations?: components["schemas"]["AggregationDecl"][];
+      /**
+       * Format: ISO-8601
+       * @description This entry's time-aggregation window, in place of timeGranularity.duration: positive, dividing an hour, and at most 30 minutes. Null = timeGranularity.duration.
+       * @example PT20.345S
+       */
+      window?: string;
+    } & {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: GroupByRuleType;
+    };
     /** @description Predicate that determines whether a span matches a head sampling rule. */
     HeadSamplingFilter: {
       type: string;
@@ -8482,24 +8689,6 @@ export interface components {
        * @example en-US
        */
       value: string;
-    };
-    /** @description Keep a vendor's host inventory in sync with the metric reduction. */
-    HostMetadataReporting: {
-      /**
-       * @description Collapse each cohort's real hosts into a single virtual cohort host.
-       * @default false
-       */
-      aggregateCohortHosts?: boolean;
-      /**
-       * @description Datadog integration IDs that receive the reported host metadata.
-       * @default []
-       */
-      integrationIds: string[];
-      /**
-       * @description While an object is anomalous, re-report its real host to Datadog.
-       * @default false
-       */
-      rehydrateAnomalousHosts?: boolean;
     };
     HumanMemoryEdit: {
       entityTags: {
@@ -10968,7 +11157,7 @@ export interface components {
       aggregations?: components["schemas"]["AggregationDecl"][];
       filters?: components["schemas"]["FilterPrimitive"];
       /**
-       * @description Group-by tokens: 'object', 'cohort', 'series', or a level-prefixed attribute path. Empty list = global aggregation.
+       * @description Group-by tokens: 'object', 'cohort', 'series', or a tag key, read from a series' merged attributes. Those three names are the tokens, never tags, and a key can't share a name with one of the aggregation's columns (its as, or val). Empty list = global aggregation.
        * @default []
        * @example [
        *       "object",
@@ -10998,20 +11187,10 @@ export interface components {
        */
       type: MetricDataType;
     };
-    MetricDataRawIcebergTableSink: {
-      /** @description The id of the dataset to write to */
-      datasetId: string;
-      /** @example operation_name */
-      name: string;
-      /**
-       * @description Writes MetricData (one row per datapoint, attributes auto-flattened to columns) to an Iceberg table. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: MetricDataRawIcebergTableSinkType;
-    };
+    /** @description Metric names and a tag filter selecting the series. */
     MetricEventPredicate: {
       /**
-       * @description The set of tags to query for. If unspecified, all tags are queried.
+       * @description Legacy: the set of tags to query for, read only by the pre-v3 Metrics page's query. Analytics queries and metrics backfills refuse it; they filter tags with query.
        * @default {}
        * @example {
        *       "env": [
@@ -11034,28 +11213,33 @@ export interface components {
        *     ]
        */
       metricNames: string[];
-      query: string;
+      /**
+       * @description Datadog search syntax over the named metrics' tags. Blank keeps every series.
+       * @default
+       * @example env:prod -role:canary
+       */
+      query?: string;
       /**
        * @description A predicate that checks if an event matches a metrics query. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: MetricEventPredicateType;
     };
-    /** @description Glob-pattern filter on metric names. */
+    /** @description Filter on metric names: globs, or RE2 regexes after r/ that match the whole name. */
     MetricNameFilter: {
       empty?: boolean;
       /**
-       * @description Glob patterns to exclude. Precedence over includes.
+       * @description Patterns to exclude, globs or r/ regexes. Precedence over includes.
        * @default []
        */
       excludes?: string[];
       /**
-       * @description Glob patterns to include. Empty list matches all.
+       * @description Patterns to include, globs or r/ regexes. Empty list matches all.
        * @default []
        */
       includes?: string[];
     };
-    /** @description Reduces metric volume by aggregating per-object time series into per-cohort summaries while preserving the original signal when anomaly rules fire. Series that don't belong to a monitored object flow through unchanged; series matching a drop rule are discarded. */
+    /** @description Reduces metric volume by aggregating per-object time series into per-cohort summaries while preserving the original signal when anomaly rules fire. Series that don't belong to a monitored object flow through unchanged; series matching a drop rule never go out. Anomaly rules read every series they match, dropped ones included. */
     MetricReducer: {
       /**
        * @description Anomaly rules.
@@ -11063,23 +11247,54 @@ export interface components {
        */
       anomalies?: components["schemas"]["AnomalyConfig"][];
       anomalyActions?: components["schemas"]["AnomalyActions"];
-      cohorts?: components["schemas"]["CohortsConfig"];
       /**
-       * @description Drop rules — matching series are discarded outright.
+       * @description Drop rules: matching series never go out, even while anomalous. Anomaly rules still read them.
        * @default []
        */
       dropRules?: components["schemas"]["DropRule"][];
       /**
        * Format: ISO-8601
-       * @description How often the reducer flushes cohort-level output.
+       * @description Sets how long the reducer keeps an idle key's cohort state: four times this, or the time granularity plus this when that's longer. It doesn't change when rules emit.
        * @default PT20S
        * @example PT20.345S
        */
-      emitInterval: string;
-      hostMetadata?: components["schemas"]["HostMetadataReporting"];
+      emitInterval?: string;
+      groupBy?: components["schemas"]["GroupByConfig"];
+      /**
+       * Format: ISO-8601
+       * @description Minimum time to keep aggregation state in memory for fast updates due to late data.
+       * @default PT30S
+       * @example PT20.345S
+       */
+      lateDataMinWait?: string;
+      /**
+       * Format: int32
+       * @description Number of aggregation windows to keep in memory in case of late data.
+       * @default 4
+       * @example 4
+       */
+      lateDataNumWindows?: number;
       /** @example operation_name */
       name: string;
       objects: components["schemas"]["ObjectsConfig"];
+      /**
+       * Format: ISO-8601
+       * @description How far back a window that a very late point lands in is marked in the data lake for a recompute, by processing time: the longest of the pipeline's sinks' horizons, at most a day. Unset, nothing is marked and such points stay in the lake only.
+       * @example PT20.345S
+       */
+      recomputeHorizon?: string;
+      /**
+       * @description Ordered processing rules (first-match-wins).
+       * @default []
+       */
+      rules?: components["schemas"]["ProcessingRule"][];
+      /**
+       * Format: ISO-8601
+       * @description How long to wait for late points before a window's first send.
+       * @default PT2S
+       * @example PT20.345S
+       */
+      softLateDeadline?: string;
       /**
        * @description Per-metric-name overrides for space (cross-object) aggregation.
        * @default {}
@@ -11088,14 +11303,75 @@ export interface components {
        *     }
        */
       spaceAggOverrides?: {
-        [key: string]: components["schemas"]["AggType"];
+        [key: string]: components["schemas"]["MetricsOverrideFunction"];
       };
-      timeGranularity: components["schemas"]["TimeGranularity"];
+      timeGranularity?: components["schemas"]["TimeGranularity"];
       /**
        * @description Metric reducer. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: MetricReducerType;
+    };
+    /** @description A metric rename: a metric name, or a regex after r/, and the new name. */
+    MetricRename: {
+      /**
+       * @description A metric name, matched exactly, or an RE2 regex after r/ matched against the whole name.
+       * @example r/app\.(web|api)\.count
+       */
+      pattern: string;
+      /**
+       * @description The new name. $1 or ${name} insert a regex's groups, $0 the whole name, and \$ is a literal $.
+       * @example app.$1.total
+       */
+      replacement: string;
+    };
+    MetricsBackfillSource: {
+      /** @description The ID of the dataset whose metrics are backfilled. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of the window, inclusive, a whole millisecond.
+       * @example 2023-01-01T01:00:00Z
+       */
+      end: string;
+      /** @example operation_name */
+      name: string;
+      query: components["schemas"]["MetricEventPredicate"];
+      /**
+       * Format: date-time
+       * @description Start of the window, inclusive, a whole millisecond.
+       * @example 2023-01-01T00:00:00Z
+       */
+      start: string;
+      /**
+       * @description Backfills a dataset's metrics for a window and a metrics query, as the live path sends them. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: MetricsBackfillSourceType;
+    };
+    /**
+     * Inputs Schema
+     * @description Schema for the metrics backfill job graph.
+     */
+    MetricsBackfillTemplateInput: {
+      /** @description Dataset whose metrics are backfilled. */
+      datasetId: string;
+      /**
+       * Format: date-time
+       * @description End of the window, inclusive, a whole millisecond.
+       */
+      end: string;
+      query: components["schemas"]["MetricEventPredicate"];
+      /**
+       * @description The v3 metrics sinks the backfilled series go to.
+       * @default []
+       */
+      sinks: components["schemas"]["Operation"][];
+      /**
+       * Format: date-time
+       * @description Start of the window, inclusive, a whole millisecond.
+       */
+      start: string;
     };
     MetricsIcebergTableSink: {
       /** @description The id of the dataset to write to */
@@ -11162,6 +11438,92 @@ export interface components {
         [key: string]: components["schemas"]["Any"];
       };
     };
+    MetricsLakeSink: {
+      /** @description The id of the dataset whose metrics lake tables it writes. */
+      datasetId: string;
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Also write the recompute markers of very late windows, from a markers input. A metrics reducer pipeline with recompute on turns it on.
+       * @default false
+       */
+      recomputeMarkers?: boolean;
+      /**
+       * @description Writes every raw point of a v3 metrics source into its dataset's metrics lake. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: MetricsLakeSinkType;
+    };
+    /**
+     * @description A function a per-metric setting takes in place of the metric type's default aggregation. There's no percentile: a rule that rolls up over time takes one in its aggregations, with its rank, for the metrics it matches.
+     * @example {"system.cpu.utilization":"AVG"}
+     * @enum {string}
+     */
+    MetricsOverrideFunction: MetricsOverrideFunction;
+    /**
+     * Inputs Schema
+     * @description Schema for the metrics reducer job graph.
+     */
+    MetricsReducerTemplateInput: {
+      /** @description The reducer's anomaly rules, as given. */
+      anomalies?: components["schemas"]["AnomalyConfig"][];
+      anomalyActions?: components["schemas"]["AnomalyActions"];
+      /** @description The dataset whose metrics lake keeps every raw point at full granularity, besides the sinks. Absent, the pipeline keeps no lake. */
+      datasetId?: string;
+      /** @description The reducer's drop rules, as given. */
+      dropRules?: components["schemas"]["DropRule"][];
+      /**
+       * Format: ISO-8601
+       * @description The time-aggregation window of every rule. Absent, the reducer's default applies.
+       * @example PT20.345S
+       */
+      granularity?: string;
+      graphOverrides?: components["schemas"]["MetricsTemplateGraphOverrides"];
+      /**
+       * @description The tag keys the reducer's rules group by, such as env or service, each matched as written: a series' own tag over its host's, and resource.type is a tag of that name. The source makes each key identifying, so the two can't disagree. Exact keys, no globs or colons. Absent means ["env"]; empty means none. An object key (objectKeys) can't be one: the reducer refuses it. Another key with one value per object, such as an IP or a node name, makes every group one object. The reducer's groupBy.keys, as its refusals name it.
+       * @example [
+       *       "env",
+       *       "service"
+       *     ]
+       */
+      groupByKeys?: string[];
+      lateMetrics?: components["schemas"]["MetricsTemplateLateMetrics"];
+      /**
+       * @description The tag keys that identify one object, such as host or container_id, each matched as written, a series' own tag over its host's. Objects live within the Group By groups: a rule that aggregates across objects combines a group's objects. The source makes each key identifying. Exact keys, no globs or colons, and none of the groupByKeys. A series missing one of them isn't an object: a time rollup still rolls it up as itself, and a rule that aggregates across objects takes only series carrying all of them. Absent means ["host"]. The reducer's objects.identifyingAttributes, as its refusals name it.
+       * @example [
+       *       "container_id"
+       *     ]
+       */
+      objectKeys?: string[];
+      /** @description The reducer's rules, as it takes them, in order: a series takes the first rule its selectors match, and a series no rule matches passes through unreduced. A time-rollup rule keeps each series' own identity. Each rule selects something (a metric name pattern, * for every metric, an exclusion or a tag), and a rollup's functions are a rule's (MetricsRuleFunction). Absent, the reducer only drops and passes series through. The refusals name them rules[0], [1] and so on, in this order, or rules[<name>]. */
+      rules?: components["schemas"]["ProcessingRule"][];
+      /** @description Where the reducer's outputs go: at least one sink. */
+      sinks: components["schemas"]["MetricsTemplateSink"][];
+      source: components["schemas"]["MetricsTemplateSource"];
+      /**
+       * @description Per-metric-name aggregations across objects: one of MetricsOverrideFunction in place of the metric type's default for combining a group's objects. A rule that aggregates across objects uses it where its aggregation is DEFAULT, and a function it names takes precedence. Exact metric names. Absent, every metric keeps its default. The reducer's spaceAggOverrides, as its refusals name it.
+       * @example {
+       *       "system.mem.used": "SUM"
+       *     }
+       */
+      spaceAggOverrides?: {
+        [key: string]: components["schemas"]["MetricsOverrideFunction"];
+      };
+      /**
+       * @description Per-metric-name aggregations over time: one of MetricsOverrideFunction in place of the metric type's default aggregation within a window. A time-only rule uses it where its aggregation is DEFAULT, and a function it names takes precedence. An rule that aggregates across objects always aggregates each object over time with it first. Exact metric names. Absent, every metric keeps its default. The reducer's timeGranularity.aggFnOverrides, as its refusals name it.
+       * @example {
+       *       "system.cpu.utilization": "LATEST"
+       *     }
+       */
+      timeAggOverrides?: {
+        [key: string]: components["schemas"]["MetricsOverrideFunction"];
+      };
+    };
+    /**
+     * @description A function an aggregation takes. DEFAULT is each metric's own function: its per-metric setting, else its type's default. PERCENTILE takes a rank, then optionally a relative accuracy and a maximum bin count.
+     * @enum {string}
+     */
+    MetricsRuleFunction: MetricsRuleFunction;
     MetricsSynchronousSink: {
       /** @example operation_name */
       name: string;
@@ -11170,6 +11532,93 @@ export interface components {
        * @enum {string}
        */
       type: MetricsSynchronousSinkType;
+    };
+    /** @description Edges to remove, then edges to add, each as from[:port] -> to[:port]. */
+    MetricsTemplateGraphEdgeOverrides: {
+      /**
+       * @description Edges to add, after the removals.
+       * @example [
+       *       "metric_reducer_0ddagents0001 -> stub_sink"
+       *     ]
+       */
+      add?: string[];
+      /**
+       * @description Edges to remove, each one the graph has; ports default to output and input, and spacing doesn't matter.
+       * @example [
+       *       "metric_reducer_0ddagents0001 -> metrics_sink_0ddagents0001"
+       *     ]
+       */
+      remove?: string[];
+    };
+    /** @description A patch on the job graph the template builds, applied after it's built. Vertex removals run first, then vertex patches and additions, then edge removals, then edge additions. No value anywhere in it may be null: a stored job drops nulls. */
+    MetricsTemplateGraphOverrides: {
+      edges?: components["schemas"]["MetricsTemplateGraphEdgeOverrides"];
+      /** @description Operations to remove by name, with every edge to or from them. */
+      removeVertices?: string[];
+      /**
+       * @description Operations by name: the template's own names, without the template operation's prefix. A name the graph has takes the object as a JSON merge patch: an object merges into the operation's at each level, and any other value replaces the field. A patch may not set name. A name the graph doesn't have adds the object, which needs a type, as a new operation of that name.
+       * @example {
+       *       "metrics_sink_0ddagents0001": {
+       *         "hostMetadata": false
+       *       }
+       *     }
+       */
+      vertices?: {
+        [key: string]: Record<string, never>;
+      };
+    };
+    /** @description How the pipeline treats late points. */
+    MetricsTemplateLateMetrics: {
+      /**
+       * @description Recompute a window that a point arriving past the reducer's hold lands in, from the pipeline's dataset, and send it again: the reducer marks such windows in the data lake. Off, or without a dataset, such points stay in the lake only. Absent, on.
+       * @example true
+       */
+      recompute?: boolean;
+      /**
+       * Format: ISO-8601
+       * @description How long after a window ends the reducer first sends it, and how often it re-sends a window a late point changed: the source's wait for late points and the reducer's softLateDeadline, both. It must be positive and under the reducer's lateDataMinWait, which the template sets to 30 s. Absent, 2 s.
+       * @example PT20.345S
+       */
+      softLateDeadline?: string;
+    };
+    /** @description A destination for the reducer's outputs: an integration. */
+    MetricsTemplateSink: {
+      /** @description The integration the outputs are sent to. */
+      integrationId: string;
+      /**
+       * @description The integration's type, such as datadog, which picks the sink operation. A type with no metrics sink yet is refused.
+       * @example datadog
+       */
+      integrationType: string;
+      /**
+       * Format: ISO-8601
+       * @description How late a point the sink still sends, by when the point goes out; an older one is skipped. Each sink type has its default and least: a Datadog sink's is 55 minutes, since Datadog drops points over an hour old; set it longer when the metrics have Datadog's historical ingestion. The reducer recomputes a very late window within the longest sink's, less 5 minutes, up to a day.
+       * @example PT20.345S
+       */
+      maxLateData?: string;
+    };
+    /** @description The pipeline's metrics source: an integration and the source's settings. */
+    MetricsTemplateSource: {
+      datadog?: components["schemas"]["DatadogTemplateSourceSettings"];
+      /**
+       * @description Attribute keys that identify a series where they'd otherwise describe it: exact keys or globs with *, without a level. The template adds each group-by key's attribute. Absent, the source's own default applies, such as env for datadog; a list replaces it, and [] means only the group-by keys.
+       * @example [
+       *       "env",
+       *       "kube_cluster_name"
+       *     ]
+       */
+      identifyingKeys?: string[];
+      /** @description The integration the metrics arrive through. */
+      integrationId: string;
+      /**
+       * @description The integration's type, such as datadog, which picks the source operation. A type with no metrics source yet is refused.
+       * @example datadog
+       */
+      integrationType: string;
+      /** @description Attribute keys that describe a series without identifying it: exact keys or globs with *, without a level. An identifying key, a group-by key's included, stays identifying even when it matches one. */
+      nonIdentifyingKeys?: string[];
+      /** @description Metric renames, in order: the first that matches a metric's whole name, a plain name exactly or an RE2 regex after r/, renames it to its new name, where $1 or ${name} insert the regex's groups. Every later step sees only the new name. Absent or empty renames none. A change restarts the pipeline. */
+      renames?: components["schemas"]["MetricRename"][];
     };
     MinAttributesMergeStrategy: {
       /**
@@ -11344,7 +11793,7 @@ export interface components {
        */
       type: NrqlQueryPredicateType;
     };
-    /** @description When an object is anomalous, de-aggregate its raw datapoints alongside the per-cohort aggregate output, under a suffixed metric name. */
+    /** @description When an object is anomalous, send its raw datapoints, by default under their own names and in place of its share of the aggregates. */
     ObjectMetricsPassthrough: {
       /**
        * @description Whether anomalous objects are de-aggregated (passed through).
@@ -11352,30 +11801,26 @@ export interface components {
        */
       enabled?: boolean;
       /**
-       * @description Suffix appended to passthrough emits' metric names (e.g. 'cpu.usage' becomes 'cpu.usage.detail'). May be empty to keep the original metric name. Must not collide with any aggregation 'as' suffix on the same cohort calc.
-       * @default .detail
-       * @example .detail
+       * @description Whether an anomalous object's raw datapoints replace its share of the rollups and aggregates (true), or go out as a copy beside them (false). Cumulative series stay in their aggregates.
+       * @default true
+       */
+      excludeFromAggregates?: boolean;
+      /**
+       * @description Suffix appended to passthrough emits' metric names (e.g. '.detail' makes 'cpu.usage' 'cpu.usage.detail'). Empty by default, keeping the original metric name.
+       * @default
        */
       metricSuffix: string;
     };
     /** @description Object-identity configuration. */
     ObjectsConfig: {
       /**
-       * @description Level-prefixed attribute keys that identify an object. Each key must have a 'resource.', 'scope.', or 'series.' prefix.
+       * @description Tag keys that identify an object, such as host. Each reads a series' merged attributes: its own tags, then its scope's, then its resource's, a tag the source identifies by winning over one it only describes by. A rule that aggregates across objects writes each where the series had it with the cohort's id, such as cohort_service-api (see groupBy.keys).
        * @default []
        * @example [
-       *       "resource.host.id"
+       *       "host"
        *     ]
        */
       identifyingAttributes: string[];
-      /**
-       * @description Level-prefixed attribute keys that describe an object but may change.
-       * @default []
-       * @example [
-       *       "resource.os.version"
-       *     ]
-       */
-      metadataAttributes?: string[];
       metricsFilter?: components["schemas"]["FilterPrimitive"];
     };
     /** @description The payload containing integration data. */
@@ -11457,7 +11902,6 @@ export interface components {
       | components["schemas"]["TracesIcebergTableSource"]
       | components["schemas"]["SpansBackfillIcebergTableSource"]
       | components["schemas"]["MetricsIcebergTableSink"]
-      | components["schemas"]["MetricDataRawIcebergTableSink"]
       | components["schemas"]["DatadogLogCloudSource"]
       | components["schemas"]["DatadogLogAgentSource"]
       | components["schemas"]["DatadogTraceAgentSource"]
@@ -11473,6 +11917,7 @@ export interface components {
       | components["schemas"]["OtlpTraceSink"]
       | components["schemas"]["IcebergLogsReplaySource"]
       | components["schemas"]["LogsBackfillFlinkSource"]
+      | components["schemas"]["MetricsBackfillSource"]
       | components["schemas"]["LogsRuleEngine"]
       | components["schemas"]["ReducerLogsQuerySource"]
       | components["schemas"]["LogsSynchronousSink"]
@@ -11506,6 +11951,8 @@ export interface components {
       | components["schemas"]["SqlOperation"]
       | components["schemas"]["TraceReducer"]
       | components["schemas"]["MetricReducer"]
+      | components["schemas"]["DatadogMetricsAgentSource"]
+      | components["schemas"]["MetricsLakeSink"]
       | components["schemas"]["DatadogStatsSink"]
       | components["schemas"]["LogsValuesSource"]
       | components["schemas"]["LogRulesApplication"]
@@ -11793,7 +12240,7 @@ export interface components {
        * @description Number of buckets to hash this column into.
        */
       buckets: number;
-      /** @description Built-in column (service/host) or a promoted tag key to partition by. */
+      /** @description Built-in column (service/host) or a promoted tag key to partition by; metric_hash for metrics_points, metric_name for metrics_series. */
       column: string;
     };
     /** @description An Iceberg partition transform applied to a column: a time transform (hour/day/month/year) or a hash bucket transform with a fixed bucket count. Discriminated by the 'type' property (time/bucket). */
@@ -11807,6 +12254,17 @@ export interface components {
        * @enum {string}
        */
       kind: PassthroughNodeKind;
+    };
+    /** @description Sends the metrics it takes raw, once: no rollup. Anomaly rules still read them. */
+    PassthroughRule: Omit<
+      WithRequired<components["schemas"]["ProcessingRule"], "name">,
+      "type"
+    > & {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: PassthroughRuleType;
     };
     PatternLookupIcebergTableSink: {
       /** @description The id of the dataset to write to */
@@ -12179,6 +12637,16 @@ export interface components {
        * @example datadoghq.com
        */
       site?: string;
+    };
+    /** @description One processing rule: the metrics it takes and what it does with them. */
+    ProcessingRule: {
+      /**
+       * @description The rule's identity, unique among the rules: the reducer keys an across-objects rule's state, and every rule's matched flag, by it, so an across-objects rule keeps its open windows when rules are added, removed or reordered, and renaming it is removing it and adding another. A time rollup's windows are kept by its window and functions instead. Letters, digits, _ and -, at most 64.
+       * @example o-k3x9f2qa
+       */
+      name: string;
+      selectors?: components["schemas"]["FilterPrimitive"];
+      type: string;
     };
     /** @description Attribute paths the table indexes, with the policy applied to each. */
     PromotedAttribute: {
@@ -14313,11 +14781,7 @@ export interface components {
       /** @description The name the SQL reads the table by. Unique within the query, ignoring case. */
       alias: string;
       filter: components["schemas"]["EventPredicate"];
-      /**
-       * @description The dataset's table the alias reads: `logs_raw` for logs, `spans_raw` for traces.
-       * @enum {string}
-       */
-      table: AnalyticsTableBindingTable;
+      table: components["schemas"]["DatasetTable"];
     };
     /** @description Base class for SQL statements */
     SqlExecutable: {
@@ -14604,6 +15068,11 @@ export interface components {
        */
       orderBy?: components["schemas"]["AnalyticsOrderBy"][];
       predicate: components["schemas"]["EventPredicate"];
+      /**
+       * @description What a row of a metrics_series query is: SERIES, the default, a row per series version; TAG, a row per tag of each version, which adds the tag_key, tag_value, tag_level and tag_identifying columns. Only a metrics_series query takes TAG.
+       * @enum {string}
+       */
+      rows?: AnalyticsFieldRows;
       /** @description Expressions returned by the query. */
       select: components["schemas"]["AnalyticsProjection"][];
       /**
@@ -15400,7 +15869,7 @@ export interface components {
        *     }
        */
       aggFnOverrides?: {
-        [key: string]: components["schemas"]["AggType"];
+        [key: string]: components["schemas"]["MetricsOverrideFunction"];
       };
       /**
        * Format: ISO-8601
@@ -15408,7 +15877,7 @@ export interface components {
        * @default PT20S
        * @example PT20.345S
        */
-      duration: string;
+      duration?: string;
     };
     TimePartitionTransform: Omit<
       components["schemas"]["PartitionTransform"],
@@ -15425,6 +15894,29 @@ export interface components {
        * @enum {string}
        */
       type: TimePartitionTransformType;
+    };
+    /** @description Rolls each metric it takes up over time on its own, keeping its identity: no cohort collapse. */
+    TimeRollupRule: Omit<
+      WithRequired<components["schemas"]["ProcessingRule"], "name">,
+      "type"
+    > & {
+      /**
+       * @description Aggregations to emit. Null = [{ fn: DEFAULT }].
+       * @default []
+       */
+      aggregations?: components["schemas"]["AggregationDecl"][];
+      /**
+       * Format: ISO-8601
+       * @description This entry's time-aggregation window, in place of timeGranularity.duration: positive, dividing an hour, and at most 30 minutes. Null = timeGranularity.duration.
+       * @example PT20.345S
+       */
+      window?: string;
+    } & {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: TimeRollupRuleType;
     };
     /** @description Time-series rule that detects spikes by comparing short-term to long-term EWMA. */
     TimeSeriesRuleConfig: Omit<
@@ -17164,8 +17656,6 @@ export type SchemaCloudFormationSetupInfo =
   components["schemas"]["CloudFormationSetupInfo"];
 export type SchemaCloudTrailLogsFileSource =
   components["schemas"]["CloudTrailLogsFileSource"];
-export type SchemaCohortOutputDecl = components["schemas"]["CohortOutputDecl"];
-export type SchemaCohortsConfig = components["schemas"]["CohortsConfig"];
 export type SchemaCompleteSpan = components["schemas"]["CompleteSpan"];
 export type SchemaCompositeAttributesMergeStrategy =
   components["schemas"]["CompositeAttributesMergeStrategy"];
@@ -17191,6 +17681,8 @@ export type SchemaCreateIssueRequest =
 export type SchemaCreateJob = components["schemas"]["CreateJob"];
 export type SchemaCreateLogsBackfillJob =
   components["schemas"]["CreateLogsBackfillJob"];
+export type SchemaCreateMetricsBackfillJob =
+  components["schemas"]["CreateMetricsBackfillJob"];
 export type SchemaCreateRole = components["schemas"]["CreateRole"];
 export type SchemaCreateServiceAccount =
   components["schemas"]["CreateServiceAccount"];
@@ -17215,13 +17707,18 @@ export type SchemaDatadogLogCloudSource =
   components["schemas"]["DatadogLogCloudSource"];
 export type SchemaDatadogLogSink = components["schemas"]["DatadogLogSink"];
 export type SchemaDatadogMcp = components["schemas"]["DatadogMcp"];
+export type SchemaDatadogMetricsAgentSource =
+  components["schemas"]["DatadogMetricsAgentSource"];
 export type SchemaDatadogMetricsSink =
   components["schemas"]["DatadogMetricsSink"];
 export type SchemaDatadogQueryPredicate =
   components["schemas"]["DatadogQueryPredicate"];
 export type SchemaDatadogQueryRuleConfig =
   components["schemas"]["DatadogQueryRuleConfig"];
+export type SchemaDatadogSendQueue = components["schemas"]["DatadogSendQueue"];
 export type SchemaDatadogStatsSink = components["schemas"]["DatadogStatsSink"];
+export type SchemaDatadogTemplateSourceSettings =
+  components["schemas"]["DatadogTemplateSourceSettings"];
 export type SchemaDatadogTraceAgentSource =
   components["schemas"]["DatadogTraceAgentSource"];
 export type SchemaDatadogTraceSink = components["schemas"]["DatadogTraceSink"];
@@ -17301,11 +17798,11 @@ export type SchemaGrokParseResponse =
 export type SchemaGrokParser = components["schemas"]["GrokParser"];
 export type SchemaGrokRuleError = components["schemas"]["GrokRuleError"];
 export type SchemaGrokRuleErrors = components["schemas"]["GrokRuleErrors"];
+export type SchemaGroupByConfig = components["schemas"]["GroupByConfig"];
+export type SchemaGroupByRule = components["schemas"]["GroupByRule"];
 export type SchemaHeadSamplingFilter =
   components["schemas"]["HeadSamplingFilter"];
 export type SchemaHeader = components["schemas"]["Header"];
-export type SchemaHostMetadataReporting =
-  components["schemas"]["HostMetadataReporting"];
 export type SchemaHumanMemoryEdit = components["schemas"]["HumanMemoryEdit"];
 export type SchemaIcebergLogsReplaySource =
   components["schemas"]["IcebergLogsReplaySource"];
@@ -17519,18 +18016,34 @@ export type SchemaMetricAggSpec = components["schemas"]["MetricAggSpec"];
 export type SchemaMetricAggregation =
   components["schemas"]["MetricAggregation"];
 export type SchemaMetricData = components["schemas"]["MetricData"];
-export type SchemaMetricDataRawIcebergTableSink =
-  components["schemas"]["MetricDataRawIcebergTableSink"];
 export type SchemaMetricEventPredicate =
   components["schemas"]["MetricEventPredicate"];
 export type SchemaMetricNameFilter = components["schemas"]["MetricNameFilter"];
 export type SchemaMetricReducer = components["schemas"]["MetricReducer"];
+export type SchemaMetricRename = components["schemas"]["MetricRename"];
+export type SchemaMetricsBackfillSource =
+  components["schemas"]["MetricsBackfillSource"];
+export type SchemaMetricsBackfillTemplateInput =
+  components["schemas"]["MetricsBackfillTemplateInput"];
 export type SchemaMetricsIcebergTableSink =
   components["schemas"]["MetricsIcebergTableSink"];
 export type SchemaMetricsIcebergTableSource =
   components["schemas"]["MetricsIcebergTableSource"];
+export type SchemaMetricsLakeSink = components["schemas"]["MetricsLakeSink"];
+export type SchemaMetricsReducerTemplateInput =
+  components["schemas"]["MetricsReducerTemplateInput"];
 export type SchemaMetricsSynchronousSink =
   components["schemas"]["MetricsSynchronousSink"];
+export type SchemaMetricsTemplateGraphEdgeOverrides =
+  components["schemas"]["MetricsTemplateGraphEdgeOverrides"];
+export type SchemaMetricsTemplateGraphOverrides =
+  components["schemas"]["MetricsTemplateGraphOverrides"];
+export type SchemaMetricsTemplateLateMetrics =
+  components["schemas"]["MetricsTemplateLateMetrics"];
+export type SchemaMetricsTemplateSink =
+  components["schemas"]["MetricsTemplateSink"];
+export type SchemaMetricsTemplateSource =
+  components["schemas"]["MetricsTemplateSource"];
 export type SchemaMinAttributesMergeStrategy =
   components["schemas"]["MinAttributesMergeStrategy"];
 export type SchemaModelConfiguration =
@@ -17577,6 +18090,7 @@ export type SchemaPartitionFieldConfig =
 export type SchemaPartitionTransform =
   components["schemas"]["PartitionTransform"];
 export type SchemaPassthroughNode = components["schemas"]["PassthroughNode"];
+export type SchemaPassthroughRule = components["schemas"]["PassthroughRule"];
 export type SchemaPatternLookupIcebergTableSink =
   components["schemas"]["PatternLookupIcebergTableSink"];
 export type SchemaPatternMatcher = components["schemas"]["PatternMatcher"];
@@ -17606,6 +18120,7 @@ export type SchemaPresignedUploadUrlResponse =
   components["schemas"]["PresignedUploadUrlResponse"];
 export type SchemaPreviewAppKeyScopesRequest =
   components["schemas"]["PreviewAppKeyScopesRequest"];
+export type SchemaProcessingRule = components["schemas"]["ProcessingRule"];
 export type SchemaPromotedAttribute =
   components["schemas"]["PromotedAttribute"];
 export type SchemaPromotedTag = components["schemas"]["PromotedTag"];
@@ -17830,6 +18345,7 @@ export type SchemaTemplateTraceSink =
 export type SchemaTimeGranularity = components["schemas"]["TimeGranularity"];
 export type SchemaTimePartitionTransform =
   components["schemas"]["TimePartitionTransform"];
+export type SchemaTimeRollupRule = components["schemas"]["TimeRollupRule"];
 export type SchemaTimeSeriesRuleConfig =
   components["schemas"]["TimeSeriesRuleConfig"];
 export type SchemaTimestampReadingStrategy =
@@ -28901,8 +29417,10 @@ export interface operations {
   getAnalyticsVocabulary: {
     parameters: {
       query?: {
-        /** @description Dataset whose promoted logs_raw tags should be included. */
+        /** @description Dataset whose scan budget ceiling should be included. */
         datasetId?: string;
+        /** @description Table the query reads: logs_raw, the default, metrics_points or metrics_series. */
+        table?: components["schemas"]["DatasetTable"];
       };
       header?: never;
       path?: never;
@@ -30768,23 +31286,15 @@ export enum AgentSignalSinkType {
 export enum AgentSpanProcessorType {
   agent_span_processor = "agent-span-processor",
 }
-export enum AggType {
-  LATEST = "LATEST",
-  SUM = "SUM",
-  AVG = "AVG",
-  CUMULATIVE = "CUMULATIVE",
-  CUMULATIVE_UPDOWN = "CUMULATIVE_UPDOWN",
-  DEFAULT = "DEFAULT",
-  PERCENTILE = "PERCENTILE",
-  SLOPE = "SLOPE",
-  MAX = "MAX",
-  MIN = "MIN",
-}
 export enum AggregationAccumulatorAccumulatorType {
   AVERAGE = "AVERAGE",
 }
 export enum AllQueryNodeType {
   all_query_node = "all-query-node",
+}
+export enum AnalyticsFieldRows {
+  SERIES = "SERIES",
+  TAG = "TAG",
 }
 export enum AnalyticsOrderByDirection {
   ASC = "ASC",
@@ -30820,15 +31330,6 @@ export enum AnalyticsResultShapeKinds {
 }
 export enum AnalyticsSourceType {
   analytics_source = "analytics-source",
-}
-export enum AnalyticsTableBindingTable {
-  logs_raw = "logs_raw",
-  logs_dedup = "logs_dedup",
-  logs_pattern_lookup = "logs_pattern_lookup",
-  metrics_raw = "metrics_raw",
-  metricdata_raw = "metricdata_raw",
-  spans_raw = "spans_raw",
-  spans_dedup = "spans_dedup",
 }
 export enum AnalyticsTimeWindowKind {
   TUMBLING = "TUMBLING",
@@ -31015,6 +31516,9 @@ export enum CreateIssueRequestState {
 export enum CreateLogsBackfillJobDataType {
   logs = "logs",
 }
+export enum CreateMetricsBackfillJobDataType {
+  metrics = "metrics",
+}
 export enum CreateSpansBackfillJobDataType {
   spans = "spans",
 }
@@ -31035,6 +31539,13 @@ export enum DatadogLogCloudSourceType {
 export enum DatadogLogSinkType {
   datadog_log_sink = "datadog-log-sink",
 }
+export enum DatadogMetricsAgentSourceType {
+  datadog_metric_agent_source_v3 = "datadog-metric-agent-source-v3",
+}
+export enum DatadogMetricsSinkCompression {
+  GZIP = "GZIP",
+  ZSTD1 = "ZSTD1",
+}
 export enum DatadogMetricsSinkType {
   datadog_metrics_sink = "datadog-metrics-sink",
 }
@@ -31049,6 +31560,17 @@ export enum DatadogTraceAgentSourceType {
 }
 export enum DatadogTraceSinkType {
   datadog_trace_sink = "datadog-trace-sink",
+}
+export enum DatasetTable {
+  logs_raw = "logs_raw",
+  logs_dedup = "logs_dedup",
+  logs_pattern_lookup = "logs_pattern_lookup",
+  metrics_raw = "metrics_raw",
+  metrics_points = "metrics_points",
+  metrics_series = "metrics_series",
+  metrics_recompute_markers = "metrics_recompute_markers",
+  spans_raw = "spans_raw",
+  spans_dedup = "spans_dedup",
 }
 export enum DiscardingSinkType {
   discarding_sink = "discarding-sink",
@@ -31129,6 +31651,12 @@ export enum GreprVendorSourceType {
 }
 export enum GrokParserType {
   grok_parser = "grok-parser",
+}
+type WithRequired<T, K extends keyof T> = T & {
+  [P in K]-?: T[P];
+};
+export enum GroupByRuleType {
+  group_by = "group-by",
 }
 export enum HumanMemoryEditRootCauseConfidence {
   CONFIRMED = "CONFIRMED",
@@ -31318,20 +31846,39 @@ export enum MetricAggSpecSpaceAggregation {
 export enum MetricDataType {
   metricdata = "metricdata",
 }
-export enum MetricDataRawIcebergTableSinkType {
-  metricdata_raw_iceberg_table_sink = "metricdata-raw-iceberg-table-sink",
-}
 export enum MetricEventPredicateType {
   metric_predicate = "metric-predicate",
 }
 export enum MetricReducerType {
   metric_reducer = "metric-reducer",
 }
+export enum MetricsBackfillSourceType {
+  metrics_backfill_source = "metrics-backfill-source",
+}
 export enum MetricsIcebergTableSinkType {
   metrics_iceberg_table_sink = "metrics-iceberg-table-sink",
 }
 export enum MetricsIcebergTableSourceType {
   metrics_iceberg_table_source = "metrics-iceberg-table-source",
+}
+export enum MetricsLakeSinkType {
+  metrics_lake_sink = "metrics-lake-sink",
+}
+export enum MetricsOverrideFunction {
+  SUM = "SUM",
+  AVG = "AVG",
+  LATEST = "LATEST",
+  MIN = "MIN",
+  MAX = "MAX",
+}
+export enum MetricsRuleFunction {
+  DEFAULT = "DEFAULT",
+  SUM = "SUM",
+  AVG = "AVG",
+  LATEST = "LATEST",
+  MAX = "MAX",
+  MIN = "MIN",
+  PERCENTILE = "PERCENTILE",
 }
 export enum MetricsSynchronousSinkType {
   metrics_sync_sink = "metrics-sync-sink",
@@ -31392,6 +31939,9 @@ export enum ParseQueryRequestValidationTarget {
 export enum PassthroughNodeKind {
   passthrough_node = "passthrough-node",
 }
+export enum PassthroughRuleType {
+  passthrough = "passthrough",
+}
 export enum PatternLookupIcebergTableSinkType {
   pattern_lookup_iceberg_table_sink = "pattern-lookup-iceberg-table-sink",
 }
@@ -31439,6 +31989,7 @@ export enum ReadFeatureFlags {
   AUTH0_SSO_CONNECTION = "AUTH0_SSO_CONNECTION",
   TRINO_QUERY_ENGINE = "TRINO_QUERY_ENGINE",
   CHAT_TOOL_DETAILS = "CHAT_TOOL_DETAILS",
+  METRICS_PIPELINES = "METRICS_PIPELINES",
   UNKNOWN = "UNKNOWN",
 }
 export enum ReadAnthropicType {
@@ -31714,12 +32265,12 @@ export enum TimePartitionTransformPartitionBy {
 export enum TimePartitionTransformType {
   time = "time",
 }
+export enum TimeRollupRuleType {
+  time_rollup = "time-rollup",
+}
 export enum TimeSeriesRuleConfigType {
   time_series = "time-series",
 }
-type WithRequired<T, K extends keyof T> = T & {
-  [P in K]-?: T[P];
-};
 export enum TraceReducerType {
   trace_reducer = "trace-reducer",
 }
@@ -31847,6 +32398,7 @@ export const SOURCE_TYPES = new Set<string>([
   'logs-iceberg-replay-source',
   'logs-iceberg-table-source',
   'logs-values-source',
+  'metrics-backfill-source',
   'metrics-iceberg-table-source',
   'newrelic-log-agent-source',
   'otlp-log-agent-source',
@@ -31874,8 +32426,8 @@ export const SINK_TYPES = new Set<string>([
   'logs-iceberg-table-sink',
   'logs-predicates-counter',
   'logs-sync-sink',
-  'metricdata-raw-iceberg-table-sink',
   'metrics-iceberg-table-sink',
+  'metrics-lake-sink',
   'metrics-sync-sink',
   'newrelic-log-sink',
   'otlp-log-sink',

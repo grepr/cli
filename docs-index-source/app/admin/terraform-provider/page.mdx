@@ -157,7 +157,7 @@ To automatically import an existing pipeline without using the `import` command,
 
 ### Tags [#tf-pipeline-tags]
 
-Starting with provider version 1.3.0, the `tags` that you configure are the pipeline's complete set of tags. When you change them, Grepr updates the pipeline's tags without creating a new pipeline version or redeploying the pipeline. You can change a pipeline's tags only while the pipeline is running or stopped, so apply a tag change after any earlier update to the pipeline finishes. Tags that you leave out of the configuration are removed from the pipeline. To keep editing a pipeline that you created in the Grepr UI, include `grepr-ui-managed = "true"` in its tags. To keep a pipeline's existing tags, including for a pipeline that you import, leave `tags` unset.
+Starting with provider version 1.3.0, the `tags` that you configure are the pipeline's complete set of tags. When you change them, Grepr updates the pipeline's tags without creating a new pipeline version or redeploying the pipeline. You can change a pipeline's tags only while the pipeline is running or stopped, so apply a tag change after any earlier update to the pipeline finishes. Tags that you leave out of the configuration are removed from the pipeline. To keep a pipeline's existing tags, including for a pipeline that you import, leave `tags` unset.
 
 A pipeline can have up to 10 tags. Each key can be up to 64 characters long, and each value can be up to 256 characters long. Tag keys that start with `__grepr__` are reserved.
 

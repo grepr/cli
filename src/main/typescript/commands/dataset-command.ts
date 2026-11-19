@@ -87,7 +87,7 @@ export class DatasetCrudCommand extends CrudCommand<DatasetCrudCommandOptions> {
     program
       .command('dataset:table-config <id>')
       .description("Show a dataset table's indexed (promoted) tags and attributes and its partition keys")
-      .option('--table <key>', 'Table key: logs_raw or metricdata_raw', 'logs_raw')
+      .option('--table <key>', 'Table key: logs_raw', 'logs_raw')
       .option('-f, --format <format>', 'Output format (table, csv, pretty, raw, compact)', parseOutputFormat, resolveDefaultFormat('pretty'))
       .option('--fields <list>', 'Comma-separated field paths to keep (e.g. "promotedTags")', parseFieldsArg)
       .action(async (datasetId: string, options: Record<string, unknown>, command: Command) => {

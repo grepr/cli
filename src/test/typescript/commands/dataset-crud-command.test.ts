@@ -543,7 +543,7 @@ describe('DatasetCrudCommand', () => {
   });
   describe('executeTableConfig', () => {
     const DATASET_ID = 'ds_123';
-    const TABLE_KEY = 'metricdata_raw';
+    const TABLE_KEY = 'metrics_points';
     const DEFAULT_TABLE_KEY = 'logs_raw';
     const TABLE_CONFIG = { promotedTags: [{ key: 'region', column: 't_region', excluded: false }] };
 

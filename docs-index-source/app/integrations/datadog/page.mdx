@@ -481,6 +481,13 @@ To see more information and configuration examples, select the tab for your pref
   </Tabs.Tab>
 </Tabs>
 
+## Forward distribution metrics and service checks to Datadog [#forward-sketches-and-service-checks]
+
+Grepr forwards the Datadog Agent's distribution metrics, which the agent sends as sketches, and its service checks to Datadog as the agent sent them, only when you turn on **Forward sketches and service checks to Datadog** in the integration's settings. With the Grepr API, set `forwardSketchesAndServiceChecks` to `true`. It's off by default, and Grepr then accepts and discards these payloads.
+
+- Turn it on when Grepr is the only destination for these payloads: the agent's `dd_url`, or its `observability_pipelines_worker.metrics.url`, is your Grepr ingestion URL.
+- Leave it off when the agent also sends to Datadog directly, as with dual shipping. The agent already delivers these payloads, and forwarding them again counts the distribution metrics twice.
+
 ## Forward events from an Azure event hub to Grepr
 
 If you have an existing integration that sends events from an Azure event hub to Datadog, you can modify it to forward events to Grepr for processing before sending them to Datadog. An example use of this event hub-to-Datadog integration is when the event hub is used to queue log events from other Azure services. These log events are then forwarded to a Datadog endpoint for processing.
@@ -518,6 +525,11 @@ After you make this configuration change, you can use your existing Grepr pipeli
 
 - The Datadog integration supports only HTTP/HTTPS connections. TCP connections are not supported.
 - The Datadog integration does not support the use of [Datadog log pipelines](https://docs.datadoghq.com/logs/processing/pipelines/). Grepr processes and routes all logs before sending them to Datadog.
+- Grepr accepts Datadog Agent metric series from the v2 series API only. Datadog Agent version 7.81.2 or later uses the v2 API for Grepr by default. If your agent uses the v3 API for Grepr, such as version 7.81.0 or 7.81.1, configure the agent to use the v2 API for Grepr:
+  - Set `use_v3_api.series.enabled` to `datadog_only`.
+  - If `use_v3_api.series.endpoints` lists your Grepr ingestion URL, set that entry to `false`.
+  - If the agent sends metrics to Grepr through `observability_pipelines_worker.metrics.url`, set `observability_pipelines_worker.metrics.use_v3_api.series` to `false`.
+- Grepr forwards the Datadog Agent's distribution metrics and service checks to Datadog only when you turn it on. See [_](#forward-sketches-and-service-checks).
 
 <HiddenFAQ faqs={[
   { q: "How do I send Datadog logs to Grepr?", a: "Configure your log collector (Datadog Agent, Fluent Bit, Fluentd, or OpenTelemetry Collector) to forward logs to your Grepr ingest endpoint URL." },
