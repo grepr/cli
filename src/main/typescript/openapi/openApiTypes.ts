@@ -4856,6 +4856,11 @@ export interface components {
       automaticSignalMaxQueueAgeMinutes?: number;
       /** @enum {string} */
       changeApprovalMode: AgentConfigCreateChangeApprovalMode;
+      /**
+       * Format: int32
+       * @description Signals per minute, averaged over 15 minutes, at or above which this agent's runs on a churning pipeline are held. Unset: 15 with the decision step, 5 without.
+       */
+      churnHoldPerMinute?: number;
       /** @description OpenCode's experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool's schema; null or false is off. */
       codeMode?: boolean;
       /** @enum {string} */
@@ -4911,6 +4916,11 @@ export interface components {
       automaticSignalMaxQueueAgeMinutes?: number;
       /** @enum {string} */
       changeApprovalMode: AgentConfigCreateChangeApprovalMode;
+      /**
+       * Format: int32
+       * @description Signals per minute, averaged over 15 minutes, at or above which this agent's runs on a churning pipeline are held. Unset: 15 with the decision step, 5 without.
+       */
+      churnHoldPerMinute?: number;
       /** @description OpenCode's experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool's schema; null or false is off. */
       codeMode?: boolean;
       /** @enum {string} */
@@ -4955,6 +4965,11 @@ export interface components {
       automaticSignalMaxQueueAgeMinutes?: number;
       /** @enum {string} */
       changeApprovalMode: AgentConfigCreateChangeApprovalMode;
+      /**
+       * Format: int32
+       * @description Signals per minute, averaged over 15 minutes, at or above which this agent's runs on a churning pipeline are held. Unset: 15 with the decision step, 5 without.
+       */
+      churnHoldPerMinute?: number;
       /** @description OpenCode's experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool's schema; null or false is off. */
       codeMode?: boolean;
       /** @enum {string} */
