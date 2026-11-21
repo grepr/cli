@@ -4952,6 +4952,11 @@ export interface components {
       modelConfiguration: components["schemas"]["ModelConfiguration"];
       /** @description For the churn specialist only: whether it also runs on a pipeline that is not in churn mode. Grepr creates it with true, and unset means true; an update that leaves it out keeps it, and other agents have none. */
       runOutsideChurnMode?: boolean;
+      /**
+       * Format: int32
+       * @description For the churn specialist only: while none of the organization's pipelines is in churn mode, it starts a run only if it started fewer than this in the last hour, runs started in churn mode included. Unset: 10. Other agents have none.
+       */
+      runsPerHourOutsideChurnMode?: number;
       schedule?: components["schemas"]["AgentSchedule"];
       serviceAccountId: string;
       systemPrompt: string;
@@ -5002,6 +5007,11 @@ export interface components {
       name: string;
       /** @description For the churn specialist only: whether it also runs on a pipeline that is not in churn mode. Grepr creates it with true, and unset means true; an update that leaves it out keeps it, and other agents have none. */
       runOutsideChurnMode?: boolean;
+      /**
+       * Format: int32
+       * @description For the churn specialist only: while none of the organization's pipelines is in churn mode, it starts a run only if it started fewer than this in the last hour, runs started in churn mode included. Unset: 10. Other agents have none.
+       */
+      runsPerHourOutsideChurnMode?: number;
       schedule?: components["schemas"]["AgentSchedule"];
       serviceAccountId: string;
       systemPrompt: string;
