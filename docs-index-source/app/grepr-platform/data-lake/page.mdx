@@ -24,7 +24,7 @@ Grepr uses the data stored in the data lake for tasks such as querying raw data 
 <Callout type="info">
   By default, Grepr sets the following limits for queries against data lake tables:
 
-  - 100 GB for the amount of data that can be scanned in a single query.
+  - 1 TiB for the amount of data that can be scanned in a single query.
   - A timeout of 10 minutes. The Grepr platform terminates queries that exceed this time limit.
 
   Although these limits are sufficient for most queries, if your workloads require raising these limits, contact [support@grepr.ai](mailto:support@grepr.ai).
@@ -59,7 +59,7 @@ When you use the API to configure a pipeline, the Grepr platform also manages th
   },
   {
     q: "What are the query limits for the data lake?",
-    a: "By default, Grepr limits data lake queries to 100 GB of scanned data per query and enforces a 10-minute timeout. These limits can be increased for specific workloads by contacting support."
+    a: "By default, Grepr limits data lake queries to 1 TiB of scanned data per query and enforces a 10-minute timeout. These limits can be increased for specific workloads by contacting support."
   },
   {
     q: "How do I set up a data lake?",

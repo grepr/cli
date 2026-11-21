@@ -5782,7 +5782,7 @@ export interface components {
       /**
        * Format: int64
        * @description Maximum number of bytes this query may scan.
-       * @default 107374182400
+       * @default 1099511627776
        */
       scanBudgetBytes?: number;
       /** @description Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none. */
