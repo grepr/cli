@@ -6,6 +6,58 @@ description: Release notes for new features, improvements, and bug fixes to the 
 
 Grepr released these feature updates, improvements, and bug fixes in November 2026.
 
+## November 23, 2026
+
+### Other improvements and fixes
+
+- {/* ENGT-7067 */} The default scan budget of an analytics query is 1 TiB, up from 100 GiB, for every kind of data.
+- {/* ENGT-6905 */} Analyze and SQL queries that match values in a log's attributes run several times faster.
+- {/* ENGT-6290 */} You can filter the **Users** page in organization settings by org role or team, including **No org role** and **No team**, with a count beside each option.
+- {/* ENGT-7296 */} You can set how many runs an hour the churn specialist starts outside churn mode with its **Runs per hour outside churn mode** setting.
+- {/* ENGT-7329 */} The decision step of an AI agent skips more routine log lines, such as successful requests and worker status messages, so fewer investigations start on them.
+- {/* ENGT-7151 */} **System Logs** entries for pipeline syncs show how many sample events a sync carried instead of listing them, and very large entries are shortened.
+- {/* ENGT-6905 */} Fixed an issue where Analyze and SQL queries that match values in a log's attributes failed on logs with deeply nested attributes.
+- {/* ENGT-7185 */} Fixed an issue where code editors stayed blank or kept loading when your network blocked a third-party content delivery network.
+- {/* ENGT-6290 */} Fixed several issues on the **Users** page, including users beyond the first 100 and pending invitations beyond the first 10 not showing, and later pages repeating the same members on self-hosted installs that sign in with Keycloak.
+- {/* ENGT-7151 */} Fixed an issue where, in rare circumstances, a **System Logs** search failed.
+- {/* ENGT-7330 */} Fixed an issue where an AI agent investigation failed when a sample event contained a very large integer.
+
+## November 20, 2026
+
+### Other improvements and fixes
+
+- {/* ENGT-6853, ENGT-7017 */} The dataset menus in the navigation, Log Explorer, Trace Explorer, the **Agent Sessions** page, and the **SQL** page list only the datasets that hold the kind of data that page searches.
+- {/* ENGT-7109 */} In pipelines you create from now on, a batch that a vendor rejects with a retryable error is retried until the vendor accepts it, instead of being dropped after three retries.
+- {/* ENGT-7000 */} Datadog integrations have a **Forward sketches and service checks to Datadog** setting, off by default, that forwards the distributions and service checks your Datadog Agent sends to Grepr on to Datadog.
+- {/* ENGT-6312 */} You can clone any log pipeline, including pipelines not created in the Grepr UI.
+- {/* ENGT-7133 */} You can set an AI agent's **Hold during churn at** threshold, in signals per minute, to choose how high a pipeline's rate of new log patterns gets before the agent holds its investigations on that pipeline.
+- {/* ENGT-7133 */} The churn specialist starts at most 10 runs an hour while none of your pipelines is in churn mode.
+- {/* ENGT-7175, ENGT-7187 */} The churn specialist proposes one change for a whole family of similar log patterns instead of one variant at a time, and skips signals that an existing signal mask or drop rule already covers.
+- {/* ENGT-7175 */} AI agent runs reuse cached prompts across runs, which lowers what each run costs with your model provider.
+- {/* ENGT-6312 */} Fixed an issue where a SQL transform's metric output to Datadog could fail the pipeline when a metric value was missing.
+- {/* ENGT-6312 */} Fixed an issue where, in rare circumstances, a pipeline that failed while starting showed as running.
+- {/* ENGT-7206 */} Fixed an issue where, in rare circumstances, signing up failed with an error saying the organization name was taken.
+- {/* ENGT-7205 */} Fixed an issue where, in rare circumstances, a person invited by email could not join your organization.
+
+## November 18, 2026
+
+### Other improvements and fixes
+
+- {/* ENGT-7057 */} Log reducers mask whole words that contain both letters and digits by default, in new pipelines and in existing pipelines when they are upgraded. See [_](/transforms/reducer/configuration).
+- {/* ENGT-7057 */} While a pipeline produces new log patterns at a high rate, AI agents hold back the investigations they would start on it and release them once the rate drops. See [_](/ai-agents/investigations).
+- {/* ENGT-7057 */} The default queue limit of an AI agent is 200 queued investigations, down from 1,000. See [_](/ai-agents/create-an-agent).
+- {/* ENGT-6970 */} The pipeline details page loads and refreshes faster for pipelines with a long version history.
+- {/* ENGT-7045 */} Pipelines that scale up during a traffic spike reach their new capacity sooner.
+- {/* ENGT-7003 */} Fixed several issues in Datadog log intake, including JSON log lines with escaped quotes that arrived without their service, host, and tags, and some log payloads that failed to process.
+- {/* ENGT-7095 */} Fixed an issue where, in rare circumstances, log searches and Analyze queries failed for a while after the service was busy.
+- {/* ENGT-7035 */} Fixed an issue where a trace pipeline could fail to restart after you changed the dataset it writes to.
+- {/* ENGT-7057 */} Fixed an issue where, in rare circumstances, a pipeline that an AI agent watches could restart repeatedly on very long log messages.
+- {/* ENGT-7057 */} Fixed an issue where an AI agent's signal masks did not match the end of very long log messages.
+- {/* ENGT-6768 */} Fixed an issue where creating or updating an AI agent could fail with an error saying its service account was not found.
+- {/* ENGT-6972 */} Fixed an issue where `grepr job:draft` failed on template-based pipelines that have reducer exceptions.
+- {/* ENGT-6772 */} Fixed an issue where going back to a search in Log Explorer could run an analysis you did not ask for.
+- {/* ENGT-7021 */} Security fixes.
+
 ## November 14, 2026
 
 {/* ENGT-6740, ENGT-6745, ENGT-6850, ENGT-6852, ENGT-6901 */}
