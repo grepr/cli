@@ -172,6 +172,26 @@ const pageMap = [
         title: "Trace reduction pipelines for APM data",
       },
       {
+        name: "metrics-pipelines",
+        route: "/pipelines/metrics-pipelines",
+        type: "folder",
+        title: "Metrics pipelines for agent metrics",
+        children: [
+          {
+            name: "index",
+            route: "/pipelines/metrics-pipelines",
+            type: "page",
+            title: "Reduce metrics with a metrics pipeline",
+          },
+          {
+            name: "reducer",
+            route: "/pipelines/metrics-pipelines/reducer",
+            type: "page",
+            title: "Configure the metrics reducer",
+          },
+        ],
+      },
+      {
         name: "agent-sessions",
         route: "/pipelines/agent-sessions",
         type: "page",
@@ -468,7 +488,13 @@ const pageMap = [
         name: "sql",
         route: "/queries/sql",
         type: "page",
-        title: "Query logs with SQL",
+        title: "Query logs, traces, and metrics with SQL",
+      },
+      {
+        name: "metrics-explorer",
+        route: "/queries/metrics-explorer",
+        type: "page",
+        title: "Explore metrics with Metrics Explorer",
       },
     ],
   },

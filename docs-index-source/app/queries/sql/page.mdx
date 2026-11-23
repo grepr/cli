@@ -1,21 +1,22 @@
 ---
-description: Write one Grepr SQL query across up to four filtered tables of a dataset's logs and traces, for joins, multi-stage aggregations, and rankings.
+description: Write one Grepr SQL query across up to four filtered tables of a dataset's logs, traces, and metrics, for joins, aggregations, and rankings.
 ---
 
 import { HiddenFAQ } from '@/components/HiddenFAQ'
 
-# Query logs and traces with SQL
+# Query logs, traces, and metrics with SQL
 
-The SQL page runs one Grepr SQL query across the tables you set up for it. Each _table_ reads a dataset's logs or traces through a filter, under an _alias_ that the query uses as a table name. Use SQL when one grouped SELECT can't answer the question, such as when you join logs to other logs or to the spans of their traces, compare two filtered sets, aggregate an aggregate, or rank groups against each other. To aggregate logs with one SELECT and grouping, use Analyze mode instead. See [Aggregate logs with Analyze mode](/queries/analyze).
+The SQL page runs one Grepr SQL query across the tables you set up for it. Each _table_ reads a dataset's logs, traces, metric points, or metric series through a filter, under an _alias_ that the query uses as a table name. Use SQL when one grouped SELECT can't answer the question, such as when you join logs to other logs or to the spans of their traces, compare two filtered sets, aggregate an aggregate, or rank groups against each other. To aggregate logs with one SELECT and grouping, use Analyze mode instead. See [Aggregate logs with Analyze mode](/queries/analyze).
 
 ## <a id="run"></a> Write and run a query
 
 1. Click **SQL** in the top navigation.
 1. In the top bar, select a dataset and a time range. The query reads every table from this one dataset and time range.
 1. Set up the tables the query reads.
-   - **Type** is the kind of data the table reads: **Logs** or **Traces**. The menu lists the types the dataset holds.
+   - **Type** is the kind of data the table reads: **Logs**, **Traces**, **Metric points**, or **Metric series**. The menu lists the types the dataset holds.
    - **Alias** is the table's name in the query. An alias uses lowercase letters, numbers, and underscores, starts with a letter or an underscore, and can't be a SQL keyword or the name of one of the table's columns. Each table needs its own alias.
-   - The filter chooses the table's logs or spans. A logs table's filter is written as in Log Explorer's search bar, in [Datadog-like syntax](/queries/datadog) or [New Relic log query-like syntax](/queries/new-relic). A traces table's filter is written as in Trace Explorer's search bar, in Datadog-like syntax. An empty filter reads every log or span in the time range.
+   - The filter chooses the table's logs, spans, or metrics. A logs table's filter is written as in Log Explorer's search bar, in [Datadog-like syntax](/queries/datadog) or [New Relic log query-like syntax](/queries/new-relic). A traces table's filter is written as in Trace Explorer's search bar, in Datadog-like syntax. An empty filter reads every log or span in the time range.
+   - A metric points or metric series table also has **Metrics (optional)**, the names of the metrics it reads, separated by commas or spaces. Its filter chooses series by their tags, in Datadog-like syntax, such as `env:prod -host:web-*`. With no names, the table reads every metric whose series match the filter.
 
    To read the same logs through two filters, click **Add table** and give the new table its own alias and filter. A query reads at most four tables.
 1. Write the query in the editor.
@@ -25,7 +26,7 @@ The SQL page runs one Grepr SQL query across the tables you set up for it. Each 
 
 ## <a id="tables"></a> What a table contains
 
-A table holds the dataset's logs or spans whose event time is in the time range and that match the table's filter. Every reference to an alias reads that same set, including inside a WITH query or either side of a join, so a query's own WHERE can narrow a table but never widen it. Two tables can read the same logs through different filters, such as errors and all requests.
+A table holds the dataset's logs, spans, or metric points whose event time is in the time range, or the metric series seen on the UTC days the time range touches, that match the table's filter. Every reference to an alias reads that same set, including inside a WITH query or either side of a join, so a query's own WHERE can narrow a table but never widen it. Two tables can read the same logs through different filters, such as errors and all requests.
 
 A table of logs has the [log fields](/queries/analyze#fields) Analyze uses: `id`, `received_timestamp`, `event_timestamp`, `tags`, `attributes`, `message`, and `severity`. `SELECT *` returns those columns. Expressions follow the same rules as Analyze expressions, so [tag accessors](/queries/analyze#fields), [`@` attribute paths](/queries/analyze#attributes), and the [Analyze functions](/queries/analyze/functions) mean the same thing in both.
 
@@ -35,7 +36,7 @@ To read an attribute of one table, put the table's alias before the `@`, such as
 
 A table of traces has one row per span, with these columns: `received_timestamp`, `event_timestamp`, `servicename`, `resource`, `instrumentationscope`, `span`, `tracesignature`, `duration`, `haserror`, `percentilebucket`, `samplingtype`, `tracesignatureid`, `trace_id`, `span_id`, `trace_id_decimal`, and `attributes`. `duration` is in nanoseconds. To learn what the columns from `resource` to `samplingtype` hold, see the [`COMPLETE_SPAN` data type](/transforms/sql-transform/data-types#complete-span).
 
-`resource`, `instrumentationscope`, and `span` are structs. Read a struct's field with a dot, such as `s.span.operationName` or `s.span.status.code`. Field names are case-sensitive, so write them as the data type lists them. A query can return a struct's fields but not the struct itself, so select the fields you need. The same holds for an array of structs, such as a span's `events`: read an element's fields, such as `s.span.events[1].name`. For the same reason, `SELECT *` over a traces table, which includes its structs, can't run.
+`resource`, `instrumentationscope`, and `span` are structs. Read a struct's field with a dot, such as `s.span.operationName` or `s.span.status.code`. Field names are case-sensitive, so write them as the data type lists them. A query returns a struct that holds no attributes, such as `s.span.status`, as an object keyed by its field names. It can't return a struct that holds attributes, such as `span` or an element of a span's `events`, so select the fields you need, such as `s.span.events[1].name`. For the same reason, `SELECT *` over a traces table, which includes those structs, can't run.
 
 The trace and span IDs are text:
 
@@ -45,6 +46,52 @@ The trace and span IDs are text:
 `attributes` holds the span's, the instrumentation scope's, and the resource's attributes as one set of keys with no levels, and `@` reads it as it reads a logs table's. `s.@http.route` reads the span's `http.route` attribute. When the span has no such attribute, it reads the instrumentation scope's, and then the resource's. A key that the span or the instrumentation scope holds with a null value is read from there, so the read is null even when the resource has a value for the key.
 
 A WITH query or a query in FROM that selects `attributes`, as `SELECT *` does, reads it with `@` the same way, including across a join or a `UNION ALL` of traces tables. A query reads a traces table's `attributes` only with `@`: it can't return the column, pass it to a function, or read its fields. It can't group, sort, or compare the column either, so a query that keeps it can't use DISTINCT, UNION, INTERSECT, or EXCEPT over it. To combine the attributes of logs and traces in a UNION, read each key in its own branch, such as `SELECT l.@env AS env FROM l UNION ALL SELECT s.@env AS env FROM s`. To read one struct's attributes with `@`, select them as `attributes`, such as `SELECT s.resource.attributes AS attributes FROM s`.
+
+## <a id="points"></a> What a metric points table contains
+
+A table of metric points has one row per point whose event time is in the time range, of the metrics and series its filter chooses, with these columns: `event_timestamp`, `metric_value`, `metric_name`, `metric_type`, `unit`, `scope_name`, `scope_version`, `tags`, `series_id`, `series_version`, `sketch_count`, `sketch_avg`, `sketch_min`, `sketch_max`, `sketch`, `sketch_p50`, `sketch_p90`, `sketch_p95`, and `sketch_p99`.
+
+- `tags` holds each tag key's values, as a logs table's does. `tags['host'][1]` reads a series' first `host` value.
+- `series_id` identifies the series, as 32 lowercase hexadecimal digits, and `series_version` is the version of the series' metadata the point arrived with.
+- A distribution's point carries its samples' summary: `sketch_count` samples with average `sketch_avg`, between `sketch_min` and `sketch_max`, and, depending on the pipeline's lake, their distribution as a t-digest in `sketch` or their p50, p90, p95, and p99 in `sketch_p50` to `sketch_p99`. Its `metric_value` is the sum of its samples. These columns are null for a point of any other type, and for a distribution's point that arrived without its samples' summary. A lake stores a t-digest, the four percentiles, or neither for each point. See [Store distribution metrics in less space](/grepr-platform/data-lake#distribution-sketch-cap).
+
+To average distributions, or to take their minimum or maximum, read each point's summary instead of `metric_value`, which for a distribution is a sum. This average weights each point by its samples, and counts a point of any other type as one sample:
+
+```sql
+SUM(CASE WHEN metric_type <> 'distribution' THEN metric_value ELSE sketch_avg * sketch_count END)
+  / NULLIF(SUM(CASE WHEN metric_type <> 'distribution' THEN 1 ELSE sketch_count END), 0)
+```
+
+This minimum reads each distribution's `sketch_min`, and skips a distribution's point with no samples, whose summary is zeros. For the maximum, use `MAX` and `sketch_max`:
+
+```sql
+MIN(CASE WHEN metric_type <> 'distribution' THEN metric_value WHEN sketch_count > 0 THEN sketch_min END)
+```
+
+For a percentile of distributions, read their merged t-digests, such as `APPROX_PERCENTILE(sketch, 0.99)`, which reads only the points stored with t-digests. `APPROX_PERCENTILE(metric_value, 0.99)` is the percentile of the points' values, which for a distribution are sums. For the points stored with percentiles, read their highest, such as `MAX(sketch_p99)`: the highest p99 among those points, which is often above the p99 of all their samples combined.
+
+A query that reads a metric points table reads no other kind of table.
+
+## <a id="series"></a> What a metric series table contains
+
+A table of metric series describes the series of the dataset's metrics, not their values. It has one row per version of a series seen on the UTC days the time range touches: a one-hour range reads that hour's whole UTC day, and a range across midnight UTC reads both days. Its columns are `metric_name`, `metric_type`, `unit`, `description`, `interval_seconds`, `scope_name`, `scope_version`, `tags`, `tag_pairs`, `series_id`, `series_version`, `first_day`, `last_day`, and `series_days`.
+
+- A series takes a new version when what describes it changes, such as its descriptive tags, unit, description, or interval. In a query without UNNEST, `COUNT(DISTINCT series_id)` counts series and `COUNT(*)` counts versions. `APPROX_COUNT_DISTINCT(series_id)` counts series with a standard error of 2.3%, and costs less at high counts.
+- `interval_seconds` is the interval the series' points arrived with, and is null when they carried none. For a delta counter, a delta up-down counter, or a rate, it's the span each point covers.
+- `tags` holds each tag key's values, as on a metric points table.
+- `tag_pairs` lists each tag as a row of four fields:
+  - `tag_key`, the tag's key
+  - `tag_value`, its value, null for a tag without one
+  - `tag_level`, where the tag comes from: `resource`, `scope`, or `series`
+  - `tag_identifying`, whether the tag is part of the series' identity
+- `first_day`, `last_day`, and `series_days` are the UTC days of the time range the version was seen on: the first, the last, and every one. A day counts the series when its metadata covers the day, so a series that reports in a day's last hour can also count on the next day.
+
+A query returns `tag_pairs` as a list of objects, each keyed by those four fields, so `SELECT *` returns every column of a metric series table. To filter or group by a tag's fields, unnest `tag_pairs`. A version that the lake wrote before it kept tag pairs has its tags in `tags` and a null `tag_pairs`.
+
+To get a row per tag or per day, unnest the array in FROM, after the table:
+
+- `LEFT JOIN UNNEST(tag_pairs) AS p (tag_key, tag_value, tag_level, tag_identifying) ON TRUE` gives a row per tag of each version, and keeps a version whose `tag_pairs` is empty or null as one row of null tag fields.
+- `CROSS JOIN UNNEST(series_days) AS d (series_day)` gives a row per day the version was seen on.
 
 ## <a id="contents"></a> What a query can contain
 
@@ -56,6 +103,7 @@ A query is one read-only query, which can use:
 - Window functions and aggregates over a window, each with its own OVER clause, and QUALIFY
 - UNION, UNION ALL, INTERSECT, and EXCEPT, where every branch returns the same columns
 - ROLLUP, CUBE, and GROUPING SETS, with GROUPING()
+- A row per element of an array of the table before it, such as `series_days` or `tags['env']`: `CROSS JOIN UNNEST(...) AS u (...)`, or `LEFT JOIN UNNEST(...) AS u (...) ON TRUE` to keep a row whose array is empty or null
 
 A query reads only its tables' aliases and its own WITH queries, so a WITH query can't take a table's alias as its name. To use the result of one query inside another, join it, or define it as a WITH query and join that. An expression can't contain a query, such as `x IN (SELECT ...)`, `EXISTS (...)`, or a single-value subquery. A query can't use WITH RECURSIVE, VALUES, a separate WINDOW clause, or `?` parameters.
 
@@ -120,11 +168,56 @@ ORDER BY errors DESC
 LIMIT 20
 ```
 
+Find each metric's series and the days they were seen on. Add a metric series table `metrics_series` with no names and no filter:
+
+```sql
+SELECT metric_name, metric_type, unit,
+       APPROX_COUNT_DISTINCT(series_id) AS series,
+       MIN(first_day) AS first_seen, MAX(last_day) AS last_seen
+FROM metrics_series
+GROUP BY metric_name, metric_type, unit
+ORDER BY series DESC
+```
+
+List the tag keys of one metric. Add a metric series table `metrics_series` with `system.cpu.user` under **Metrics (optional)**. A version without tag pairs counts under a null `tag_key`:
+
+```sql
+SELECT tag_key, tag_identifying,
+       APPROX_COUNT_DISTINCT(tag_value) AS tag_values,
+       APPROX_COUNT_DISTINCT(series_id) AS series
+FROM metrics_series
+LEFT JOIN UNNEST(tag_pairs) AS p (tag_key, tag_value, tag_level, tag_identifying) ON TRUE
+GROUP BY tag_key, tag_identifying
+ORDER BY series DESC
+```
+
+Count each metric's series per day. Add a metric series table `metrics_series` with the metrics under **Metrics (optional)**:
+
+```sql
+SELECT series_day, metric_name, COUNT(DISTINCT series_id) AS series
+FROM metrics_series
+CROSS JOIN UNNEST(series_days) AS d (series_day)
+GROUP BY series_day, metric_name
+ORDER BY series_day, metric_name
+```
+
+Chart a distribution's average and 99th percentile per host each minute. Add a metric points table `metrics` with the distribution under **Metrics (optional)**:
+
+```sql
+SELECT FLOOR(event_timestamp TO MINUTE) AS bucket,
+       tags['host'][1] AS host,
+       SUM(sketch_avg * sketch_count) / NULLIF(SUM(sketch_count), 0) AS average,
+       APPROX_PERCENTILE(sketch, 0.99) AS p99
+FROM metrics
+GROUP BY 1, 2
+ORDER BY 1
+```
+
 ## <a id="results"></a> Rows and cost
 
 The row limit in the top bar is the most rows a query returns. A LIMIT in the query can lower it but not raise it. When a result reaches the row limit, the rows beyond it aren't on the page: raise the limit, or sort and limit in the query.
 
-The scan budget covers every table a query reads, so a query that reads a table twice, such as a self-join, scans its time range twice. A shorter time range, or a table filter on `service` or `host`, scans less.
+The scan budget covers every table a query reads, so a query that reads a table twice, such as a self-join, scans its time range twice. A shorter time range scans less, as does a logs or traces table's filter on `service` or `host`. A metrics table that names its metrics under **Metrics (optional)**, or a query's own `WHERE metric_name IN (...)`, scans only the parts of the lake that hold those metrics. A metric series table scans every whole UTC day the time range touches, even when the range is shorter than a day.
 
 ## <a id="charts"></a> Chart a result
 
@@ -153,10 +246,11 @@ To share a query, click **Share**, or copy the link from the address bar. The li
 ## <a id="limitations"></a> Limitations
 
 - A query reads one dataset, and only its tables' aliases.
-- A query reads at most 4 tables, refers to them at most 4 times, joins at most 4 times, and contains at most 16 WITH queries.
+- A query reads at most 4 tables, refers to them at most 4 times, joins at most 4 times, and contains at most 16 WITH queries. Each UNNEST counts as one of the 4 joins.
 - A query can be at most 32,768 characters long.
 - A window's PARTITION BY and ORDER BY can hold at most 16 expressions together, and a query can have at most 16 grouping sets.
-- A table reads logs or traces.
+- A table reads logs, traces, metric points, or metric series.
+- A query that reads a metric points table reads no other kind of table.
 
 <HiddenFAQ faqs={[
   {
@@ -169,7 +263,15 @@ To share a query, click **Share**, or copy the link from the address bar. The li
   },
   {
     q: "Which tables can a Grepr SQL query read?",
-    a: "Only the tables you set up on the page, by their aliases, and the query's own WITH queries. Each table reads the selected dataset's logs or spans in the time range that match its filter."
+    a: "Only the tables you set up on the page, by their aliases, and the query's own WITH queries. Each table reads the selected dataset's logs, spans, or metric points in the time range, or its metric series on the UTC days the time range touches, that match its filter."
+  },
+  {
+    q: "Can I query metrics with SQL in Grepr?",
+    a: "Yes. Add a Metric points table to read each point with its series' metadata, or a Metric series table to read which metrics, tags, and series a dataset holds by UTC day. Name the metrics under Metrics (optional), or leave it empty to read every metric."
+  },
+  {
+    q: "How do I average a distribution metric with SQL in Grepr?",
+    a: "Weight each point's average by its sample count: SUM(sketch_avg * sketch_count) / NULLIF(SUM(sketch_count), 0). A distribution's metric_value is the sum of its samples, so AVG(metric_value) averages sums."
   },
   {
     q: "Can I join logs to traces with SQL in Grepr?",

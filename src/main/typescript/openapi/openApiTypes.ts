@@ -985,6 +985,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/datasets/{id}/metric-suggestions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get a metrics dataset's suggestions
+     * @description Get a metrics dataset's metric names, tag keys and values, for autofill. Refreshed hourly from the dataset's lake.
+     */
+    get: operations["getMetricSuggestions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/datasets/{id}/metric-suggestions/metric-keys": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the named metrics' tag keys
+     * @description Get the named metrics' tag keys in a metrics dataset, for autofill. Refreshed hourly from the dataset's lake.
+     */
+    get: operations["getMetricKeys"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/datasets/{id}/tables/{tableKey}/column-metrics": {
     parameters: {
       query?: never;
@@ -4189,6 +4229,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/query/tokens": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Lexes a filter
+     * @description Returns a Datadog filter's tokens, each with its kind and character offsets, as the query grammar's own lexer reads them. A half-typed filter lexes, since nothing is parsed. At an unclosed quote or a character the grammar refuses, the tokens before it come back with error set. Only a Datadog query has tokens; a filter over 10,000 characters is refused.
+     */
+    post: operations["tokens"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/roles": {
     parameters: {
       query?: never;
@@ -6819,6 +6879,16 @@ export interface components {
        */
       startDate: string;
     };
+    /** @description A name, key or value with about how many series carry it. */
+    Count: {
+      /** @description The name, key or value, exactly as stored. */
+      name?: string;
+      /**
+       * Format: int64
+       * @description About how many series carry it: the largest count any hour saw.
+       */
+      series?: number;
+    };
     CoveredSignal: {
       fix?: string;
       maskedMessage?: string;
@@ -7309,11 +7379,6 @@ export interface components {
        */
       filterQuery: string;
       /**
-       * @description Whether Grepr forwards the Datadog agent's sketches (distributions) and service checks to Datadog, as the agent sent them. Turn it on only when Grepr is the only destination for those payloads; an agent that also sends them to Datadog directly already delivers them. Unset means off.
-       * @default false
-       */
-      forwardSketchesAndServiceChecks?: boolean;
-      /**
        * @description When the active dashboard threshold is set, whether dashboards that were never viewed are still imported. Unset means they are.
        * @default true
        */
@@ -7435,6 +7500,11 @@ export interface components {
        */
       duplicateWindow?: string;
       /**
+       * @description Whether the source also handles the Datadog Agent's payloads other than metrics: its events, on the events output, and its host payloads, on the agent-payloads output.
+       * @default false
+       */
+      handleNonMetricPayloads?: boolean;
+      /**
        * @description Tag keys that identify a series where they would otherwise describe it: exact keys or globs with *. A series tag matching one stays identifying even when it also matches nonIdentifyingKeys. Host tags are descriptive unless listed here. A host tag listed here identifies the host's series, unless its key is one of the resources the agent sent for the series, such as host, which stays as the agent sent it. So a change in its value makes a new series, and a metrics reducer can group cohorts by it. For example, to group cohorts by env and cluster, set identifyingKeys to ["env", "cluster"] and the reducer's groupBy.keys to ["env", "cluster"]. A listed host tag also reaches Datadog as a resource. Defaults to ["env"]. Setting it replaces the default, so list env to keep it, or set [] to identify by no tag.
        * @default [
        *       "env"
@@ -7462,7 +7532,7 @@ export interface components {
       /**
        * Format: ISO-8601
        * @description How long to wait for late points before a window's first send.
-       * @default PT20S
+       * @default PT15S
        * @example PT20.345S
        */
       softLateDeadline?: string;
@@ -7496,6 +7566,11 @@ export interface components {
        */
       additionalTags?: string[];
       /**
+       * @description Forward the Datadog Agent's events, service checks and host payloads, from the agent-payloads input, for the hosts this sink sends series for under their own names. Needs hostMetadata. A metrics reducer pipeline turns it on.
+       * @default false
+       */
+      agentPayloads?: boolean;
+      /**
        * @description How the sink compresses each request to Datadog: ZSTD1, zstd at level 1, as the Datadog agent sends it, or GZIP at zlib's default level.
        * @default ZSTD1
        * @enum {string}
@@ -7516,11 +7591,6 @@ export interface components {
       maxLateData?: string;
       /** @example operation_name */
       name: string;
-      /**
-       * @description Submit each series' points to Datadog in the order they come, never two requests carrying one series at once, so a window sent again goes out after its earlier send. A metrics reducer pipeline turns it on. The sink must read its producer directly, or through clones and unions only.
-       * @default false
-       */
-      orderedSends?: boolean;
       sendQueue?: components["schemas"]["DatadogSendQueue"];
       /**
        * @description Writes processed metrics to Datadog. (enum property replaced by openapi-typescript)
@@ -7585,12 +7655,12 @@ export interface components {
        */
       type: DatadogQueryPredicateType;
     };
-    /** @description How a Datadog metrics sink with ordered sends queues and sends its series. Every field has a default. */
+    /** @description How a Datadog metrics sink queues and sends its series. A bounded job uses every field but retryDelay, maxRetryDelay and maxRetries. Every field has a default. */
     DatadogSendQueue: {
       /**
        * Format: ISO-8601
        * @description How long a partial request waits for more series before it goes, from a millisecond to a day.
-       * @default PT3S
+       * @default PT5S
        * @example PT20.345S
        */
       bufferTime?: string;
@@ -7621,10 +7691,17 @@ export interface components {
       maxBufferedBytes?: number;
       /**
        * Format: int32
-       * @description Attempts past the first before a point is dropped and logged, below 32767; -1 retries until Datadog takes it.
-       * @default 3
+       * @description Attempts past the first before a point is dropped and logged, below 32767; -1 retries until Datadog takes it. At the default delays, 61 wait about an hour. While retrying, the sink holds back its input, so the whole job waits.
+       * @default 61
        */
       maxRetries?: number;
+      /**
+       * Format: ISO-8601
+       * @description The longest wait before a retry, from retryDelay to a day; a retry whose doubled wait passes it waits exactly this.
+       * @default PT1M4S
+       * @example PT20.345S
+       */
+      maxRetryDelay?: string;
       /**
        * Format: int32
        * @description The most bytes one series may take; a larger one fails the job.
@@ -7633,14 +7710,14 @@ export interface components {
       maxSeriesBytes?: number;
       /**
        * Format: int32
-       * @description Requests in flight per sink subtask, never two carrying the same series.
-       * @default 5
+       * @description Requests in flight per sink writer, never two carrying the same series. Each holds a thread until it ends, and its body during its call.
+       * @default 16
        */
       requestsInFlight?: number;
       /**
        * Format: ISO-8601
-       * @description How long a retryable failure's points wait before they queue again, up to a day.
-       * @default PT0.1S
+       * @description The first retry's longest wait, up to a day: it waits between half of this and this, and each later retry doubles both, up to maxRetryDelay, as the Datadog Agent backs off. Zero retries at once.
+       * @default PT4S
        * @example PT20.345S
        */
       retryDelay?: string;
@@ -7819,25 +7896,6 @@ export interface components {
        * @enum {string}
        */
       type: DiscardingSinkType;
-    };
-    DoubleDatapoint: {
-      metricName?: string;
-      /** @enum {string} */
-      metricType?: DoubleDatapointMetricType;
-      tags?: {
-        [key: string]: string[];
-      };
-      /** Format: int64 */
-      timestampMillis?: number;
-      /** Format: int64 */
-      timestampNanos?: number;
-      /** Format: double */
-      value?: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      type: DoubleDatapointType;
     };
     /** @description Terminal — discards every event reaching this node. */
     DropNode: {
@@ -8036,6 +8094,17 @@ export interface components {
       /** @description Why a Grepr SQL run failed, in a sentence of the server's own, never the query engine's text. Set on that run's failed terminal record. Null on every other record. */
       message?: string;
       resultShape?: components["schemas"]["AnalyticsResultShape"];
+    };
+    EventsIcebergTableSink: {
+      /** @description The id of the dataset to write to */
+      datasetId: string;
+      /** @example operation_name */
+      name: string;
+      /**
+       * @description Writes the Datadog Agent's events to the events Iceberg table. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: EventsIcebergTableSinkType;
     };
     ExactAttributesMergeStrategy: {
       /**
@@ -8279,32 +8348,6 @@ export interface components {
        *     ]
        */
       vertices: components["schemas"]["Operation"][];
-    };
-    GreprMetricsSource: {
-      /**
-       * @description Additional tags to add to the metrics while loading.
-       * @default {}
-       * @example {
-       *       "metric_source": [
-       *         "grepr"
-       *       ]
-       *     }
-       */
-      additionalTags?: {
-        [key: string]: string[];
-      };
-      /**
-       * @description The list of metrics to load. Will load all possible metrics if nothing is specified
-       * @default []
-       */
-      metrics?: GreprMetricsSourceMetrics[];
-      /** @example operation_name */
-      name: string;
-      /**
-       * @description Reads metric events from Grepr for processing. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: GreprMetricsSourceType;
     };
     /** @description The payload containing integration data. */
     GreprPipe: Record<string, never>;
@@ -8650,7 +8693,7 @@ export interface components {
     /** @description How objects are grouped into cohorts for aggregation across objects. */
     GroupByConfig: {
       /**
-       * @description Tag keys that group objects into cohorts, such as env. Each reads a series' merged attributes: its own tags, then its scope's, then its resource's, a tag the source identifies by winning over one it only describes by. A key the source sends only as descriptive is absent: to group by a tag the source describes by default, declare it identifying at the source too. A series missing a key forms a cohort of its other keys' values. A rule that aggregates across objects writes each key back where the series had it, on its resource, its scope or itself, each object key with the cohort's id, the first series of a window deciding where its series differ, and carries the id as grepr.cohort, a series tag. The id is cohort_ followed by the cohort's pairs as key-value, sorted and joined by _, as in cohort_env-prod_service-api. A bare tag is its key alone; the id is the bare cohort when every key is absent, and cohort-default for a reducer without cohort keys.
+       * @description Tag keys that group objects into cohorts, such as env. Each reads a series' merged attributes: its own tags, then its scope's, then its resource's, a tag the source identifies by winning over one it only describes by. A key the source sends only as descriptive is absent: to group by a tag the source describes by default, declare it identifying at the source too. A series missing a key forms a cohort of its other keys' values. A rule that aggregates across objects writes each key back where the series had it, on its resource, its scope or itself, each object key with the cohort's id, the first series of a window deciding where its series differ, and carries the id as grepr.cohort, a series tag. The id is cohort_ followed by the cohort's pairs as key-value, sorted and joined by _, then _ and 6 characters (0-9a-z) of the pairs' hash, which tells apart pairs that render alike, as in cohort_env-prod_service-api_<hash>. A long id's pairs are cut so that each tag it's written in fits Datadog's 200 characters, hash included. A bare tag is its key alone; the id is the bare cohort, with no hash, when every key is absent, and cohort-default for a reducer without cohort keys.
        * @default []
        * @example [
        *       "env",
@@ -9779,29 +9822,30 @@ export interface components {
     };
     /** @description A partial templateInputs object to deep-merge into the pipeline's current inputs. Objects merge recursively, and an array of named objects (like input.parsers) merges by entry name, so entries you omit are kept. Scalars and arrays of non-objects replace whole. */
     JsonNode: Record<string, never>;
+    /** @description A tag key with its value count and its values on the most series. */
+    Key: {
+      /** @description The key, exactly as stored. */
+      key?: string;
+      /**
+       * Format: int64
+       * @description About how many series carry the key.
+       */
+      series?: number;
+      /**
+       * @description The key's values on the most series, most first.
+       * @default []
+       */
+      topValues?: components["schemas"]["Count"][];
+      /**
+       * Format: int64
+       * @description About how many values the key takes; at least the values listed.
+       */
+      values?: number;
+    };
     /** @description Strategy to read files created after the current job start time */
     LatestReadingStrategy: {
       type: "LatestReadingStrategy";
     } & Omit<components["schemas"]["FileReadingStrategy"], "type">;
-    LegacyDatadogMetricsSink: {
-      /**
-       * @description Additional tags to add to the metrics when writing to Datadog. Gets combined with the integration's additionalTags.
-       * @default []
-       * @example [
-       *       "env:dev"
-       *     ]
-       */
-      additionalTags?: string[];
-      /** @description The Datadog integration id. */
-      integrationId: string;
-      /** @example operation_name */
-      name: string;
-      /**
-       * @description Writes processed metrics (flat MetricDatapoint model) to Datadog. Transitional; use datadog-metrics-sink for new pipelines. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: LegacyDatadogMetricsSinkType;
-    };
     LinkMemoryRequest: {
       resolution?: string;
       rootCause?: string;
@@ -11143,36 +11187,6 @@ export interface components {
       /** @description Billed dollar amount for the period; null when this column has no unit price. */
       totalDollars?: number;
     };
-    /** @description The metrics aggregation to apply to the source data. */
-    MetricAggSpec: {
-      /**
-       * @description The tags to group the results by. If unspecified, all series are grouped together. Only applicable when spaceAggregation is set.
-       * @default []
-       * @example [
-       *       "service",
-       *       "env"
-       *     ]
-       */
-      groupByTags?: string[];
-      /**
-       * @description The space aggregation to use for the query. If null, no grouping is done and the timeseries are returned with full tags.
-       * @example AVG
-       * @enum {string}
-       */
-      spaceAggregation?: MetricAggSpecSpaceAggregation;
-      /**
-       * @description The time aggregation to use for the query. If this is set, timeGranularity must also be provided. If null, no time aggregation is done and the raw datapoints are returned.
-       * @example AVG
-       * @enum {string}
-       */
-      timeAggregation?: MetricAggSpecSpaceAggregation;
-      /**
-       * Format: ISO-8601
-       * @description The time granularity to use for the query. Only applicable when timeAggregation is set.
-       * @example PT20.345S
-       */
-      timeGranularity?: string;
-    };
     /** @description One aggregation declaration inside an anomaly rule. */
     MetricAggregation: {
       /**
@@ -11250,6 +11264,21 @@ export interface components {
        */
       type: MetricEventPredicateType;
     };
+    /** @description The named metrics' tag keys in a metrics dataset, for autofill. */
+    MetricKeysResponse: {
+      /**
+       * Format: date
+       * @description The UTC day the keys are from; absent when the dataset has no suggestions yet.
+       */
+      day?: string;
+      /**
+       * @description Each named metric's tag keys, most series first.
+       * @default {}
+       */
+      metricKeys?: {
+        [key: string]: components["schemas"]["Count"][];
+      };
+    };
     /** @description Filter on metric names: globs, or RE2 regexes after r/ that match the whole name. */
     MetricNameFilter: {
       empty?: boolean;
@@ -11316,7 +11345,7 @@ export interface components {
       /**
        * Format: ISO-8601
        * @description How long to wait for late points before a window's first send.
-       * @default PT2S
+       * @default PT15S
        * @example PT20.345S
        */
       softLateDeadline?: string;
@@ -11349,6 +11378,24 @@ export interface components {
        * @example app.$1.total
        */
       replacement: string;
+    };
+    /** @description A metrics dataset's metric names, tag keys and values, for autofill. */
+    MetricSuggestionsResponse: {
+      /**
+       * Format: date
+       * @description The UTC day the suggestions are from; absent when the dataset has none yet.
+       */
+      day?: string;
+      /**
+       * @description The dataset's tag keys, most series first.
+       * @default []
+       */
+      keys?: components["schemas"]["Key"][];
+      /**
+       * @description The metric names, most series first.
+       * @default []
+       */
+      names?: components["schemas"]["Count"][];
     };
     MetricsBackfillSource: {
       /** @description The ID of the dataset whose metrics are backfilled. */
@@ -11398,71 +11445,6 @@ export interface components {
        */
       start: string;
     };
-    MetricsIcebergTableSink: {
-      /** @description The id of the dataset to write to */
-      datasetId: string;
-      /** @example operation_name */
-      name: string;
-      /**
-       * @description Writes metrics to an Iceberg table. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: MetricsIcebergTableSinkType;
-    };
-    MetricsIcebergTableSource: {
-      aggSpec: components["schemas"]["MetricAggSpec"];
-      /** @description The ID of the dataset to read data from. */
-      datasetId: string;
-      /**
-       * Format: date-time
-       * @description End of time interval to query data for.
-       * @example 2023-01-01T01:00:00Z
-       */
-      end: string;
-      /**
-       * Format: int32
-       * @description The maximum number of rows to process
-       * @default 2500
-       */
-      limit?: number;
-      /** @example operation_name */
-      name: string;
-      /**
-       * Format: int32
-       * @description Offset on the number of rows to process
-       * @default 0
-       */
-      offset?: number;
-      query: components["schemas"]["query"];
-      /**
-       * @description The order in which the rows should be sorted by
-       * @default ASCENDING
-       * @enum {string}
-       */
-      sortOrder?: AgentSessionEventsIcebergTableSourceSortOrder;
-      /**
-       * Format: date-time
-       * @description Start of time interval to query data for.
-       * @example 2023-01-01T00:00:00Z
-       */
-      start: string;
-      /**
-       * @description Reads metrics out of an Iceberg Table for processing. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: MetricsIcebergTableSourceType;
-      /**
-       * @description Variables that can be used to modify the query while parsed
-       * @default {}
-       * @example {
-       *       "__application": "app1",
-       *       "__service": "service1"
-       *     }
-       */
-      variables?: {
-        [key: string]: components["schemas"]["Any"];
-      };
-    };
     MetricsLakeSink: {
       /** @description The id of the dataset whose metrics lake tables it writes. */
       datasetId: string;
@@ -11473,6 +11455,21 @@ export interface components {
        * @default false
        */
       recomputeMarkers?: boolean;
+      /**
+       * Format: int32
+       * @description The most centroids each distribution point's t-digest keeps: absent or 0 keeps one for each bin of the sketch; otherwise any integer from 32 to 4096. Fewer centroids take fewer bytes and make percentiles less precise. A change applies to the points written after it, within 30 seconds, without a restart.
+       */
+      sketchMaxCentroids?: number;
+      /**
+       * @description What the lake's points table keeps of each distribution point besides its count, sum, average, min and max: SUMMARY keeps nothing more; PERCENTILES keeps its p50, p90, p95 and p99, in the columns sketch_p50 to sketch_p99; T_DIGEST keeps its sketch as a t-digest, capped by sketchMaxCentroids. Absent means T_DIGEST, what a lake kept before the setting. A change applies to the points written after it, within 30 seconds, without a restart; points already written keep their own.
+       * @enum {string}
+       */
+      sketchMode?: MetricsLakeSinkSketchMode;
+      /**
+       * @description How the lake stores the distribution points of chosen metrics, in place of sketchMode and sketchMaxCentroids. A point takes the first override its metric's name matches; one that matches none takes the lake's own. At most 100. A change applies to the points written after it, within 30 seconds, without a restart.
+       * @default []
+       */
+      sketchOverrides?: components["schemas"]["SketchOverride"][];
       /**
        * @description Writes every raw point of a v3 metrics source into its dataset's metrics lake. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -11524,6 +11521,18 @@ export interface components {
       rules?: components["schemas"]["ProcessingRule"][];
       /** @description Where the reducer's outputs go: at least one sink. */
       sinks: components["schemas"]["MetricsTemplateSink"][];
+      /**
+       * Format: int32
+       * @description The most centroids each of the lake's t-digests keeps: absent or 0 keeps one for each bin of the sketch; otherwise any integer from 32 to 4096. With datasetId. Changes without a restart.
+       */
+      sketchMaxCentroids?: number;
+      /**
+       * @description What the lake keeps of each distribution point besides its count, sum, average, min and max: SUMMARY, PERCENTILES (its p50, p90, p95 and p99) or T_DIGEST. With datasetId. Absent, the lake keeps t-digests. Changes without a restart.
+       * @enum {string}
+       */
+      sketchMode?: MetricsLakeSinkSketchMode;
+      /** @description How the lake stores the distribution points of chosen metrics, in place of sketchMode and sketchMaxCentroids: a point takes the first override its metric's name matches, and one that matches none takes the lake's own. At most 100. With datasetId. Absent means none. Changes without a restart. */
+      sketchOverrides?: components["schemas"]["SketchOverride"][];
       source: components["schemas"]["MetricsTemplateSource"];
       /**
        * @description Per-metric-name aggregations across objects: one of MetricsOverrideFunction in place of the metric type's default for combining a group's objects. A rule that aggregates across objects uses it where its aggregation is DEFAULT, and a function it names takes precedence. Exact metric names. Absent, every metric keeps its default. The reducer's spaceAggOverrides, as its refusals name it.
@@ -11549,15 +11558,6 @@ export interface components {
      * @enum {string}
      */
     MetricsRuleFunction: MetricsRuleFunction;
-    MetricsSynchronousSink: {
-      /** @example operation_name */
-      name: string;
-      /**
-       * @description Sink for returning metric results to the caller. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: MetricsSynchronousSinkType;
-    };
     /** @description Edges to remove, then edges to add, each as from[:port] -> to[:port]. */
     MetricsTemplateGraphEdgeOverrides: {
       /**
@@ -11601,7 +11601,7 @@ export interface components {
       recompute?: boolean;
       /**
        * Format: ISO-8601
-       * @description How long after a window ends the reducer first sends it, and how often it re-sends a window a late point changed: the source's wait for late points and the reducer's softLateDeadline, both. It must be positive and under the reducer's lateDataMinWait, which the template sets to 30 s. Absent, 2 s.
+       * @description How long after a window ends the reducer first sends it, and how often it re-sends a window a late point changed: the source's wait for late points and the reducer's softLateDeadline, both. It must be positive and under the reducer's lateDataMinWait, which the template sets to 30 s. Absent, 15 s; shorter sends windows sooner, and more often.
        * @example PT20.345S
        */
       softLateDeadline?: string;
@@ -11839,7 +11839,7 @@ export interface components {
     /** @description Object-identity configuration. */
     ObjectsConfig: {
       /**
-       * @description Tag keys that identify an object, such as host. Each reads a series' merged attributes: its own tags, then its scope's, then its resource's, a tag the source identifies by winning over one it only describes by. A rule that aggregates across objects writes each where the series had it with the cohort's id, such as cohort_service-api (see groupBy.keys).
+       * @description Tag keys that identify an object, such as host. Each reads a series' merged attributes: its own tags, then its scope's, then its resource's, a tag the source identifies by winning over one it only describes by. A rule that aggregates across objects writes each where the series had it with the cohort's id, such as cohort_service-api_<hash> (see groupBy.keys).
        * @default []
        * @example [
        *       "host"
@@ -11920,18 +11920,16 @@ export interface components {
       | components["schemas"]["VendorLogEventDedupIcebergTableSink"]
       | components["schemas"]["SpanDedupIcebergTableSink"]
       | components["schemas"]["SpansIcebergTableSink"]
+      | components["schemas"]["EventsIcebergTableSink"]
       | components["schemas"]["LogsIcebergTableSource"]
       | components["schemas"]["AgentSessionsIcebergTableSource"]
       | components["schemas"]["AgentSessionEventsIcebergTableSource"]
-      | components["schemas"]["MetricsIcebergTableSource"]
       | components["schemas"]["TracesIcebergTableSource"]
       | components["schemas"]["SpansBackfillIcebergTableSource"]
-      | components["schemas"]["MetricsIcebergTableSink"]
       | components["schemas"]["DatadogLogCloudSource"]
       | components["schemas"]["DatadogLogAgentSource"]
       | components["schemas"]["DatadogTraceAgentSource"]
       | components["schemas"]["GreprVendorSource"]
-      | components["schemas"]["GreprMetricsSource"]
       | components["schemas"]["DatadogLogSink"]
       | components["schemas"]["DatadogTraceSink"]
       | components["schemas"]["NewRelicLogSink"]
@@ -11947,7 +11945,6 @@ export interface components {
       | components["schemas"]["ReducerLogsQuerySource"]
       | components["schemas"]["LogsSynchronousSink"]
       | components["schemas"]["AgentSessionsSynchronousSink"]
-      | components["schemas"]["MetricsSynchronousSink"]
       | components["schemas"]["VariantSynchronousSink"]
       | components["schemas"]["SpansSynchronousSink"]
       | components["schemas"]["QuerySink"]
@@ -11956,7 +11953,6 @@ export interface components {
       | components["schemas"]["GreprPipeLogSource"]
       | components["schemas"]["GreprPipeLogSink"]
       | components["schemas"]["DatadogMetricsSink"]
-      | components["schemas"]["LegacyDatadogMetricsSink"]
       | components["schemas"]["AnalyticsSource"]
       | components["schemas"]["GreprReducerLogSource"]
       | components["schemas"]["AthenaAgentSessionsSource"]
@@ -12844,6 +12840,36 @@ export interface components {
        * @enum {string}
        */
       type: QuerySinkType;
+    };
+    /** @description The filter's tokens, in order. Offsets are character offsets, which index a JavaScript string the same way. */
+    QueryToken: {
+      /**
+       * Format: int32
+       * @description The offset past the token's last character in the filter.
+       */
+      end: number;
+      /**
+       * @description A filter token's kind. TERM: a term, a value or a number. QUOTED: a quoted phrase. COLON: a field's qualifier, : or =. COMPARE: <, >, <= or >=, which take a field and a bound. OPEN and CLOSE: parentheses. RANGE: a whole range, from its opening bracket or brace to its closing one, or to the end. PREFIX: - or +. OPERATOR: AND, OR or NOT, ! and != included.
+       * @enum {string}
+       */
+      kind: QueryTokenKind;
+      /**
+       * Format: int32
+       * @description The offset of the token's first character in the filter, from 0.
+       */
+      start: number;
+    };
+    QueryTokensRequest: {
+      query: components["schemas"]["EventPredicate"];
+    };
+    QueryTokensResponse: {
+      /** @description Whether lexing stopped at an unclosed quote or a character the grammar refuses, so the tokens end before the filter does. */
+      error: boolean;
+      /**
+       * @description The filter's tokens, in order. Offsets are character offsets, which index a JavaScript string the same way.
+       * @default []
+       */
+      tokens: components["schemas"]["QueryToken"][];
     };
     /** @description Optional configuration overrides for the raw logs sink. */
     RawLogsSinkConfig: {
@@ -13784,7 +13810,6 @@ export interface components {
       type: string;
     } & (
       | components["schemas"]["LogEvent"]
-      | components["schemas"]["DoubleDatapoint"]
       | components["schemas"]["CompleteSpan"]
       | components["schemas"]["MetricData"]
       | components["schemas"]["VariantEvent"]
@@ -14282,6 +14307,24 @@ export interface components {
       orgName: string;
       reCaptchaToken: string;
       user: components["schemas"]["UserInfo"];
+    };
+    /** @description How the lake stores the distribution points of the metrics a name pattern matches, in place of its own storage. */
+    SketchOverride: {
+      /**
+       * Format: int32
+       * @description The most centroids each matched point's t-digest keeps: 0 keeps one for each bin of the sketch; otherwise any integer from 32 to 4096. Absent, the lake's own cap applies, and follows it when it changes.
+       */
+      maxCentroids?: number;
+      /**
+       * @description The metric names it applies to, case-sensitively, after any source renames: a glob, where * matches any run of characters and a pattern without one is an exact name, or an RE2 regex after r/ that matches the whole name.
+       * @example http.server.*
+       */
+      metricName: string;
+      /**
+       * @description What the lake keeps of each matched distribution point besides its count, sum, average, min and max: SUMMARY, PERCENTILES (its p50, p90, p95 and p99) or T_DIGEST.
+       * @enum {string}
+       */
+      mode: MetricsLakeSinkSketchMode;
     };
     SkillFile: {
       content: string;
@@ -17692,6 +17735,7 @@ export type SchemaConsoleSetupInfo = components["schemas"]["ConsoleSetupInfo"];
 export type SchemaConstantSampling = components["schemas"]["ConstantSampling"];
 export type SchemaContextPart = components["schemas"]["ContextPart"];
 export type SchemaContract = components["schemas"]["Contract"];
+export type SchemaCount = components["schemas"]["Count"];
 export type SchemaCoveredSignal = components["schemas"]["CoveredSignal"];
 export type SchemaCreateAgentSessionAnalyticsJob =
   components["schemas"]["CreateAgentSessionAnalyticsJob"];
@@ -17753,7 +17797,6 @@ export type SchemaDatasetEstimationConfig =
 export type SchemaDatasetRead = components["schemas"]["DatasetRead"];
 export type SchemaDatasetUpdate = components["schemas"]["DatasetUpdate"];
 export type SchemaDiscardingSink = components["schemas"]["DiscardingSink"];
-export type SchemaDoubleDatapoint = components["schemas"]["DoubleDatapoint"];
 export type SchemaDropNode = components["schemas"]["DropNode"];
 export type SchemaDropRule = components["schemas"]["DropRule"];
 export type SchemaEarliestReadingStrategy =
@@ -17774,6 +17817,8 @@ export type SchemaEventPredicate = components["schemas"]["EventPredicate"];
 export type SchemaEventPredicateTrigger =
   components["schemas"]["EventPredicateTrigger"];
 export type SchemaEventRecord = components["schemas"]["EventRecord"];
+export type SchemaEventsIcebergTableSink =
+  components["schemas"]["EventsIcebergTableSink"];
 export type SchemaExactAttributesMergeStrategy =
   components["schemas"]["ExactAttributesMergeStrategy"];
 export type SchemaExceptionImpact = components["schemas"]["ExceptionImpact"];
@@ -17796,8 +17841,6 @@ export type SchemaGeoIpParser = components["schemas"]["GeoIpParser"];
 export type SchemaGithubMcp = components["schemas"]["GithubMcp"];
 export type SchemaGreprApiKey = components["schemas"]["GreprApiKey"];
 export type SchemaGreprJobGraph = components["schemas"]["GreprJobGraph"];
-export type SchemaGreprMetricsSource =
-  components["schemas"]["GreprMetricsSource"];
 export type SchemaGreprPipe = components["schemas"]["GreprPipe"];
 export type SchemaGreprPipeLogSink = components["schemas"]["GreprPipeLogSink"];
 export type SchemaGreprPipeLogSource =
@@ -17954,10 +17997,9 @@ export type SchemaJsonLogEventMapper =
   components["schemas"]["JsonLogEventMapper"];
 export type SchemaJsonLogProcessor = components["schemas"]["JsonLogProcessor"];
 export type SchemaJsonNode = components["schemas"]["JsonNode"];
+export type SchemaKey = components["schemas"]["Key"];
 export type SchemaLatestReadingStrategy =
   components["schemas"]["LatestReadingStrategy"];
-export type SchemaLegacyDatadogMetricsSink =
-  components["schemas"]["LegacyDatadogMetricsSink"];
 export type SchemaLinkMemoryRequest =
   components["schemas"]["LinkMemoryRequest"];
 export type SchemaLinkMemoryResponse =
@@ -18037,28 +18079,25 @@ export type SchemaMeteredDimensionCommitment =
   components["schemas"]["MeteredDimensionCommitment"];
 export type SchemaMeteredDimensionUsage =
   components["schemas"]["MeteredDimensionUsage"];
-export type SchemaMetricAggSpec = components["schemas"]["MetricAggSpec"];
 export type SchemaMetricAggregation =
   components["schemas"]["MetricAggregation"];
 export type SchemaMetricData = components["schemas"]["MetricData"];
 export type SchemaMetricEventPredicate =
   components["schemas"]["MetricEventPredicate"];
+export type SchemaMetricKeysResponse =
+  components["schemas"]["MetricKeysResponse"];
 export type SchemaMetricNameFilter = components["schemas"]["MetricNameFilter"];
 export type SchemaMetricReducer = components["schemas"]["MetricReducer"];
 export type SchemaMetricRename = components["schemas"]["MetricRename"];
+export type SchemaMetricSuggestionsResponse =
+  components["schemas"]["MetricSuggestionsResponse"];
 export type SchemaMetricsBackfillSource =
   components["schemas"]["MetricsBackfillSource"];
 export type SchemaMetricsBackfillTemplateInput =
   components["schemas"]["MetricsBackfillTemplateInput"];
-export type SchemaMetricsIcebergTableSink =
-  components["schemas"]["MetricsIcebergTableSink"];
-export type SchemaMetricsIcebergTableSource =
-  components["schemas"]["MetricsIcebergTableSource"];
 export type SchemaMetricsLakeSink = components["schemas"]["MetricsLakeSink"];
 export type SchemaMetricsReducerTemplateInput =
   components["schemas"]["MetricsReducerTemplateInput"];
-export type SchemaMetricsSynchronousSink =
-  components["schemas"]["MetricsSynchronousSink"];
 export type SchemaMetricsTemplateGraphEdgeOverrides =
   components["schemas"]["MetricsTemplateGraphEdgeOverrides"];
 export type SchemaMetricsTemplateGraphOverrides =
@@ -18165,6 +18204,11 @@ export type SchemaQueryParsingError =
   components["schemas"]["QueryParsingError"];
 export type SchemaQueryResult = components["schemas"]["QueryResult"];
 export type SchemaQuerySink = components["schemas"]["QuerySink"];
+export type SchemaQueryToken = components["schemas"]["QueryToken"];
+export type SchemaQueryTokensRequest =
+  components["schemas"]["QueryTokensRequest"];
+export type SchemaQueryTokensResponse =
+  components["schemas"]["QueryTokensResponse"];
 export type SchemaRawLogsSinkConfig =
   components["schemas"]["RawLogsSinkConfig"];
 export type SchemaRead = components["schemas"]["Read"];
@@ -18250,6 +18294,7 @@ export type SchemaSiblingMergeRule = components["schemas"]["SiblingMergeRule"];
 export type SchemaSignalDropRule = components["schemas"]["SignalDropRule"];
 export type SchemaSignalMask = components["schemas"]["SignalMask"];
 export type SchemaSignupRequest = components["schemas"]["SignupRequest"];
+export type SchemaSketchOverride = components["schemas"]["SketchOverride"];
 export type SchemaSkillFile = components["schemas"]["SkillFile"];
 export type SchemaSkillView = components["schemas"]["SkillView"];
 export type SchemaSkippedInvestigation =
@@ -20782,6 +20827,67 @@ export interface operations {
         content?: never;
       };
       /** @description No configuration found for this dataset. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getMetricSuggestions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The suggestions; empty lists when the dataset has none yet. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MetricSuggestionsResponse"];
+        };
+      };
+      /** @description Dataset not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getMetricKeys: {
+    parameters: {
+      query?: {
+        /** @description The metrics whose tag keys to read, at most 50. */
+        metric?: string[];
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The keys; no entry for a metric the suggestions don't hold. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MetricKeysResponse"];
+        };
+      };
+      /** @description Dataset not found. */
       404: {
         headers: {
           [name: string]: unknown;
@@ -29511,6 +29617,44 @@ export interface operations {
       };
     };
   };
+  tokens: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["QueryTokensRequest"];
+      };
+    };
+    responses: {
+      /** @description The filter's tokens. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["QueryTokensResponse"];
+        };
+      };
+      /** @description The query isn't a Datadog query, or the filter is too long. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   listRoles: {
     parameters: {
       query?: never;
@@ -31596,18 +31740,10 @@ export enum DatasetTable {
   metrics_recompute_markers = "metrics_recompute_markers",
   spans_raw = "spans_raw",
   spans_dedup = "spans_dedup",
+  events_raw = "events_raw",
 }
 export enum DiscardingSinkType {
   discarding_sink = "discarding-sink",
-}
-export enum DoubleDatapointMetricType {
-  UNSPECIFIED_DOUBLE = "UNSPECIFIED_DOUBLE",
-  GAUGE_DOUBLE = "GAUGE_DOUBLE",
-  RATE_DOUBLE = "RATE_DOUBLE",
-  COUNT_DOUBLE = "COUNT_DOUBLE",
-}
-export enum DoubleDatapointType {
-  double_datapoint = "double-datapoint",
 }
 export enum DropNodeKind {
   drop_node = "drop-node",
@@ -31633,6 +31769,9 @@ export enum EventRecordJobState {
   QUERY_TOO_LARGE = "QUERY_TOO_LARGE",
   RESOURCES_EXHAUSTED = "RESOURCES_EXHAUSTED",
 }
+export enum EventsIcebergTableSinkType {
+  events_iceberg_table_sink = "events-iceberg-table-sink",
+}
 export enum ExactAttributesMergeStrategyType {
   exact = "exact",
 }
@@ -31641,17 +31780,6 @@ export enum ExternalSourceTriggerType {
 }
 export enum GeoIpParserType {
   geoip_parser = "geoip-parser",
-}
-export enum GreprMetricsSourceMetrics {
-  table_totalBytes = "table_totalBytes",
-  job_operator_numRecordsIn = "job_operator_numRecordsIn",
-  job_operator_numRecordsOut = "job_operator_numRecordsOut",
-  job_operator_numRecordsInPerSecond = "job_operator_numRecordsInPerSecond",
-  job_operator_numRecordsOutPerSecond = "job_operator_numRecordsOutPerSecond",
-  job_operator_numRecordsSend = "job_operator_numRecordsSend",
-}
-export enum GreprMetricsSourceType {
-  grepr_metrics_source = "grepr-metrics-source",
 }
 export enum GreprPipeLogSinkType {
   grepr_pipe_log_sink = "grepr-pipe-log-sink",
@@ -31757,9 +31885,6 @@ export enum JobActionRuleType {
 export enum JsonLogProcessorType {
   json_log_processor = "json-log-processor",
 }
-export enum LegacyDatadogMetricsSinkType {
-  legacy_datadog_metrics_sink = "legacy-datadog-metrics-sink",
-}
 export enum LogAttributesRemapperType {
   log_attributes_remapper = "log-attributes-remapper",
 }
@@ -31862,12 +31987,6 @@ export enum MessageRe2NodeType {
 export enum MessageWildcardNodeType {
   message_wildcard_node = "message-wildcard-node",
 }
-export enum MetricAggSpecSpaceAggregation {
-  LATEST = "LATEST",
-  SUM = "SUM",
-  AVG = "AVG",
-  MAX = "MAX",
-}
 export enum MetricDataType {
   metricdata = "metricdata",
 }
@@ -31880,11 +31999,10 @@ export enum MetricReducerType {
 export enum MetricsBackfillSourceType {
   metrics_backfill_source = "metrics-backfill-source",
 }
-export enum MetricsIcebergTableSinkType {
-  metrics_iceberg_table_sink = "metrics-iceberg-table-sink",
-}
-export enum MetricsIcebergTableSourceType {
-  metrics_iceberg_table_source = "metrics-iceberg-table-source",
+export enum MetricsLakeSinkSketchMode {
+  SUMMARY = "SUMMARY",
+  PERCENTILES = "PERCENTILES",
+  T_DIGEST = "T_DIGEST",
 }
 export enum MetricsLakeSinkType {
   metrics_lake_sink = "metrics-lake-sink",
@@ -31904,9 +32022,6 @@ export enum MetricsRuleFunction {
   MAX = "MAX",
   MIN = "MIN",
   PERCENTILE = "PERCENTILE",
-}
-export enum MetricsSynchronousSinkType {
-  metrics_sync_sink = "metrics-sync-sink",
 }
 export enum MinAttributesMergeStrategyType {
   min = "min",
@@ -32005,9 +32120,19 @@ export enum QuerySinkFormat {
 export enum QuerySinkType {
   query_sink = "query-sink",
 }
+export enum QueryTokenKind {
+  TERM = "TERM",
+  QUOTED = "QUOTED",
+  COLON = "COLON",
+  COMPARE = "COMPARE",
+  OPEN = "OPEN",
+  CLOSE = "CLOSE",
+  RANGE = "RANGE",
+  PREFIX = "PREFIX",
+  OPERATOR = "OPERATOR",
+}
 export enum ReadFeatureFlags {
   DATADOG_BROWSER_LOGS_INTEGRATION = "DATADOG_BROWSER_LOGS_INTEGRATION",
-  METRICS_SOURCE = "METRICS_SOURCE",
   S3_LOGS_FILE_SOURCE = "S3_LOGS_FILE_SOURCE",
   AI_WORKFLOWS = "AI_WORKFLOWS",
   SEARCH_ICEBERG_SOURCE = "SEARCH_ICEBERG_SOURCE",
@@ -32409,11 +32534,8 @@ export const SOURCE_TYPES = new Set<string>([
   'cloudtrail-file-source',
   'datadog-log-agent-source',
   'datadog-log-cloud-source',
-  'datadog-metric-agent-source',
   'datadog-metric-agent-source-v3',
-  'datadog-metrics-cloud-source',
   'datadog-trace-agent-source',
-  'grepr-metrics-source',
   'grepr-pipe-log-source',
   'grepr-raw-log-source',
   'grepr-raw-span-source',
@@ -32424,7 +32546,6 @@ export const SOURCE_TYPES = new Set<string>([
   'logs-iceberg-table-source',
   'logs-values-source',
   'metrics-backfill-source',
-  'metrics-iceberg-table-source',
   'newrelic-log-agent-source',
   'otlp-log-agent-source',
   'otlp-trace-agent-source',
@@ -32446,14 +32567,12 @@ export const SINK_TYPES = new Set<string>([
   'datadog-trace-sink',
   'discarding-sink',
   'event-dedup-iceberg-table-sink',
+  'events-iceberg-table-sink',
   'grepr-pipe-log-sink',
-  'legacy-datadog-metrics-sink',
   'logs-iceberg-table-sink',
   'logs-predicates-counter',
   'logs-sync-sink',
-  'metrics-iceberg-table-sink',
   'metrics-lake-sink',
-  'metrics-sync-sink',
   'newrelic-log-sink',
   'otlp-log-sink',
   'otlp-trace-sink',

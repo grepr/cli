@@ -110,9 +110,6 @@ batchFlinkConfiguration:
   datadogStatsSinkConfig:
     statsSinkUrlFormat: http://%s/api/v0.2/stats
 
-  greprMetricsSourceConfig:
-    prometheusUrl: "http://prometheus-label-proxy.prometheus.svc.cluster.local:8080"
-
   secretsConfig:
     provider: aws
     ttl: PT0S
@@ -212,9 +209,6 @@ streamingFlinkConfiguration:
     traceSinkUrlFormat: http://%s/api/v0.2/traces
   datadogStatsSinkConfig:
     statsSinkUrlFormat: http://%s/api/v0.2/stats
-
-  greprMetricsSourceConfig:
-    prometheusUrl: "http://prometheus-label-proxy.prometheus.svc.cluster.local:8080"
 
   secretsConfig:
     provider: aws

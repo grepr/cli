@@ -15,6 +15,10 @@ An example of a pipeline is a log or trace reduction pipeline that reduces the v
 
 Trace reduction pipelines process the APM data produced by your applications and agents by applying configured transformations, sampling to create representative subsets of the data, and forwarding the results to your observability platform. Grepr uses a novel approach to identify and sample every path through your system. Sampling reduces the volume and cost of data sent to your observability platform, while the complete set of raw traces is retained in a Grepr data lake. If you use Datadog, you can also derive and forward metrics from your trace data to track trends across your traces without forwarding every trace. See [_](/pipelines/trace-pipelines).
 
+## Metrics pipelines
+
+Metrics pipelines reduce the number of metric points that your agents send to your observability platform. A metrics pipeline drops the metrics you don't need, rolls the rest up to one point per time window, and can combine the series of many hosts or containers into one series per group, such as one series per environment. It can also keep every raw point in a Grepr data lake. See [_](/pipelines/metrics-pipelines).
+
 ## AI agent signals and suggestions
 
 A log reduction pipeline can report each newly detected log pattern to your Grepr AI agents, so an agent investigates behavior that is new in your systems. An agent can also propose a change to the pipeline it investigated, such as a new Grok parser or an added SQL transform, which appears on the pipeline's **Suggestions** step for you to review and apply. To turn on signals, see [_](/transforms/reducer/configuration#agent-signals). To review a proposed change, see [_](/ai-agents/investigations#suggestions).

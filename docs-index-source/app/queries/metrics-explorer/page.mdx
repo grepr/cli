@@ -1,0 +1,165 @@
+---
+description: Aggregate and chart the metric points in a metrics pipeline's data lake, explore the series a dataset holds, and backfill points to your platform.
+---
+
+import { Callout } from 'nextra/components'
+import { HiddenFAQ } from '@/components/HiddenFAQ'
+
+# Explore metrics with Metrics Explorer
+
+<Callout type="info">
+  Metrics Explorer reads the data lake of a [metrics pipeline](/pipelines/metrics-pipelines). Metrics pipelines are in a closed beta. To request access, contact [support@grepr.ai](mailto:support@grepr.ai).
+</Callout>
+
+Metrics Explorer queries the metrics that a metrics pipeline keeps in a dataset of the Grepr data lake. It has two views:
+
+- **Points** aggregates the points of the metrics you name, such as the average of a metric per host each minute, and charts the result.
+- **Series** answers questions about the series the dataset holds, such as which metrics it holds, which tag keys and values they carry, and how many series each has.
+
+From the **Points** view, you can also backfill the raw points of a time range to your observability platform.
+
+To open Metrics Explorer, click **Metrics** in the menu bar and select a dataset. The menu lists the datasets that hold metrics.
+
+## Aggregate metric points [#points]
+
+To aggregate the points of one or more metrics:
+
+1. Select **Points**.
+1. In **Metrics**, enter the names of the metrics, separated by commas or spaces, such as `system.cpu.user, system.cpu.idle`. The **Points** view needs at least one metric name.
+1. Optional: in **Filter by tags**, enter a tag filter, such as `env:prod -host:web-*`. The filter keeps the points of the series whose tags match it. See [_](#tag-filter).
+1. Select a time range. The **Points** view starts with the last hour.
+1. Build the analysis, and click **Run**.
+
+![The Points view with two CPU metrics named, the default analysis of each metric's average per minute in the builder, and their lines on the chart below.](/images/queries/metrics-explorer/points-chart.png)
+
+A new analysis is the average of each named metric's points per minute, with one line per metric. For a distribution, the average is of the values its points summarize, weighted by how many values each point holds. You build an analysis as you build one in Log Explorer's Analyze mode: expressions under SELECT, the groupings, a time window, the order, and a limit. The result shows as a chart or a table. To learn how to build an analysis, see [Aggregate logs with Analyze mode](/queries/analyze).
+
+An analysis's expressions read these fields of each point:
+
+- `event_timestamp`, the point's time
+- `metric_value`, the point's value, which for a distribution is the sum of the values the point summarizes
+- `metric_name`, `metric_type`, and `unit`, the point's metric
+- `tags`, the series' tags, as a map from each tag key to its values, such as `tags['host'][1]` for the first `host` value
+- `series_id` and `series_version`, the point's series and the version of the series' metadata the point arrived with
+- `scope_name` and `scope_version`, the instrumentation scope that reported the series, when it has one
+- `sketch_count`, `sketch_avg`, `sketch_min`, `sketch_max`, and `sketch`, which summarize a distribution's point
+- `sketch_p50`, `sketch_p90`, `sketch_p95`, and `sketch_p99`, a distribution point's percentiles, for a point stored with them
+
+To learn what each field holds, see [What a metric points table contains](/queries/sql#points).
+
+The SELECT field suggests the usual measures of metric points. **avg of points**, **min of points**, and **max of points** read each distribution's summary rather than its sum. **sum of points** and **count of points** sum and count the points. **p50 of points** through **p99 of points** are percentiles of the points' values, and **p50 of a distribution** through **p99 of a distribution** are percentiles of the values that a distribution's points summarize. **p50 stored (max)** through **p99 stored (max)** are the highest of the percentiles that a dataset stores for each distribution point. **series reporting** counts the series that sent points.
+
+For example:
+
+- To chart the average CPU of each host, select `tags['host'][1]` as `host` and **avg of points**, group by `host`, and keep the one-minute window.
+- To find the 10 hosts with the highest CPU, select `tags['host'][1]` as `host` and **max of points** as `peak`, group by `host`, remove the window, order by `peak` descending, and set the limit to 10.
+- To chart the 99th percentile of a distribution's values, select **p99 of a distribution**, which is `APPROX_PERCENTILE(sketch, 0.99)`. Grepr merges the t-digests of the distribution's points in each group and estimates the percentile from the merge. Points stored without a t-digest don't count.
+- For points stored with their percentiles instead of a t-digest, select **p99 stored (max)**, which is `MAX(sketch_p99)`: the highest p99 among each group's points stored that way. It's often above the p99 of all their values combined, because it's one point's own. A dataset whose pipeline's storage changed holds points of both kinds, and each of the two presets reads only its own. To learn what a pipeline's lake stores, see [Store distribution metrics in less space](/grepr-platform/data-lake#distribution-sketch-cap).
+
+### Filter by tags [#tag-filter]
+
+A tag filter matches the tags of each series, written as `key:value` terms in Datadog-like syntax. A value matches ignoring case, and a key matches exactly. Combine terms with `AND`, which a space also means, `OR`, and `NOT` or `-`, and group them with parentheses. A value can hold `*` wildcards, such as `host:web-*`, and a value that holds a comma must be quoted. A metrics filter reads tags only: it can't search free text, read an `@` attribute, or search every field with `*:value`.
+
+## Explore the series a dataset holds [#series]
+
+To explore the series a dataset holds:
+
+1. Select **Series**.
+1. Optional: in **Metrics (optional)**, enter the names of the metrics to read. With no names, the view reads every metric.
+1. Optional: in **Filter by tags**, enter a tag filter. See [_](#tag-filter).
+1. Select a time range. The **Series** view starts with **Today**, in your browser's time zone. A time range that you select carries over when you switch between **Points** and **Series**.
+1. Click a question under **Start from a question**, or build an analysis, and click **Run**.
+
+![The Series view with the Metrics question picked, its analysis in the builder, and a table of each metric's type, unit, interval, approximate series, and first and last days.](/images/queries/metrics-explorer/series-metrics.png)
+
+The **Series** view reads whole UTC days: a time range reads every UTC day that it touches, and the result names the days it read. The days of a series are the days in the range that its metadata covers. The data lake records a series' metadata for each day on which the series reports, and it can also record the next day for a series that reported in the last hour of its day. So a series' days, and the per-day counts, can include a day on which the series had no points. To find when a series reported, read its points in the **Points** view.
+
+A series' first and last day are the first and last of its days in the range, so a series that reported before the range, stopped, and came back during the range looks new: its first day is the day it came back. To find the metrics that appeared recently, read a longer range, such as the last 30 days.
+
+### Start from a question [#questions]
+
+Each question fills the builder with an analysis, which you can change before you run it:
+
+- **Metrics** lists each metric with its type, unit, and interval, the approximate number of series, and the first and last of its days in the range.
+- **Tag keys** lists each tag key of the metrics, with the approximate number of values and series it has.
+- **Tag values** lists the values of the `env` tag key, with the approximate number of series that carry each. To list another key's values, change `env` in the analysis.
+- **Series per day** counts the approximate number of series of each metric on each day.
+
+### Choose what a row is [#rows]
+
+The analysis reads one row per series version, or one row per tag of each series version. Select one of the following:
+
+- **Series per row**, the default, reads one row per series version. A change in a series' unit, description, interval, or descriptive tags makes another version of the same series, so count series with `APPROX_COUNT_DISTINCT(series_id)` or `COUNT(DISTINCT series_id)` rather than `COUNT(*)`. A change in the metric's type, the instrumentation scope's name or version, or an identifying tag makes another series.
+- **Tag per row** reads one row per tag of each series version, with four more fields: `tag_key`, `tag_value`, `tag_level`, and `tag_identifying`. Use it to group or filter by tag keys and values. A series version with no tags is one row with these fields null.
+
+A row has these fields: `metric_name`, `metric_type`, `unit`, `description`, `interval_seconds`, `scope_name`, `scope_version`, `tags`, `tag_pairs`, `series_id`, `series_version`, `first_day`, `last_day`, and `series_days`. To learn what each field holds, see [What a metric series table contains](/queries/sql#series).
+
+### Count series per day [#series-per-day]
+
+To get a row per day, add a tumbling time window of one day. The analysis then groups by UTC day, and `window_start` is the day. The **Series** view takes no other time window.
+
+## Backfill points to your platform [#backfill]
+
+A backfill sends the raw points of the named metrics in the time range from the data lake to your observability platform, for the series that match the tag filter. A backfill can't send cumulative counters, cumulative up-down counters, or distributions, so name only other types of metrics. A backfill that names one of these types fails, and it might have sent some points of the other metrics before it fails. To find each metric's type, use the **Series** view's **Metrics** question. To backfill points, you need permission to write to integrations.
+
+To start a backfill:
+
+1. In the **Points** view, enter the metrics, the tag filter, and the time range to send.
+1. In the **Run** button's menu, select **Backfill**.
+1. Select the integrations to send the points to. The menu lists the integrations of the vendors that a backfill supports.
+1. Click **Backfill**.
+
+Grepr runs the backfill as a job. To follow it, click **Track progress** in the message that confirms the backfill started, or go to the **Jobs** page and select **Backfills**.
+
+Before you backfill, check the following:
+
+- Points that the data lake hasn't stored yet, such as the most recent points, aren't sent. Backfill that part of the range again later.
+- A backfill that fails keeps no record of what it sent, so running it again sends the whole time range again.
+- Your vendor's own rules for older points and for the pipeline's output. See the vendor's section on this page, such as [_](#datadog-backfill).
+
+## Share an analysis [#share]
+
+To share an analysis, copy the page's link from the address bar. The link carries the view, the dataset, the time range, the metrics, the tag filter, and the analysis. Opening a link that names a dataset runs it, when it's a **Series** link or names a metric. A link's query holds at most 8,000 characters, so a longer query isn't kept in the link.
+
+## Datadog [#datadog]
+
+### Backfill points to Datadog [#datadog-backfill]
+
+A backfill can send points to Datadog integrations. Pick them in **Datadog integrations**, beside the **Backfill** button.
+
+![The Points view with Backfill picked: a Datadog integration selected beside the Backfill button, and the notes on backfilling to Datadog below the metrics.](/images/queries/metrics-explorer/backfill.png)
+
+Before you backfill to Datadog, check the following:
+
+- Datadog accepts points more than 1 hour old only for metrics that have Datadog's historical metrics ingestion turned on.
+- The pipeline's rollups stay in Datadog. A rolled-up count adds to the backfilled points over the same window, and an across-objects rollup's series adds to its hosts' series in a query across both.
+- A backfill doesn't send host metadata, so Datadog attaches only the host tags it already knows. If Datadog doesn't have a host's metadata, the host's backfilled series might lack the host tags that the lake recorded, and a query that filters on those tags might miss their points.
+
+## Limitations [#limitations]
+
+- Metrics Explorer reads one dataset at a time.
+- The **Points** view needs at least one metric name.
+- The **Series** view reads whole UTC days, and takes only a tumbling time window of one day.
+- A backfill can't send cumulative counters, cumulative up-down counters, or distributions.
+- A link's query holds at most 8,000 characters, including the analysis.
+
+<HiddenFAQ
+  faqs={[
+    {
+      q: "What is Metrics Explorer in Grepr?",
+      a: "Metrics Explorer queries the metrics that a metrics pipeline keeps in the Grepr data lake. Its Points view aggregates and charts the points of the metrics you name, and its Series view answers questions about the series a dataset holds, such as which metrics, tag keys, and values it has."
+    },
+    {
+      q: "How do I count the series of a metric in Grepr?",
+      a: "In Metrics Explorer's Series view, name the metric, click the Metrics question, and click Run. It counts series approximately. For an exact count, use COUNT(DISTINCT series_id) in your own analysis. A series can have more than one version, so COUNT(*) counts versions."
+    },
+    {
+      q: "Can I backfill metric points from the Grepr data lake to Datadog?",
+      a: "Yes, except for cumulative counters, cumulative up-down counters, and distributions. In Metrics Explorer's Points view, name the metrics, set the time range, select Backfill in the Run button's menu, select the Datadog integrations, and click Backfill."
+    },
+    {
+      q: "Can Metrics Explorer estimate a percentile of a distribution metric?",
+      a: "Yes, for points stored with t-digests. Select p99 of a distribution, which is APPROX_PERCENTILE(sketch, 0.99), in a Points analysis. Grepr merges the t-digests of the distribution's points and estimates the percentile from the merge. For points stored with percentiles instead, select p99 stored (max), which is MAX(sketch_p99): the highest stored p99 among them. Each reads only its own kind of points."
+    }
+  ]}
+/>

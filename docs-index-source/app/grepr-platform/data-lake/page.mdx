@@ -36,6 +36,80 @@ Because the Grepr platform manages the deployment of the data lake infrastructur
 
 When you use the API to configure a pipeline, the Grepr platform also manages the deployment of the tables and other structures required by the data lake. However, your pipeline configuration must include specific values related to Iceberg sources and sinks. To learn more, see [Create and manage jobs with the Grepr REST API](/apis/job-creation-guide).
 
+## Store distribution metrics in less space [#distribution-sketch-cap]
+
+When a metrics pipeline writes distribution metrics, such as the Datadog Agent's, to its lake, the lake stores each point's count, sum, average, minimum, and maximum. The lake's _distribution storage_ sets what else it keeps of each point's sketch, which decides the percentiles you can query and the space each point takes:
+
+| Distribution storage | Also stored for each point | Percentiles you can query | Bytes per point |
+|---|---|---|---|
+| **Summary only** | Nothing | None | 32 |
+| **Summary and p50, p90, p95, p99** | Its p50, p90, p95, and p99 | Each point's stored percentiles, and their highest across points | 37 |
+| **T-digest** | Its sketch as a _t-digest_ | Any percentile, of one point or of points merged | 185, or 111 with a cap of 32 centroids |
+
+The bytes are after compression, measured on a synthetic mix of distribution points.
+
+To choose a pipeline's distribution storage, open the metrics pipeline, click **Lake** in the left pane, select an option under **Distribution storage**, and click **Apply Changes**. A lake you add in the pipeline editor starts on **Summary and p50, p90, p95, p99**. A lake whose pipeline doesn't set distribution storage, such as one added before Grepr offered the setting, stores t-digests with no cap.
+
+### Query stored percentiles [#stored-percentiles]
+
+Each stored percentile is the value of the sketch bin that holds it, within about 1.6% of the point's own percentile. Grepr SQL reads them as the `sketch_p50`, `sketch_p90`, `sketch_p95`, and `sketch_p99` columns of the metrics table.
+
+To chart a percentile across points, such as a minute's points from every host, use the highest stored value: in Metrics Explorer, select **p99 stored (max)**, which is `MAX(sketch_p99)`. It reads only the points stored with percentiles. Over those points, the highest stored p99 is at most about 1.6% below the p99 of all their values combined, and it's often far above it, because it's one point's own. On a synthetic workload of 1,000 values a point, it was a median 52% above. To query a percentile of all the points' values combined, store t-digests.
+
+### Cap the size of t-digests [#t-digest-cap]
+
+A t-digest is a list of _centroids_, each a value and the number of the point's values near it, and queries read t-digests to compute percentiles. By default, a t-digest keeps one centroid for each bin of the sketch, so it holds every bin that was sent.
+
+To store t-digests in less space, cap their centroids: in the pipeline's **Lake** step, with **Distribution storage** set to **T-digest**, select a cap under **T-digest cap**, such as **At most 64 centroids**, and click **Apply Changes**. The editor offers caps of 32, 64, 128, 256, 512, 1,024, 2,048, and 4,096 centroids, or **No cap**. Through the API or Terraform, a cap can be any whole number from 32 to 4,096.
+
+When a sketch has more bins than the cap, Grepr merges neighboring centroids until the t-digest has at most the cap, so it takes fewer bytes and gives less precise percentiles. A sketch with as many bins as the cap or fewer is stored the same as with no cap. Each centroid takes 16 bytes before compression. For example, a point whose sketch has 200 bins takes 3,237 bytes with no cap, at most 1,061 bytes with a cap of 64, and at most 549 bytes with a cap of 32.
+
+A cap doesn't change the smallest and largest values. Other percentiles move, and the tail percentiles, such as p99, move the most. Grepr measured how far on synthetic sketches of 1 to 373 bins, compared with no cap. Taking p50, p90, and p99 each on its own, a cap of 64 or more moved 99% of points' p50 by at most 1.7%, their p90 by at most 2.7%, and their p99 by at most 7.7%, and a cap from 32 to 63 moved them by at most 4.2%, 5.8%, and 20.5%. A single point's p99 can move by more when it falls near the point's largest values. Percentiles over many points, such as a chart's time bucket across a metric's hosts, move much less: over 40 hosts and a minute, a cap of 32 moved p50, p90, and p99 by at most 1.1%, 1.6%, and 4.2%, and a cap of 64 by at most 0.6%, 0.9%, and 2.1%.
+
+### Change a pipeline's distribution storage [#change-storage]
+
+A change applies to the points that the pipeline writes after it:
+
+- A running pipeline applies it within 30 seconds, without a restart.
+- Points already written keep what they were stored with. Switching to t-digests doesn't add t-digests to earlier points, and raising or removing a cap doesn't restore the precision of points written under a lower cap.
+
+After a change, a dataset holds points stored in more than one way, and each query reads the points that have what it needs. Average, minimum, maximum, sum, and count read every point. A percentile of a distribution, such as **p99 of a distribution**, reads the points stored with t-digests, and a stored percentile reads the points stored with percentiles. A group with none of the points a query reads shows no value.
+
+To set the distribution storage through the API, set `sketchMode` to `SUMMARY`, `PERCENTILES`, or `T_DIGEST` in the metrics pipeline's template input, beside `datasetId`. For `T_DIGEST`, set `sketchMaxCentroids` to a whole number from 32 to 4,096 to cap the t-digests, or leave it out or set it to `0` for no cap. A pipeline whose input leaves out `sketchMode` stores t-digests. In Terraform, set them in the template input of the `grepr_pipeline` resource's `job_graph_json`. See [Configure a metrics pipeline with the API or Terraform](/pipelines/metrics-pipelines#api) and [_](/admin/terraform-provider).
+
+### Store chosen metrics another way [#storage-by-metric]
+
+To store some metrics differently from the rest of the lake, such as keeping t-digests of the latency metrics you chart by percentile in a lake that stores percentiles, add _overrides_ by metric name. Each override has a metric name, a distribution storage, and, for **T-digest**, a cap. Each distribution point takes the storage and cap of the first override that matches its metric's name. A point whose metric matches no override takes the lake's **Distribution storage** and **T-digest cap**.
+
+To add an override, open the metrics pipeline, click **Lake** in the left pane, and under **Storage by metric**, click **Add override**. A new override stores t-digests at the lake's cap. Enter the metric name, select a storage and, for **T-digest**, a cap, and click **Apply Changes**. Use the arrows beside each override to put the more specific ones first. A lake has at most 100 overrides.
+
+An override's metric name matches as follows:
+
+- A name is a glob, where `*` matches any run of characters, such as `http.server.*`. A name without `*` matches exactly one metric.
+- A name that starts with `r/` is an [RE2 regular expression](https://github.com/google/re2/wiki/Syntax) that matches the whole metric name, such as `r/(db|cache)\..+`.
+- Matching is case-sensitive, against the metric's name after any [renames](/pipelines/metrics-pipelines#source).
+
+An override's **Cap** starts on the lake's, the first option, which shows the lake's **T-digest cap** and follows it when you change it. The lake's cap applies even when the lake's own storage isn't **T-digest**, so it caps the overrides' t-digests in a lake that stores percentiles. To give an override a cap of its own, select a cap or **No cap**.
+
+A change to the overrides applies as a change to the lake's distribution storage does: a running pipeline applies it within 30 seconds, and points already written keep what they were stored with.
+
+To chart a percentile of a metric in Metrics Explorer, select the preset that reads the metric's storage, which is its first matching override's or, when none matches, the lake's. For a metric stored with percentiles, select **p99 stored (max)**. For a metric stored as t-digests, select **p99 of a distribution**. A metric stored as **Summary only** has no percentile to chart.
+
+To set overrides through the API or Terraform, set `sketchOverrides` in the template input, beside `sketchMode`. It's a list of overrides in order. Each has a `metricName` of at most 1,000 characters, a `mode` of `SUMMARY`, `PERCENTILES`, or `T_DIGEST`, and, for `T_DIGEST`, an optional `maxCentroids`: `0` for no cap, or a whole number from 32 to 4,096. Leave out `maxCentroids` to use the lake's cap. For example, the following input stores percentiles, uncapped t-digests for the `http.server.*` metrics, and the summary alone for the metrics whose names start with `db.` or `cache.`:
+
+```json copy
+{
+  "datasetId": "<your-dataset-id>",
+  "sketchMode": "PERCENTILES",
+  "sketchOverrides": [
+    { "metricName": "http.server.*", "mode": "T_DIGEST", "maxCentroids": 0 },
+    { "metricName": "r/(db|cache)\\..+", "mode": "SUMMARY" }
+  ]
+}
+```
+
+The template input's other fields are left out of the example.
+
 <HiddenFAQ faqs={[
   {
     q: "What is the Grepr data lake?",
@@ -72,6 +146,18 @@ When you use the API to configure a pipeline, the Grepr platform also manages th
   {
     q: "How does the data lake support backfills?",
     a: "During incidents, Grepr automatically backtransfers relevant raw logs from the data lake to your observability platform. This is enabled by the efficient querying capabilities of Iceberg and Parquet storage."
+  },
+  {
+    q: "How do I store distribution metrics in less space in the data lake?",
+    a: "Choose the distribution storage in the metrics pipeline's Lake step: a summary only; a summary and each point's p50, p90, p95, and p99, which a lake added in the editor starts on; or a t-digest, which you can cap at 32 to 4,096 centroids. Summaries and stored percentiles take the least space. Only t-digests give percentiles of points merged, such as a chart's time bucket across hosts."
+  },
+  {
+    q: "Does changing a pipeline's distribution storage change data already in the data lake?",
+    a: "No. A change applies to points written after it, within 30 seconds for a running pipeline. Points already written keep what they were stored with, so switching to t-digests doesn't add t-digests to earlier points, and raising or removing a cap doesn't restore the precision of points written under a lower cap."
+  },
+  {
+    q: "Can I store some distribution metrics differently from the rest of the data lake?",
+    a: "Yes. In the metrics pipeline's Lake step, under Storage by metric, add overrides by metric name, each with a distribution storage and, for a t-digest, a cap. Each distribution point takes the storage of the first override that matches its metric's name, and a point that matches none takes the lake's own distribution storage. A lake has at most 100 overrides, and a running pipeline applies a change within 30 seconds."
   },
   {
     q: "Is my data in the data lake secure?",

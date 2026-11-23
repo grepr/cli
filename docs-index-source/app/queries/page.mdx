@@ -35,11 +35,17 @@ percentiles, buckets — and Grepr runs it against the data lake.
 
 See [Aggregate logs with Analyze mode](/queries/analyze).
 
-## Query logs with SQL
+## Query logs, traces, and metrics with SQL
 
-The SQL page runs one Grepr SQL query across up to four filtered tables of a dataset's logs, so you can join logs to other logs, compare filtered sets, and aggregate in several stages.
+The SQL page runs one Grepr SQL query across up to four filtered tables of a dataset's logs, traces, and metrics, so you can join logs to other logs or to traces, compare filtered sets, aggregate in several stages, and read a metric's points or its series.
 
-See [Query logs with SQL](/queries/sql).
+See [Query logs, traces, and metrics with SQL](/queries/sql).
+
+## Explore metrics with Metrics Explorer
+
+Metrics Explorer queries the metrics that a metrics pipeline keeps in the data lake. Its Points view aggregates and charts the points of the metrics you name, its Series view answers questions about the series a dataset holds, and you can backfill points from it to your observability platform. Metrics pipelines are in a closed beta.
+
+See [Explore metrics with Metrics Explorer](/queries/metrics-explorer).
 
 ## Limitations
 
