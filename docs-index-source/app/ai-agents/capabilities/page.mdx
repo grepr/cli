@@ -23,6 +23,8 @@ These settings are on the agent's **Capabilities** step, and on the matching ste
 
 Every call an agent makes to Grepr authenticates as the service account you select in the **Service account** field. The service account's roles decide which pipelines, datasets, and integrations the agent can read and write to.
 
+The agent uses Grepr's tools over MCP, so the service account's role also needs the **MCP** permissions. **View** lets the agent use Grepr's read-only tools. **Edit** lets it use the tools that change pipelines, issues, and memories. The agent also needs **Edit** to pick up issues and take handoffs. See [_](/apis/mcp#access).
+
 The service account is the boundary that holds even if a tool grant is over-permissive. An agent with the pipeline editing tool but a service account that can only view jobs cannot change a pipeline. Grant the narrowest role that lets the agent finish its job. To create one, see [_](/admin/service-accounts).
 
 If the **Service account** menu is empty, create a service account before you continue.

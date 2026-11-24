@@ -7,7 +7,7 @@ import { HiddenFAQ } from '@/components/HiddenFAQ'
 
 # Connect to the Grepr MCP server
 
-Grepr provides a remote Model Context Protocol server, or MCP server, that lets AI assistants work with your Grepr organization. The server provides tools to list pipelines, browse datasets and templates, query logs, validate SQL and Grok rules, and propose pipeline changes. Every tool call is authorized with the same role-based permissions as the Grepr UI and REST APIs, and recorded in your activity logs. See [Audit MCP activity](#audit).
+Grepr provides a remote Model Context Protocol server, or MCP server, that lets AI assistants work with your Grepr organization. The server provides tools to list pipelines, browse datasets and templates, query logs, validate SQL and Grok rules, work with issues, and change pipelines. Every tool call is authorized with the same role-based permissions as the Grepr UI and REST APIs, and recorded in your activity logs. The [MCP permissions](#access) control which tools an assistant can use. See [Audit MCP activity](#audit).
 
 The MCP server is available at the following endpoints:
 
@@ -22,6 +22,17 @@ You can authenticate in two ways:
 
 - OAuth sign-in: You sign in interactively with your Grepr user account. Use this for Claude, Claude Code, Cursor, Codex, and ChatGPT.
 - Service account credentials: Your client authenticates as a Grepr service account. Use this for Claude Tag in Slack, for automation, and for MCP clients that do not support the OAuth sign-in flow.
+
+## Control what assistants can do over MCP [#access]
+
+Two role permissions control which Grepr MCP tools your assistant can use:
+
+- **View** on **MCP** lets your assistant use the read-only tools.
+- **Edit** on **MCP** lets it use the tools that make changes. Changes that your assistant makes apply immediately.
+
+Your assistant also needs the permission for the change itself. For example, to change a pipeline over MCP, your role needs **Edit** on **MCP** and **Edit** on **Jobs** for that pipeline. To learn which roles have these permissions, see [Permissions in the Grepr platform](/grepr-platform/permissions).
+
+These permissions control the MCP server only. Without them, you can still make the same changes in the Grepr UI, the REST APIs, and the CLI.
 
 ## Sign in with OAuth
 
