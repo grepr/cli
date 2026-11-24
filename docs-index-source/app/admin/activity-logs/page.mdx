@@ -81,7 +81,7 @@ To export your search results, click **Download ND-JSON** in the top-right corne
 
 The events captured by the Grepr system logs include a complete record of the user who performed the action, when it occurred, and whether it succeeded or failed. You can use these logs to track user activity in your Grepr environment, including changes to jobs, templates, integrations, datasets, and organization settings. You can also use these logs to monitor security-related events, such as authentication attempts and permission changes.
 
-There are two types of system logs that track user activity in the Grepr platform: user activity logs and security event logs. These logs capture changes to Grepr resources performed through the Grepr UI and the REST API. The specific changes recorded in audit logs include:
+There are two types of system logs that track user activity in the Grepr platform: user activity logs and security event logs. These logs capture changes to Grepr resources performed through the Grepr UI, the REST API, and the MCP server. The specific changes recorded in audit logs include:
 
 - Jobs and templates: Create, update, and delete jobs or templates.
 - Datasets: Create, update, and delete datasets.
@@ -96,6 +96,8 @@ There are two types of system logs that track user activity in the Grepr platfor
 - Organization and access settings: Update organization and access settings.
 - External triggers: Create, update, and delete external triggers.
 
+Grepr also records every call to a tool that the MCP server provides, including calls that only read data, and each rejected MCP access token that Grepr issued for your organization. See [Audit MCP activity](/apis/mcp#audit).
+
 Audit log contents vary by event type. Depending on the operation, an audit log entry might include information such as:
 
 - The event type.
@@ -107,3 +109,38 @@ Audit log contents vary by event type. Depending on the operation, an audit log 
 - Whether the action succeeded or failed.
 
 Sensitive information, such as passwords and API keys, is masked or redacted in audit logs.
+
+## Retention [#log-retention]
+
+Grepr keeps each activity log entry for a period that depends on its log type, and then deletes it:
+
+| Log type | Retention |
+| --- | --- |
+| `SECURITY_EVENT` | 180 days |
+| `USER_ACTIVITY` | 90 days |
+| `JOB_EXECUTION` | 14 days |
+| `INTEGRATION_IMPORT` | 7 days |
+| `INTEGRATION_STATISTICS` | 3 days |
+
+To keep entries longer, export them before the retention period ends. See [Export activity logs](#export).
+
+## Export activity logs [#export]
+
+To send activity logs to another system, retrieve them with the activity logs API on a schedule and forward the results. Use a service account with a role that grants permission to view system logs. See [Manage Grepr service accounts](/admin/service-accounts) and [Authenticate to Grepr REST APIs](/apis/authentication).
+
+The following example uses the `curl` command to get the user activity and security event entries for one hour, newest first:
+
+```bash copy
+curl -X POST "https://<your_org_id>.app.grepr.ai/api/v1/activity-logs/search" \
+  -H "Authorization: Bearer <access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "logTypes": ["USER_ACTIVITY", "SECURITY_EVENT"],
+    "startTime": "2026-10-28T00:00:00Z",
+    "endTime": "2026-10-28T01:00:00Z",
+    "limit": 1000,
+    "offset": 0
+  }'
+```
+
+A request returns at most 1,000 entries. To get more entries for the same time range, increase `offset` by the number of entries returned and send the request again. The time range includes both `startTime` and `endTime`, so an entry at the boundary of two consecutive time ranges can appear in both. Use the `id` of each entry to remove duplicates. To find entries by text, add `searchQuery`, which searches the entry messages. For the full request format, see the [Activity Logs specification](/apis/api-spec#tag/Activity-Logs).

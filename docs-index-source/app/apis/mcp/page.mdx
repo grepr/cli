@@ -7,7 +7,7 @@ import { HiddenFAQ } from '@/components/HiddenFAQ'
 
 # Connect to the Grepr MCP server
 
-Grepr provides a remote Model Context Protocol server, or MCP server, that lets AI assistants work with your Grepr organization. The server provides tools to list pipelines, browse datasets and templates, query logs, validate SQL and Grok rules, and propose pipeline changes. Every tool call is authorized with the same role-based permissions as the Grepr UI and REST APIs.
+Grepr provides a remote Model Context Protocol server, or MCP server, that lets AI assistants work with your Grepr organization. The server provides tools to list pipelines, browse datasets and templates, query logs, validate SQL and Grok rules, and propose pipeline changes. Every tool call is authorized with the same role-based permissions as the Grepr UI and REST APIs, and recorded in your activity logs. See [Audit MCP activity](#audit).
 
 The MCP server is available at the following endpoints:
 
@@ -197,6 +197,69 @@ The server provides the following skills:
 
 When your AI assistant can run shell commands, the skills use the Grepr CLI instead of the MCP tools, because the CLI writes results to a file and has no page limit. To install the CLI, see [Grepr CLI](/cli). The [coding assistant plugins](/cli#agent-skills) include these skills and the rest of the Grepr skills.
 
+## Audit MCP activity [#audit]
+
+Grepr records MCP activity in the activity logs of your organization. Use these records to review who used the MCP server, which MCP client they used, and what each tool call did. To view the records, go to the **System Logs** page or use the activity logs API. See [View and search system activity in Grepr](/admin/activity-logs).
+
+### Tool calls [#calls]
+
+Grepr records every call to a tool that the MCP server provides, including calls that only read data and calls that fail. Each call creates one `USER_ACTIVITY` entry. The entry message starts with `MCP` and the tool name, for example `MCP search_logs via Grepr Cursor on dataset 0KHT3D9R2X1Y4`. To find MCP entries, enter `MCP` in **Search Message**.
+
+Each entry contains the following information:
+
+- The time of the call.
+- Who made the call: the user ID, name, and email address from the access token. When your organization uses single sign-on, these values come from your identity provider, such as Okta. For a call with a service account token, the user ID identifies the service account.
+- The MCP client that made the call. See [Identify the MCP client](#client).
+- The tool name, and whether the tool is read-only.
+- The tool arguments, such as the query and time range of a log search. Grepr hides the value of an argument whose name contains `token`, `secret`, `password`, `passwd`, `credential`, `cookie`, or `authorization`, or an API key, access key, or private key name, such as `apikey`, `api_key`, `api-key`, `access_key`, or `private-key`. In a tag filter with `key` and `value` or `values` fields, Grepr hides the value when the key contains one of these words. Grepr also hides the value of an argument whose name contains `sample`, such as a log sample sent to `test_grok`. Grepr shortens a text value longer than 1,000 characters. When the arguments are larger than 16 KiB, Grepr replaces each nested value with its size, and when they are still larger than 16 KiB, Grepr replaces all the arguments with their size. For a tool that changes a resource, the entry contains the argument names but not their values, and Grepr replaces the names with their size when they are larger than 16 KiB.
+- The dataset that a `search_logs` call searches.
+- The result of the call: `SUCCEEDED`, `FAILED`, or `INVALID_ARGUMENTS`. For a call that does not succeed, the entry also contains the HTTP status when it is known. For a read-only tool that fails with a client error or invalid arguments, the entry also contains the error message that the MCP client received. The entry status is `INFO` for a call that succeeds and `ERROR` for other calls.
+- The duration of the call.
+
+A tool that changes a resource, such as `update_job`, also creates the same audit entry as the matching REST API request. That entry contains the request parameters, except the log samples that an `update_job` request sends in `samples`. See [Track user activity with system logs](/admin/activity-logs#audit-logs).
+
+### Identify the MCP client [#client]
+
+The `mcp.client` attribute of each entry identifies the MCP client:
+
+- `id`: The ID of the OAuth client that the access token was issued to. Each supported MCP client has its own client ID, as listed in the client ID table earlier on this page. For a service account token, this value is the client ID of the service account.
+- `name`: The name of the OAuth client, such as `Grepr Claude Code`, when the access token includes it.
+- `userAgent`: The `User-Agent` header that the MCP client sent. The MCP client sets this value, so use it to help identify the client, not as proof of the client.
+
+The `id` and `name` values come from the signed access token, so they identify the OAuth client that the token was issued to. Any program that has the token sends the same values.
+
+Cursor in the editor and Cursor cloud agents sign in with the same OAuth client, so `id` and `name` are the same for both. The `userAgent` value might tell them apart.
+
+A Grepr AI agent calls the MCP server with the service account of the agent, so each of its entries names that service account as the caller.
+
+### Sign-in and authentication events [#authentication]
+
+The Grepr MCP server does not keep sessions. Each request carries an OAuth access token, and Grepr verifies the token on each request. For this reason, the activity logs contain no session start or session end entries.
+
+When you sign in from an MCP client, the Grepr sign-in service at `auth.grepr.ai` sends you to your identity provider if your organization uses single sign-on. Your identity provider records each sign-in. The Grepr sign-in service then issues and refreshes the access tokens for your MCP client. Your activity logs do not contain these token events.
+
+When a request carries an access token that Grepr issued for your organization and Grepr rejects it, such as an expired token, Grepr creates a `SECURITY_EVENT` entry with the status `WARNING`. The entry message starts with `MCP token rejected`, and the entry contains the user, the MCP client, and the reason that Grepr rejected the token. Grepr creates one entry for each rejected request, so a client that retries with the same token creates one entry for each attempt. Entries for the same token have the same `mcp.tokenFingerprint` value.
+
+Grepr does not record a request in your activity logs when it cannot verify that Grepr issued the access token, such as a malformed token or a token with a signature that is not valid. Nothing in such a token proves which organization or user it belongs to. Grepr records these requests in its internal logs. MCP clients send a request with no access token to find out how to sign in. Grepr does not record these requests in your activity logs.
+
+### Read and write access [#access]
+
+The Grepr MCP server provides tools that change resources, in addition to tools that only read data:
+
+- `update_job` changes the configuration of a pipeline, or records a suggested change for review.
+- `record_investigation_memory` and `link_investigation_memory` change the memory of Grepr AI agents.
+- `create_issue`, `update_issue`, `transition_issue`, `comment_on_issue`, `join_issue`, `finish_assignment`, `record_issue_occurrence`, and `add_issue_guidance` create and change issues.
+
+Each tool tells the MCP client whether it is read-only, so an MCP client that asks you to confirm changes can ask before it calls these tools.
+
+The Grepr server authorizes every tool call with the same role-based permissions as the Grepr UI and REST APIs. The MCP client cannot skip this check. The Reader role grants no edit permissions, so anyone with only the Reader role can call the read-only tools but cannot change resources through the MCP server. Team roles add edit permissions on the resources of a team. For example, team Leaders and Members can change the issues of their team. To give someone read-only MCP access, assign the Reader role or a custom role without edit permissions, and do not add the person to a team. See [Manage users](/admin/manage-users) and [Manage teams in the Grepr platform](/admin/manage-teams).
+
+### Retention and export [#retention]
+
+Grepr keeps tool call entries for 90 days and rejected token entries for 180 days. Admins, and anyone with a role that grants permission to view system logs, can see MCP entries.
+
+To keep entries longer, or to send them to another system, retrieve them with the activity logs API on a schedule. See [Export activity logs](/admin/activity-logs#export).
+
 <HiddenFAQ faqs={[
   {
     q: "Does the Grepr MCP server provide skills?",
@@ -233,6 +296,30 @@ When your AI assistant can run shell commands, the skills use the Grepr CLI inst
   {
     q: "Can I use Grepr from Claude in Slack?",
     a: "Yes. Upload the Grepr plugin for Claude Tag, turn it on in an access bundle, and add an OAuth 2.0 client credentials connection for app.grepr.ai with a Grepr service account, the token URL https://auth.grepr.ai/oauth/token, and the audience service."
+  },
+  {
+    q: "Does Grepr audit log MCP tool calls?",
+    a: "Yes. Grepr records every call to a tool that the MCP server provides, including read-only calls and calls that fail, as a USER_ACTIVITY entry in your activity logs. Each entry contains the time, the user ID, name, and email address from the access token, the MCP client, the tool name, the tool arguments with sensitive values hidden, the dataset of a log search, and the result."
+  },
+  {
+    q: "Are MCP audit log entries tied to the person who signed in or to a shared OAuth client?",
+    a: "To the person who signed in. Each MCP request carries one OAuth access token, and each entry records the ID, name, and email address from that token. When your organization uses single sign-on, these values come from your identity provider, such as Okta. A request with a service account token, such as a request from Claude in Slack or a Grepr AI agent, records the service account and not the person who prompted the call. The entry records the OAuth client ID separately, to identify the MCP client."
+  },
+  {
+    q: "How do I tell which MCP client made a call?",
+    a: "The mcp.client attribute of each activity log entry contains the OAuth client ID, the OAuth client name when the access token includes it, and the User-Agent header that the client sent. Each supported MCP client has its own OAuth client ID. Cursor in the editor and Cursor cloud agents share one client ID, so only the User-Agent value might tell them apart."
+  },
+  {
+    q: "Does Grepr log failed MCP authentication?",
+    a: "Grepr records a SECURITY_EVENT entry when it rejects an access token that it issued for your organization, such as an expired token. Grepr creates one entry for each rejected request. A token that Grepr cannot verify, such as a malformed token, does not identify an organization, so Grepr records it only in its internal logs. Your identity provider records sign-ins."
+  },
+  {
+    q: "Is the Grepr MCP server read-only?",
+    a: "No. Some tools change resources, such as update_job and the issue tools. The Grepr server authorizes every tool call with the same role-based permissions as the Grepr UI and REST APIs, and the MCP client cannot skip this check. Anyone with only the Reader role cannot change resources through the MCP server. Team roles can add edit permissions on the resources of a team."
+  },
+  {
+    q: "How long does Grepr keep MCP audit log entries?",
+    a: "Grepr keeps MCP tool call entries for 90 days and rejected token entries for 180 days. To keep them longer or send them to another system, retrieve them with the activity logs API on a schedule."
   },
   {
     q: "Which organization does an MCP session use?",
