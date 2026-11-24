@@ -2614,7 +2614,7 @@ export interface paths {
     get?: never;
     /**
      * Creates or updates a Slack MCP integration token
-     * @description Creates a token for a Slack MCP integration if it doesn't exist and updates it otherwise. If the token is updated while the integration is being used by a pipeline, the new token will be picked at pipeline restart, rescaling or an update.
+     * @description Creates a token for a Slack MCP integration if it doesn't exist and updates it otherwise. A user token, which begins with xoxp-, gives an agent the tools of Slack's MCP server. A bot token, which begins with xoxb-, gives an agent the slack_send_message, slack_read_channel and slack_read_thread tools, which Grepr serves, because Slack's MCP server accepts only user tokens. A token from a Slack app with token rotation, which begins with xoxe, is refused, because it expires after 12 hours. Unless validateKeysOnSave is false, a bot token is checked with Slack first, and Grepr refuses it when Slack does not accept it as a bot token or reports that it lacks the chat:write scope. If the token is updated while the integration is being used by a pipeline, the new token will be picked at pipeline restart, rescaling or an update.
      */
     put: operations["upsertApiKey_7"];
     post?: never;
@@ -25417,6 +25417,13 @@ export interface operations {
     responses: {
       /** @description Token upserted successfully. */
       204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The token has a space or another character a Slack token does not have, comes from a Slack app with token rotation, or is a bot token that Slack refuses or that lacks chat:write. */
+      400: {
         headers: {
           [name: string]: unknown;
         };

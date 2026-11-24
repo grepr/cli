@@ -36,7 +36,7 @@ The tools an agent gains depend on the server you connect:
 | PagerDuty MCP | Read and act on incidents, services, and schedules. |
 | Slack MCP | Read and post messages in the channels the token can reach. |
 
-Each integration has a server URL you set, so you can point one at a self-hosted or regional endpoint rather than the vendor's. The Jira MCP and Slack MCP are the exceptions. The Jira MCP's server URL must be on `mcp.atlassian.com`, so Grepr sends its credential only to Atlassian. The Slack MCP's server URL must be an https URL on `mcp.slack.com`, so Grepr sends its token only to Slack.
+Each integration has a server URL you set, so you can point one at a self-hosted or regional endpoint rather than the vendor's. The Jira MCP and Slack MCP are the exceptions. The Jira MCP's server URL must be on `mcp.atlassian.com`, so Grepr sends its credential only to Atlassian. The Slack MCP always uses Slack's MCP server, `https://mcp.slack.com/mcp`, so its form has no server URL field, and Grepr sends the token only to Slack.
 
 Don't see an MCP in the list? Send a request to [support@grepr.ai](mailto:support@grepr.ai).
 
@@ -51,7 +51,7 @@ You cannot change an integration's type after you create it. You can change its 
 
 ![The Add MCP Server dialog for a Datadog MCP integration, showing the type, name, server URL, and credential fields.](/images/integrations/mcp/add-mcp-server.png)
 
-Every type has a **Name** field, which identifies the integration when you configure an agent, and an **MCP Server URL** field. The remaining fields are the credential the server authenticates with.
+Every type has a **Name** field, which identifies the integration when you configure an agent. Every type except the Slack MCP also has an **MCP Server URL** field. The remaining fields are the credential the server authenticates with.
 
 The credential decides what the agent can do through that MCP. Grepr passes it through as you supply it, so give the token minimal access for what the agent needs. Select the tab for the MCP you are connecting.
 
@@ -126,15 +126,14 @@ The credential decides what the agent can do through that MCP. Grepr passes it t
 
     | Field | Value |
     |---|---|
-    | **MCP Server URL** | `https://mcp.slack.com/mcp` |
-    | **User token** | A Slack user token, which begins with `xoxp-`. |
+    | **Token** | A Slack bot token, which begins with `xoxb-`, or a Slack user token, which begins with `xoxp-`. To read and post as a Slack app, use a bot token. See [Connect Slack as an app](#slack-bot). |
 
-    The agent acts as the Slack user who owns the token, and it posts as that user. It can post in the channels that user is a member of, including Slack Connect channels that your workspace shares with another organization, and in direct messages. The token's scopes decide what the agent can read.
+    With a user token, the agent acts as the Slack user who owns the token, and it posts as that user. It can post in the channels that user is a member of, including Slack Connect channels that your workspace shares with another organization, and in direct messages. The token's scopes decide what the agent can read.
 
-    To let an agent post to a channel in your Slack workspace:
+    To let an agent post to a channel as a Slack user:
 
     1. Create a Slack user for the agent, such as `Grepr Agent`. With a dedicated user, the agent's messages do not show as a person's.
-    1. Sign in to Slack as that user. Go to [Slack apps](https://api.slack.com/apps?new_app=1), create an app from a manifest, select your workspace, and paste this manifest:
+    1. Sign in to Slack as that user. Go to [Slack apps](https://api.slack.com/apps?new_app=1). In the **Create new app** dialog, select **Paste a manifest** and click **Continue**. Then select your workspace and paste this manifest:
 
        ```yaml
        display_information:
@@ -154,7 +153,7 @@ The credential decides what the agent can do through that MCP. Grepr passes it t
     1. On the app's **OAuth & Permissions** page, copy the **User OAuth Token**.
     1. Add the agent's user to the channel the agent posts to, such as with `/invite @Grepr Agent`. A new Slack user joins your workspace's default channels, so have the user leave the ones the agent does not post to. The user cannot leave your workspace's general channel, so the agent can post there unless a workspace owner or admin restricts who can post in it.
     1. Copy the channel ID. In Slack, click the channel name. The ID is at the bottom of the **About** tab.
-    1. In Grepr, create a Slack MCP integration and enter the token in the **User token** field. See [Create an MCP integration](#create).
+    1. In Grepr, create a Slack MCP integration and enter the user token in the **Token** field. See [Create an MCP integration](#create).
     1. Enable the integration on the agent. A new integration on an agent starts with all of the server's tools allowed. To limit the agent to posting, edit its allowed tools, select **Only the tools I choose**, and select `slack_send_message`. See [Choose which tools an agent can call](#allowed-tools).
     1. In the agent's system prompt, give the channel ID and tell the agent when to post, such as `Post a summary of each investigation to Slack channel C0123456789.` See [_](/ai-agents/create-an-agent#system-prompt).
 
@@ -164,6 +163,59 @@ The credential decides what the agent can do through that MCP. Grepr passes it t
 
   </Tabs.Tab>
 </Tabs>
+
+### Connect Slack as an app with a bot token [#slack-bot]
+
+A Slack MCP integration takes a bot token or a user token. With a bot token, the agent works as a Slack app. With a user token, the agent acts as a Slack user.
+
+Slack's MCP server accepts only user tokens, so with a bot token Grepr provides the agent's Slack tools:
+
+| Tool | What it does |
+|---|---|
+| `slack_send_message` | Posts a message in a channel, or a reply in a thread. |
+| `slack_read_channel` | Reads the recent messages of a channel. |
+| `slack_read_thread` | Reads a thread: its first message and its replies. |
+
+The app reads and posts only in the channels that it is a member of. It can also send a direct message to a member of your workspace. You do not need a Slack user for the agent, so the agent does not use a Slack seat or join your default channels.
+
+Use a user token when the agent needs other Slack tools, such as search.
+
+To let an agent read and post in a channel as a Slack app:
+
+1. Go to [Slack apps](https://api.slack.com/apps?new_app=1). In the **Create new app** dialog, select **Paste a manifest** and click **Continue**. Then select your workspace and paste this manifest:
+
+   ```yaml
+   display_information:
+     name: Grepr Agent
+   features:
+     bot_user:
+       display_name: Grepr Agent
+       always_online: false
+   oauth_config:
+     scopes:
+       bot:
+         - chat:write
+         - channels:history
+         - groups:history
+   settings:
+     token_rotation_enabled: false
+   ```
+
+   The manifest grants `chat:write` to post, `channels:history` to read public channels, and `groups:history` to read private channels. With either history scope, the app reads only the channels that it is a member of. For an agent that only posts, remove the two history scopes. Do not add `chat:write.public`. With that scope, the app can post in every public channel, including the channels that it is not a member of.
+
+1. Install the app to your workspace. If your workspace requires app approval, request it, and install the app after a Slack admin approves it. Do not turn on token rotation. Grepr does not refresh the token, and a rotated token expires after 12 hours.
+1. On the app's **OAuth & Permissions** page, copy the **Bot User OAuth Token**, which begins with `xoxb-`. When you save it in Grepr, Grepr checks it with Slack: Slack must accept it as a bot token, and the app must have `chat:write`. Grepr stores the token only when it passes.
+1. Add the app to each channel that the agent reads or posts in, such as with `/invite @Grepr Agent` in the channel.
+1. Copy the channel ID. In Slack, click the channel name. The ID is at the bottom of the **About** tab.
+1. In Grepr, create a Slack MCP integration and enter the bot token in the **Token** field. See [Create an MCP integration](#create).
+1. Enable the integration on the agent. See [Choose which tools an agent can call](#allowed-tools).
+1. In the agent's system prompt, give the channel ID and tell the agent when to post, such as `Post a summary of each investigation to Slack channel C0123456789.` See [_](/ai-agents/create-an-agent#system-prompt).
+
+The app can read and post in a Slack Connect channel that your workspace shares with another organization. A member of your organization adds the app to the channel, and the other organization does not approve it. If the other organization owns the channel and lets your organization only post, you cannot add the app. A message that the agent posts in a Slack Connect channel reaches the other organization.
+
+An investigation runs Slack tools with no approval step, and the logs, alerts and Slack messages it reads can contain text that tries to steer the agent. The channels that the app is a member of limit where the agent reads and posts. Channel membership does not limit direct messages, so the app can also send a direct message to a member of your workspace.
+
+To change an existing Slack MCP integration to a bot token, edit the integration and enter the bot token in the **Token** field. The agents that use the integration keep it. With a bot token, an agent can call only the three tools above. If an agent's allowed tools do not name them, edit its allowed tools and select the Slack tools that the agent needs.
 
 ## Choose which tools an agent can call [#allowed-tools]
 
