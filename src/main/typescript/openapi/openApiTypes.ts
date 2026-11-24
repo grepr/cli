@@ -4981,6 +4981,11 @@ export interface components {
        * @description Signals per minute, averaged over 15 minutes, at or above which this agent's runs on a churning pipeline are held. Unset: 15 with the decision step, 5 without.
        */
       churnHoldPerMinute?: number;
+      /**
+       * Format: int32
+       * @description Churn specialist only, when runOutsideChurnMode is off: it starts runs on a pipeline in churn mode only once the pipeline's measured signals per minute (15-minute average) is at or above this. Unset: any rate.
+       */
+      churnRunPerMinute?: number;
       /** @description OpenCode's experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool's schema; null or false is off. */
       codeMode?: boolean;
       /** @enum {string} */
@@ -5035,6 +5040,11 @@ export interface components {
        * @description Signals per minute, averaged over 15 minutes, at or above which this agent's runs on a churning pipeline are held. Unset: 15 with the decision step, 5 without.
        */
       churnHoldPerMinute?: number;
+      /**
+       * Format: int32
+       * @description Churn specialist only, when runOutsideChurnMode is off: it starts runs on a pipeline in churn mode only once the pipeline's measured signals per minute (15-minute average) is at or above this. Unset: any rate.
+       */
+      churnRunPerMinute?: number;
       /** @description OpenCode's experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool's schema; null or false is off. */
       codeMode?: boolean;
       /** @enum {string} */

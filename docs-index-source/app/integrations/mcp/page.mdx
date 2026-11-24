@@ -64,7 +64,7 @@ The credential decides what the agent can do through that MCP. Grepr passes it t
     | **API Key (DD-API-KEY)** | A Datadog API key. |
     | **Application Key (DD-APPLICATION-KEY)** | A Datadog application key. |
 
-    Create both keys in Datadog under **Organization Settings**. An application key carries the authorization scopes that decide what the agent can read, so scope it to the data you want the agent to reach, such as monitors, dashboards, and logs. To learn more, see [API and Application Keys](https://docs.datadoghq.com/account_management/api-app-keys/) and [Authorization Scopes](https://docs.datadoghq.com/api/latest/scopes/) in the Datadog documentation.
+    Create both keys in Datadog under **Organization Settings**. An application key carries the authorization scopes that decide what the agent can read, so scope it to the data you want the agent to reach, such as monitors, dashboards, and logs. The application key needs the `logs_read_data` scope: agents query your Datadog logs before the Grepr data lake, and Grepr checks the scope when you save the key. To learn more, see [API and Application Keys](https://docs.datadoghq.com/account_management/api-app-keys/) and [Authorization Scopes](https://docs.datadoghq.com/api/latest/scopes/) in the Datadog documentation.
 
     If you already use Datadog as a Grepr source or sink, this is a separate integration. Reusing the same keys is fine. See [_](/integrations/datadog).
 
