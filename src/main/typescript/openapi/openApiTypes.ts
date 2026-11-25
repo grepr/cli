@@ -12268,7 +12268,7 @@ export interface components {
     PartitionFieldConfig: {
       /**
        * Format: int32
-       * @description Number of buckets to hash this column into.
+       * @description Number of buckets to hash this column into. For metrics_points and metrics_series, use about 64 for each 5M points/s of the dataset's peak load, rounded up to a power of two, at most 256; the default, 4, fits up to about 300k points/s. A metrics table's count can't change while any pipeline uses the dataset, stopped or failed ones included, so set it before the first pipeline.
        */
       buckets: number;
       /** @description Built-in column (service/host) or a promoted tag key to partition by; metric_hash for metrics_points, metric_name for metrics_series. */
@@ -20728,7 +20728,7 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description Dataset has jobs associated with it. */
+      /** @description Dataset is used by a pipeline, stopped and failed ones included. */
       409: {
         headers: {
           [name: string]: unknown;

@@ -110,7 +110,7 @@ A change to the reducer's cards, its window, or its per-metric functions over ti
 
 ## How a metrics pipeline handles late points [#late-points]
 
-The reducer sends each rolled-up window 15 seconds after the window ends, by default. A point that arrives after its window was sent is _late_. The reducer holds each rolled-up window for the longer of 30 seconds and two windows after it ends, so with one-minute windows, it holds each window for two minutes:
+The reducer sends each rolled-up window 15 seconds after the window ends, by default. A point that arrives after its window was sent is _late_. The reducer holds each rolled-up window for the longer of 30 seconds and ten windows after it ends, so with one-minute windows, it holds each window for ten minutes:
 
 - A late point that arrives while the reducer holds its window updates the window, and the reducer sends the update at most every 15 seconds by default. For a count, rate, or gauge, the update is the window's whole value. For a distribution, the update holds only the late points.
 - A point that arrives after its window's hold ends isn't sent to your destinations. If the pipeline has a lake, the lake still keeps it.
@@ -176,7 +176,7 @@ The following example shows a pipeline that keeps raw points in a dataset, drops
 
 Each card on the Reducer step is an entry in `dropRules` or a rule in `rules`, in column order, and **Everything else** set to **Roll up in time** is the last rule, a `time-rollup` rule of `*`. A rule's `type` is `passthrough` for **Keep raw**, `time-rollup` for **Roll up in time**, or `group-by` for **Across objects**.
 
-To set how old a point a destination still sends, measured when the point goes out, set the sink's `maxLateData`, such as `"PT6H"`. Each vendor's destinations have their own default and minimum, and the value must be at least three of the pipeline's longest windows plus 5 minutes, so a longer window needs a longer limit. To send each window sooner after it ends, set `lateMetrics.softLateDeadline`, such as `"PT5S"`. It must be longer than zero and shorter than 30 seconds, and it also sets how often the reducer re-sends a window that late points change. For every field, see the [`MetricsReducerTemplateInput` schema](/apis/api-spec#schema/MetricsReducerTemplateInput).
+To set how old a point a destination still sends, measured when the point goes out, set the sink's `maxLateData`, such as `"PT6H"`. Each vendor's destinations have their own default and minimum, and the value must be at least eleven of the pipeline's longest windows plus 5 minutes, so a longer window needs a longer limit. The reducer holds late points for at most 2 hours, so a window is at most 12 minutes long whatever the limit. A pipeline whose windows don't fit is refused when it's saved. To send each window sooner after it ends, set `lateMetrics.softLateDeadline`, such as `"PT5S"`. It must be longer than zero and shorter than 30 seconds, and it also sets how often the reducer re-sends a window that late points change. For every field, see the [`MetricsReducerTemplateInput` schema](/apis/api-spec#schema/MetricsReducerTemplateInput).
 
 ## Datadog [#datadog]
 
@@ -230,7 +230,7 @@ On the **Overview** step, **Destinations** shows the hosts Datadog received in t
 
 For a count, rate, or gauge, Datadog keeps the last value it receives for a series and timestamp, so a window's update replaces its earlier value. For a distribution, Datadog adds each sketch it receives to the window's earlier sketches. Either way, a window in Datadog holds every point that reached the reducer before the window's hold ended.
 
-A Datadog destination doesn't send a point more than 55 minutes old when the point goes out, because Datadog accepts points up to 1 hour old only. With this limit, a window is at most 15 minutes long. If your metrics have Datadog's historical metrics ingestion turned on, you can raise the limit with the sink's `maxLateData`. A longer limit allows windows of 20 and 30 minutes, and lets a pipeline that runs more than 55 minutes behind real time still send its points. The default and minimum of a Datadog sink's `maxLateData` is 55 minutes. See [_](#api).
+A Datadog destination doesn't send a point more than 55 minutes old when the point goes out, because Datadog accepts points up to 1 hour old only. With this limit, a window is at most 4 minutes long. If your metrics have Datadog's historical metrics ingestion turned on, you can raise the limit with the sink's `maxLateData`. A longer limit allows windows of up to 12 minutes, and lets a pipeline that runs more than 55 minutes behind real time still send its points. The default and minimum of a Datadog sink's `maxLateData` is 55 minutes. See [_](#api).
 
 ### Datadog limitations [#datadog-limits]
 
@@ -240,7 +240,7 @@ A Datadog destination doesn't send a point more than 55 minutes old when the poi
 ## Limitations [#limitations]
 
 - A metrics pipeline reads metrics from one source integration, of a supported vendor. See [_](#supported-integrations).
-- A window is at most 30 minutes long, and each destination's limit on how old a point it sends can shorten it. See [_](/pipelines/metrics-pipelines/reducer#window).
+- A window is at most 12 minutes long, and each destination's limit on how old a point it sends can shorten it. See [_](/pipelines/metrics-pipelines/reducer#window).
 
 <HiddenFAQ
   faqs={[
@@ -258,7 +258,7 @@ A Datadog destination doesn't send a point more than 55 minutes old when the poi
     },
     {
       q: "What happens to metric points that arrive late?",
-      a: "The reducer holds each rolled-up window for the longer of 30 seconds and two windows after it ends. A late point that arrives during the hold updates its window, and the reducer sends the update: the window's whole value for a count, rate, or gauge, and only the late points for a distribution. A point that arrives after the hold isn't sent to your destinations. If the pipeline has a lake, the lake still keeps it."
+      a: "The reducer holds each rolled-up window for the longer of 30 seconds and ten windows after it ends. A late point that arrives during the hold updates its window, and the reducer sends the update: the window's whole value for a count, rate, or gauge, and only the late points for a distribution. A point that arrives after the hold isn't sent to your destinations. If the pipeline has a lake, the lake still keeps it."
     },
     {
       q: "Does changing a metrics pipeline restart it?",

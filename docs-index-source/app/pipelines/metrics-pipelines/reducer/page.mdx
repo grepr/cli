@@ -110,11 +110,11 @@ A window shorter than your agents' report interval holds only the objects that r
 
 ## Set the window [#window]
 
-The window is the time that each rolled-up point covers. To set the window for every card, select it in **Roll up to (every rule)**, from 1 second to 10 minutes. A new pipeline starts with 1 minute, and **Default** is 20 seconds.
+The window is the time that each rolled-up point covers. To set the window for every card, select it in **Roll up to (every rule)**, from 1 second to 2 minutes. A new pipeline starts with 1 minute, and **Default** is 20 seconds.
 
 To give one rollup card its own window, click **Own window…** in the card's menu. The card shows its own window as a chip. To return the card to the window of every card, delete the chip.
 
-With the API, a window must divide an hour evenly, and each destination must still send the window's last re-send, which comes up to three windows plus 5 minutes after the window starts. A window longer than a destination's limit allows needs the destination's `maxLateData` raised to at least three windows plus 5 minutes. See [_](/pipelines/metrics-pipelines#api). For a vendor's default limit, and what raising it needs, see the vendor's section of [_](/pipelines/metrics-pipelines#supported-integrations).
+With the API, a window must divide an hour evenly and be at most 12 minutes, and each destination must still send the window's last re-send, which comes up to eleven windows plus 5 minutes after the window starts. A pipeline with a window longer than a destination's limit allows is refused when it's saved. To use a longer window, raise the destination's `maxLateData` to at least eleven windows plus 5 minutes. See [_](/pipelines/metrics-pipelines#api). For a vendor's default limit, and what raising it needs, see the vendor's section of [_](/pipelines/metrics-pipelines#supported-integrations).
 
 ## Choose a card's functions [#functions]
 
