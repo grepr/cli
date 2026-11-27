@@ -4983,7 +4983,7 @@ export interface components {
       churnHoldPerMinute?: number;
       /**
        * Format: int32
-       * @description Churn specialist only, when runOutsideChurnMode is off: it starts runs on a pipeline in churn mode only once the pipeline's measured signals per minute (15-minute average) is at or above this. Unset: any rate.
+       * @description Churn specialist only, when runOutsideChurnMode is off: it starts runs on a pipeline in churn mode only while the pipeline's measured signals per minute (15-minute average) is at or above this, or before the rate is first measured. Unset: any rate.
        */
       churnRunPerMinute?: number;
       /** @description OpenCode's experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool's schema; null or false is off. */
@@ -5042,7 +5042,7 @@ export interface components {
       churnHoldPerMinute?: number;
       /**
        * Format: int32
-       * @description Churn specialist only, when runOutsideChurnMode is off: it starts runs on a pipeline in churn mode only once the pipeline's measured signals per minute (15-minute average) is at or above this. Unset: any rate.
+       * @description Churn specialist only, when runOutsideChurnMode is off: it starts runs on a pipeline in churn mode only while the pipeline's measured signals per minute (15-minute average) is at or above this, or before the rate is first measured. Unset: any rate.
        */
       churnRunPerMinute?: number;
       /** @description OpenCode's experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool's schema; null or false is off. */
